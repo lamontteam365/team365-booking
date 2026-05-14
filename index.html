@@ -2,190 +2,313 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <title>Team 365 · Book a Class</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{background:#080808;min-height:100vh}
 #root{min-height:100vh}
 
+/* ── App shell ── */
 .app{font-family:'DM Sans',sans-serif;background:#080808;color:#fff;min-height:100vh;display:flex;flex-direction:column;max-width:480px;margin:0 auto}
-.hdr{padding:22px 20px 0;display:flex;justify-content:space-between;align-items:center}
-.logo-sub{font-size:9px;letter-spacing:0.2em;color:#fff}
-.logo{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:0.15em;line-height:1}
-.avatar-sm{width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid #222;cursor:pointer;display:block}
-.avatar-init-sm{width:38px;height:38px;border-radius:50%;background:#141414;border:1px solid #1e1e1e;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:14px;color:#444;cursor:pointer;flex-shrink:0}
-.edit-lbl{font-size:9px;letter-spacing:0.1em;color:#252525;text-align:center;margin-top:3px}
-.name-lbl{font-size:10px;letter-spacing:0.12em;color:#fff;font-weight:500;text-align:center;margin-top:4px}
 
-.week-nav{display:flex;align-items:center;padding:22px 14px 0}
-.wk-arrow{background:none;border:none;color:#2a2a2a;cursor:pointer;font-size:24px;padding:4px 10px;line-height:1;transition:color .15s}
+/* ── Header ── */
+.hdr{padding:20px 20px 0;display:flex;justify-content:space-between;align-items:center}
+.logo-sub{font-size:9px;letter-spacing:0.22em;color:#fff;font-weight:500}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:0.15em;line-height:1;color:#fff}
+.avatar-sm{width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid #333;cursor:pointer;display:block}
+.avatar-init-sm{width:38px;height:38px;border-radius:50%;background:#1a1a1a;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:14px;color:#777;cursor:pointer;flex-shrink:0}
+.name-lbl{font-size:10px;letter-spacing:0.12em;color:#fff;font-weight:600;text-align:center;margin-top:5px}
+.edit-lbl{font-size:9px;letter-spacing:0.1em;color:#666;text-align:center;margin-top:1px}
+
+/* ── Week nav ── */
+.week-nav{display:flex;align-items:center;padding:18px 14px 0}
+.wk-arrow{background:none;border:none;color:#555;cursor:pointer;font-size:24px;padding:4px 10px;line-height:1;transition:color .15s}
 .wk-arrow:hover:not(:disabled){color:#fff}
-.wk-arrow:disabled{color:#181818;cursor:default}
-.wk-label{flex:1;text-align:center;font-size:10px;letter-spacing:0.18em;color:#fff;font-weight:500}
+.wk-arrow:disabled{color:#222;cursor:default}
+.wk-label{flex:1;text-align:center;font-size:10px;letter-spacing:0.18em;color:#fff;font-weight:600}
 
-.day-strip{display:flex;gap:5px;padding:12px 20px 0;overflow-x:auto;scrollbar-width:none}
+/* ── Day strip ── */
+.day-strip{display:flex;gap:5px;padding:10px 16px 0;overflow-x:auto;scrollbar-width:none}
 .day-strip::-webkit-scrollbar{display:none}
-.day-btn{flex:1;min-width:46px;display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 4px;background:#0d0d0d;border:1px solid #191919;border-radius:6px;cursor:pointer;transition:all .15s}
-.day-btn:hover:not(.da){border-color:#242424}
-.day-btn.dt{border-color:#2c2c2c}
+.day-btn{flex:1;min-width:44px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;background:#0e0e0e;border:1px solid #222;border-radius:6px;cursor:pointer;transition:all .15s}
+.day-btn:hover:not(.da){border-color:#333}
+.day-btn.dt{border-color:#444}
 .day-btn.da{background:#fff;border-color:#fff}
-.d-name{font-size:9px;letter-spacing:0.12em;font-weight:500;color:#303030}
-.d-num{font-family:'Bebas Neue',sans-serif;font-size:21px;line-height:1;color:#252525}
+.d-name{font-size:9px;letter-spacing:0.12em;font-weight:600;color:#777}
+.d-num{font-family:'Bebas Neue',sans-serif;font-size:20px;line-height:1;color:#555}
 .day-btn.dt .d-num{color:#fff}
+.day-btn.dt .d-name{color:#aaa}
 .day-btn.da .d-name,.day-btn.da .d-num{color:#000}
 .d-dot{width:4px;height:4px;border-radius:50%;background:transparent}
-.day-btn.dhb .d-dot{background:#2a2a2a}
+.day-btn.dhb .d-dot{background:#444}
 .day-btn.da.dhb .d-dot{background:#888}
 
-.cls-wrap{flex:1;padding:18px 20px;display:flex;flex-direction:column;gap:9px}
-.day-hdr{font-size:10px;letter-spacing:0.2em;color:#fff;font-weight:500;margin-bottom:4px}
-.c-row{display:flex;align-items:center;gap:12px;padding:13px 15px;background:#0d0d0d;border:1px solid #181818;border-radius:6px;transition:border-color .15s}
-.c-row.cb{border-color:#222}
-.c-row.cp{opacity:0.28;pointer-events:none}
-.c-time{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.03em;color:#fff;min-width:82px}
-.c-mid{flex:1;display:flex;flex-direction:column;gap:6px}
-.c-bars{display:flex;gap:3px}
-.c-bar{flex:1;height:2px;border-radius:1px;background:#191919;transition:background .3s}
+/* ── Class list ── */
+.cls-wrap{flex:1;padding:14px 16px;display:flex;flex-direction:column;gap:7px}
+.day-hdr{font-size:9px;letter-spacing:0.22em;color:#888;font-weight:600;margin-bottom:6px;line-height:1.6}
+.day-hdr span{color:#fff}
+
+.c-row{display:flex;align-items:center;gap:10px;padding:10px 13px;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:7px;transition:border-color .15s}
+.c-row.cb{border-color:#2a2a2a}
+.c-row.cp{opacity:0.25;pointer-events:none}
+.c-time{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.03em;color:#fff;min-width:72px}
+.c-mid{flex:1;display:flex;flex-direction:column;gap:5px}
+.c-bars{display:flex;gap:2px}
+.c-bar{flex:1;height:2px;border-radius:1px;background:#222;transition:background .3s}
 .c-bar.ct{background:#fff}
-.c-sub{font-size:10px;letter-spacing:0.1em;color:#333;font-weight:500}
+.c-sub{font-size:10px;letter-spacing:0.1em;color:#777;font-weight:500}
 .c-sub.cl{color:#d95f3b}
-.c-sub.co{color:#444}
-.c-sub.ck{color:#3a3a3a}
-.c-btn{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:0.12em;padding:10px 14px;border-radius:3px;border:none;cursor:pointer;white-space:nowrap;transition:all .15s}
+.c-sub.co{color:#888}
+.c-sub.ck{color:#666}
+.c-sub.cf{color:#444}
+.c-btn{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:0.12em;padding:8px 12px;border-radius:3px;border:none;cursor:pointer;white-space:nowrap;transition:all .15s}
 .c-btn.bb{background:#fff;color:#000}
 .c-btn.bb:hover:not(:disabled){background:#ddd}
-.c-btn.bf{background:transparent;color:#242424;border:1px solid #1a1a1a;cursor:default;font-size:11px}
-.c-btn.bc{background:transparent;color:#6a2010;border:1px solid #221008;cursor:pointer;font-size:11px}
-.c-btn.bc:hover{border-color:#6a2010;color:#d95f3b}
+.c-btn.bf{background:transparent;color:#333;border:1px solid #222;cursor:default;font-size:10px}
+.c-btn.bc{background:transparent;color:#7a2515;border:1px solid #2a1208;cursor:pointer;font-size:10px}
+.c-btn.bc:hover{border-color:#7a2515;color:#d95f3b}
 .c-btn:disabled{opacity:.4;cursor:not-allowed}
 
-.my-wrap{padding:20px;flex:1}
-.my-hdr{font-size:10px;letter-spacing:0.2em;color:#fff;font-weight:500;margin-bottom:14px}
-.my-item{display:flex;align-items:center;justify-content:space-between;padding:14px 15px;background:#0d0d0d;border:1px solid #181818;border-radius:6px;margin-bottom:8px}
-.my-date{font-size:10px;letter-spacing:0.12em;color:#303030;font-weight:500;margin-bottom:3px}
-.my-time{font-family:'Bebas Neue',sans-serif;font-size:22px;color:#fff}
-.my-x{font-size:11px;letter-spacing:0.08em;color:#242424;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:color .15s}
+/* ── My Classes ── */
+.my-wrap{padding:18px 16px;flex:1}
+.my-hdr{font-size:10px;letter-spacing:0.22em;color:#fff;font-weight:600;margin-bottom:14px}
+.my-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:7px;margin-bottom:7px}
+.my-date{font-size:10px;letter-spacing:0.12em;color:#777;font-weight:500;margin-bottom:2px}
+.my-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff}
+.my-sess{font-size:9px;letter-spacing:0.1em;color:#555;margin-top:1px}
+.my-x{font-size:10px;letter-spacing:0.08em;color:#444;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:color .15s;font-weight:500}
 .my-x:hover{color:#d95f3b}
-.no-bk{text-align:center;padding:48px 0;font-size:11px;letter-spacing:0.16em;color:#1a1a1a;line-height:2.2}
+.no-bk{text-align:center;padding:48px 0;font-size:11px;letter-spacing:0.16em;color:#333;line-height:2.4}
 
-.tab-bar{display:flex;border-top:1px solid #111;margin-top:auto}
-.tab-btn{flex:1;padding:15px;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.18em;color:#fff;font-weight:500;transition:color .15s}
+/* ── Tab bar ── */
+.tab-bar{display:flex;border-top:1px solid #1a1a1a;margin-top:auto}
+.tab-btn{flex:1;padding:14px;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.18em;color:#666;font-weight:600;transition:color .15s}
 .tab-btn.ta{color:#fff;border-top:1px solid #fff;margin-top:-1px}
 .tab-btn:hover:not(.ta){color:#aaa}
-.foot{text-align:center;font-size:9px;letter-spacing:0.22em;color:#fff;padding:10px 0 14px}
+.foot{text-align:center;font-size:9px;letter-spacing:0.22em;color:#fff;padding:9px 0 13px}
 
-.toast{position:fixed;bottom:72px;left:50%;transform:translateX(-50%);background:#fff;color:#000;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.15em;padding:11px 22px;border-radius:3px;pointer-events:none;transition:opacity .3s;z-index:99;white-space:nowrap;opacity:0}
+/* ── Toast ── */
+.toast{position:fixed;bottom:68px;left:50%;transform:translateX(-50%);background:#fff;color:#000;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.15em;padding:10px 22px;border-radius:3px;pointer-events:none;transition:opacity .3s;z-index:200;white-space:nowrap;opacity:0}
 .toast.show{opacity:1}
 
+/* ── Auth ── */
 .auth-page{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;background:#080808;font-family:'DM Sans',sans-serif}
-.auth-logo{font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:0.2em;margin-bottom:4px}
-.auth-tag{font-size:9px;letter-spacing:0.22em;color:#222;margin-bottom:52px}
+.auth-logo{font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:0.2em;margin-bottom:2px;color:#fff}
+.auth-tag{font-size:10px;letter-spacing:0.24em;color:#fff;margin-bottom:48px;font-weight:500}
 .auth-card{width:100%;max-width:380px}
-.auth-title{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:0.1em;margin-bottom:22px}
-.fl{display:block;font-size:10px;letter-spacing:0.18em;color:#333;font-weight:500;margin-bottom:7px}
-.fi{width:100%;background:#0d0d0d;border:1px solid #1c1c1c;color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:300;padding:14px 15px;margin-bottom:11px;outline:none;border-radius:3px;transition:border-color .2s;-webkit-appearance:none}
-.fi:focus{border-color:#2e2e2e}
-.fi::placeholder{color:#1e1e1e}
+.auth-title{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:0.1em;margin-bottom:24px;color:#fff}
+.fl{display:block;font-size:10px;letter-spacing:0.18em;color:#aaa;font-weight:600;margin-bottom:7px}
+.fi{width:100%;background:#0e0e0e;border:1px solid #2a2a2a;color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:300;padding:14px 15px;margin-bottom:12px;outline:none;border-radius:3px;transition:border-color .2s;-webkit-appearance:none}
+.fi:focus{border-color:#444}
+.fi::placeholder{color:#333}
 .auth-btn{width:100%;background:#fff;color:#000;border:none;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:0.18em;padding:18px;cursor:pointer;border-radius:3px;margin-top:4px;transition:background .15s}
 .auth-btn:hover:not(:disabled){background:#ddd}
-.auth-btn:disabled{background:#111;color:#222;cursor:not-allowed}
-.auth-err{font-size:12px;color:#d95f3b;letter-spacing:0.04em;margin-top:11px;line-height:1.5}
-.auth-sw{text-align:center;margin-top:20px;font-size:12px;color:#2a2a2a;letter-spacing:0.04em}
-.auth-sw button{background:none;border:none;color:#444;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;text-decoration:underline;text-underline-offset:3px}
+.auth-btn:disabled{background:#111;color:#333;cursor:not-allowed}
+.auth-err{font-size:12px;color:#d95f3b;letter-spacing:0.04em;margin-top:12px;line-height:1.5}
+.auth-sw{text-align:center;margin-top:22px;font-size:12px;color:#777;letter-spacing:0.04em}
+.auth-sw button{background:none;border:none;color:#bbb;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;text-decoration:underline;text-underline-offset:3px;font-weight:500}
 .auth-sw button:hover{color:#fff}
 
-.prof-overlay{position:fixed;inset:0;background:#080808;z-index:50;display:flex;flex-direction:column;max-width:480px;margin:0 auto;animation:su .2s ease;overflow-y:auto}
-@keyframes su{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
-.prof-hdr{display:flex;align-items:center;justify-content:space-between;padding:22px 20px 0;flex-shrink:0}
-.prof-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:0.15em}
-.prof-close{background:none;border:none;color:#333;font-size:20px;cursor:pointer;padding:4px;transition:color .15s;line-height:1}
+/* ── Profile overlay ── */
+.prof-overlay{position:fixed;inset:0;background:#080808;z-index:50;display:flex;flex-direction:column;max-width:480px;margin:0 auto;overflow-y:auto}
+.prof-hdr{display:flex;align-items:center;justify-content:space-between;padding:20px 20px 0;flex-shrink:0}
+.prof-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:0.15em;color:#fff}
+.prof-close{background:none;border:none;color:#666;font-size:20px;cursor:pointer;padding:4px;transition:color .15s;line-height:1}
 .prof-close:hover{color:#fff}
-.prof-body{padding:24px 20px 48px}
-.prof-since{font-size:10px;letter-spacing:0.18em;color:#252525;margin-bottom:24px}
-.photo-wrap{display:flex;flex-direction:column;align-items:center;margin-bottom:28px}
-.avatar-lg{width:90px;height:90px;border-radius:50%;object-fit:cover;border:2px solid #1e1e1e}
-.avatar-init-lg{width:90px;height:90px;border-radius:50%;background:#111;border:2px solid #1a1a1a;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:34px;color:#2a2a2a}
-.prof-name{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.1em;color:#fff;margin-top:12px}
-.photo-btn{margin-top:8px;background:none;border:none;color:#3a3a3a;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:11px;letter-spacing:0.12em;transition:color .15s;text-decoration:underline;text-underline-offset:3px}
+.prof-body{padding:22px 20px 48px}
+.prof-since{font-size:10px;letter-spacing:0.18em;color:#555;margin-bottom:22px;font-weight:500}
+.photo-wrap{display:flex;flex-direction:column;align-items:center;margin-bottom:26px}
+.avatar-lg{width:90px;height:90px;border-radius:50%;object-fit:cover;border:2px solid #2a2a2a}
+.avatar-init-lg{width:90px;height:90px;border-radius:50%;background:#111;border:2px solid #222;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:34px;color:#444}
+.prof-name-lbl{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.1em;color:#fff;margin-top:12px}
+.photo-btn{margin-top:7px;background:none;border:none;color:#777;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:11px;letter-spacing:0.12em;transition:color .15s;text-decoration:underline;text-underline-offset:3px;font-weight:500}
 .photo-btn:hover{color:#fff}
-.prof-section{font-size:10px;letter-spacing:0.2em;color:#242424;font-weight:500;margin:22px 0 14px}
-.prof-save{width:100%;background:#fff;color:#000;border:none;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:0.18em;padding:18px;cursor:pointer;border-radius:3px;margin-top:6px;transition:background .15s}
+.prof-section{font-size:9px;letter-spacing:0.22em;color:#555;font-weight:600;margin:20px 0 13px;border-top:1px solid #141414;padding-top:20px}
+.prof-save{width:100%;background:#fff;color:#000;border:none;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:0.18em;padding:17px;cursor:pointer;border-radius:3px;margin-top:6px;transition:background .15s}
 .prof-save:hover:not(:disabled){background:#ddd}
-.prof-save:disabled{background:#111;color:#222;cursor:not-allowed}
-.prof-logout{width:100%;background:transparent;color:#2a2a2a;border:1px solid #1a1a1a;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.18em;padding:16px;cursor:pointer;border-radius:3px;margin-top:10px;transition:all .15s}
-.prof-logout:hover{border-color:#333;color:#555}
+.prof-save:disabled{background:#111;color:#333;cursor:not-allowed}
+.prof-logout{width:100%;background:transparent;color:#555;border:1px solid #222;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.18em;padding:15px;cursor:pointer;border-radius:3px;margin-top:10px;transition:all .15s}
+.prof-logout:hover{border-color:#555;color:#888}
 .prof-err{font-size:12px;color:#d95f3b;letter-spacing:0.04em;margin-top:10px;line-height:1.5}
-.prof-ok{font-size:12px;color:#4aaa88;letter-spacing:0.06em;margin-top:10px}
-.loading-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#080808;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.2em;color:#1a1a1a}
+.prof-ok{font-size:12px;color:#4aaa88;letter-spacing:0.06em;margin-top:10px;font-weight:500}
+
+/* ── Photo Cropper ── */
+.crop-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.crop-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.15em;color:#fff;margin-bottom:20px}
+.crop-canvas-wrap{position:relative;width:280px;height:280px;border-radius:50%;overflow:hidden;border:2px solid #333;cursor:grab;touch-action:none}
+.crop-canvas-wrap:active{cursor:grabbing}
+.crop-canvas{display:block;position:absolute}
+.crop-hint{font-size:11px;letter-spacing:0.1em;color:#555;margin-top:16px;text-align:center;line-height:1.8;font-weight:500}
+.crop-actions{display:flex;gap:10px;margin-top:22px;width:100%;max-width:280px}
+.crop-cancel{flex:1;background:transparent;color:#666;border:1px solid #2a2a2a;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:0.15em;padding:14px;cursor:pointer;border-radius:3px;transition:all .15s}
+.crop-cancel:hover{border-color:#555;color:#aaa}
+.crop-save{flex:1;background:#fff;color:#000;border:none;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:0.15em;padding:14px;cursor:pointer;border-radius:3px;transition:background .15s}
+.crop-save:hover{background:#ddd}
+.zoom-wrap{display:flex;align-items:center;gap:12px;margin-top:16px;width:100%;max-width:280px}
+.zoom-lbl{font-size:9px;letter-spacing:0.18em;color:#555;font-weight:600;white-space:nowrap}
+.zoom-slider{flex:1;-webkit-appearance:none;appearance:none;height:2px;background:#222;border-radius:1px;outline:none;cursor:pointer}
+.zoom-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;cursor:pointer}
+
+.loading-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#080808;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.2em;color:#333}
 </style>
 </head>
 <body>
 <div id="root"><div class="loading-screen">LOADING</div></div>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script>
 const { useState, useEffect, useRef, useCallback } = React;
 
 // ── Config ────────────────────────────────────────────────────────────────────
-const MAX_SPOTS  = 10;
-const WD_TIMES   = ["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
-const SAT_TIMES  = ["06:30","07:30","08:30","09:30"];
-const DAY_SHORT  = ["Mon","Tue","Wed","Thu","Fri","Sat"];
-const DAY_LONG   = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-const DAY_SESS   = ["RISE UP","STRENGTH LOWER","ASCEND","STRENGTH UPPER","ELEVATE","SUMMIT"];
-const MONTHS     = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MAX_SPOTS = 10;
+const WD_TIMES  = ["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
+const SAT_TIMES = ["06:30","07:30","08:30","09:30"];
+const ALL_TIMES = [...WD_TIMES,...SAT_TIMES];
+const DAY_SHORT = ["Mon","Tue","Wed","Thu","Fri","Sat"];
+const DAY_LONG  = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const DAY_SESS  = ["Rise Up","Strength Lower","Ascend","Strength Upper","Elevate","Summit"];
+const MONTHS    = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const DAYS_FULL = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const SHEETS_URL = "https://script.google.com/macros/s/AKfycbyTBLWR-uU69c_egATa0LH-z0Evjp630eGA6mUKvJFk4olI7hN-VVSgSmu3BGwEys3m/exec";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const mondayOf = d => { const x=new Date(d); x.setHours(0,0,0,0); const day=x.getDay(); x.setDate(x.getDate()-(day===0?6:day-1)); return x; };
-const addDays  = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
-const toDS     = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-const isToday  = d => toDS(d)===toDS(new Date());
-const isPastD  = d => toDS(d)<toDS(new Date());
-const fmt12    = t => { const [h,m]=t.split(":").map(Number); return `${h%12||12}:${String(m).padStart(2,"0")}${h<12?"am":"pm"}`; };
-const hashPw   = s => { let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h)^s.charCodeAt(i); return (h>>>0).toString(36); };
-const initials = n => n.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
-const dateStr  = d => `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+const mondayOf = d=>{const x=new Date(d);x.setHours(0,0,0,0);const day=x.getDay();x.setDate(x.getDate()-(day===0?6:day-1));return x;};
+const addDays  = (d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
+const toDS     = d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const isToday  = d=>toDS(d)===toDS(new Date());
+const isPastD  = d=>toDS(d)<toDS(new Date());
+const fmt12    = t=>{const[h,m]=t.split(":").map(Number);return`${h%12||12}:${String(m).padStart(2,"0")}${h<12?"am":"pm"}`;};
+const dateStr  = d=>`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+const hashPw   = s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)^s.charCodeAt(i);return(h>>>0).toString(36);};
+const initials = n=>n.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
 
-// ── localStorage helpers ──────────────────────────────────────────────────────
-const lsGet = (k,fb=null) => { try{ const v=localStorage.getItem(k); return v?JSON.parse(v):fb; }catch{ return fb; } };
-const lsSet = (k,v) => { try{ localStorage.setItem(k,JSON.stringify(v)); }catch{} };
+const getWeekStart = ()=>{const now=new Date();const m=mondayOf(now);return now.getDay()===0?addDays(m,7):m;};
+const getInitDay   = ()=>{const d=new Date().getDay();return d===0?0:Math.min(d-1,5);};
 
-// ── Google Sheets ─────────────────────────────────────────────────────────────
-async function fetchAllBookings() {
-  try {
-    const res  = await fetch(SHEETS_URL);
-    const data = await res.json();
-    if (data.success) return data.bookings || [];
-    return [];
-  } catch { return []; }
+// ── Storage ───────────────────────────────────────────────────────────────────
+const lsGet = (k,fb=null)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;}};
+const lsSet = (k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
+
+const BK_KEY = "t365-bookings-v2";
+const getBksForSlot  = (all,dk,t)=>(all[dk]&&all[dk][t])||[];
+const addBkToStore   = (all,dk,t,entry)=>{const c={...all};if(!c[dk])c[dk]={};c[dk]={...c[dk],[t]:[...getBksForSlot(all,dk,t),entry]};return c;};
+const removeBkFromStore = (all,dk,t,email)=>{const c={...all};if(c[dk]&&c[dk][t])c[dk][t]=c[dk][t].filter(b=>b.email!==email);return c;};
+
+// ── Sheets ────────────────────────────────────────────────────────────────────
+async function pushToSheets(session,date,time,action){
+  try{await fetch(SHEETS_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},
+    body:JSON.stringify({name:session.name,email:session.email,day:DAYS_FULL[date.getDay()],
+      date:dateStr(date),classTime:fmt12(time),action})});}catch{}
 }
 
-async function pushToSheets(session, date, time, action) {
-  try {
-    const dow     = date.getDay();
-    const dayName = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][dow];
-    await fetch(SHEETS_URL, {
-      method:"POST", mode:"no-cors", headers:{"Content-Type":"text/plain"},
-      body: JSON.stringify({ name:session.name, email:session.email, day:dayName, date:dateStr(date), classTime:fmt12(time), action })
-    });
-  } catch {}
+// ── Image Cropper Component ───────────────────────────────────────────────────
+function ImageCropper({imageSrc, onSave, onCancel}){
+  const canvasRef = useRef(null);
+  const [zoom,   setZoom]   = useState(1);
+  const [offset, setOffset] = useState({x:0,y:0});
+  const [imgEl,  setImgEl]  = useState(null);
+  const drag = useRef(null);
+  const SIZE = 280;
+
+  useEffect(()=>{
+    const img = new Image();
+    img.onload = ()=>{
+      setImgEl(img);
+      // Center image initially
+      setOffset({x:0,y:0});
+      setZoom(Math.max(SIZE/img.width, SIZE/img.height));
+    };
+    img.src = imageSrc;
+  },[imageSrc]);
+
+  useEffect(()=>{ if(imgEl) draw(); },[imgEl,zoom,offset]);
+
+  function draw(){
+    const canvas = canvasRef.current; if(!canvas||!imgEl) return;
+    const ctx = canvas.getContext("2d");
+    canvas.width = SIZE; canvas.height = SIZE;
+    ctx.clearRect(0,0,SIZE,SIZE);
+    const w = imgEl.width*zoom, h = imgEl.height*zoom;
+    const x = SIZE/2 - w/2 + offset.x;
+    const y = SIZE/2 - h/2 + offset.y;
+    ctx.drawImage(imgEl, x, y, w, h);
+  }
+
+  function getPos(e){
+    const t = e.touches?e.touches[0]:e;
+    const r = canvasRef.current.getBoundingClientRect();
+    return {x: t.clientX-r.left, y: t.clientY-r.top};
+  }
+
+  function onDown(e){e.preventDefault();drag.current=getPos(e);}
+  function onMove(e){
+    e.preventDefault();
+    if(!drag.current) return;
+    const pos = getPos(e);
+    setOffset(o=>({x:o.x+(pos.x-drag.current.x), y:o.y+(pos.y-drag.current.y)}));
+    drag.current = pos;
+  }
+  function onUp(){drag.current=null;}
+
+  // Pinch zoom
+  const lastDist = useRef(null);
+  function onTouchMove(e){
+    if(e.touches.length===2){
+      e.preventDefault();
+      const dx=e.touches[0].clientX-e.touches[1].clientX;
+      const dy=e.touches[0].clientY-e.touches[1].clientY;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      if(lastDist.current){
+        const delta=dist-lastDist.current;
+        setZoom(z=>Math.max(0.3,Math.min(4,z+delta*0.005)));
+      }
+      lastDist.current=dist;
+    } else {onMove(e);}
+  }
+  function onTouchEnd(){lastDist.current=null;onUp();}
+
+  function handleWheel(e){e.preventDefault();setZoom(z=>Math.max(0.3,Math.min(4,z-e.deltaY*0.001)));}
+
+  function handleSave(){
+    const out = document.createElement("canvas");
+    out.width=200; out.height=200;
+    const ctx=out.getContext("2d");
+    ctx.drawImage(canvasRef.current,0,0,SIZE,SIZE,0,0,200,200);
+    onSave(out.toDataURL("image/jpeg",0.85));
+  }
+
+  return React.createElement("div",{className:"crop-overlay"},
+    React.createElement("div",{className:"crop-title"},"CROP PHOTO"),
+    React.createElement("div",{
+      className:"crop-canvas-wrap",
+      style:{width:SIZE,height:SIZE},
+      onMouseDown:onDown, onMouseMove:onMove, onMouseUp:onUp, onMouseLeave:onUp,
+      onTouchStart:onDown, onTouchMove:onTouchMove, onTouchEnd:onTouchEnd,
+      onWheel:handleWheel
+    },
+      React.createElement("canvas",{ref:canvasRef,className:"crop-canvas",width:SIZE,height:SIZE})
+    ),
+    React.createElement("div",{className:"zoom-wrap"},
+      React.createElement("div",{className:"zoom-lbl"},"ZOOM"),
+      React.createElement("input",{type:"range",className:"zoom-slider",min:0.3,max:4,step:0.01,value:zoom,
+        onChange:e=>setZoom(parseFloat(e.target.value))})
+    ),
+    React.createElement("div",{className:"crop-hint"},"Drag to reposition · Scroll or pinch to zoom"),
+    React.createElement("div",{className:"crop-actions"},
+      React.createElement("button",{className:"crop-cancel",onClick:onCancel},"CANCEL"),
+      React.createElement("button",{className:"crop-save",onClick:handleSave},"SAVE PHOTO")
+    )
+  );
 }
 
-// ── Week helpers ──────────────────────────────────────────────────────────────
-const getWeekStart = () => { const now=new Date(); const m=mondayOf(now); return now.getDay()===0?addDays(m,7):m; };
-const getInitDay   = () => { const d=new Date().getDay(); return d===0?0:Math.min(d-1,5); };
-
-// ── App ───────────────────────────────────────────────────────────────────────
-function App() {
-  const [ready,      setReady]      = useState(false);
+// ── Main App ──────────────────────────────────────────────────────────────────
+function App(){
   const [members,    setMembers]    = useState({});
   const [session,    setSession]    = useState(null);
-  const [allBks,     setAllBks]     = useState([]);  // live from Sheets
+  const [allBks,     setAllBks]     = useState({});
   const [weekStart,  setWeekStart]  = useState(getWeekStart);
   const [selDay,     setSelDay]     = useState(getInitDay);
   const [tab,        setTab]        = useState("book");
@@ -200,150 +323,149 @@ function App() {
   const [profErr,    setProfErr]    = useState("");
   const [profOk,     setProfOk]     = useState("");
   const [profBusy,   setProfBusy]   = useState(false);
-  const [bksLoading, setBksLoading] = useState(true);
+  const [cropSrc,    setCropSrc]    = useState(null);
   const photoRef = useRef(null);
 
-  // Init
-  useEffect(() => {
-    const m = lsGet("t365-members", {});
-    const s = lsGet("t365-session", null);
-    setMembers(m); setSession(s);
-    loadBookings();
-    setReady(true);
-  }, []);
+  useEffect(()=>{
+    setMembers(lsGet("t365-members",{}));
+    setSession(lsGet("t365-session",null));
+    setAllBks(lsGet(BK_KEY,{}));
+  },[]);
 
-  // Refresh bookings every 30s
-  useEffect(() => {
-    const id = setInterval(loadBookings, 30000);
-    return () => clearInterval(id);
-  }, []);
+  const selDate    = addDays(weekStart,selDay);
+  const selDK      = toDS(selDate);
+  const times      = selDate.getDay()===6?SAT_TIMES:WD_TIMES;
+  const weekDates  = Array.from({length:6},(_,i)=>addDays(weekStart,i));
+  const isThisWeek = toDS(weekStart)===toDS(mondayOf(new Date()));
 
-  async function loadBookings() {
-    setBksLoading(true);
-    const bks = await fetchAllBookings();
-    setAllBks(bks);
-    setBksLoading(false);
-  }
+  const weekDots = weekDates.map(d=>{
+    if(!session) return false;
+    const dk=toDS(d);
+    if(!allBks[dk]) return false;
+    return Object.values(allBks[dk]).some(list=>list.some(b=>b.email===session.email));
+  });
 
-  const selDate = addDays(weekStart, selDay);
-  const times   = selDate.getDay() === 6 ? SAT_TIMES : WD_TIMES;
-  const weekDates = Array.from({length:6}, (_,i) => addDays(weekStart, i));
-  const isThisWeek = toDS(weekStart) === toDS(mondayOf(new Date()));
+  const myUpcoming = (()=>{
+    if(!session) return [];
+    const now=new Date();now.setHours(0,0,0,0);
+    const results=[];
+    for(let i=0;i<28;i++){
+      const d=addDays(now,i);const dow=d.getDay();if(dow===0) continue;
+      const dk=toDS(d);const ts=dow===6?SAT_TIMES:WD_TIMES;
+      for(const t of ts){
+        const list=getBksForSlot(allBks,dk,t);
+        if(list.some(b=>b.email===session.email)) results.push({date:d,time:t,dateKey:dk,dayIdx:dow===6?5:dow-1});
+      }
+    }
+    return results;
+  })();
 
-  // Build booking map for current day
-  const dayKey    = ds => ds; // date string
-  const getBksFor = (date, time) => allBks.filter(b => b.date === dateStr(date) && b.classTime === fmt12(time));
-  const userHasBk = (date, time) => session && getBksFor(date,time).some(b => b.email === session.email);
-  const weekDots  = weekDates.map(d => session && allBks.some(b => b.date === dateStr(d) && b.email === session.email));
-  const myUpcoming = session ? allBks.filter(b => b.email === session.email).sort((a,b) => a.date.localeCompare(b.date)) : [];
+  function showToast(msg){setToast({msg,show:true});setTimeout(()=>setToast(t=>({...t,show:false})),2200);}
 
-  function showToast(msg) { setToast({msg,show:true}); setTimeout(()=>setToast(t=>({...t,show:false})),2200); }
-
-  // ── Auth ────────────────────────────────────────────────────────────────────
-  async function handleAuth() {
-    const {name,email,phone,password} = authForm;
-    const em = email.toLowerCase().trim();
-    if (!em||!password) { setAuthErr("Email and password are required."); return; }
-    if (authMode==="signup"&&!name.trim()) { setAuthErr("Please enter your name."); return; }
-    if (password.length<6) { setAuthErr("Password must be at least 6 characters."); return; }
+  // ── Auth ─────────────────────────────────────────────────────────────────
+  async function handleAuth(){
+    const{name,email,phone,password}=authForm;
+    const em=email.toLowerCase().trim();
+    if(!em||!password){setAuthErr("Email and password are required.");return;}
+    if(authMode==="signup"&&!name.trim()){setAuthErr("Please enter your name.");return;}
+    if(password.length<6){setAuthErr("Password must be at least 6 characters.");return;}
     setAuthBusy(true);
-    if (authMode==="login") {
+    if(authMode==="login"){
       const mb=members[em];
-      if (!mb) { setAuthErr("No account found with that email."); setAuthBusy(false); return; }
-      if (mb.password!==hashPw(password)) { setAuthErr("Incorrect password."); setAuthBusy(false); return; }
-      const s={email:em,name:mb.name}; lsSet("t365-session",s); setSession(s);
+      if(!mb){setAuthErr("No account found with that email.");setAuthBusy(false);return;}
+      if(mb.password!==hashPw(password)){setAuthErr("Incorrect password.");setAuthBusy(false);return;}
+      const s={email:em,name:mb.name};lsSet("t365-session",s);setSession(s);
     } else {
-      if (members[em]) { setAuthErr("An account already exists with this email."); setAuthBusy(false); return; }
+      if(members[em]){setAuthErr("An account already exists with this email.");setAuthBusy(false);return;}
       const upd={...members,[em]:{name:name.trim(),phone:phone.trim(),photo:"",password:hashPw(password),joinedAt:Date.now()}};
-      lsSet("t365-members",upd); setMembers(upd);
-      const s={email:em,name:name.trim()}; lsSet("t365-session",s); setSession(s);
+      lsSet("t365-members",upd);setMembers(upd);
+      const s={email:em,name:name.trim()};lsSet("t365-session",s);setSession(s);
     }
     setAuthBusy(false);
   }
 
-  function handleLogout() { lsSet("t365-session",null); setSession(null); setShowProf(false); }
+  function handleLogout(){lsSet("t365-session",null);setSession(null);setShowProf(false);}
 
-  // ── Booking ─────────────────────────────────────────────────────────────────
-  async function handleBook(time) {
-    if (!session) return;
-    const lk = `${toDS(selDate)}-${time}`; setBkBusy(p=>({...p,[lk]:true}));
-    const existing = getBksFor(selDate, time);
-    if (existing.length >= MAX_SPOTS) { showToast("Class is full"); }
-    else if (existing.some(b=>b.email===session.email)) { showToast("Already booked"); }
-    else {
-      const dow     = selDate.getDay();
-      const dayName = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][dow];
-      const newBk   = { name:session.name, email:session.email, day:dayName, date:dateStr(selDate), classTime:fmt12(time) };
-      setAllBks(prev => [...prev, newBk]);
-      await pushToSheets(session, selDate, time, "booked");
-      showToast("Spot reserved ✓");
+  // ── Booking ───────────────────────────────────────────────────────────────
+  async function handleBook(time){
+    if(!session) return;
+    const lk=`${selDK}-${time}`;setBkBusy(p=>({...p,[lk]:true}));
+    const list=getBksForSlot(allBks,selDK,time);
+    if(list.length>=MAX_SPOTS){showToast("Class is full");}
+    else if(list.some(b=>b.email===session.email)){showToast("Already booked");}
+    else{
+      const entry={email:session.email,name:session.name,at:Date.now()};
+      const updated=addBkToStore(allBks,selDK,time,entry);
+      setAllBks(updated);lsSet(BK_KEY,updated);
+      pushToSheets(session,selDate,time,"booked");
+      showToast("Spot reserved \u2713");
     }
     setBkBusy(p=>({...p,[lk]:false}));
   }
 
-  async function handleCancel(classTime, dateString) {
-    if (!session) return;
-    setAllBks(prev => prev.filter(b => !(b.email===session.email && b.classTime===classTime && b.date===dateString)));
-    // Find the original date object to pass to pushToSheets
-    const parts = dateString.split(" ");
-    const d = new Date(`${parts[1]} ${parts[0]} ${parts[2]}`);
-    // Find the 24h time from classTime (fmt12 reverse)
-    const rawTime = Object.keys(Object.fromEntries([...WD_TIMES,...SAT_TIMES].map(t=>[fmt12(t),t]))).includes(classTime)
-      ? Object.fromEntries([...WD_TIMES,...SAT_TIMES].map(t=>[fmt12(t),t]))[classTime] : classTime;
-    await pushToSheets(session, isNaN(d)?new Date():d, rawTime, "cancelled");
+  async function handleCancel(time,dateKey,date){
+    if(!session) return;
+    const d=date||selDate;const dk=dateKey||selDK;
+    const updated=removeBkFromStore(allBks,dk,time,session.email);
+    setAllBks(updated);lsSet(BK_KEY,updated);
+    pushToSheets(session,d,time,"cancelled");
     showToast("Booking cancelled");
   }
 
-  function isPastClass(time) {
-    if (isPastD(selDate)) return true;
-    if (!isToday(selDate)) return false;
-    const now=new Date(); const[h,m]=time.split(":").map(Number);
-    return (h*60+m+45)<(now.getHours()*60+now.getMinutes());
+  function isPastClass(time){
+    if(isPastD(selDate)) return true;
+    if(!isToday(selDate)) return false;
+    const now=new Date();const[h,m]=time.split(":").map(Number);
+    return(h*60+m+45)<(now.getHours()*60+now.getMinutes());
   }
 
-  // ── Profile ─────────────────────────────────────────────────────────────────
-  function openProf() {
+  // ── Profile ───────────────────────────────────────────────────────────────
+  function openProf(){
     const mb=members[session.email]||{};
     setProfForm({name:session.name,email:session.email,phone:mb.phone||"",photo:mb.photo||"",newPw:"",confirmPw:""});
-    setProfErr(""); setProfOk(""); setShowProf(true);
+    setProfErr("");setProfOk("");setShowProf(true);
   }
 
-  function handlePhotoChange(e) {
-    const file=e.target.files[0]; if(!file) return;
+  function handlePhotoChange(e){
+    const file=e.target.files[0];if(!file) return;
     const reader=new FileReader();
-    reader.onload=ev=>{setProfForm(f=>({...f,photo:ev.target.result}));};
+    reader.onload=ev=>setCropSrc(ev.target.result);
     reader.readAsDataURL(file);
+    e.target.value="";
   }
 
-  async function handleSaveProf() {
+  function handleCropSave(dataUrl){
+    setProfForm(f=>({...f,photo:dataUrl}));
+    setCropSrc(null);
+  }
+
+  async function handleSaveProf(){
     const{name,email,phone,photo,newPw,confirmPw}=profForm;
     const em=email.toLowerCase().trim();
     if(!name.trim()){setProfErr("Name cannot be empty.");return;}
     if(!em||!/\S+@\S+\.\S+/.test(em)){setProfErr("Please enter a valid email.");return;}
-    if(newPw&&newPw.length<6){setProfErr("New password must be at least 6 characters.");return;}
+    if(newPw&&newPw.length<6){setProfErr("Password must be at least 6 characters.");return;}
     if(newPw&&newPw!==confirmPw){setProfErr("Passwords do not match.");return;}
-    if(em!==session.email&&members[em]){setProfErr("That email is already in use.");return;}
+    if(em!==session.email&&members[em]){setProfErr("Email already in use.");return;}
     setProfBusy(true);
     const old=members[session.email];
-    const updated={...old,name:name.trim(),phone:phone.trim(),photo:photo||"",password:newPw?hashPw(newPw):old.password};
-    const nm={...members}; if(em!==session.email) delete nm[session.email]; nm[em]=updated;
+    const upd={...old,name:name.trim(),phone:phone.trim(),photo:photo||"",password:newPw?hashPw(newPw):old.password};
+    const nm={...members};if(em!==session.email) delete nm[session.email];nm[em]=upd;
     const ns={email:em,name:name.trim()};
-    lsSet("t365-members",nm); lsSet("t365-session",ns); setMembers(nm); setSession(ns);
-    setProfOk("Profile updated."); setProfErr(""); setProfBusy(false);
+    lsSet("t365-members",nm);lsSet("t365-session",ns);setMembers(nm);setSession(ns);
+    setProfOk("Profile updated.");setProfErr("");setProfBusy(false);
   }
 
-  const memberPhoto = session ? members[session.email]?.photo : null;
-  const memberInit  = session ? initials(session.name) : "";
+  const memberPhoto=session?members[session.email]?.photo:null;
+  const memberInit =session?initials(session.name):"";
 
-  if (!ready) return React.createElement("div",{className:"loading-screen"},"LOADING");
-
-  // ── Auth screen ─────────────────────────────────────────────────────────────
-  if (!session) return React.createElement("div",{className:"auth-page"},
+  // ── Auth screen ───────────────────────────────────────────────────────────
+  if(!session) return React.createElement("div",{className:"auth-page"},
     React.createElement("div",{className:"auth-logo"},"TEAM 365"),
     React.createElement("div",{className:"auth-tag"},"LAMONT"),
     React.createElement("div",{className:"auth-card"},
       React.createElement("div",{className:"auth-title"},authMode==="login"?"Welcome Back":"Join Team 365"),
-      authMode==="signup" && React.createElement(React.Fragment,null,
+      authMode==="signup"&&React.createElement(React.Fragment,null,
         React.createElement("label",{className:"fl"},"FULL NAME"),
         React.createElement("input",{className:"fi",placeholder:"Your name",value:authForm.name,autoComplete:"name",
           onChange:e=>setAuthForm(f=>({...f,name:e.target.value})),onKeyDown:e=>e.key==="Enter"&&handleAuth()}),
@@ -355,22 +477,26 @@ function App() {
       React.createElement("input",{className:"fi",type:"email",placeholder:"your@email.com",value:authForm.email,autoComplete:"email",
         onChange:e=>setAuthForm(f=>({...f,email:e.target.value})),onKeyDown:e=>e.key==="Enter"&&handleAuth()}),
       React.createElement("label",{className:"fl"},"PASSWORD"),
-      React.createElement("input",{className:"fi",type:"password",placeholder:"••••••••",value:authForm.password,
+      React.createElement("input",{className:"fi",type:"password",placeholder:"\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",value:authForm.password,
         autoComplete:authMode==="login"?"current-password":"new-password",
         onChange:e=>setAuthForm(f=>({...f,password:e.target.value})),onKeyDown:e=>e.key==="Enter"&&handleAuth()}),
-      authErr && React.createElement("div",{className:"auth-err"},authErr),
-      React.createElement("button",{className:"auth-btn",onClick:handleAuth,disabled:authBusy},authBusy?"...":(authMode==="login"?"LOG IN":"CREATE ACCOUNT")),
+      authErr&&React.createElement("div",{className:"auth-err"},authErr),
+      React.createElement("button",{className:"auth-btn",onClick:handleAuth,disabled:authBusy},
+        authBusy?"...":(authMode==="login"?"LOG IN":"CREATE ACCOUNT")),
       React.createElement("div",{className:"auth-sw"},
         authMode==="login"
-          ? React.createElement(React.Fragment,null,"New member? ",React.createElement("button",{onClick:()=>{setAuthMode("signup");setAuthErr("");}},"Create an account"))
-          : React.createElement(React.Fragment,null,"Already a member? ",React.createElement("button",{onClick:()=>{setAuthMode("login");setAuthErr("");}},"Log in"))
+          ?React.createElement(React.Fragment,null,"New member? ",React.createElement("button",{onClick:()=>{setAuthMode("signup");setAuthErr("");}},"Create an account"))
+          :React.createElement(React.Fragment,null,"Already a member? ",React.createElement("button",{onClick:()=>{setAuthMode("login");setAuthErr("");}},"Log in"))
       )
     ),
-    React.createElement("div",{className:"foot",style:{marginTop:48}},"EVERYDAY · ALL YEAR ROUND")
+    React.createElement("div",{className:"foot",style:{marginTop:48}},"EVERYDAY \u00B7 ALL YEAR ROUND")
   );
 
-  // ── Main app ─────────────────────────────────────────────────────────────────
+  // ── Main app ──────────────────────────────────────────────────────────────
   return React.createElement("div",{className:"app"},
+
+    // Crop overlay
+    cropSrc&&React.createElement(ImageCropper,{imageSrc:cropSrc,onSave:handleCropSave,onCancel:()=>setCropSrc(null)}),
 
     // Header
     React.createElement("div",{className:"hdr"},
@@ -378,21 +504,22 @@ function App() {
         React.createElement("div",{className:"logo-sub"},"LAMONT"),
         React.createElement("div",{className:"logo"},"TEAM 365")
       ),
-      React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer"},onClick:openProf},
+      React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",cursor:"pointer"},onClick:openProf},
         memberPhoto
-          ? React.createElement("img",{src:memberPhoto,className:"avatar-sm",alt:"profile"})
-          : React.createElement("div",{className:"avatar-init-sm"},memberInit),
+          ?React.createElement("img",{src:memberPhoto,className:"avatar-sm",alt:"profile"})
+          :React.createElement("div",{className:"avatar-init-sm"},memberInit),
         React.createElement("div",{className:"name-lbl"},session.name.split(" ")[0].toUpperCase()),
         React.createElement("div",{className:"edit-lbl"},"EDIT PROFILE")
       )
     ),
 
     // BOOK TAB
-    tab==="book" && React.createElement(React.Fragment,null,
+    tab==="book"&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"week-nav"},
-        React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"‹"),
-        React.createElement("div",{className:"wk-label"},`${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} – ${MONTHS[weekDates[5].getMonth()]} ${weekDates[5].getDate()}  ${weekDates[0].getFullYear()}`),
-        React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,7))},"›")
+        React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"\u2039"),
+        React.createElement("div",{className:"wk-label"},
+          `${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} \u2013 ${MONTHS[weekDates[5].getMonth()]} ${weekDates[5].getDate()}  ${weekDates[0].getFullYear()}`),
+        React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,7))},"\u203a")
       ),
       React.createElement("div",{className:"day-strip"},
         weekDates.map((d,i)=>React.createElement("button",{key:i,onClick:()=>setSelDay(i),
@@ -403,31 +530,42 @@ function App() {
         ))
       ),
       React.createElement("div",{className:"cls-wrap"},
-        React.createElement("div",{className:"day-hdr"},`${DAY_LONG[selDay].toUpperCase()} · ${times.length} CLASSES · ${DAY_SESS[selDay]}`),
+        // Day header
+        React.createElement("div",{className:"day-hdr"},
+          React.createElement("span",null,DAY_LONG[selDay].toUpperCase()),
+          ` \u00B7 ${DAY_SESS[selDay].toUpperCase()} \u00B7 ${times.length} CLASSES`
+        ),
         times.map(time=>{
-          const bks     = getBksFor(selDate,time);
-          const taken   = bks.length;
-          const left    = MAX_SPOTS-taken;
-          const userBkd = userHasBk(selDate,time);
-          const full    = left===0&&!userBkd;
-          const past    = isPastClass(time);
-          const lk      = `${toDS(selDate)}-${time}`;
-          const busy    = !!bkBusy[lk];
+          const list   =getBksForSlot(allBks,selDK,time);
+          const taken  =list.length;
+          const left   =MAX_SPOTS-taken;
+          const userBkd=list.some(b=>b.email===session.email);
+          const full   =left===0&&!userBkd;
+          const past   =isPastClass(time);
+          const lk     =`${selDK}-${time}`;
+          const busy   =!!bkBusy[lk];
+
+          const subText = userBkd
+            ? "Booked \u2713"
+            : full
+              ? "Full"
+              : `${left} ${left===1?"Spot":"Spots"} Available`;
+
+          const subClass = userBkd?"ck":full?"cf":left<=3?"cl":"co";
+
           return React.createElement("div",{key:time,className:`c-row${userBkd?" cb":""}${past?" cp":""}`},
             React.createElement("div",{className:"c-time"},fmt12(time)),
             React.createElement("div",{className:"c-mid"},
               React.createElement("div",{className:"c-bars"},
                 Array.from({length:MAX_SPOTS}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}`}))
               ),
-              React.createElement("div",{className:`c-sub${userBkd?" ck":full?"":left<=3?" cl":" co"}`},
-                userBkd?"Booked ✓":full?"Full":`${left} of ${MAX_SPOTS} remaining`
-              )
+              React.createElement("div",{className:`c-sub ${subClass}`},subText)
             ),
-            !past && (userBkd
-              ? React.createElement("button",{className:"c-btn bc",onClick:()=>handleCancel(fmt12(time),dateStr(selDate))},"Cancel")
-              : full
-                ? React.createElement("button",{className:"c-btn bf",disabled:true},"Full")
-                : React.createElement("button",{className:"c-btn bb",onClick:()=>handleBook(time),disabled:busy},busy?"...":"Book")
+            !past&&(userBkd
+              ?React.createElement("button",{className:"c-btn bc",onClick:()=>handleCancel(time,selDK,selDate)},"Cancel")
+              :full
+                ?React.createElement("button",{className:"c-btn bf",disabled:true},"Full")
+                :React.createElement("button",{className:"c-btn bb",onClick:()=>handleBook(time),disabled:busy},busy?"...":"Book")
             )
           );
         })
@@ -435,18 +573,24 @@ function App() {
     ),
 
     // MY CLASSES TAB
-    tab==="my" && React.createElement("div",{className:"my-wrap"},
+    tab==="my"&&React.createElement("div",{className:"my-wrap"},
       React.createElement("div",{className:"my-hdr"},"MY UPCOMING CLASSES"),
-      bksLoading ? React.createElement("div",{className:"no-bk"},"LOADING...")
-      : myUpcoming.length===0
-        ? React.createElement("div",{className:"no-bk"},"No upcoming bookings")
-        : myUpcoming.map((bk,i)=>React.createElement("div",{key:i,className:"my-item"},
+      myUpcoming.length===0
+        ?React.createElement("div",{className:"no-bk"},"No upcoming bookings.\nHead to Book to reserve your spot.")
+        :myUpcoming.map((bk,i)=>{
+          const dow=bk.date.getDay();
+          const dayLbl=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][dow];
+          const dayIdx=dow===0?0:dow-1;
+          const sessName=dow===6?DAY_SESS[5]:DAY_SESS[Math.max(0,dow-1)];
+          return React.createElement("div",{key:i,className:"my-item"},
             React.createElement("div",null,
-              React.createElement("div",{className:"my-date"},`${bk.day.toUpperCase()} · ${bk.date.toUpperCase()}`),
-              React.createElement("div",{className:"my-time"},bk.classTime)
+              React.createElement("div",{className:"my-date"},`${dayLbl.toUpperCase()} \u00B7 ${dateStr(bk.date).toUpperCase()}`),
+              React.createElement("div",{className:"my-time"},fmt12(bk.time)),
+              React.createElement("div",{className:"my-sess"},sessName.toUpperCase())
             ),
-            React.createElement("button",{className:"my-x",onClick:()=>handleCancel(bk.classTime,bk.date)},"Cancel")
-          ))
+            React.createElement("button",{className:"my-x",onClick:()=>handleCancel(bk.time,bk.dateKey,bk.date)},"Cancel")
+          );
+        })
     ),
 
     // Tab bar
@@ -454,22 +598,22 @@ function App() {
       React.createElement("button",{className:`tab-btn${tab==="book"?" ta":""}`,onClick:()=>setTab("book")},"Book"),
       React.createElement("button",{className:`tab-btn${tab==="my"?" ta":""}`,onClick:()=>setTab("my")},"My Classes")
     ),
-    React.createElement("div",{className:"foot"},"EVERYDAY · ALL YEAR ROUND"),
+    React.createElement("div",{className:"foot"},"EVERYDAY \u00B7 ALL YEAR ROUND"),
     React.createElement("div",{className:`toast${toast.show?" show":""}`},toast.msg),
 
-    // PROFILE OVERLAY
-    showProf && React.createElement("div",{className:"prof-overlay"},
+    // Profile overlay
+    showProf&&React.createElement("div",{className:"prof-overlay"},
       React.createElement("div",{className:"prof-hdr"},
         React.createElement("div",{className:"prof-title"},"MY PROFILE"),
-        React.createElement("button",{className:"prof-close",onClick:()=>setShowProf(false)},"✕")
+        React.createElement("button",{className:"prof-close",onClick:()=>setShowProf(false)},"\u2715")
       ),
       React.createElement("div",{className:"prof-body"},
         React.createElement("div",{className:"prof-since"},`MEMBER SINCE ${new Date(members[session.email]?.joinedAt||Date.now()).getFullYear()}`),
         React.createElement("div",{className:"photo-wrap"},
           profForm.photo
-            ? React.createElement("img",{src:profForm.photo,className:"avatar-lg",alt:"profile"})
-            : React.createElement("div",{className:"avatar-init-lg"},initials(profForm.name||session.name)),
-          React.createElement("div",{className:"prof-name"},session.name.toUpperCase()),
+            ?React.createElement("img",{src:profForm.photo,className:"avatar-lg",alt:"profile"})
+            :React.createElement("div",{className:"avatar-init-lg"},initials(profForm.name||session.name)),
+          React.createElement("div",{className:"prof-name-lbl"},session.name.toUpperCase()),
           React.createElement("button",{className:"photo-btn",onClick:()=>photoRef.current&&photoRef.current.click()},
             profForm.photo?"Change photo":"Add profile photo"),
           React.createElement("input",{ref:photoRef,type:"file",accept:"image/*",style:{display:"none"},onChange:handlePhotoChange})
@@ -488,11 +632,11 @@ function App() {
         React.createElement("label",{className:"fl"},"NEW PASSWORD"),
         React.createElement("input",{className:"fi",type:"password",placeholder:"Leave blank to keep current",value:profForm.newPw,
           onChange:e=>{setProfForm(f=>({...f,newPw:e.target.value}));setProfErr("");setProfOk("");}}),
-        React.createElement("label",{className:"fl"},"CONFIRM NEW PASSWORD"),
+        React.createElement("label",{className:"fl"},"CONFIRM PASSWORD"),
         React.createElement("input",{className:"fi",type:"password",placeholder:"Repeat new password",value:profForm.confirmPw,
           onChange:e=>{setProfForm(f=>({...f,confirmPw:e.target.value}));setProfErr("");setProfOk("");}}),
-        profErr && React.createElement("div",{className:"prof-err"},profErr),
-        profOk  && React.createElement("div",{className:"prof-ok"},profOk),
+        profErr&&React.createElement("div",{className:"prof-err"},profErr),
+        profOk&&React.createElement("div",{className:"prof-ok"},profOk),
         React.createElement("button",{className:"prof-save",onClick:handleSaveProf,disabled:profBusy},profBusy?"SAVING...":"SAVE CHANGES"),
         React.createElement("button",{className:"prof-logout",onClick:handleLogout},"LOG OUT")
       )
