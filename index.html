@@ -132,6 +132,50 @@ html,body{background:#080808;min-height:100vh}
 .loading-bar{width:120px;height:1px;background:#111;border-radius:1px;overflow:hidden}
 .loading-fill{height:100%;background:#fff;border-radius:1px;animation:ld 1.5s ease-in-out infinite}
 @keyframes ld{0%{width:0}50%{width:100%}100%{width:0}}
+
+/* ── Admin styles ── */
+.adm-wrap{padding:16px;flex:1;overflow-y:auto}
+.adm-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.adm-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.15em;color:#fff}
+.adm-sub{font-size:9px;letter-spacing:0.2em;color:#555;font-weight:600}
+.adm-seg{display:flex;gap:6px;margin-bottom:16px}
+.adm-seg-btn{flex:1;padding:9px;background:#0e0e0e;border:1px solid #222;border-radius:5px;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.14em;color:#666;font-weight:600;cursor:pointer;transition:all .15s}
+.adm-seg-btn.aas{background:#fff;color:#000;border-color:#fff}
+.adm-day-nav{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.adm-day-lbl{flex:1;text-align:center;font-size:10px;letter-spacing:0.18em;color:#fff;font-weight:600}
+.adm-arrow{background:none;border:none;color:#555;cursor:pointer;font-size:22px;padding:4px 8px;line-height:1;transition:color .15s}
+.adm-arrow:hover{color:#fff}
+.adm-class-card{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:8px;margin-bottom:8px;overflow:hidden}
+.adm-class-hdr{display:flex;align-items:center;gap:12px;padding:11px 14px;cursor:pointer}
+.adm-class-hdr:hover{background:#111}
+.adm-class-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;min-width:68px}
+.adm-class-mid{flex:1}
+.adm-class-count{font-size:10px;letter-spacing:0.1em;color:#777;font-weight:500}
+.adm-class-count.full{color:#d95f3b}
+.adm-class-bars{display:flex;gap:2px;margin-top:5px}
+.adm-bar{flex:1;height:2px;border-radius:1px;background:#222}
+.adm-bar.at{background:#fff}
+.adm-chev{font-size:14px;color:#333;transition:transform .2s}
+.adm-chev.open{transform:rotate(180deg)}
+.adm-members{border-top:1px solid #141414}
+.adm-member-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #0f0f0f}
+.adm-member-row:last-child{border-bottom:none}
+.adm-member-name{font-size:13px;color:#fff;font-weight:500;letter-spacing:0.02em}
+.adm-member-email{font-size:10px;color:#444;letter-spacing:0.04em;margin-top:1px}
+.adm-remove-btn{font-size:10px;color:#3a1008;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;letter-spacing:0.06em;transition:color .15s;font-weight:500}
+.adm-remove-btn:hover{color:#d95f3b}
+.adm-empty{text-align:center;padding:14px;font-size:10px;letter-spacing:0.14em;color:#2a2a2a;font-weight:500}
+.adm-no-classes{text-align:center;padding:48px 0;font-size:11px;letter-spacing:0.16em;color:#222;line-height:2.4}
+
+/* member list */
+.adm-member-card{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:8px;padding:13px 14px;margin-bottom:8px}
+.adm-mc-name{font-family:'Bebas Neue',sans-serif;font-size:18px;color:#fff;letter-spacing:0.06em;margin-bottom:4px}
+.adm-mc-detail{font-size:10px;letter-spacing:0.08em;color:#555;font-weight:500;margin-bottom:2px}
+.adm-mc-detail span{color:#888}
+.adm-stats-row{display:flex;gap:8px;margin-bottom:16px}
+.adm-stat{flex:1;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:7px;padding:12px;text-align:center}
+.adm-stat-num{font-family:'Bebas Neue',sans-serif;font-size:32px;color:#fff;line-height:1}
+.adm-stat-lbl{font-size:9px;letter-spacing:0.16em;color:#444;font-weight:600;margin-top:3px}
 </style>
 </head>
 <body>
@@ -141,37 +185,16 @@ html,body{background:#080808;min-height:100vh}
 <script>
 const { useState, useEffect, useRef } = React;
 
-// ── Supabase config ───────────────────────────────────────────────────────────
+const ADMIN_EMAIL = "lamont.team365@gmail.com";
 const SB_URL = "https://xczwmexavysvljmobbgv.supabase.co";
 const SB_KEY = "sb_publishable_tujGGhPRUimflq1-IFzuvA_Crw6knMO";
-const SB_HDR = { "apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}`, "Content-Type": "application/json", "Prefer": "return=minimal" };
+const SB_HDR = {"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return=minimal"};
 
-async function sbGet(table, query="") {
-  try {
-    const res = await fetch(`${SB_URL}/rest/v1/${table}?${query}`, { headers: SB_HDR });
-    return res.ok ? await res.json() : [];
-  } catch { return []; }
-}
-async function sbPost(table, data) {
-  try {
-    const res = await fetch(`${SB_URL}/rest/v1/${table}`, { method:"POST", headers:SB_HDR, body:JSON.stringify(data) });
-    return res.ok;
-  } catch { return false; }
-}
-async function sbPatch(table, query, data) {
-  try {
-    const res = await fetch(`${SB_URL}/rest/v1/${table}?${query}`, { method:"PATCH", headers:SB_HDR, body:JSON.stringify(data) });
-    return res.ok;
-  } catch { return false; }
-}
-async function sbDelete(table, query) {
-  try {
-    const res = await fetch(`${SB_URL}/rest/v1/${table}?${query}`, { method:"DELETE", headers:SB_HDR });
-    return res.ok;
-  } catch { return false; }
-}
+async function sbGet(table,query=""){try{const r=await fetch(`${SB_URL}/rest/v1/${table}?${query}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
+async function sbPost(table,data){try{const r=await fetch(`${SB_URL}/rest/v1/${table}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(data)});return r.ok;}catch{return false;}}
+async function sbPatch(table,query,data){try{const r=await fetch(`${SB_URL}/rest/v1/${table}?${query}`,{method:"PATCH",headers:SB_HDR,body:JSON.stringify(data)});return r.ok;}catch{return false;}}
+async function sbDelete(table,query){try{const r=await fetch(`${SB_URL}/rest/v1/${table}?${query}`,{method:"DELETE",headers:SB_HDR});return r.ok;}catch{return false;}}
 
-// ── Constants ─────────────────────────────────────────────────────────────────
 const MAX_SPOTS = 10;
 const WD_TIMES  = ["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
 const SAT_TIMES = ["06:30","07:30","08:30","09:30"];
@@ -181,7 +204,6 @@ const DAY_SESS  = ["Rise Up","Strength Lower","Ascend","Strength Upper","Elevate
 const MONTHS    = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DAYS_FULL = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 const mondayOf = d=>{const x=new Date(d);x.setHours(0,0,0,0);const day=x.getDay();x.setDate(x.getDate()-(day===0?6:day-1));return x;};
 const addDays  = (d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
 const toDS     = d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -193,7 +215,6 @@ const hashPw   = s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)^s.charCo
 const initials = n=>n.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
 const lsGet    = (k,fb=null)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;}};
 const lsSet    = (k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
-
 const getWeekStart = ()=>{const now=new Date();const m=mondayOf(now);return now.getDay()===0?addDays(m,7):m;};
 const getInitDay   = ()=>{const d=new Date().getDay();return d===0?0:Math.min(d-1,5);};
 
@@ -206,58 +227,169 @@ function ImageCropper({imageSrc,onSave,onCancel}){
   const drag=useRef(null);
   const lastDist=useRef(null);
   const SIZE=280;
-
-  useEffect(()=>{
-    const img=new Image();
-    img.onload=()=>{setImgEl(img);setZoom(Math.max(SIZE/img.width,SIZE/img.height));setOffset({x:0,y:0});};
-    img.src=imageSrc;
-  },[imageSrc]);
-
-  useEffect(()=>{
-    if(!imgEl||!canvasRef.current) return;
-    const canvas=canvasRef.current;const ctx=canvas.getContext("2d");
-    canvas.width=SIZE;canvas.height=SIZE;ctx.clearRect(0,0,SIZE,SIZE);
-    const w=imgEl.width*zoom,h=imgEl.height*zoom;
-    ctx.drawImage(imgEl,SIZE/2-w/2+offset.x,SIZE/2-h/2+offset.y,w,h);
-  },[imgEl,zoom,offset]);
-
+  useEffect(()=>{const img=new Image();img.onload=()=>{setImgEl(img);setZoom(Math.max(SIZE/img.width,SIZE/img.height));setOffset({x:0,y:0});};img.src=imageSrc;},[imageSrc]);
+  useEffect(()=>{if(!imgEl||!canvasRef.current)return;const canvas=canvasRef.current;const ctx=canvas.getContext("2d");canvas.width=SIZE;canvas.height=SIZE;ctx.clearRect(0,0,SIZE,SIZE);const w=imgEl.width*zoom,h=imgEl.height*zoom;ctx.drawImage(imgEl,SIZE/2-w/2+offset.x,SIZE/2-h/2+offset.y,w,h);},[imgEl,zoom,offset]);
   const getPos=e=>{const t=e.touches?e.touches[0]:e;const r=canvasRef.current.getBoundingClientRect();return{x:t.clientX-r.left,y:t.clientY-r.top};};
   const onDown=e=>{e.preventDefault();drag.current=getPos(e);};
   const onMove=e=>{e.preventDefault();if(!drag.current)return;const p=getPos(e);setOffset(o=>({x:o.x+(p.x-drag.current.x),y:o.y+(p.y-drag.current.y)}));drag.current=p;};
   const onUp=()=>{drag.current=null;};
-  const onTouchMove=e=>{
-    if(e.touches.length===2){
-      e.preventDefault();
-      const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;
-      const dist=Math.sqrt(dx*dx+dy*dy);
-      if(lastDist.current) setZoom(z=>Math.max(0.3,Math.min(4,z+(dist-lastDist.current)*0.005)));
-      lastDist.current=dist;
-    } else onMove(e);
-  };
+  const onTouchMove=e=>{if(e.touches.length===2){e.preventDefault();const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;const dist=Math.sqrt(dx*dx+dy*dy);if(lastDist.current)setZoom(z=>Math.max(0.3,Math.min(4,z+(dist-lastDist.current)*0.005)));lastDist.current=dist;}else onMove(e);};
   const onTouchEnd=()=>{lastDist.current=null;onUp();};
   const onWheel=e=>{e.preventDefault();setZoom(z=>Math.max(0.3,Math.min(4,z-e.deltaY*0.001)));};
-
-  const handleSave=()=>{
-    const out=document.createElement("canvas");out.width=200;out.height=200;
-    out.getContext("2d").drawImage(canvasRef.current,0,0,SIZE,SIZE,0,0,200,200);
-    onSave(out.toDataURL("image/jpeg",0.82));
-  };
-
+  const handleSave=()=>{const out=document.createElement("canvas");out.width=200;out.height=200;out.getContext("2d").drawImage(canvasRef.current,0,0,SIZE,SIZE,0,0,200,200);onSave(out.toDataURL("image/jpeg",0.82));};
   return React.createElement("div",{className:"crop-overlay"},
     React.createElement("div",{className:"crop-title"},"CROP PHOTO"),
-    React.createElement("div",{className:"crop-canvas-wrap",style:{width:SIZE,height:SIZE},
-      onMouseDown:onDown,onMouseMove:onMove,onMouseUp:onUp,onMouseLeave:onUp,
-      onTouchStart:onDown,onTouchMove:onTouchMove,onTouchEnd:onTouchEnd,onWheel:onWheel},
+    React.createElement("div",{className:"crop-canvas-wrap",style:{width:SIZE,height:SIZE},onMouseDown:onDown,onMouseMove:onMove,onMouseUp:onUp,onMouseLeave:onUp,onTouchStart:onDown,onTouchMove:onTouchMove,onTouchEnd:onTouchEnd,onWheel:onWheel},
       React.createElement("canvas",{ref:canvasRef,className:"crop-canvas",width:SIZE,height:SIZE})
     ),
-    React.createElement("div",{className:"zoom-wrap"},
-      React.createElement("div",{className:"zoom-lbl"},"ZOOM"),
-      React.createElement("input",{type:"range",className:"zoom-slider",min:0.3,max:4,step:0.01,value:zoom,onChange:e=>setZoom(parseFloat(e.target.value))})
-    ),
+    React.createElement("div",{className:"zoom-wrap"},React.createElement("div",{className:"zoom-lbl"},"ZOOM"),React.createElement("input",{type:"range",className:"zoom-slider",min:0.3,max:4,step:0.01,value:zoom,onChange:e=>setZoom(parseFloat(e.target.value))})),
     React.createElement("div",{className:"crop-hint"},"Drag to reposition \u00B7 Scroll or pinch to zoom"),
-    React.createElement("div",{className:"crop-actions"},
-      React.createElement("button",{className:"crop-cancel",onClick:onCancel},"CANCEL"),
-      React.createElement("button",{className:"crop-save",onClick:handleSave},"SAVE PHOTO")
+    React.createElement("div",{className:"crop-actions"},React.createElement("button",{className:"crop-cancel",onClick:onCancel},"CANCEL"),React.createElement("button",{className:"crop-save",onClick:handleSave},"SAVE PHOTO"))
+  );
+}
+
+// ── Admin View ────────────────────────────────────────────────────────────────
+function AdminView({bookings, setBookings, showToast}){
+  const [admSeg,  setAdmSeg]  = useState("classes");
+  const [admDate, setAdmDate] = useState(new Date());
+  const [expanded,setExpanded]= useState({});
+  const [members, setMembers] = useState([]);
+  const [membersLoaded, setMembersLoaded] = useState(false);
+
+  useEffect(()=>{
+    if(admSeg==="members"&&!membersLoaded){
+      sbGet("members","select=email,name,phone,joined_at&order=name.asc").then(data=>{
+        setMembers(data||[]);setMembersLoaded(true);
+      });
+    }
+  },[admSeg]);
+
+  const admDK  = toDS(admDate);
+  const admDOW = admDate.getDay();
+  const admTimes = admDOW===0?[]:admDOW===6?SAT_TIMES:WD_TIMES;
+  const dayIdx   = admDOW===0?-1:admDOW===6?5:admDOW-1;
+
+  const dayBks = bookings.filter(b=>b.date_key===admDK);
+  const totalBooked = dayBks.length;
+  const totalSpots  = admTimes.length*MAX_SPOTS;
+
+  // Nav date (skip Sundays)
+  function changeDay(n){
+    let d=new Date(admDate);
+    d.setDate(d.getDate()+n);
+    if(d.getDay()===0) d.setDate(d.getDate()+n);
+    setAdmDate(d);setExpanded({});
+  }
+
+  async function adminCancel(time,email){
+    setBookings(prev=>prev.filter(b=>!(b.date_key===admDK&&b.time===time&&b.email===email)));
+    await sbDelete("bookings",`email=eq.${encodeURIComponent(email)}&date_key=eq.${admDK}&time=eq.${encodeURIComponent(time)}`);
+    showToast("Booking removed");
+  }
+
+  const admDateLabel = `${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][admDOW]} ${admDate.getDate()} ${MONTHS[admDate.getMonth()]} ${admDate.getFullYear()}`;
+
+  return React.createElement("div",{className:"adm-wrap"},
+    // Header
+    React.createElement("div",{className:"adm-top"},
+      React.createElement("div",null,
+        React.createElement("div",{className:"adm-title"},"ADMIN"),
+        React.createElement("div",{className:"adm-sub"},"TEAM 365 · LAMONT")
+      )
+    ),
+
+    // Segment control
+    React.createElement("div",{className:"adm-seg"},
+      React.createElement("button",{className:`adm-seg-btn${admSeg==="classes"?" aas":""}`,onClick:()=>setAdmSeg("classes")},"CLASSES"),
+      React.createElement("button",{className:`adm-seg-btn${admSeg==="members"?" aas":""}`,onClick:()=>setAdmSeg("members")},"MEMBERS")
+    ),
+
+    // CLASSES VIEW
+    admSeg==="classes"&&React.createElement(React.Fragment,null,
+      // Day nav
+      React.createElement("div",{className:"adm-day-nav"},
+        React.createElement("button",{className:"adm-arrow",onClick:()=>changeDay(-1)},"\u2039"),
+        React.createElement("div",{className:"adm-day-lbl"},admDateLabel.toUpperCase()),
+        React.createElement("button",{className:"adm-arrow",onClick:()=>changeDay(1)},"\u203a")
+      ),
+
+      // Stats
+      admTimes.length>0&&React.createElement("div",{className:"adm-stats-row"},
+        React.createElement("div",{className:"adm-stat"},
+          React.createElement("div",{className:"adm-stat-num"},totalBooked),
+          React.createElement("div",{className:"adm-stat-lbl"},"BOOKED")
+        ),
+        React.createElement("div",{className:"adm-stat"},
+          React.createElement("div",{className:"adm-stat-num"},totalSpots-totalBooked),
+          React.createElement("div",{className:"adm-stat-lbl"},"AVAILABLE")
+        ),
+        React.createElement("div",{className:"adm-stat"},
+          React.createElement("div",{className:"adm-stat-num"},admTimes.length),
+          React.createElement("div",{className:"adm-stat-lbl"},"SESSIONS")
+        )
+      ),
+
+      admTimes.length===0
+        ?React.createElement("div",{className:"adm-no-classes"},"No classes on Sunday")
+        :admTimes.map(time=>{
+          const slotBks = dayBks.filter(b=>b.time===time);
+          const taken   = slotBks.length;
+          const isOpen  = !!expanded[time];
+          return React.createElement("div",{key:time,className:"adm-class-card"},
+            // Class header
+            React.createElement("div",{className:"adm-class-hdr",onClick:()=>setExpanded(p=>({...p,[time]:!p[time]}))},
+              React.createElement("div",{className:"adm-class-time"},fmt12(time)),
+              React.createElement("div",{className:"adm-class-mid"},
+                React.createElement("div",{className:`adm-class-count${taken>=MAX_SPOTS?" full":""}`},
+                  `${taken} / ${MAX_SPOTS} ${taken>=MAX_SPOTS?"· FULL":""}`
+                ),
+                React.createElement("div",{className:"adm-class-bars"},
+                  Array.from({length:MAX_SPOTS}).map((_,i)=>React.createElement("div",{key:i,className:`adm-bar${i<taken?" at":""}`}))
+                )
+              ),
+              React.createElement("div",{className:`adm-chev${isOpen?" open":""}`},"\u25BE")
+            ),
+            // Members list
+            isOpen&&React.createElement("div",{className:"adm-members"},
+              slotBks.length===0
+                ?React.createElement("div",{className:"adm-empty"},"NO BOOKINGS")
+                :slotBks.map((bk,i)=>React.createElement("div",{key:i,className:"adm-member-row"},
+                  React.createElement("div",null,
+                    React.createElement("div",{className:"adm-member-name"},bk.name),
+                    React.createElement("div",{className:"adm-member-email"},bk.email)
+                  ),
+                  React.createElement("button",{className:"adm-remove-btn",onClick:()=>adminCancel(time,bk.email)},"Remove")
+                ))
+            )
+          );
+        })
+    ),
+
+    // MEMBERS VIEW
+    admSeg==="members"&&React.createElement(React.Fragment,null,
+      !membersLoaded
+        ?React.createElement("div",{className:"no-bk"},"LOADING...")
+        :React.createElement(React.Fragment,null,
+          React.createElement("div",{className:"adm-stats-row"},
+            React.createElement("div",{className:"adm-stat"},
+              React.createElement("div",{className:"adm-stat-num"},members.length),
+              React.createElement("div",{className:"adm-stat-lbl"},"MEMBERS")
+            ),
+            React.createElement("div",{className:"adm-stat"},
+              React.createElement("div",{className:"adm-stat-num"},bookings.filter(b=>b.date_key>=toDS(new Date())).length),
+              React.createElement("div",{className:"adm-stat-lbl"},"UPCOMING BKS")
+            )
+          ),
+          members.map((mb,i)=>{
+            const mbBks=bookings.filter(b=>b.email===mb.email&&b.date_key>=toDS(new Date())).length;
+            return React.createElement("div",{key:i,className:"adm-member-card"},
+              React.createElement("div",{className:"adm-mc-name"},mb.name.toUpperCase()),
+              React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.email)),
+              mb.phone&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.phone)),
+              React.createElement("div",{className:"adm-mc-detail"},`Joined ${new Date(mb.joined_at).getFullYear()} \u00B7 ${mbBks} upcoming class${mbBks!==1?"es":""}`),
+            );
+          })
+        )
     )
   );
 }
@@ -265,8 +397,8 @@ function ImageCropper({imageSrc,onSave,onCancel}){
 // ── Main App ──────────────────────────────────────────────────────────────────
 function App(){
   const [ready,      setReady]      = useState(false);
-  const [session,    setSession]    = useState(null);  // {email, name}
-  const [bookings,   setBookings]   = useState([]);    // [{email,name,date_key,time}]
+  const [session,    setSession]    = useState(null);
+  const [bookings,   setBookings]   = useState([]);
   const [weekStart,  setWeekStart]  = useState(getWeekStart);
   const [selDay,     setSelDay]     = useState(getInitDay);
   const [tab,        setTab]        = useState("book");
@@ -285,32 +417,23 @@ function App(){
   const [cropSrc,    setCropSrc]    = useState(null);
   const photoRef = useRef(null);
 
-  // ── Init ──────────────────────────────────────────────────────────────────
+  const isAdmin = session?.email===ADMIN_EMAIL;
+
   useEffect(()=>{
     (async()=>{
-      const s = lsGet("t365-session", null);
-      if(s){
-        setSession(s);
-        const mb = await sbGet("members", `email=eq.${encodeURIComponent(s.email)}`);
-        if(mb.length) setMemberData(mb[0]);
-      }
+      const s=lsGet("t365-session",null);
+      if(s){setSession(s);const mb=await sbGet("members",`email=eq.${encodeURIComponent(s.email)}`);if(mb.length)setMemberData(mb[0]);}
       await refreshBookings();
       setReady(true);
     })();
   },[]);
 
-  // Refresh bookings every 30s
-  useEffect(()=>{
-    const id=setInterval(refreshBookings, 30000);
-    return()=>clearInterval(id);
-  },[]);
+  useEffect(()=>{const id=setInterval(refreshBookings,30000);return()=>clearInterval(id);},[]);
 
   async function refreshBookings(){
-    // Load bookings for next 28 days
-    const keys=[];
-    const now=new Date();now.setHours(0,0,0,0);
+    const keys=[];const now=new Date();now.setHours(0,0,0,0);
     for(let i=0;i<28;i++){const d=addDays(now,i);if(d.getDay()!==0)keys.push(toDS(d));}
-    if(!keys.length) return;
+    if(!keys.length)return;
     const data=await sbGet("bookings",`date_key=in.(${keys.join(",")})&select=email,name,date_key,time`);
     setBookings(data||[]);
   }
@@ -321,17 +444,13 @@ function App(){
   const weekDates  = Array.from({length:6},(_,i)=>addDays(weekStart,i));
   const isThisWeek = toDS(weekStart)===toDS(mondayOf(new Date()));
 
-  const getBksFor  = (dk,t) => bookings.filter(b=>b.date_key===dk&&b.time===t);
-  const userBooked = (dk,t) => session&&getBksFor(dk,t).some(b=>b.email===session.email);
+  const getBksFor  = (dk,t)=>bookings.filter(b=>b.date_key===dk&&b.time===t);
+  const userBooked = (dk,t)=>session&&getBksFor(dk,t).some(b=>b.email===session.email);
   const weekDots   = weekDates.map(d=>session&&bookings.some(b=>b.date_key===toDS(d)&&b.email===session.email));
-  const myUpcoming = session
-    ? bookings.filter(b=>b.email===session.email&&b.date_key>=toDS(new Date()))
-        .sort((a,b)=>a.date_key.localeCompare(b.date_key)||a.time.localeCompare(b.time))
-    : [];
+  const myUpcoming = session?bookings.filter(b=>b.email===session.email&&b.date_key>=toDS(new Date())).sort((a,b)=>a.date_key.localeCompare(b.date_key)||a.time.localeCompare(b.time)):[];
 
   function showToast(msg){setToast({msg,show:true});setTimeout(()=>setToast(t=>({...t,show:false})),2200);}
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
   async function handleAuth(){
     const{name,email,phone,password}=authForm;
     const em=email.toLowerCase().trim();
@@ -339,14 +458,13 @@ function App(){
     if(authMode==="signup"&&!name.trim()){setAuthErr("Please enter your name.");return;}
     if(password.length<6){setAuthErr("Password must be at least 6 characters.");return;}
     setAuthBusy(true);
-
     if(authMode==="login"){
       const rows=await sbGet("members",`email=eq.${encodeURIComponent(em)}`);
       if(!rows.length){setAuthErr("No account found with that email.");setAuthBusy(false);return;}
       const mb=rows[0];
       if(mb.password!==hashPw(password)){setAuthErr("Incorrect password.");setAuthBusy(false);return;}
       const s={email:em,name:mb.name};lsSet("t365-session",s);setSession(s);setMemberData(mb);
-    } else {
+    }else{
       const existing=await sbGet("members",`email=eq.${encodeURIComponent(em)}`);
       if(existing.length){setAuthErr("An account already exists with this email.");setAuthBusy(false);return;}
       const mb={email:em,name:name.trim(),phone:phone.trim(),photo:"",password:hashPw(password),joined_at:Date.now()};
@@ -359,55 +477,40 @@ function App(){
 
   function handleLogout(){lsSet("t365-session",null);setSession(null);setMemberData(null);setShowProf(false);}
 
-  // ── Booking ───────────────────────────────────────────────────────────────
   async function handleBook(time){
-    if(!session) return;
+    if(!session)return;
     const lk=`${selDK}-${time}`;setBkBusy(p=>({...p,[lk]:true}));
     const list=getBksFor(selDK,time);
     if(list.length>=MAX_SPOTS){showToast("Class is full");setBkBusy(p=>({...p,[lk]:false}));return;}
     if(list.some(b=>b.email===session.email)){showToast("Already booked");setBkBusy(p=>({...p,[lk]:false}));return;}
     const newBk={email:session.email,name:session.name,date_key:selDK,time};
-    // Optimistic update
     setBookings(prev=>[...prev,newBk]);
     const ok=await sbPost("bookings",newBk);
-    if(!ok){
-      setBookings(prev=>prev.filter(b=>!(b.email===session.email&&b.date_key===selDK&&b.time===time)));
-      showToast("Booking failed — try again");
-    } else {
-      showToast("Spot reserved \u2713");
-    }
+    if(!ok){setBookings(prev=>prev.filter(b=>!(b.email===session.email&&b.date_key===selDK&&b.time===time)));showToast("Booking failed \u2014 try again");}
+    else showToast("Spot reserved \u2713");
     setBkBusy(p=>({...p,[lk]:false}));
   }
 
   async function handleCancel(time,dk){
-    if(!session) return;
-    // Optimistic update
+    if(!session)return;
     setBookings(prev=>prev.filter(b=>!(b.email===session.email&&b.date_key===dk&&b.time===time)));
     await sbDelete("bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=eq.${dk}&time=eq.${encodeURIComponent(time)}`);
     showToast("Booking cancelled");
   }
 
   function isPastClass(time){
-    if(isPastD(selDate)) return true;
-    if(!isToday(selDate)) return false;
+    if(isPastD(selDate))return true;
+    if(!isToday(selDate))return false;
     const now=new Date();const[h,m]=time.split(":").map(Number);
     return(h*60+m+45)<(now.getHours()*60+now.getMinutes());
   }
 
-  // ── Profile ───────────────────────────────────────────────────────────────
   function openProf(){
     setProfForm({name:session.name,email:session.email,phone:memberData?.phone||"",photo:memberData?.photo||"",newPw:"",confirmPw:""});
     setProfErr("");setProfOk("");setShowProf(true);
   }
 
-  function handlePhotoChange(e){
-    const file=e.target.files[0];if(!file) return;
-    const reader=new FileReader();
-    reader.onload=ev=>setCropSrc(ev.target.result);
-    reader.readAsDataURL(file);
-    e.target.value="";
-  }
-
+  function handlePhotoChange(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>setCropSrc(ev.target.result);reader.readAsDataURL(file);e.target.value="";}
   function handleCropSave(dataUrl){setProfForm(f=>({...f,photo:dataUrl}));setCropSrc(null);}
 
   async function handleSaveProf(){
@@ -419,8 +522,8 @@ function App(){
     if(newPw&&newPw!==confirmPw){setProfErr("Passwords do not match.");return;}
     setProfBusy(true);
     const upd={name:name.trim(),phone:phone.trim(),photo:photo||""};
-    if(newPw) upd.password=hashPw(newPw);
-    if(em!==session.email) upd.email=em;
+    if(newPw)upd.password=hashPw(newPw);
+    if(em!==session.email)upd.email=em;
     const ok=await sbPatch("members",`email=eq.${encodeURIComponent(session.email)}`,upd);
     if(!ok){setProfErr("Update failed. Please try again.");setProfBusy(false);return;}
     const ns={email:em,name:name.trim()};
@@ -428,39 +531,28 @@ function App(){
     setProfOk("Profile updated.");setProfErr("");setProfBusy(false);
   }
 
-  const memberPhoto = memberData?.photo||"";
-  const memberInit  = session?initials(session.name):"";
+  const memberPhoto=memberData?.photo||"";
+  const memberInit =session?initials(session.name):"";
 
-  // ── Loading ───────────────────────────────────────────────────────────────
-  if(!ready) return React.createElement("div",{className:"loading-screen"},
-    React.createElement("div",null,"TEAM 365"),
-    React.createElement("div",{className:"loading-bar"},React.createElement("div",{className:"loading-fill"}))
-  );
+  if(!ready)return React.createElement("div",{className:"loading-screen"},React.createElement("div",null,"TEAM 365"),React.createElement("div",{className:"loading-bar"},React.createElement("div",{className:"loading-fill"})));
 
-  // ── Auth screen ───────────────────────────────────────────────────────────
-  if(!session) return React.createElement("div",{className:"auth-page"},
+  if(!session)return React.createElement("div",{className:"auth-page"},
     React.createElement("div",{className:"auth-logo"},"TEAM 365"),
     React.createElement("div",{className:"auth-tag"},"LAMONT"),
     React.createElement("div",{className:"auth-card"},
       React.createElement("div",{className:"auth-title"},authMode==="login"?"Welcome Back":"Join Team 365"),
       authMode==="signup"&&React.createElement(React.Fragment,null,
         React.createElement("label",{className:"fl"},"FULL NAME"),
-        React.createElement("input",{className:"fi",placeholder:"Your name",value:authForm.name,autoComplete:"name",
-          onChange:e=>setAuthForm(f=>({...f,name:e.target.value})),onKeyDown:e=>e.key==="Enter"&&handleAuth()}),
+        React.createElement("input",{className:"fi",placeholder:"Your name",value:authForm.name,autoComplete:"name",onChange:e=>setAuthForm(f=>({...f,name:e.target.value})),onKeyDown:e=>e.key==="Enter"&&handleAuth()}),
         React.createElement("label",{className:"fl"},"PHONE NUMBER"),
-        React.createElement("input",{className:"fi",type:"tel",placeholder:"+64 21 000 0000",value:authForm.phone,autoComplete:"tel",
-          onChange:e=>setAuthForm(f=>({...f,phone:e.target.value})),onKeyDown:e=>e.key==="Enter"&&handleAuth()}),
+        React.createElement("input",{className:"fi",type:"tel",placeholder:"+64 21 000 0000",value:authForm.phone,autoComplete:"tel",onChange:e=>setAuthForm(f=>({...f,phone:e.target.value})),onKeyDown:e=>e.key==="Enter"&&handleAuth()}),
       ),
       React.createElement("label",{className:"fl"},"EMAIL ADDRESS"),
-      React.createElement("input",{className:"fi",type:"email",placeholder:"your@email.com",value:authForm.email,autoComplete:"email",
-        onChange:e=>setAuthForm(f=>({...f,email:e.target.value})),onKeyDown:e=>e.key==="Enter"&&handleAuth()}),
+      React.createElement("input",{className:"fi",type:"email",placeholder:"your@email.com",value:authForm.email,autoComplete:"email",onChange:e=>setAuthForm(f=>({...f,email:e.target.value})),onKeyDown:e=>e.key==="Enter"&&handleAuth()}),
       React.createElement("label",{className:"fl"},"PASSWORD"),
-      React.createElement("input",{className:"fi",type:"password",placeholder:"\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",value:authForm.password,
-        autoComplete:authMode==="login"?"current-password":"new-password",
-        onChange:e=>setAuthForm(f=>({...f,password:e.target.value})),onKeyDown:e=>e.key==="Enter"&&handleAuth()}),
+      React.createElement("input",{className:"fi",type:"password",placeholder:"\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",value:authForm.password,autoComplete:authMode==="login"?"current-password":"new-password",onChange:e=>setAuthForm(f=>({...f,password:e.target.value})),onKeyDown:e=>e.key==="Enter"&&handleAuth()}),
       authErr&&React.createElement("div",{className:"auth-err"},authErr),
-      React.createElement("button",{className:"auth-btn",onClick:handleAuth,disabled:authBusy},
-        authBusy?"...":(authMode==="login"?"LOG IN":"CREATE ACCOUNT")),
+      React.createElement("button",{className:"auth-btn",onClick:handleAuth,disabled:authBusy},authBusy?"...":(authMode==="login"?"LOG IN":"CREATE ACCOUNT")),
       React.createElement("div",{className:"auth-sw"},
         authMode==="login"
           ?React.createElement(React.Fragment,null,"New member? ",React.createElement("button",{onClick:()=>{setAuthMode("signup");setAuthErr("");}},"Create an account"))
@@ -470,20 +562,13 @@ function App(){
     React.createElement("div",{className:"foot",style:{marginTop:48}},"EVERYDAY \u00B7 ALL YEAR ROUND")
   );
 
-  // ── Main app ──────────────────────────────────────────────────────────────
   return React.createElement("div",{className:"app"},
     cropSrc&&React.createElement(ImageCropper,{imageSrc:cropSrc,onSave:handleCropSave,onCancel:()=>setCropSrc(null)}),
 
-    // Header
     React.createElement("div",{className:"hdr"},
-      React.createElement("div",null,
-        React.createElement("div",{className:"logo-sub"},"LAMONT"),
-        React.createElement("div",{className:"logo"},"TEAM 365")
-      ),
+      React.createElement("div",null,React.createElement("div",{className:"logo-sub"},"LAMONT"),React.createElement("div",{className:"logo"},"TEAM 365")),
       React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",cursor:"pointer"},onClick:openProf},
-        memberPhoto
-          ?React.createElement("img",{src:memberPhoto,className:"avatar-sm",alt:"profile"})
-          :React.createElement("div",{className:"avatar-init-sm"},memberInit),
+        memberPhoto?React.createElement("img",{src:memberPhoto,className:"avatar-sm",alt:"profile"}):React.createElement("div",{className:"avatar-init-sm"},memberInit),
         React.createElement("div",{className:"name-lbl"},session.name.split(" ")[0].toUpperCase()),
         React.createElement("div",{className:"edit-lbl"},"EDIT PROFILE")
       )
@@ -497,29 +582,20 @@ function App(){
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,7))},"\u203a")
       ),
       React.createElement("div",{className:"day-strip"},
-        weekDates.map((d,i)=>React.createElement("button",{key:i,onClick:()=>setSelDay(i),
-          className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}${weekDots[i]?" dhb":""}`},
+        weekDates.map((d,i)=>React.createElement("button",{key:i,onClick:()=>setSelDay(i),className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}${weekDots[i]?" dhb":""}`},
           React.createElement("div",{className:"d-name"},DAY_SHORT[i]),
           React.createElement("div",{className:"d-num"},d.getDate()),
           React.createElement("div",{className:"d-dot"})
         ))
       ),
       React.createElement("div",{className:"cls-wrap"},
-        React.createElement("div",{className:"day-hdr"},
-          React.createElement("span",null,DAY_LONG[selDay].toUpperCase()),
-          React.createElement("em",null,` \u00B7 ${DAY_SESS[selDay].toUpperCase()} \u00B7 ${times.length} CLASSES`)
-        ),
+        React.createElement("div",{className:"day-hdr"},React.createElement("span",null,DAY_LONG[selDay].toUpperCase()),React.createElement("em",null,` \u00B7 ${DAY_SESS[selDay].toUpperCase()} \u00B7 ${times.length} CLASSES`)),
         times.map(time=>{
-          const list   =getBksFor(selDK,time);
-          const taken  =list.length;
-          const left   =MAX_SPOTS-taken;
-          const userBkd=userBooked(selDK,time);
-          const full   =left===0&&!userBkd;
-          const past   =isPastClass(time);
-          const lk     =`${selDK}-${time}`;
-          const busy   =!!bkBusy[lk];
+          const list=getBksFor(selDK,time);const taken=list.length;const left=MAX_SPOTS-taken;
+          const userBkd=userBooked(selDK,time);const full=left===0&&!userBkd;
+          const past=isPastClass(time);const lk=`${selDK}-${time}`;const busy=!!bkBusy[lk];
           const subText=userBkd?"Booked \u2713":full?"Full":`${left} ${left===1?"Spot":"Spots"} Available`;
-          const subCls =userBkd?"ck":full?"cf":left<=3?"cl":"co";
+          const subCls=userBkd?"ck":full?"cf":left<=3?"cl":"co";
           return React.createElement("div",{key:time,className:`c-row${userBkd?" cb":""}${past?" cp":""}`},
             React.createElement("div",{className:"c-time"},fmt12(time)),
             React.createElement("div",{className:"c-mid"},
@@ -528,9 +604,8 @@ function App(){
             ),
             !past&&(userBkd
               ?React.createElement("button",{className:"c-btn bc",onClick:()=>handleCancel(time,selDK)},"Cancel")
-              :full
-                ?React.createElement("button",{className:"c-btn bf",disabled:true},"Full")
-                :React.createElement("button",{className:"c-btn bb",onClick:()=>handleBook(time),disabled:busy},busy?"...":"Book")
+              :full?React.createElement("button",{className:"c-btn bf",disabled:true},"Full")
+              :React.createElement("button",{className:"c-btn bb",onClick:()=>handleBook(time),disabled:busy},busy?"...":"Book")
             )
           );
         })
@@ -543,8 +618,7 @@ function App(){
       myUpcoming.length===0
         ?React.createElement("div",{className:"no-bk"},"No upcoming bookings")
         :myUpcoming.map((bk,i)=>{
-          const d=new Date(bk.date_key+"T12:00:00");
-          const dow=d.getDay();
+          const d=new Date(bk.date_key+"T12:00:00");const dow=d.getDay();
           const dayLbl=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][dow];
           const sessIdx=dow===6?5:Math.max(0,dow-1);
           return React.createElement("div",{key:i,className:"my-item"},
@@ -558,48 +632,40 @@ function App(){
         })
     ),
 
+    // ADMIN TAB
+    tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast}),
+
     // Tab bar
     React.createElement("div",{className:"tab-bar"},
       React.createElement("button",{className:`tab-btn${tab==="book"?" ta":""}`,onClick:()=>setTab("book")},"Book"),
-      React.createElement("button",{className:`tab-btn${tab==="my"?" ta":""}`,onClick:()=>setTab("my")},"My Classes")
+      React.createElement("button",{className:`tab-btn${tab==="my"?" ta":""}`,onClick:()=>setTab("my")},"My Classes"),
+      isAdmin&&React.createElement("button",{className:`tab-btn${tab==="admin"?" ta":""}`,onClick:()=>setTab("admin")},"Admin")
     ),
     React.createElement("div",{className:"foot"},"EVERYDAY \u00B7 ALL YEAR ROUND"),
     React.createElement("div",{className:`toast${toast.show?" show":""}`},toast.msg),
 
-    // Profile overlay
     showProf&&React.createElement("div",{className:"prof-overlay"},
-      React.createElement("div",{className:"prof-hdr"},
-        React.createElement("div",{className:"prof-title"},"MY PROFILE"),
-        React.createElement("button",{className:"prof-close",onClick:()=>setShowProf(false)},"\u2715")
-      ),
+      React.createElement("div",{className:"prof-hdr"},React.createElement("div",{className:"prof-title"},"MY PROFILE"),React.createElement("button",{className:"prof-close",onClick:()=>setShowProf(false)},"\u2715")),
       React.createElement("div",{className:"prof-body"},
         React.createElement("div",{className:"prof-since"},`MEMBER SINCE ${new Date(memberData?.joined_at||Date.now()).getFullYear()}`),
         React.createElement("div",{className:"photo-wrap"},
-          profForm.photo
-            ?React.createElement("img",{src:profForm.photo,className:"avatar-lg",alt:"profile"})
-            :React.createElement("div",{className:"avatar-init-lg"},initials(profForm.name||session.name)),
+          profForm.photo?React.createElement("img",{src:profForm.photo,className:"avatar-lg",alt:"profile"}):React.createElement("div",{className:"avatar-init-lg"},initials(profForm.name||session.name)),
           React.createElement("div",{className:"prof-name-lbl"},session.name.toUpperCase()),
-          React.createElement("button",{className:"photo-btn",onClick:()=>photoRef.current&&photoRef.current.click()},
-            profForm.photo?"Change photo":"Add profile photo"),
+          React.createElement("button",{className:"photo-btn",onClick:()=>photoRef.current&&photoRef.current.click()},profForm.photo?"Change photo":"Add profile photo"),
           React.createElement("input",{ref:photoRef,type:"file",accept:"image/*",style:{display:"none"},onChange:handlePhotoChange})
         ),
         React.createElement("div",{className:"prof-section"},"PERSONAL DETAILS"),
         React.createElement("label",{className:"fl"},"FULL NAME"),
-        React.createElement("input",{className:"fi",value:profForm.name,autoComplete:"name",
-          onChange:e=>{setProfForm(f=>({...f,name:e.target.value}));setProfErr("");setProfOk("");}}),
+        React.createElement("input",{className:"fi",value:profForm.name,autoComplete:"name",onChange:e=>{setProfForm(f=>({...f,name:e.target.value}));setProfErr("");setProfOk("");}}),
         React.createElement("label",{className:"fl"},"EMAIL ADDRESS"),
-        React.createElement("input",{className:"fi",type:"email",value:profForm.email,autoComplete:"email",
-          onChange:e=>{setProfForm(f=>({...f,email:e.target.value}));setProfErr("");setProfOk("");}}),
+        React.createElement("input",{className:"fi",type:"email",value:profForm.email,autoComplete:"email",onChange:e=>{setProfForm(f=>({...f,email:e.target.value}));setProfErr("");setProfOk("");}}),
         React.createElement("label",{className:"fl"},"PHONE NUMBER"),
-        React.createElement("input",{className:"fi",type:"tel",value:profForm.phone,autoComplete:"tel",
-          onChange:e=>{setProfForm(f=>({...f,phone:e.target.value}));setProfErr("");setProfOk("");}}),
+        React.createElement("input",{className:"fi",type:"tel",value:profForm.phone,autoComplete:"tel",onChange:e=>{setProfForm(f=>({...f,phone:e.target.value}));setProfErr("");setProfOk("");}}),
         React.createElement("div",{className:"prof-section"},"CHANGE PASSWORD"),
         React.createElement("label",{className:"fl"},"NEW PASSWORD"),
-        React.createElement("input",{className:"fi",type:"password",placeholder:"Leave blank to keep current",value:profForm.newPw,
-          onChange:e=>{setProfForm(f=>({...f,newPw:e.target.value}));setProfErr("");setProfOk("");}}),
+        React.createElement("input",{className:"fi",type:"password",placeholder:"Leave blank to keep current",value:profForm.newPw,onChange:e=>{setProfForm(f=>({...f,newPw:e.target.value}));setProfErr("");setProfOk("");}}),
         React.createElement("label",{className:"fl"},"CONFIRM PASSWORD"),
-        React.createElement("input",{className:"fi",type:"password",placeholder:"Repeat new password",value:profForm.confirmPw,
-          onChange:e=>{setProfForm(f=>({...f,confirmPw:e.target.value}));setProfErr("");setProfOk("");}}),
+        React.createElement("input",{className:"fi",type:"password",placeholder:"Repeat new password",value:profForm.confirmPw,onChange:e=>{setProfForm(f=>({...f,confirmPw:e.target.value}));setProfErr("");setProfOk("");}}),
         profErr&&React.createElement("div",{className:"prof-err"},profErr),
         profOk&&React.createElement("div",{className:"prof-ok"},profOk),
         React.createElement("button",{className:"prof-save",onClick:handleSaveProf,disabled:profBusy},profBusy?"SAVING...":"SAVE CHANGES"),
