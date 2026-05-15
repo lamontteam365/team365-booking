@@ -10,11 +10,7 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{background:#080808;min-height:100vh}
 #root{min-height:100vh}
-
-/* ── App shell ── */
 .app{font-family:'DM Sans',sans-serif;background:#080808;color:#fff;min-height:100vh;display:flex;flex-direction:column;max-width:480px;margin:0 auto}
-
-/* ── Header ── */
 .hdr{padding:20px 20px 0;display:flex;justify-content:space-between;align-items:center}
 .logo-sub{font-size:9px;letter-spacing:0.22em;color:#fff;font-weight:500}
 .logo{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:0.15em;line-height:1;color:#fff}
@@ -22,15 +18,11 @@ html,body{background:#080808;min-height:100vh}
 .avatar-init-sm{width:38px;height:38px;border-radius:50%;background:#1a1a1a;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:14px;color:#777;cursor:pointer;flex-shrink:0}
 .name-lbl{font-size:10px;letter-spacing:0.12em;color:#fff;font-weight:600;text-align:center;margin-top:5px}
 .edit-lbl{font-size:9px;letter-spacing:0.1em;color:#666;text-align:center;margin-top:1px}
-
-/* ── Week nav ── */
 .week-nav{display:flex;align-items:center;padding:18px 14px 0}
 .wk-arrow{background:none;border:none;color:#555;cursor:pointer;font-size:24px;padding:4px 10px;line-height:1;transition:color .15s}
 .wk-arrow:hover:not(:disabled){color:#fff}
 .wk-arrow:disabled{color:#222;cursor:default}
 .wk-label{flex:1;text-align:center;font-size:10px;letter-spacing:0.18em;color:#fff;font-weight:600}
-
-/* ── Day strip ── */
 .day-strip{display:flex;gap:5px;padding:10px 16px 0;overflow-x:auto;scrollbar-width:none}
 .day-strip::-webkit-scrollbar{display:none}
 .day-btn{flex:1;min-width:44px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;background:#0e0e0e;border:1px solid #222;border-radius:6px;cursor:pointer;transition:all .15s}
@@ -45,12 +37,10 @@ html,body{background:#080808;min-height:100vh}
 .d-dot{width:4px;height:4px;border-radius:50%;background:transparent}
 .day-btn.dhb .d-dot{background:#444}
 .day-btn.da.dhb .d-dot{background:#888}
-
-/* ── Class list ── */
 .cls-wrap{flex:1;padding:14px 16px;display:flex;flex-direction:column;gap:7px}
-.day-hdr{font-size:9px;letter-spacing:0.22em;color:#888;font-weight:600;margin-bottom:6px;line-height:1.6}
+.day-hdr{font-size:9px;letter-spacing:0.22em;font-weight:600;margin-bottom:6px;line-height:1.6}
 .day-hdr span{color:#fff}
-
+.day-hdr em{color:#888;font-style:normal}
 .c-row{display:flex;align-items:center;gap:10px;padding:10px 13px;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:7px;transition:border-color .15s}
 .c-row.cb{border-color:#2a2a2a}
 .c-row.cp{opacity:0.25;pointer-events:none}
@@ -62,8 +52,8 @@ html,body{background:#080808;min-height:100vh}
 .c-sub{font-size:10px;letter-spacing:0.1em;color:#777;font-weight:500}
 .c-sub.cl{color:#d95f3b}
 .c-sub.co{color:#888}
-.c-sub.ck{color:#666}
-.c-sub.cf{color:#444}
+.c-sub.ck{color:#555}
+.c-sub.cf{color:#333}
 .c-btn{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:0.12em;padding:8px 12px;border-radius:3px;border:none;cursor:pointer;white-space:nowrap;transition:all .15s}
 .c-btn.bb{background:#fff;color:#000}
 .c-btn.bb:hover:not(:disabled){background:#ddd}
@@ -71,8 +61,6 @@ html,body{background:#080808;min-height:100vh}
 .c-btn.bc{background:transparent;color:#7a2515;border:1px solid #2a1208;cursor:pointer;font-size:10px}
 .c-btn.bc:hover{border-color:#7a2515;color:#d95f3b}
 .c-btn:disabled{opacity:.4;cursor:not-allowed}
-
-/* ── My Classes ── */
 .my-wrap{padding:18px 16px;flex:1}
 .my-hdr{font-size:10px;letter-spacing:0.22em;color:#fff;font-weight:600;margin-bottom:14px}
 .my-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:7px;margin-bottom:7px}
@@ -82,19 +70,13 @@ html,body{background:#080808;min-height:100vh}
 .my-x{font-size:10px;letter-spacing:0.08em;color:#444;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:color .15s;font-weight:500}
 .my-x:hover{color:#d95f3b}
 .no-bk{text-align:center;padding:48px 0;font-size:11px;letter-spacing:0.16em;color:#333;line-height:2.4}
-
-/* ── Tab bar ── */
 .tab-bar{display:flex;border-top:1px solid #1a1a1a;margin-top:auto}
 .tab-btn{flex:1;padding:14px;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.18em;color:#666;font-weight:600;transition:color .15s}
 .tab-btn.ta{color:#fff;border-top:1px solid #fff;margin-top:-1px}
 .tab-btn:hover:not(.ta){color:#aaa}
 .foot{text-align:center;font-size:9px;letter-spacing:0.22em;color:#fff;padding:9px 0 13px}
-
-/* ── Toast ── */
 .toast{position:fixed;bottom:68px;left:50%;transform:translateX(-50%);background:#fff;color:#000;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.15em;padding:10px 22px;border-radius:3px;pointer-events:none;transition:opacity .3s;z-index:200;white-space:nowrap;opacity:0}
 .toast.show{opacity:1}
-
-/* ── Auth ── */
 .auth-page{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;background:#080808;font-family:'DM Sans',sans-serif}
 .auth-logo{font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:0.2em;margin-bottom:2px;color:#fff}
 .auth-tag{font-size:10px;letter-spacing:0.24em;color:#fff;margin-bottom:48px;font-weight:500}
@@ -111,8 +93,6 @@ html,body{background:#080808;min-height:100vh}
 .auth-sw{text-align:center;margin-top:22px;font-size:12px;color:#777;letter-spacing:0.04em}
 .auth-sw button{background:none;border:none;color:#bbb;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;text-decoration:underline;text-underline-offset:3px;font-weight:500}
 .auth-sw button:hover{color:#fff}
-
-/* ── Profile overlay ── */
 .prof-overlay{position:fixed;inset:0;background:#080808;z-index:50;display:flex;flex-direction:column;max-width:480px;margin:0 auto;overflow-y:auto}
 .prof-hdr{display:flex;align-items:center;justify-content:space-between;padding:20px 20px 0;flex-shrink:0}
 .prof-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:0.15em;color:#fff}
@@ -134,45 +114,72 @@ html,body{background:#080808;min-height:100vh}
 .prof-logout:hover{border-color:#555;color:#888}
 .prof-err{font-size:12px;color:#d95f3b;letter-spacing:0.04em;margin-top:10px;line-height:1.5}
 .prof-ok{font-size:12px;color:#4aaa88;letter-spacing:0.06em;margin-top:10px;font-weight:500}
-
-/* ── Photo Cropper ── */
-.crop-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.crop-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.97);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
 .crop-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.15em;color:#fff;margin-bottom:20px}
 .crop-canvas-wrap{position:relative;width:280px;height:280px;border-radius:50%;overflow:hidden;border:2px solid #333;cursor:grab;touch-action:none}
 .crop-canvas-wrap:active{cursor:grabbing}
-.crop-canvas{display:block;position:absolute}
 .crop-hint{font-size:11px;letter-spacing:0.1em;color:#555;margin-top:16px;text-align:center;line-height:1.8;font-weight:500}
 .crop-actions{display:flex;gap:10px;margin-top:22px;width:100%;max-width:280px}
 .crop-cancel{flex:1;background:transparent;color:#666;border:1px solid #2a2a2a;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:0.15em;padding:14px;cursor:pointer;border-radius:3px;transition:all .15s}
 .crop-cancel:hover{border-color:#555;color:#aaa}
-.crop-save{flex:1;background:#fff;color:#000;border:none;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:0.15em;padding:14px;cursor:pointer;border-radius:3px;transition:background .15s}
+.crop-save{flex:1;background:#fff;color:#000;border:none;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:0.15em;padding:14px;cursor:pointer;border-radius:3px}
 .crop-save:hover{background:#ddd}
 .zoom-wrap{display:flex;align-items:center;gap:12px;margin-top:16px;width:100%;max-width:280px}
 .zoom-lbl{font-size:9px;letter-spacing:0.18em;color:#555;font-weight:600;white-space:nowrap}
 .zoom-slider{flex:1;-webkit-appearance:none;appearance:none;height:2px;background:#222;border-radius:1px;outline:none;cursor:pointer}
 .zoom-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;cursor:pointer}
-
-.loading-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#080808;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.2em;color:#333}
+.loading-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#080808;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.2em;color:#333;gap:16px}
+.loading-bar{width:120px;height:1px;background:#111;border-radius:1px;overflow:hidden}
+.loading-fill{height:100%;background:#fff;border-radius:1px;animation:ld 1.5s ease-in-out infinite}
+@keyframes ld{0%{width:0}50%{width:100%}100%{width:0}}
 </style>
 </head>
 <body>
-<div id="root"><div class="loading-screen">LOADING</div></div>
+<div id="root"><div class="loading-screen"><div>TEAM 365</div><div class="loading-bar"><div class="loading-fill"></div></div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script>
-const { useState, useEffect, useRef, useCallback } = React;
+const { useState, useEffect, useRef } = React;
 
-// ── Config ────────────────────────────────────────────────────────────────────
+// ── Supabase config ───────────────────────────────────────────────────────────
+const SB_URL = "https://xczwmexavysvljmobbgv.supabase.co";
+const SB_KEY = "sb_publishable_tujGGhPRUimflq1-IFzuvA_Crw6knMO";
+const SB_HDR = { "apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}`, "Content-Type": "application/json", "Prefer": "return=minimal" };
+
+async function sbGet(table, query="") {
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/${table}?${query}`, { headers: SB_HDR });
+    return res.ok ? await res.json() : [];
+  } catch { return []; }
+}
+async function sbPost(table, data) {
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/${table}`, { method:"POST", headers:SB_HDR, body:JSON.stringify(data) });
+    return res.ok;
+  } catch { return false; }
+}
+async function sbPatch(table, query, data) {
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/${table}?${query}`, { method:"PATCH", headers:SB_HDR, body:JSON.stringify(data) });
+    return res.ok;
+  } catch { return false; }
+}
+async function sbDelete(table, query) {
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/${table}?${query}`, { method:"DELETE", headers:SB_HDR });
+    return res.ok;
+  } catch { return false; }
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────────
 const MAX_SPOTS = 10;
 const WD_TIMES  = ["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
 const SAT_TIMES = ["06:30","07:30","08:30","09:30"];
-const ALL_TIMES = [...WD_TIMES,...SAT_TIMES];
 const DAY_SHORT = ["Mon","Tue","Wed","Thu","Fri","Sat"];
 const DAY_LONG  = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const DAY_SESS  = ["Rise Up","Strength Lower","Ascend","Strength Upper","Elevate","Summit"];
 const MONTHS    = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DAYS_FULL = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-const SHEETS_URL = "https://script.google.com/macros/s/AKfycbyTBLWR-uU69c_egATa0LH-z0Evjp630eGA6mUKvJFk4olI7hN-VVSgSmu3BGwEys3m/exec";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const mondayOf = d=>{const x=new Date(d);x.setHours(0,0,0,0);const day=x.getDay();x.setDate(x.getDate()-(day===0?6:day-1));return x;};
@@ -184,119 +191,70 @@ const fmt12    = t=>{const[h,m]=t.split(":").map(Number);return`${h%12||12}:${St
 const dateStr  = d=>`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 const hashPw   = s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)^s.charCodeAt(i);return(h>>>0).toString(36);};
 const initials = n=>n.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+const lsGet    = (k,fb=null)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;}};
+const lsSet    = (k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
 
 const getWeekStart = ()=>{const now=new Date();const m=mondayOf(now);return now.getDay()===0?addDays(m,7):m;};
 const getInitDay   = ()=>{const d=new Date().getDay();return d===0?0:Math.min(d-1,5);};
 
-// ── Storage ───────────────────────────────────────────────────────────────────
-const lsGet = (k,fb=null)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;}};
-const lsSet = (k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
-
-const BK_KEY = "t365-bookings-v2";
-const getBksForSlot  = (all,dk,t)=>(all[dk]&&all[dk][t])||[];
-const addBkToStore   = (all,dk,t,entry)=>{const c={...all};if(!c[dk])c[dk]={};c[dk]={...c[dk],[t]:[...getBksForSlot(all,dk,t),entry]};return c;};
-const removeBkFromStore = (all,dk,t,email)=>{const c={...all};if(c[dk]&&c[dk][t])c[dk][t]=c[dk][t].filter(b=>b.email!==email);return c;};
-
-// ── Sheets ────────────────────────────────────────────────────────────────────
-async function pushToSheets(session,date,time,action){
-  try{await fetch(SHEETS_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},
-    body:JSON.stringify({name:session.name,email:session.email,day:DAYS_FULL[date.getDay()],
-      date:dateStr(date),classTime:fmt12(time),action})});}catch{}
-}
-
-// ── Image Cropper Component ───────────────────────────────────────────────────
-function ImageCropper({imageSrc, onSave, onCancel}){
-  const canvasRef = useRef(null);
-  const [zoom,   setZoom]   = useState(1);
-  const [offset, setOffset] = useState({x:0,y:0});
-  const [imgEl,  setImgEl]  = useState(null);
-  const drag = useRef(null);
-  const SIZE = 280;
+// ── Image Cropper ─────────────────────────────────────────────────────────────
+function ImageCropper({imageSrc,onSave,onCancel}){
+  const canvasRef=useRef(null);
+  const [zoom,setZoom]=useState(1);
+  const [offset,setOffset]=useState({x:0,y:0});
+  const [imgEl,setImgEl]=useState(null);
+  const drag=useRef(null);
+  const lastDist=useRef(null);
+  const SIZE=280;
 
   useEffect(()=>{
-    const img = new Image();
-    img.onload = ()=>{
-      setImgEl(img);
-      // Center image initially
-      setOffset({x:0,y:0});
-      setZoom(Math.max(SIZE/img.width, SIZE/img.height));
-    };
-    img.src = imageSrc;
+    const img=new Image();
+    img.onload=()=>{setImgEl(img);setZoom(Math.max(SIZE/img.width,SIZE/img.height));setOffset({x:0,y:0});};
+    img.src=imageSrc;
   },[imageSrc]);
 
-  useEffect(()=>{ if(imgEl) draw(); },[imgEl,zoom,offset]);
+  useEffect(()=>{
+    if(!imgEl||!canvasRef.current) return;
+    const canvas=canvasRef.current;const ctx=canvas.getContext("2d");
+    canvas.width=SIZE;canvas.height=SIZE;ctx.clearRect(0,0,SIZE,SIZE);
+    const w=imgEl.width*zoom,h=imgEl.height*zoom;
+    ctx.drawImage(imgEl,SIZE/2-w/2+offset.x,SIZE/2-h/2+offset.y,w,h);
+  },[imgEl,zoom,offset]);
 
-  function draw(){
-    const canvas = canvasRef.current; if(!canvas||!imgEl) return;
-    const ctx = canvas.getContext("2d");
-    canvas.width = SIZE; canvas.height = SIZE;
-    ctx.clearRect(0,0,SIZE,SIZE);
-    const w = imgEl.width*zoom, h = imgEl.height*zoom;
-    const x = SIZE/2 - w/2 + offset.x;
-    const y = SIZE/2 - h/2 + offset.y;
-    ctx.drawImage(imgEl, x, y, w, h);
-  }
-
-  function getPos(e){
-    const t = e.touches?e.touches[0]:e;
-    const r = canvasRef.current.getBoundingClientRect();
-    return {x: t.clientX-r.left, y: t.clientY-r.top};
-  }
-
-  function onDown(e){e.preventDefault();drag.current=getPos(e);}
-  function onMove(e){
-    e.preventDefault();
-    if(!drag.current) return;
-    const pos = getPos(e);
-    setOffset(o=>({x:o.x+(pos.x-drag.current.x), y:o.y+(pos.y-drag.current.y)}));
-    drag.current = pos;
-  }
-  function onUp(){drag.current=null;}
-
-  // Pinch zoom
-  const lastDist = useRef(null);
-  function onTouchMove(e){
+  const getPos=e=>{const t=e.touches?e.touches[0]:e;const r=canvasRef.current.getBoundingClientRect();return{x:t.clientX-r.left,y:t.clientY-r.top};};
+  const onDown=e=>{e.preventDefault();drag.current=getPos(e);};
+  const onMove=e=>{e.preventDefault();if(!drag.current)return;const p=getPos(e);setOffset(o=>({x:o.x+(p.x-drag.current.x),y:o.y+(p.y-drag.current.y)}));drag.current=p;};
+  const onUp=()=>{drag.current=null;};
+  const onTouchMove=e=>{
     if(e.touches.length===2){
       e.preventDefault();
-      const dx=e.touches[0].clientX-e.touches[1].clientX;
-      const dy=e.touches[0].clientY-e.touches[1].clientY;
+      const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;
       const dist=Math.sqrt(dx*dx+dy*dy);
-      if(lastDist.current){
-        const delta=dist-lastDist.current;
-        setZoom(z=>Math.max(0.3,Math.min(4,z+delta*0.005)));
-      }
+      if(lastDist.current) setZoom(z=>Math.max(0.3,Math.min(4,z+(dist-lastDist.current)*0.005)));
       lastDist.current=dist;
-    } else {onMove(e);}
-  }
-  function onTouchEnd(){lastDist.current=null;onUp();}
+    } else onMove(e);
+  };
+  const onTouchEnd=()=>{lastDist.current=null;onUp();};
+  const onWheel=e=>{e.preventDefault();setZoom(z=>Math.max(0.3,Math.min(4,z-e.deltaY*0.001)));};
 
-  function handleWheel(e){e.preventDefault();setZoom(z=>Math.max(0.3,Math.min(4,z-e.deltaY*0.001)));}
-
-  function handleSave(){
-    const out = document.createElement("canvas");
-    out.width=200; out.height=200;
-    const ctx=out.getContext("2d");
-    ctx.drawImage(canvasRef.current,0,0,SIZE,SIZE,0,0,200,200);
-    onSave(out.toDataURL("image/jpeg",0.85));
-  }
+  const handleSave=()=>{
+    const out=document.createElement("canvas");out.width=200;out.height=200;
+    out.getContext("2d").drawImage(canvasRef.current,0,0,SIZE,SIZE,0,0,200,200);
+    onSave(out.toDataURL("image/jpeg",0.82));
+  };
 
   return React.createElement("div",{className:"crop-overlay"},
     React.createElement("div",{className:"crop-title"},"CROP PHOTO"),
-    React.createElement("div",{
-      className:"crop-canvas-wrap",
-      style:{width:SIZE,height:SIZE},
-      onMouseDown:onDown, onMouseMove:onMove, onMouseUp:onUp, onMouseLeave:onUp,
-      onTouchStart:onDown, onTouchMove:onTouchMove, onTouchEnd:onTouchEnd,
-      onWheel:handleWheel
-    },
+    React.createElement("div",{className:"crop-canvas-wrap",style:{width:SIZE,height:SIZE},
+      onMouseDown:onDown,onMouseMove:onMove,onMouseUp:onUp,onMouseLeave:onUp,
+      onTouchStart:onDown,onTouchMove:onTouchMove,onTouchEnd:onTouchEnd,onWheel:onWheel},
       React.createElement("canvas",{ref:canvasRef,className:"crop-canvas",width:SIZE,height:SIZE})
     ),
     React.createElement("div",{className:"zoom-wrap"},
       React.createElement("div",{className:"zoom-lbl"},"ZOOM"),
-      React.createElement("input",{type:"range",className:"zoom-slider",min:0.3,max:4,step:0.01,value:zoom,
-        onChange:e=>setZoom(parseFloat(e.target.value))})
+      React.createElement("input",{type:"range",className:"zoom-slider",min:0.3,max:4,step:0.01,value:zoom,onChange:e=>setZoom(parseFloat(e.target.value))})
     ),
-    React.createElement("div",{className:"crop-hint"},"Drag to reposition · Scroll or pinch to zoom"),
+    React.createElement("div",{className:"crop-hint"},"Drag to reposition \u00B7 Scroll or pinch to zoom"),
     React.createElement("div",{className:"crop-actions"},
       React.createElement("button",{className:"crop-cancel",onClick:onCancel},"CANCEL"),
       React.createElement("button",{className:"crop-save",onClick:handleSave},"SAVE PHOTO")
@@ -306,9 +264,9 @@ function ImageCropper({imageSrc, onSave, onCancel}){
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 function App(){
-  const [members,    setMembers]    = useState({});
-  const [session,    setSession]    = useState(null);
-  const [allBks,     setAllBks]     = useState({});
+  const [ready,      setReady]      = useState(false);
+  const [session,    setSession]    = useState(null);  // {email, name}
+  const [bookings,   setBookings]   = useState([]);    // [{email,name,date_key,time}]
   const [weekStart,  setWeekStart]  = useState(getWeekStart);
   const [selDay,     setSelDay]     = useState(getInitDay);
   const [tab,        setTab]        = useState("book");
@@ -319,6 +277,7 @@ function App(){
   const [bkBusy,     setBkBusy]     = useState({});
   const [toast,      setToast]      = useState({msg:"",show:false});
   const [showProf,   setShowProf]   = useState(false);
+  const [memberData, setMemberData] = useState(null);
   const [profForm,   setProfForm]   = useState({name:"",email:"",phone:"",photo:"",newPw:"",confirmPw:""});
   const [profErr,    setProfErr]    = useState("");
   const [profOk,     setProfOk]     = useState("");
@@ -326,11 +285,35 @@ function App(){
   const [cropSrc,    setCropSrc]    = useState(null);
   const photoRef = useRef(null);
 
+  // ── Init ──────────────────────────────────────────────────────────────────
   useEffect(()=>{
-    setMembers(lsGet("t365-members",{}));
-    setSession(lsGet("t365-session",null));
-    setAllBks(lsGet(BK_KEY,{}));
+    (async()=>{
+      const s = lsGet("t365-session", null);
+      if(s){
+        setSession(s);
+        const mb = await sbGet("members", `email=eq.${encodeURIComponent(s.email)}`);
+        if(mb.length) setMemberData(mb[0]);
+      }
+      await refreshBookings();
+      setReady(true);
+    })();
   },[]);
+
+  // Refresh bookings every 30s
+  useEffect(()=>{
+    const id=setInterval(refreshBookings, 30000);
+    return()=>clearInterval(id);
+  },[]);
+
+  async function refreshBookings(){
+    // Load bookings for next 28 days
+    const keys=[];
+    const now=new Date();now.setHours(0,0,0,0);
+    for(let i=0;i<28;i++){const d=addDays(now,i);if(d.getDay()!==0)keys.push(toDS(d));}
+    if(!keys.length) return;
+    const data=await sbGet("bookings",`date_key=in.(${keys.join(",")})&select=email,name,date_key,time`);
+    setBookings(data||[]);
+  }
 
   const selDate    = addDays(weekStart,selDay);
   const selDK      = toDS(selDate);
@@ -338,31 +321,17 @@ function App(){
   const weekDates  = Array.from({length:6},(_,i)=>addDays(weekStart,i));
   const isThisWeek = toDS(weekStart)===toDS(mondayOf(new Date()));
 
-  const weekDots = weekDates.map(d=>{
-    if(!session) return false;
-    const dk=toDS(d);
-    if(!allBks[dk]) return false;
-    return Object.values(allBks[dk]).some(list=>list.some(b=>b.email===session.email));
-  });
-
-  const myUpcoming = (()=>{
-    if(!session) return [];
-    const now=new Date();now.setHours(0,0,0,0);
-    const results=[];
-    for(let i=0;i<28;i++){
-      const d=addDays(now,i);const dow=d.getDay();if(dow===0) continue;
-      const dk=toDS(d);const ts=dow===6?SAT_TIMES:WD_TIMES;
-      for(const t of ts){
-        const list=getBksForSlot(allBks,dk,t);
-        if(list.some(b=>b.email===session.email)) results.push({date:d,time:t,dateKey:dk,dayIdx:dow===6?5:dow-1});
-      }
-    }
-    return results;
-  })();
+  const getBksFor  = (dk,t) => bookings.filter(b=>b.date_key===dk&&b.time===t);
+  const userBooked = (dk,t) => session&&getBksFor(dk,t).some(b=>b.email===session.email);
+  const weekDots   = weekDates.map(d=>session&&bookings.some(b=>b.date_key===toDS(d)&&b.email===session.email));
+  const myUpcoming = session
+    ? bookings.filter(b=>b.email===session.email&&b.date_key>=toDS(new Date()))
+        .sort((a,b)=>a.date_key.localeCompare(b.date_key)||a.time.localeCompare(b.time))
+    : [];
 
   function showToast(msg){setToast({msg,show:true});setTimeout(()=>setToast(t=>({...t,show:false})),2200);}
 
-  // ── Auth ─────────────────────────────────────────────────────────────────
+  // ── Auth ──────────────────────────────────────────────────────────────────
   async function handleAuth(){
     const{name,email,phone,password}=authForm;
     const em=email.toLowerCase().trim();
@@ -370,45 +339,51 @@ function App(){
     if(authMode==="signup"&&!name.trim()){setAuthErr("Please enter your name.");return;}
     if(password.length<6){setAuthErr("Password must be at least 6 characters.");return;}
     setAuthBusy(true);
+
     if(authMode==="login"){
-      const mb=members[em];
-      if(!mb){setAuthErr("No account found with that email.");setAuthBusy(false);return;}
+      const rows=await sbGet("members",`email=eq.${encodeURIComponent(em)}`);
+      if(!rows.length){setAuthErr("No account found with that email.");setAuthBusy(false);return;}
+      const mb=rows[0];
       if(mb.password!==hashPw(password)){setAuthErr("Incorrect password.");setAuthBusy(false);return;}
-      const s={email:em,name:mb.name};lsSet("t365-session",s);setSession(s);
+      const s={email:em,name:mb.name};lsSet("t365-session",s);setSession(s);setMemberData(mb);
     } else {
-      if(members[em]){setAuthErr("An account already exists with this email.");setAuthBusy(false);return;}
-      const upd={...members,[em]:{name:name.trim(),phone:phone.trim(),photo:"",password:hashPw(password),joinedAt:Date.now()}};
-      lsSet("t365-members",upd);setMembers(upd);
-      const s={email:em,name:name.trim()};lsSet("t365-session",s);setSession(s);
+      const existing=await sbGet("members",`email=eq.${encodeURIComponent(em)}`);
+      if(existing.length){setAuthErr("An account already exists with this email.");setAuthBusy(false);return;}
+      const mb={email:em,name:name.trim(),phone:phone.trim(),photo:"",password:hashPw(password),joined_at:Date.now()};
+      const ok=await sbPost("members",mb);
+      if(!ok){setAuthErr("Something went wrong. Please try again.");setAuthBusy(false);return;}
+      const s={email:em,name:name.trim()};lsSet("t365-session",s);setSession(s);setMemberData(mb);
     }
     setAuthBusy(false);
   }
 
-  function handleLogout(){lsSet("t365-session",null);setSession(null);setShowProf(false);}
+  function handleLogout(){lsSet("t365-session",null);setSession(null);setMemberData(null);setShowProf(false);}
 
   // ── Booking ───────────────────────────────────────────────────────────────
   async function handleBook(time){
     if(!session) return;
     const lk=`${selDK}-${time}`;setBkBusy(p=>({...p,[lk]:true}));
-    const list=getBksForSlot(allBks,selDK,time);
-    if(list.length>=MAX_SPOTS){showToast("Class is full");}
-    else if(list.some(b=>b.email===session.email)){showToast("Already booked");}
-    else{
-      const entry={email:session.email,name:session.name,at:Date.now()};
-      const updated=addBkToStore(allBks,selDK,time,entry);
-      setAllBks(updated);lsSet(BK_KEY,updated);
-      pushToSheets(session,selDate,time,"booked");
+    const list=getBksFor(selDK,time);
+    if(list.length>=MAX_SPOTS){showToast("Class is full");setBkBusy(p=>({...p,[lk]:false}));return;}
+    if(list.some(b=>b.email===session.email)){showToast("Already booked");setBkBusy(p=>({...p,[lk]:false}));return;}
+    const newBk={email:session.email,name:session.name,date_key:selDK,time};
+    // Optimistic update
+    setBookings(prev=>[...prev,newBk]);
+    const ok=await sbPost("bookings",newBk);
+    if(!ok){
+      setBookings(prev=>prev.filter(b=>!(b.email===session.email&&b.date_key===selDK&&b.time===time)));
+      showToast("Booking failed — try again");
+    } else {
       showToast("Spot reserved \u2713");
     }
     setBkBusy(p=>({...p,[lk]:false}));
   }
 
-  async function handleCancel(time,dateKey,date){
+  async function handleCancel(time,dk){
     if(!session) return;
-    const d=date||selDate;const dk=dateKey||selDK;
-    const updated=removeBkFromStore(allBks,dk,time,session.email);
-    setAllBks(updated);lsSet(BK_KEY,updated);
-    pushToSheets(session,d,time,"cancelled");
+    // Optimistic update
+    setBookings(prev=>prev.filter(b=>!(b.email===session.email&&b.date_key===dk&&b.time===time)));
+    await sbDelete("bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=eq.${dk}&time=eq.${encodeURIComponent(time)}`);
     showToast("Booking cancelled");
   }
 
@@ -421,8 +396,7 @@ function App(){
 
   // ── Profile ───────────────────────────────────────────────────────────────
   function openProf(){
-    const mb=members[session.email]||{};
-    setProfForm({name:session.name,email:session.email,phone:mb.phone||"",photo:mb.photo||"",newPw:"",confirmPw:""});
+    setProfForm({name:session.name,email:session.email,phone:memberData?.phone||"",photo:memberData?.photo||"",newPw:"",confirmPw:""});
     setProfErr("");setProfOk("");setShowProf(true);
   }
 
@@ -434,10 +408,7 @@ function App(){
     e.target.value="";
   }
 
-  function handleCropSave(dataUrl){
-    setProfForm(f=>({...f,photo:dataUrl}));
-    setCropSrc(null);
-  }
+  function handleCropSave(dataUrl){setProfForm(f=>({...f,photo:dataUrl}));setCropSrc(null);}
 
   async function handleSaveProf(){
     const{name,email,phone,photo,newPw,confirmPw}=profForm;
@@ -446,18 +417,25 @@ function App(){
     if(!em||!/\S+@\S+\.\S+/.test(em)){setProfErr("Please enter a valid email.");return;}
     if(newPw&&newPw.length<6){setProfErr("Password must be at least 6 characters.");return;}
     if(newPw&&newPw!==confirmPw){setProfErr("Passwords do not match.");return;}
-    if(em!==session.email&&members[em]){setProfErr("Email already in use.");return;}
     setProfBusy(true);
-    const old=members[session.email];
-    const upd={...old,name:name.trim(),phone:phone.trim(),photo:photo||"",password:newPw?hashPw(newPw):old.password};
-    const nm={...members};if(em!==session.email) delete nm[session.email];nm[em]=upd;
+    const upd={name:name.trim(),phone:phone.trim(),photo:photo||""};
+    if(newPw) upd.password=hashPw(newPw);
+    if(em!==session.email) upd.email=em;
+    const ok=await sbPatch("members",`email=eq.${encodeURIComponent(session.email)}`,upd);
+    if(!ok){setProfErr("Update failed. Please try again.");setProfBusy(false);return;}
     const ns={email:em,name:name.trim()};
-    lsSet("t365-members",nm);lsSet("t365-session",ns);setMembers(nm);setSession(ns);
+    lsSet("t365-session",ns);setSession(ns);setMemberData(d=>({...d,...upd,email:em}));
     setProfOk("Profile updated.");setProfErr("");setProfBusy(false);
   }
 
-  const memberPhoto=session?members[session.email]?.photo:null;
-  const memberInit =session?initials(session.name):"";
+  const memberPhoto = memberData?.photo||"";
+  const memberInit  = session?initials(session.name):"";
+
+  // ── Loading ───────────────────────────────────────────────────────────────
+  if(!ready) return React.createElement("div",{className:"loading-screen"},
+    React.createElement("div",null,"TEAM 365"),
+    React.createElement("div",{className:"loading-bar"},React.createElement("div",{className:"loading-fill"}))
+  );
 
   // ── Auth screen ───────────────────────────────────────────────────────────
   if(!session) return React.createElement("div",{className:"auth-page"},
@@ -494,8 +472,6 @@ function App(){
 
   // ── Main app ──────────────────────────────────────────────────────────────
   return React.createElement("div",{className:"app"},
-
-    // Crop overlay
     cropSrc&&React.createElement(ImageCropper,{imageSrc:cropSrc,onSave:handleCropSave,onCancel:()=>setCropSrc(null)}),
 
     // Header
@@ -517,8 +493,7 @@ function App(){
     tab==="book"&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"week-nav"},
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"\u2039"),
-        React.createElement("div",{className:"wk-label"},
-          `${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} \u2013 ${MONTHS[weekDates[5].getMonth()]} ${weekDates[5].getDate()}  ${weekDates[0].getFullYear()}`),
+        React.createElement("div",{className:"wk-label"},`${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} \u2013 ${MONTHS[weekDates[5].getMonth()]} ${weekDates[5].getDate()}  ${weekDates[0].getFullYear()}`),
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,7))},"\u203a")
       ),
       React.createElement("div",{className:"day-strip"},
@@ -530,39 +505,29 @@ function App(){
         ))
       ),
       React.createElement("div",{className:"cls-wrap"},
-        // Day header
         React.createElement("div",{className:"day-hdr"},
           React.createElement("span",null,DAY_LONG[selDay].toUpperCase()),
-          ` \u00B7 ${DAY_SESS[selDay].toUpperCase()} \u00B7 ${times.length} CLASSES`
+          React.createElement("em",null,` \u00B7 ${DAY_SESS[selDay].toUpperCase()} \u00B7 ${times.length} CLASSES`)
         ),
         times.map(time=>{
-          const list   =getBksForSlot(allBks,selDK,time);
+          const list   =getBksFor(selDK,time);
           const taken  =list.length;
           const left   =MAX_SPOTS-taken;
-          const userBkd=list.some(b=>b.email===session.email);
+          const userBkd=userBooked(selDK,time);
           const full   =left===0&&!userBkd;
           const past   =isPastClass(time);
           const lk     =`${selDK}-${time}`;
           const busy   =!!bkBusy[lk];
-
-          const subText = userBkd
-            ? "Booked \u2713"
-            : full
-              ? "Full"
-              : `${left} ${left===1?"Spot":"Spots"} Available`;
-
-          const subClass = userBkd?"ck":full?"cf":left<=3?"cl":"co";
-
+          const subText=userBkd?"Booked \u2713":full?"Full":`${left} ${left===1?"Spot":"Spots"} Available`;
+          const subCls =userBkd?"ck":full?"cf":left<=3?"cl":"co";
           return React.createElement("div",{key:time,className:`c-row${userBkd?" cb":""}${past?" cp":""}`},
             React.createElement("div",{className:"c-time"},fmt12(time)),
             React.createElement("div",{className:"c-mid"},
-              React.createElement("div",{className:"c-bars"},
-                Array.from({length:MAX_SPOTS}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}`}))
-              ),
-              React.createElement("div",{className:`c-sub ${subClass}`},subText)
+              React.createElement("div",{className:"c-bars"},Array.from({length:MAX_SPOTS}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}`}))),
+              React.createElement("div",{className:`c-sub ${subCls}`},subText)
             ),
             !past&&(userBkd
-              ?React.createElement("button",{className:"c-btn bc",onClick:()=>handleCancel(time,selDK,selDate)},"Cancel")
+              ?React.createElement("button",{className:"c-btn bc",onClick:()=>handleCancel(time,selDK)},"Cancel")
               :full
                 ?React.createElement("button",{className:"c-btn bf",disabled:true},"Full")
                 :React.createElement("button",{className:"c-btn bb",onClick:()=>handleBook(time),disabled:busy},busy?"...":"Book")
@@ -576,19 +541,19 @@ function App(){
     tab==="my"&&React.createElement("div",{className:"my-wrap"},
       React.createElement("div",{className:"my-hdr"},"MY UPCOMING CLASSES"),
       myUpcoming.length===0
-        ?React.createElement("div",{className:"no-bk"},"No upcoming bookings.\nHead to Book to reserve your spot.")
+        ?React.createElement("div",{className:"no-bk"},"No upcoming bookings")
         :myUpcoming.map((bk,i)=>{
-          const dow=bk.date.getDay();
+          const d=new Date(bk.date_key+"T12:00:00");
+          const dow=d.getDay();
           const dayLbl=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][dow];
-          const dayIdx=dow===0?0:dow-1;
-          const sessName=dow===6?DAY_SESS[5]:DAY_SESS[Math.max(0,dow-1)];
+          const sessIdx=dow===6?5:Math.max(0,dow-1);
           return React.createElement("div",{key:i,className:"my-item"},
             React.createElement("div",null,
-              React.createElement("div",{className:"my-date"},`${dayLbl.toUpperCase()} \u00B7 ${dateStr(bk.date).toUpperCase()}`),
+              React.createElement("div",{className:"my-date"},`${dayLbl.toUpperCase()} \u00B7 ${dateStr(d).toUpperCase()}`),
               React.createElement("div",{className:"my-time"},fmt12(bk.time)),
-              React.createElement("div",{className:"my-sess"},sessName.toUpperCase())
+              React.createElement("div",{className:"my-sess"},DAY_SESS[sessIdx].toUpperCase())
             ),
-            React.createElement("button",{className:"my-x",onClick:()=>handleCancel(bk.time,bk.dateKey,bk.date)},"Cancel")
+            React.createElement("button",{className:"my-x",onClick:()=>handleCancel(bk.time,bk.date_key)},"Cancel")
           );
         })
     ),
@@ -608,7 +573,7 @@ function App(){
         React.createElement("button",{className:"prof-close",onClick:()=>setShowProf(false)},"\u2715")
       ),
       React.createElement("div",{className:"prof-body"},
-        React.createElement("div",{className:"prof-since"},`MEMBER SINCE ${new Date(members[session.email]?.joinedAt||Date.now()).getFullYear()}`),
+        React.createElement("div",{className:"prof-since"},`MEMBER SINCE ${new Date(memberData?.joined_at||Date.now()).getFullYear()}`),
         React.createElement("div",{className:"photo-wrap"},
           profForm.photo
             ?React.createElement("img",{src:profForm.photo,className:"avatar-lg",alt:"profile"})
