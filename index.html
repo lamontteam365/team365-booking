@@ -363,6 +363,24 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
   const [parqOk,setParqOk]=useState(false);
   const [togglingAdmin,setTogglingAdmin]=useState(false);
   const [memberIsAdmin,setMemberIsAdmin]=useState(member.is_admin||false);
+  const [editingExtra,setEditingExtra]=useState(false);
+  const [extraEdits,setExtraEdits]=useState({
+    medical_conditions: member.medical_conditions||"",
+    medications: member.medications||"",
+    fitness_level: member.fitness_level||"",
+    health_declaration: member.health_declaration||"",
+    media_consent: member.media_consent||""
+  });
+  const [savingExtra,setSavingExtra]=useState(false);
+  const [extraOk,setExtraOk]=useState(false);
+
+  async function saveExtra(){
+    setSavingExtra(true);
+    await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,extraEdits);
+    Object.assign(member,extraEdits);
+    setSavingExtra(false);setEditingExtra(false);setExtraOk(true);
+    setTimeout(()=>setExtraOk(false),2000);
+  }
 
   async function saveParq(){
     setSavingParq(true);
@@ -486,21 +504,90 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
           ))
         ),
 
-      // Medical
-      React.createElement("div",{className:"mp-section"},"MEDICAL INFORMATION"),
-      React.createElement(Row,{label:"Conditions",value:member.medical_conditions||"None"}),
-      React.createElement(Row,{label:"Medications",value:member.medications||"None"}),
-
-      // Fitness
-      React.createElement("div",{className:"mp-section"},"FITNESS LEVEL"),
-      React.createElement("div",{className:"mp-row"},
-        React.createElement("div",{className:"mp-value",style:{textAlign:"left",color:"#ccc"}},member.fitness_level||"\u2014")
+      // Medical, Fitness & Declarations - all editable together
+      React.createElement("div",{className:"mp-section",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
+        React.createElement("span",null,"MEDICAL & DECLARATIONS"),
+        currentUserIsAdmin&&React.createElement("button",{
+          onClick:()=>setEditingExtra(e=>!e),
+          style:{background:"none",border:"1px solid #333",color:"#888",fontSize:9,letterSpacing:"0.12em",padding:"3px 8px",borderRadius:3,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600}
+        },editingExtra?"CANCEL":"EDIT")
       ),
 
-      // Declarations
-      React.createElement("div",{className:"mp-section"},"DECLARATIONS"),
-      React.createElement(Row,{label:"Health Declaration",value:member.health_declaration||"\u2014",type:member.health_declaration==="Yes"?"yes":"no"}),
-      React.createElement(Row,{label:"Media Consent",value:member.media_consent||"\u2014",type:member.media_consent==="Yes"?"yes":"no"}),
+      editingExtra
+        ?React.createElement(React.Fragment,null,
+          React.createElement("div",{style:{marginBottom:8}},
+            React.createElement("div",{style:{fontSize:9,color:"#666",letterSpacing:"0.1em",marginBottom:4}},"INJURIES OR CONDITIONS"),
+            React.createElement("textarea",{
+              value:extraEdits.medical_conditions,
+              onChange:e=>setExtraEdits(p=>({...p,medical_conditions:e.target.value})),
+              style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:300,padding:"10px 12px",borderRadius:3,outline:"none",resize:"none",minHeight:60,lineHeight:1.6}
+            })
+          ),
+          React.createElement("div",{style:{marginBottom:8}},
+            React.createElement("div",{style:{fontSize:9,color:"#666",letterSpacing:"0.1em",marginBottom:4}},"CURRENT MEDICATIONS"),
+            React.createElement("textarea",{
+              value:extraEdits.medications,
+              onChange:e=>setExtraEdits(p=>({...p,medications:e.target.value})),
+              style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:300,padding:"10px 12px",borderRadius:3,outline:"none",resize:"none",minHeight:60,lineHeight:1.6}
+            })
+          ),
+          React.createElement("div",{style:{marginBottom:8}},
+            React.createElement("div",{style:{fontSize:9,color:"#666",letterSpacing:"0.1em",marginBottom:6}},"FITNESS LEVEL"),
+            ["1. New to fitness or returning after a break.","2. Active and training regularly.","3. High performance, pushing the limits."].map(opt=>
+              React.createElement("button",{
+                key:opt,
+                onClick:()=>setExtraEdits(p=>({...p,fitness_level:opt})),
+                style:{
+                  display:"block",width:"100%",textAlign:"left",padding:"10px 12px",marginBottom:4,
+                  background:extraEdits.fitness_level===opt?"#111":"#0a0a0a",
+                  border:`1px solid ${extraEdits.fitness_level===opt?"#fff":"#1e1e1e"}`,
+                  color:extraEdits.fitness_level===opt?"#fff":"#666",
+                  borderRadius:3,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:12
+                }
+              },opt)
+            )
+          ),
+          React.createElement("div",{style:{marginBottom:8}},
+            React.createElement("div",{style:{fontSize:9,color:"#666",letterSpacing:"0.1em",marginBottom:6}},"HEALTH DECLARATION"),
+            ["Yes","No"].map(val=>React.createElement("button",{
+              key:val,
+              onClick:()=>setExtraEdits(p=>({...p,health_declaration:val})),
+              style:{
+                marginRight:8,padding:"8px 20px",
+                background:extraEdits.health_declaration===val?(val==="Yes"?"#081a08":"#1a0808"):"#111",
+                border:`1px solid ${extraEdits.health_declaration===val?(val==="Yes"?"#2a4a2a":"#4a2a2a"):"#222"}`,
+                color:extraEdits.health_declaration===val?(val==="Yes"?"#4aaa66":"#e06040"):"#555",
+                borderRadius:3,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.1em",cursor:"pointer"
+              }
+            },val))
+          ),
+          React.createElement("div",{style:{marginBottom:12}},
+            React.createElement("div",{style:{fontSize:9,color:"#666",letterSpacing:"0.1em",marginBottom:6}},"MEDIA CONSENT"),
+            ["Yes","No"].map(val=>React.createElement("button",{
+              key:val,
+              onClick:()=>setExtraEdits(p=>({...p,media_consent:val})),
+              style:{
+                marginRight:8,padding:"8px 20px",
+                background:extraEdits.media_consent===val?(val==="Yes"?"#081a08":"#1a0808"):"#111",
+                border:`1px solid ${extraEdits.media_consent===val?(val==="Yes"?"#2a4a2a":"#4a2a2a"):"#222"}`,
+                color:extraEdits.media_consent===val?(val==="Yes"?"#4aaa66":"#e06040"):"#555",
+                borderRadius:3,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.1em",cursor:"pointer"
+              }
+            },val))
+          ),
+          React.createElement("button",{
+            onClick:saveExtra,disabled:savingExtra,
+            style:{width:"100%",background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.15em",padding:"14px",borderRadius:3,cursor:"pointer"}
+          },savingExtra?"SAVING...":"SAVE CHANGES"),
+          extraOk&&React.createElement("div",{style:{fontSize:11,color:"#4aaa88",textAlign:"center",marginTop:8}},"Updated successfully")
+        )
+        :React.createElement(React.Fragment,null,
+          React.createElement("div",{className:"mp-row"},React.createElement("div",{className:"mp-label"},"Conditions"),React.createElement("div",{className:"mp-value"},member.medical_conditions||"None")),
+          React.createElement("div",{className:"mp-row"},React.createElement("div",{className:"mp-label"},"Medications"),React.createElement("div",{className:"mp-value"},member.medications||"None")),
+          React.createElement("div",{className:"mp-row"},React.createElement("div",{className:"mp-label"},"Fitness Level"),React.createElement("div",{className:"mp-value",style:{textAlign:"right"}},member.fitness_level||"\u2014")),
+          React.createElement("div",{className:"mp-row"},React.createElement("div",{className:"mp-label"},"Health Declaration"),React.createElement("div",{className:`mp-value ${member.health_declaration==="Yes"?"yes":"no"}`},member.health_declaration||"\u2014")),
+          React.createElement("div",{className:"mp-row"},React.createElement("div",{className:"mp-label"},"Media Consent"),React.createElement("div",{className:`mp-value ${member.media_consent==="Yes"?"yes":"no"}`},member.media_consent||"\u2014"))
+        ),
 
       // Signature
       member.signature&&React.createElement(React.Fragment,null,
