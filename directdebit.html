@@ -451,7 +451,7 @@ function generatePDF(data) {
 
 async function sendDDEmail(to, name, pdfData, data) {
   try {
-    const params = new URLSearchParams({
+    const payload = {
       action: "directDebit",
       to, name,
       planName: data.planName,
@@ -459,10 +459,20 @@ async function sendDDEmail(to, name, pdfData, data) {
       freqAmt: data.freqAmt,
       frequency: data.frequency,
       endDate: data.endDate,
-      pdfData: pdfData
+      startDate: data.date,
+      weeklyAmt: data.weeklyAmt,
+      bankAccount: `${data.bankBank}-${data.bankBranch}-${data.bankAccount}-${data.bankSuffix}`,
+      bankName: data.bankName,
+      phone: data.phone,
+      pdfBase64: pdfData.split(",")[1]
+    };
+    await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: {"Content-Type": "text/plain"},
+      body: JSON.stringify(payload)
     });
-    await fetch(APPS_SCRIPT_URL+"?"+params.toString(),{method:"GET",mode:"no-cors"});
-  }catch(e){console.log("Email error:",e);}
+  } catch(e){ console.log("Email error:",e); }
 }
 
 async function handleSubmit(){
