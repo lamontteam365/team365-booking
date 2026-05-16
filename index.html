@@ -11,199 +11,261 @@
 html,body{background:#080808;min-height:100vh}
 #root{min-height:100vh}
 .app{font-family:'DM Sans',sans-serif;background:#080808;color:#fff;min-height:100vh;display:flex;flex-direction:column;max-width:480px;margin:0 auto}
+
+/* ── Header ── */
 .hdr{padding:20px 20px 0;display:flex;justify-content:space-between;align-items:center}
 .logo-sub{font-size:9px;letter-spacing:0.22em;color:#fff;font-weight:500}
 .logo{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:0.15em;line-height:1;color:#fff}
-.avatar-sm{width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid #333;cursor:pointer;display:block}
-.avatar-init-sm{width:38px;height:38px;border-radius:50%;background:#1a1a1a;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:14px;color:#777;cursor:pointer;flex-shrink:0}
+.avatar-sm{width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid #444;cursor:pointer;display:block}
+.avatar-init-sm{width:38px;height:38px;border-radius:50%;background:#1a1a1a;border:1px solid #333;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:14px;color:#999;cursor:pointer;flex-shrink:0}
 .name-lbl{font-size:10px;letter-spacing:0.12em;color:#fff;font-weight:600;text-align:center;margin-top:5px}
-.edit-lbl{font-size:9px;letter-spacing:0.1em;color:#666;text-align:center;margin-top:1px}
+.edit-lbl{font-size:9px;letter-spacing:0.1em;color:#888;text-align:center;margin-top:1px}
+
+/* ── Week nav ── */
 .week-nav{display:flex;align-items:center;padding:18px 14px 0}
-.wk-arrow{background:none;border:none;color:#555;cursor:pointer;font-size:24px;padding:4px 10px;line-height:1;transition:color .15s}
+.wk-arrow{background:none;border:none;color:#888;cursor:pointer;font-size:24px;padding:4px 10px;line-height:1;transition:color .15s}
 .wk-arrow:hover:not(:disabled){color:#fff}
-.wk-arrow:disabled{color:#222;cursor:default}
+.wk-arrow:disabled{color:#333;cursor:default}
 .wk-label{flex:1;text-align:center;font-size:10px;letter-spacing:0.18em;color:#fff;font-weight:600}
+
+/* ── Day strip ── */
 .day-strip{display:flex;gap:5px;padding:10px 16px 0;overflow-x:auto;scrollbar-width:none}
 .day-strip::-webkit-scrollbar{display:none}
 .day-btn{flex:1;min-width:44px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;background:#0e0e0e;border:1px solid #222;border-radius:6px;cursor:pointer;transition:all .15s}
-.day-btn:hover:not(.da){border-color:#333}
-.day-btn.dt{border-color:#444}
+.day-btn:hover:not(.da){border-color:#444}
+.day-btn.dt{border-color:#555}
 .day-btn.da{background:#fff;border-color:#fff}
-.d-name{font-size:9px;letter-spacing:0.12em;font-weight:600;color:#777}
-.d-num{font-family:'Bebas Neue',sans-serif;font-size:20px;line-height:1;color:#555}
+.d-name{font-size:9px;letter-spacing:0.12em;font-weight:600;color:#999}
+.d-num{font-family:'Bebas Neue',sans-serif;font-size:20px;line-height:1;color:#777}
 .day-btn.dt .d-num{color:#fff}
-.day-btn.dt .d-name{color:#aaa}
+.day-btn.dt .d-name{color:#ccc}
 .day-btn.da .d-name,.day-btn.da .d-num{color:#000}
 .d-dot{width:4px;height:4px;border-radius:50%;background:transparent}
-.day-btn.dhb .d-dot{background:#444}
+.day-btn.dhb .d-dot{background:#666}
 .day-btn.da.dhb .d-dot{background:#888}
+
+/* ── Class list ── */
 .cls-wrap{flex:1;padding:14px 16px;display:flex;flex-direction:column;gap:7px}
 .day-hdr{font-size:9px;letter-spacing:0.22em;font-weight:600;margin-bottom:6px;line-height:1.6}
 .day-hdr span{color:#fff}
-.day-hdr em{color:#888;font-style:normal}
+.day-hdr em{color:#aaa;font-style:normal}
 .c-row{display:flex;align-items:center;gap:10px;padding:10px 13px;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:7px;transition:border-color .15s}
-.c-row.cb{border-color:#2a2a2a}
-.c-row.cp{opacity:0.25;pointer-events:none}
+.c-row.cb{border-color:#333}
+.c-row.cp{opacity:0.3;pointer-events:none}
 .c-time{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.03em;color:#fff;min-width:72px}
 .c-mid{flex:1;display:flex;flex-direction:column;gap:5px}
 .c-bars{display:flex;gap:2px}
-.c-bar{flex:1;height:2px;border-radius:1px;background:#222;transition:background .3s}
+.c-bar{flex:1;height:2px;border-radius:1px;background:#2a2a2a;transition:background .3s}
 .c-bar.ct{background:#fff}
-.c-sub{font-size:10px;letter-spacing:0.1em;color:#777;font-weight:500}
-.c-sub.cl{color:#d95f3b}
-.c-sub.co{color:#888}
-.c-sub.ck{color:#555}
-.c-sub.cf{color:#333}
+.c-sub{font-size:10px;letter-spacing:0.1em;color:#999;font-weight:500}
+.c-sub.cl{color:#e06040}
+.c-sub.co{color:#aaa}
+.c-sub.ck{color:#777}
+.c-sub.cf{color:#555}
 .c-btn{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:0.12em;padding:8px 12px;border-radius:3px;border:none;cursor:pointer;white-space:nowrap;transition:all .15s}
 .c-btn.bb{background:#fff;color:#000}
 .c-btn.bb:hover:not(:disabled){background:#ddd}
-.c-btn.bf{background:transparent;color:#333;border:1px solid #222;cursor:default;font-size:10px}
-.c-btn.bc{background:transparent;color:#7a2515;border:1px solid #2a1208;cursor:pointer;font-size:10px}
-.c-btn.bc:hover{border-color:#7a2515;color:#d95f3b}
+.c-btn.bf{background:transparent;color:#555;border:1px solid #2a2a2a;cursor:default;font-size:10px}
+.c-btn.bc{background:transparent;color:#8a2515;border:1px solid #3a1208;cursor:pointer;font-size:10px}
+.c-btn.bc:hover{border-color:#8a2515;color:#e06040}
 .c-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── My Classes ── */
 .my-wrap{padding:18px 16px;flex:1;overflow-y:auto}
 .my-hdr{font-size:10px;letter-spacing:0.22em;color:#fff;font-weight:600;margin-bottom:14px}
 .my-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:7px;margin-bottom:7px}
-.my-date{font-size:10px;letter-spacing:0.12em;color:#777;font-weight:500;margin-bottom:2px}
+.my-date{font-size:10px;letter-spacing:0.12em;color:#999;font-weight:500;margin-bottom:2px}
 .my-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff}
-.my-sess{font-size:9px;letter-spacing:0.1em;color:#555;margin-top:1px}
-.my-x{font-size:10px;letter-spacing:0.08em;color:#444;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:color .15s;font-weight:500}
-.my-x:hover{color:#d95f3b}
-.no-bk{text-align:center;padding:48px 0;font-size:11px;letter-spacing:0.16em;color:#333;line-height:2.4}
+.my-sess{font-size:9px;letter-spacing:0.1em;color:#777;margin-top:1px}
+.my-x{font-size:10px;letter-spacing:0.08em;color:#666;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:color .15s;font-weight:500}
+.my-x:hover{color:#e06040}
+.no-bk{text-align:center;padding:48px 0;font-size:11px;letter-spacing:0.16em;color:#444;line-height:2.4}
+
+/* ── Wellness tab ── */
+.well-wrap{flex:1;overflow-y:auto}
+.well-hdr{padding:16px 16px 0}
+.well-title-row{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+.well-title{font-size:10px;letter-spacing:0.22em;color:#fff;font-weight:600}
+.well-sub{font-size:9px;letter-spacing:0.14em;color:#888;font-weight:500;margin-bottom:14px}
+.well-badge{display:inline-flex;align-items:center;gap:6px;background:#111;border:1px solid #222;border-radius:20px;padding:4px 10px;margin-bottom:14px}
+.well-badge-dot{width:6px;height:6px;border-radius:50%;background:#4aaa66}
+.well-badge-txt{font-size:9px;letter-spacing:0.14em;color:#888;font-weight:600}
+.well-slots{padding:0 16px 16px;display:flex;flex-direction:column;gap:7px}
+.well-slot{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:7px}
+.well-slot.ws-booked{border-color:#333}
+.well-slot.ws-mine{border-color:#2a3a2a}
+.well-slot.ws-past{opacity:0.3;pointer-events:none}
+.well-slot-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;min-width:72px}
+.well-slot-mid{flex:1}
+.well-slot-name{font-size:11px;letter-spacing:0.08em;color:#aaa;font-weight:500}
+.well-slot-status{font-size:10px;letter-spacing:0.1em;color:#999;font-weight:500;margin-top:2px}
+.well-slot-status.wss-mine{color:#4aaa66}
+.well-slot-status.wss-taken{color:#555}
+.well-btn{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:0.12em;padding:8px 12px;border-radius:3px;border:none;cursor:pointer;white-space:nowrap;transition:all .15s}
+.well-btn.wb-book{background:#fff;color:#000}
+.well-btn.wb-book:hover:not(:disabled){background:#ddd}
+.well-btn.wb-taken{background:transparent;color:#555;border:1px solid #2a2a2a;cursor:default;font-size:10px}
+.well-btn.wb-cancel{background:transparent;color:#8a2515;border:1px solid #3a1208;font-size:10px;cursor:pointer}
+.well-btn.wb-cancel:hover{border-color:#8a2515;color:#e06040}
+.well-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── Community ── */
+.comm-wrap{display:flex;flex-direction:column;flex:1;overflow:hidden}
+.comm-hdr{padding:16px 16px 0;flex-shrink:0}
+.comm-title{font-size:10px;letter-spacing:0.22em;color:#fff;font-weight:600;margin-bottom:2px}
+.comm-sub{font-size:9px;letter-spacing:0.14em;color:#888;font-weight:500;margin-bottom:12px}
+.comm-compose{background:#0e0e0e;border:1px solid #2a2a2a;border-radius:8px;padding:12px;margin-bottom:12px}
+.comm-textarea{width:100%;background:transparent;border:none;color:#fff;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:300;resize:none;outline:none;min-height:60px;line-height:1.6}
+.comm-textarea::placeholder{color:#444}
+.comm-compose-footer{display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid #1a1a1a}
+.comm-char{font-size:9px;letter-spacing:0.1em;color:#555;font-weight:500}
+.comm-char.warn{color:#e06040}
+.comm-post-btn{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:0.14em;padding:8px 18px;background:#fff;color:#000;border:none;border-radius:3px;cursor:pointer;transition:background .15s}
+.comm-post-btn:hover:not(:disabled){background:#ddd}
+.comm-post-btn:disabled{background:#151515;color:#444;cursor:not-allowed}
+.comm-feed{flex:1;overflow-y:auto;padding:0 16px 16px}
+.comm-feed::-webkit-scrollbar{width:0}
+
+/* Post cards */
+.post-card{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:8px;padding:13px 14px;margin-bottom:8px}
+.post-card.pinned-post{border-color:#2a2a2a;background:#111;border-left:2px solid #fff}
+.post-card.admin-post{background:#0f0f0f}
+.post-pin-label{font-size:8px;letter-spacing:0.18em;color:#888;font-weight:600;margin-bottom:8px}
+.post-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
+.post-author{display:flex;align-items:center;gap:9px}
+.post-av-img{width:30px;height:30px;border-radius:50%;object-fit:cover;border:1px solid #333;flex-shrink:0}
+.post-av-init{width:30px;height:30px;border-radius:50%;background:#1a1a1a;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:11px;color:#777;flex-shrink:0}
+.post-av-init.admin-av{border-color:#444;color:#aaa}
+.post-name{font-size:12px;letter-spacing:0.06em;color:#fff;font-weight:600}
+.post-badge{font-size:8px;letter-spacing:0.14em;color:#777;font-weight:600;margin-top:1px}
+.post-badge.admin-badge{color:#aaa}
+.post-time{font-size:9px;letter-spacing:0.06em;color:#444;font-weight:500;white-space:nowrap;margin-top:2px}
+.post-content{font-size:13px;color:#ddd;line-height:1.65;font-weight:300;word-break:break-word;margin-bottom:10px}
+.post-actions{display:flex;align-items:center;gap:14px}
+.post-like-btn{display:flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;padding:0;transition:opacity .15s}
+.post-like-btn:hover{opacity:0.7}
+.post-like-icon{font-size:13px;line-height:1}
+.post-like-count{font-size:10px;letter-spacing:0.06em;color:#777;font-weight:500}
+.post-like-btn.liked .post-like-count{color:#e06040}
+.post-delete{background:none;border:none;color:#333;cursor:pointer;font-size:10px;font-family:'DM Sans',sans-serif;letter-spacing:0.06em;transition:color .15s;font-weight:500}
+.post-delete:hover{color:#e06040}
+.post-pin-btn{background:none;border:none;color:#444;cursor:pointer;font-size:10px;font-family:'DM Sans',sans-serif;letter-spacing:0.06em;transition:color .15s;font-weight:500}
+.post-pin-btn:hover{color:#aaa}
+.post-pin-btn.pinned{color:#888}
+.comm-loading{text-align:center;padding:32px;font-size:10px;letter-spacing:0.18em;color:#333}
+.comm-empty{text-align:center;padding:48px 16px;font-size:11px;letter-spacing:0.16em;color:#333;line-height:2.4}
+
+/* ── Tab bar ── */
 .tab-bar{display:flex;border-top:1px solid #1a1a1a;margin-top:auto}
-.tab-btn{flex:1;padding:12px 4px;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:9px;letter-spacing:0.14em;color:#666;font-weight:600;transition:color .15s}
+.tab-btn{flex:1;padding:12px 2px;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:8.5px;letter-spacing:0.12em;color:#777;font-weight:600;transition:color .15s;white-space:nowrap}
 .tab-btn.ta{color:#fff;border-top:1px solid #fff;margin-top:-1px}
-.tab-btn:hover:not(.ta){color:#aaa}
+.tab-btn:hover:not(.ta){color:#bbb}
 .foot{text-align:center;font-size:9px;letter-spacing:0.22em;color:#fff;padding:9px 0 13px}
 .toast{position:fixed;bottom:68px;left:50%;transform:translateX(-50%);background:#fff;color:#000;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.15em;padding:10px 22px;border-radius:3px;pointer-events:none;transition:opacity .3s;z-index:200;white-space:nowrap;opacity:0}
 .toast.show{opacity:1}
+
+/* ── Auth ── */
 .auth-page{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;background:#080808;font-family:'DM Sans',sans-serif}
 .auth-logo{font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:0.2em;margin-bottom:2px;color:#fff}
 .auth-tag{font-size:10px;letter-spacing:0.24em;color:#fff;margin-bottom:48px;font-weight:500}
 .auth-card{width:100%;max-width:380px}
 .auth-title{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:0.1em;margin-bottom:24px;color:#fff}
-.fl{display:block;font-size:10px;letter-spacing:0.18em;color:#aaa;font-weight:600;margin-bottom:7px}
+.fl{display:block;font-size:10px;letter-spacing:0.18em;color:#bbb;font-weight:600;margin-bottom:7px}
 .fi{width:100%;background:#0e0e0e;border:1px solid #2a2a2a;color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:300;padding:14px 15px;margin-bottom:12px;outline:none;border-radius:3px;transition:border-color .2s;-webkit-appearance:none}
-.fi:focus{border-color:#444}
-.fi::placeholder{color:#333}
+.fi:focus{border-color:#555}
+.fi::placeholder{color:#444}
 .auth-btn{width:100%;background:#fff;color:#000;border:none;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:0.18em;padding:18px;cursor:pointer;border-radius:3px;margin-top:4px;transition:background .15s}
 .auth-btn:hover:not(:disabled){background:#ddd}
-.auth-btn:disabled{background:#111;color:#333;cursor:not-allowed}
-.auth-err{font-size:12px;color:#d95f3b;letter-spacing:0.04em;margin-top:12px;line-height:1.5}
-.auth-sw{text-align:center;margin-top:22px;font-size:12px;color:#777;letter-spacing:0.04em}
-.auth-sw button{background:none;border:none;color:#bbb;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;text-decoration:underline;text-underline-offset:3px;font-weight:500}
+.auth-btn:disabled{background:#111;color:#444;cursor:not-allowed}
+.auth-err{font-size:12px;color:#e06040;letter-spacing:0.04em;margin-top:12px;line-height:1.5}
+.auth-sw{text-align:center;margin-top:22px;font-size:12px;color:#888;letter-spacing:0.04em}
+.auth-sw button{background:none;border:none;color:#ccc;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;text-decoration:underline;text-underline-offset:3px;font-weight:500}
 .auth-sw button:hover{color:#fff}
+
+/* ── Profile ── */
 .prof-overlay{position:fixed;inset:0;background:#080808;z-index:50;display:flex;flex-direction:column;max-width:480px;margin:0 auto;overflow-y:auto}
 .prof-hdr{display:flex;align-items:center;justify-content:space-between;padding:20px 20px 0;flex-shrink:0}
 .prof-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:0.15em;color:#fff}
-.prof-close{background:none;border:none;color:#666;font-size:20px;cursor:pointer;padding:4px;transition:color .15s;line-height:1}
+.prof-close{background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:4px;transition:color .15s;line-height:1}
 .prof-close:hover{color:#fff}
 .prof-body{padding:22px 20px 48px}
-.prof-since{font-size:10px;letter-spacing:0.18em;color:#555;margin-bottom:22px;font-weight:500}
+.prof-since{font-size:10px;letter-spacing:0.18em;color:#777;margin-bottom:22px;font-weight:500}
 .photo-wrap{display:flex;flex-direction:column;align-items:center;margin-bottom:26px}
-.avatar-lg{width:90px;height:90px;border-radius:50%;object-fit:cover;border:2px solid #2a2a2a}
-.avatar-init-lg{width:90px;height:90px;border-radius:50%;background:#111;border:2px solid #222;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:34px;color:#444}
+.avatar-lg{width:90px;height:90px;border-radius:50%;object-fit:cover;border:2px solid #333}
+.avatar-init-lg{width:90px;height:90px;border-radius:50%;background:#111;border:2px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:34px;color:#555}
 .prof-name-lbl{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.1em;color:#fff;margin-top:12px}
-.photo-btn{margin-top:7px;background:none;border:none;color:#777;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:11px;letter-spacing:0.12em;transition:color .15s;text-decoration:underline;text-underline-offset:3px;font-weight:500}
+.photo-btn{margin-top:7px;background:none;border:none;color:#888;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:11px;letter-spacing:0.12em;transition:color .15s;text-decoration:underline;text-underline-offset:3px;font-weight:500}
 .photo-btn:hover{color:#fff}
-.prof-section{font-size:9px;letter-spacing:0.22em;color:#555;font-weight:600;margin:20px 0 13px;border-top:1px solid #141414;padding-top:20px}
+.prof-section{font-size:9px;letter-spacing:0.22em;color:#777;font-weight:600;margin:20px 0 13px;border-top:1px solid #1a1a1a;padding-top:20px}
 .prof-save{width:100%;background:#fff;color:#000;border:none;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:0.18em;padding:17px;cursor:pointer;border-radius:3px;margin-top:6px;transition:background .15s}
 .prof-save:hover:not(:disabled){background:#ddd}
-.prof-save:disabled{background:#111;color:#333;cursor:not-allowed}
-.prof-logout{width:100%;background:transparent;color:#555;border:1px solid #222;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.18em;padding:15px;cursor:pointer;border-radius:3px;margin-top:10px;transition:all .15s}
-.prof-logout:hover{border-color:#555;color:#888}
-.prof-err{font-size:12px;color:#d95f3b;letter-spacing:0.04em;margin-top:10px;line-height:1.5}
+.prof-save:disabled{background:#111;color:#444;cursor:not-allowed}
+.prof-logout{width:100%;background:transparent;color:#777;border:1px solid #2a2a2a;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.18em;padding:15px;cursor:pointer;border-radius:3px;margin-top:10px;transition:all .15s}
+.prof-logout:hover{border-color:#666;color:#aaa}
+.prof-err{font-size:12px;color:#e06040;letter-spacing:0.04em;margin-top:10px;line-height:1.5}
 .prof-ok{font-size:12px;color:#4aaa88;letter-spacing:0.06em;margin-top:10px;font-weight:500}
+
+/* ── Crop ── */
 .crop-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.97);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
 .crop-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.15em;color:#fff;margin-bottom:20px}
-.crop-canvas-wrap{position:relative;width:280px;height:280px;border-radius:50%;overflow:hidden;border:2px solid #333;cursor:grab;touch-action:none}
+.crop-canvas-wrap{position:relative;width:280px;height:280px;border-radius:50%;overflow:hidden;border:2px solid #444;cursor:grab;touch-action:none}
 .crop-canvas-wrap:active{cursor:grabbing}
-.crop-hint{font-size:11px;letter-spacing:0.1em;color:#555;margin-top:16px;text-align:center;line-height:1.8;font-weight:500}
+.crop-hint{font-size:11px;letter-spacing:0.1em;color:#777;margin-top:16px;text-align:center;line-height:1.8;font-weight:500}
 .crop-actions{display:flex;gap:10px;margin-top:22px;width:100%;max-width:280px}
-.crop-cancel{flex:1;background:transparent;color:#666;border:1px solid #2a2a2a;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:0.15em;padding:14px;cursor:pointer;border-radius:3px}
+.crop-cancel{flex:1;background:transparent;color:#888;border:1px solid #333;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:0.15em;padding:14px;cursor:pointer;border-radius:3px}
 .crop-save{flex:1;background:#fff;color:#000;border:none;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:0.15em;padding:14px;cursor:pointer;border-radius:3px}
 .zoom-wrap{display:flex;align-items:center;gap:12px;margin-top:16px;width:100%;max-width:280px}
-.zoom-lbl{font-size:9px;letter-spacing:0.18em;color:#555;font-weight:600;white-space:nowrap}
-.zoom-slider{flex:1;-webkit-appearance:none;appearance:none;height:2px;background:#222;border-radius:1px;outline:none;cursor:pointer}
+.zoom-lbl{font-size:9px;letter-spacing:0.18em;color:#777;font-weight:600;white-space:nowrap}
+.zoom-slider{flex:1;-webkit-appearance:none;appearance:none;height:2px;background:#333;border-radius:1px;outline:none;cursor:pointer}
 .zoom-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;cursor:pointer}
-.loading-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#080808;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.2em;color:#333;gap:16px}
-.loading-bar{width:120px;height:1px;background:#111;border-radius:1px;overflow:hidden}
-.loading-fill{height:100%;background:#fff;border-radius:1px;animation:ld 1.5s ease-in-out infinite}
-@keyframes ld{0%{width:0}50%{width:100%}100%{width:0}}
-
-/* ── Community ── */
-.comm-wrap{display:flex;flex-direction:column;flex:1;overflow:hidden}
-.comm-hdr{padding:16px 16px 0;flex-shrink:0}
-.comm-title{font-size:10px;letter-spacing:0.22em;color:#fff;font-weight:600;margin-bottom:4px}
-.comm-sub{font-size:9px;letter-spacing:0.14em;color:#444;font-weight:500;margin-bottom:14px}
-.comm-compose{background:#0e0e0e;border:1px solid #222;border-radius:8px;padding:12px;margin-bottom:14px}
-.comm-textarea{width:100%;background:transparent;border:none;color:#fff;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:300;resize:none;outline:none;min-height:64px;line-height:1.6}
-.comm-textarea::placeholder{color:#2a2a2a}
-.comm-compose-footer{display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid #181818}
-.comm-char{font-size:9px;letter-spacing:0.1em;color:#2a2a2a;font-weight:500}
-.comm-char.warn{color:#d95f3b}
-.comm-post-btn{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:0.14em;padding:8px 18px;background:#fff;color:#000;border:none;border-radius:3px;cursor:pointer;transition:background .15s}
-.comm-post-btn:hover:not(:disabled){background:#ddd}
-.comm-post-btn:disabled{background:#151515;color:#2a2a2a;cursor:not-allowed}
-.comm-feed{flex:1;overflow-y:auto;padding:0 16px 16px}
-.comm-feed::-webkit-scrollbar{width:0}
-.post-card{background:#0e0e0e;border:1px solid #1a1a1a;border-radius:8px;padding:13px 14px;margin-bottom:8px}
-.post-card.admin-post{border-color:#2a2a2a;background:#111}
-.post-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
-.post-author{display:flex;align-items:center;gap:8px}
-.post-avatar{width:28px;height:28px;border-radius:50%;background:#1a1a1a;border:1px solid #222;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:11px;color:#555;flex-shrink:0}
-.post-avatar.admin-av{background:#1a1a1a;border-color:#333;color:#888}
-.post-name{font-size:11px;letter-spacing:0.08em;color:#fff;font-weight:600}
-.post-badge{font-size:8px;letter-spacing:0.14em;color:#555;font-weight:600;margin-top:1px}
-.post-badge.admin-badge{color:#888}
-.post-time{font-size:9px;letter-spacing:0.08em;color:#2a2a2a;font-weight:500;white-space:nowrap;margin-top:2px}
-.post-content{font-size:13px;color:#ccc;line-height:1.65;font-weight:300;word-break:break-word}
-.post-delete{background:none;border:none;color:#1e1e1e;cursor:pointer;font-size:11px;font-family:'DM Sans',sans-serif;letter-spacing:0.06em;transition:color .15s;padding:0;margin-top:10px;font-weight:500}
-.post-delete:hover{color:#d95f3b}
-.comm-loading{text-align:center;padding:32px;font-size:10px;letter-spacing:0.18em;color:#222}
-.comm-empty{text-align:center;padding:48px 16px;font-size:11px;letter-spacing:0.16em;color:#222;line-height:2.4}
 
 /* ── Admin ── */
 .adm-wrap{padding:16px;flex:1;overflow-y:auto}
 .adm-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
 .adm-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.15em;color:#fff}
-.adm-sub{font-size:9px;letter-spacing:0.2em;color:#555;font-weight:600}
+.adm-sub{font-size:9px;letter-spacing:0.2em;color:#777;font-weight:600}
 .adm-seg{display:flex;gap:6px;margin-bottom:16px}
-.adm-seg-btn{flex:1;padding:9px;background:#0e0e0e;border:1px solid #222;border-radius:5px;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.14em;color:#666;font-weight:600;cursor:pointer;transition:all .15s}
+.adm-seg-btn{flex:1;padding:9px;background:#0e0e0e;border:1px solid #2a2a2a;border-radius:5px;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.14em;color:#888;font-weight:600;cursor:pointer;transition:all .15s}
 .adm-seg-btn.aas{background:#fff;color:#000;border-color:#fff}
 .adm-day-nav{display:flex;align-items:center;gap:8px;margin-bottom:14px}
 .adm-day-lbl{flex:1;text-align:center;font-size:10px;letter-spacing:0.18em;color:#fff;font-weight:600}
-.adm-arrow{background:none;border:none;color:#555;cursor:pointer;font-size:22px;padding:4px 8px;line-height:1;transition:color .15s}
+.adm-arrow{background:none;border:none;color:#888;cursor:pointer;font-size:22px;padding:4px 8px;line-height:1;transition:color .15s}
 .adm-arrow:hover{color:#fff}
 .adm-class-card{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:8px;margin-bottom:8px;overflow:hidden}
 .adm-class-hdr{display:flex;align-items:center;gap:12px;padding:11px 14px;cursor:pointer}
 .adm-class-hdr:hover{background:#111}
 .adm-class-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;min-width:68px}
 .adm-class-mid{flex:1}
-.adm-class-count{font-size:10px;letter-spacing:0.1em;color:#777;font-weight:500}
-.adm-class-count.full{color:#d95f3b}
+.adm-class-count{font-size:10px;letter-spacing:0.1em;color:#999;font-weight:500}
+.adm-class-count.full{color:#e06040}
 .adm-class-bars{display:flex;gap:2px;margin-top:5px}
-.adm-bar{flex:1;height:2px;border-radius:1px;background:#222}
+.adm-bar{flex:1;height:2px;border-radius:1px;background:#2a2a2a}
 .adm-bar.at{background:#fff}
-.adm-chev{font-size:14px;color:#333;transition:transform .2s}
+.adm-chev{font-size:14px;color:#555;transition:transform .2s}
 .adm-chev.open{transform:rotate(180deg)}
 .adm-members{border-top:1px solid #141414}
 .adm-member-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #0f0f0f}
 .adm-member-row:last-child{border-bottom:none}
-.adm-member-name{font-size:13px;color:#fff;font-weight:500;letter-spacing:0.02em}
-.adm-member-email{font-size:10px;color:#444;letter-spacing:0.04em;margin-top:1px}
-.adm-remove-btn{font-size:10px;color:#3a1008;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;letter-spacing:0.06em;transition:color .15s;font-weight:500}
-.adm-remove-btn:hover{color:#d95f3b}
-.adm-empty{text-align:center;padding:14px;font-size:10px;letter-spacing:0.14em;color:#2a2a2a;font-weight:500}
-.adm-no-classes{text-align:center;padding:48px 0;font-size:11px;letter-spacing:0.16em;color:#222;line-height:2.4}
+.adm-member-name{font-size:13px;color:#fff;font-weight:500}
+.adm-member-email{font-size:10px;color:#666;letter-spacing:0.04em;margin-top:1px}
+.adm-remove-btn{font-size:10px;color:#4a1008;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;letter-spacing:0.06em;transition:color .15s;font-weight:500}
+.adm-remove-btn:hover{color:#e06040}
+.adm-empty{text-align:center;padding:14px;font-size:10px;letter-spacing:0.14em;color:#333;font-weight:500}
+.adm-no-classes{text-align:center;padding:48px 0;font-size:11px;letter-spacing:0.16em;color:#333;line-height:2.4}
 .adm-member-card{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:8px;padding:13px 14px;margin-bottom:8px}
 .adm-mc-name{font-family:'Bebas Neue',sans-serif;font-size:18px;color:#fff;letter-spacing:0.06em;margin-bottom:4px}
-.adm-mc-detail{font-size:10px;letter-spacing:0.08em;color:#555;font-weight:500;margin-bottom:2px}
-.adm-mc-detail span{color:#888}
+.adm-mc-detail{font-size:10px;letter-spacing:0.08em;color:#777;font-weight:500;margin-bottom:2px}
+.adm-mc-detail span{color:#aaa}
 .adm-stats-row{display:flex;gap:8px;margin-bottom:16px}
 .adm-stat{flex:1;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:7px;padding:12px;text-align:center}
 .adm-stat-num{font-family:'Bebas Neue',sans-serif;font-size:32px;color:#fff;line-height:1}
-.adm-stat-lbl{font-size:9px;letter-spacing:0.16em;color:#444;font-weight:600;margin-top:3px}
+.adm-stat-lbl{font-size:9px;letter-spacing:0.16em;color:#666;font-weight:600;margin-top:3px}
+
+/* ── Loading ── */
+.loading-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#080808;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.2em;color:#555;gap:16px}
+.loading-bar{width:120px;height:1px;background:#1a1a1a;border-radius:1px;overflow:hidden}
+.loading-fill{height:100%;background:#fff;border-radius:1px;animation:ld 1.5s ease-in-out infinite}
+@keyframes ld{0%{width:0}50%{width:100%}100%{width:0}}
 </style>
 </head>
 <body>
@@ -218,14 +280,15 @@ const SB_URL = "https://xczwmexavysvljmobbgv.supabase.co";
 const SB_KEY = "sb_publishable_tujGGhPRUimflq1-IFzuvA_Crw6knMO";
 const SB_HDR = {"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return=minimal"};
 
-async function sbGet(table,query=""){try{const r=await fetch(`${SB_URL}/rest/v1/${table}?${query}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
-async function sbPost(table,data){try{const r=await fetch(`${SB_URL}/rest/v1/${table}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(data)});return r.ok;}catch{return false;}}
-async function sbPatch(table,query,data){try{const r=await fetch(`${SB_URL}/rest/v1/${table}?${query}`,{method:"PATCH",headers:SB_HDR,body:JSON.stringify(data)});return r.ok;}catch{return false;}}
-async function sbDelete(table,query){try{const r=await fetch(`${SB_URL}/rest/v1/${table}?${query}`,{method:"DELETE",headers:SB_HDR});return r.ok;}catch{return false;}}
+async function sbGet(t,q=""){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
+async function sbPost(t,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
+async function sbPatch(t,q,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{method:"PATCH",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
+async function sbDelete(t,q){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{method:"DELETE",headers:SB_HDR});return r.ok;}catch{return false;}}
 
 const MAX_SPOTS=10;
 const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
 const SAT_TIMES=["06:30","07:30","08:30","09:30"];
+const WELL_TIMES=["05:00","06:00","07:00","08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00"];
 const DAY_SHORT=["Mon","Tue","Wed","Thu","Fri","Sat"];
 const DAY_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const DAY_SESS=["Rise Up","Strength Lower","Ascend","Strength Upper","Elevate","Summit"];
@@ -244,14 +307,7 @@ const lsGet=(k,fb=null)=>{try{const v=localStorage.getItem(k);return v?JSON.pars
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
 const getWeekStart=()=>{const now=new Date();const m=mondayOf(now);return now.getDay()===0?addDays(m,7):m;};
 const getInitDay=()=>{const d=new Date().getDay();return d===0?0:Math.min(d-1,5);};
-
-function timeAgo(ts){
-  const s=Math.floor((Date.now()-ts)/1000);
-  if(s<60)return"just now";
-  if(s<3600)return`${Math.floor(s/60)}m ago`;
-  if(s<86400)return`${Math.floor(s/3600)}h ago`;
-  return`${Math.floor(s/86400)}d ago`;
-}
+function timeAgo(ts){const s=Math.floor((Date.now()-ts)/1000);if(s<60)return"just now";if(s<3600)return`${Math.floor(s/60)}m ago`;if(s<86400)return`${Math.floor(s/3600)}h ago`;return`${Math.floor(s/86400)}d ago`;}
 
 // ── Image Cropper ─────────────────────────────────────────────────────────────
 function ImageCropper({imageSrc,onSave,onCancel}){
@@ -259,8 +315,7 @@ function ImageCropper({imageSrc,onSave,onCancel}){
   const [zoom,setZoom]=useState(1);
   const [offset,setOffset]=useState({x:0,y:0});
   const [imgEl,setImgEl]=useState(null);
-  const drag=useRef(null);const lastDist=useRef(null);
-  const SIZE=280;
+  const drag=useRef(null);const lastDist=useRef(null);const SIZE=280;
   useEffect(()=>{const img=new Image();img.onload=()=>{setImgEl(img);setZoom(Math.max(SIZE/img.width,SIZE/img.height));setOffset({x:0,y:0});};img.src=imageSrc;},[imageSrc]);
   useEffect(()=>{if(!imgEl||!canvasRef.current)return;const canvas=canvasRef.current;const ctx=canvas.getContext("2d");canvas.width=SIZE;canvas.height=SIZE;ctx.clearRect(0,0,SIZE,SIZE);const w=imgEl.width*zoom,h=imgEl.height*zoom;ctx.drawImage(imgEl,SIZE/2-w/2+offset.x,SIZE/2-h/2+offset.y,w,h);},[imgEl,zoom,offset]);
   const getPos=e=>{const t=e.touches?e.touches[0]:e;const r=canvasRef.current.getBoundingClientRect();return{x:t.clientX-r.left,y:t.clientY-r.top};};
@@ -282,30 +337,151 @@ function ImageCropper({imageSrc,onSave,onCancel}){
   );
 }
 
+// ── Wellness View ─────────────────────────────────────────────────────────────
+function WellnessView({session,showToast}){
+  const [wellBks,  setWellBks]  = useState([]);
+  const [weekStart,setWeekStart]= useState(getWeekStart);
+  const [selDay,   setSelDay]   = useState(getInitDay);
+  const [busy,     setBusy]     = useState({});
+
+  useEffect(()=>{loadWellBks();},[]);
+
+  async function loadWellBks(){
+    const keys=[];const now=new Date();now.setHours(0,0,0,0);
+    for(let i=0;i<28;i++){const d=addDays(now,i);if(d.getDay()!==0)keys.push(toDS(d));}
+    if(!keys.length)return;
+    const data=await sbGet("wellness_bookings",`date_key=in.(${keys.join(",")})&select=email,name,date_key,time`);
+    setWellBks(data||[]);
+  }
+
+  const selDate=addDays(weekStart,selDay);
+  const selDK=toDS(selDate);
+  const weekDates=Array.from({length:6},(_,i)=>addDays(weekStart,i));
+  const isThisWeek=toDS(weekStart)===toDS(mondayOf(new Date()));
+  const dayBks=wellBks.filter(b=>b.date_key===selDK);
+  const weekDots=weekDates.map(d=>session&&wellBks.some(b=>b.date_key===toDS(d)&&b.email===session.email));
+
+  function isPastSlot(time){
+    if(isPastD(selDate))return true;
+    if(!isToday(selDate))return false;
+    const now=new Date();const[h,m]=time.split(":").map(Number);
+    return(h*60+m+45)<(now.getHours()*60+now.getMinutes());
+  }
+
+  async function handleBook(time){
+    if(!session)return;
+    const lk=`${selDK}-${time}`;setBusy(p=>({...p,[lk]:true}));
+    const existing=dayBks.find(b=>b.time===time);
+    if(existing){showToast("Slot already booked");setBusy(p=>({...p,[lk]:false}));return;}
+    const newBk={email:session.email,name:session.name,date_key:selDK,time};
+    setWellBks(prev=>[...prev,newBk]);
+    const ok=await sbPost("wellness_bookings",newBk);
+    if(!ok){setWellBks(prev=>prev.filter(b=>!(b.date_key===selDK&&b.time===time)));showToast("Booking failed \u2014 try again");}
+    else showToast("Wellness session booked \u2713");
+    setBusy(p=>({...p,[lk]:false}));
+  }
+
+  async function handleCancel(time){
+    if(!session)return;
+    setWellBks(prev=>prev.filter(b=>!(b.date_key===selDK&&b.time===time&&b.email===session.email)));
+    await sbDelete("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=eq.${selDK}&time=eq.${encodeURIComponent(time)}`);
+    showToast("Booking cancelled");
+  }
+
+  return React.createElement("div",{className:"well-wrap"},
+    React.createElement("div",{className:"well-hdr"},
+      React.createElement("div",{className:"well-title"},"WELLNESS"),
+      React.createElement("div",{className:"well-sub"},"SAUNA \u00B7 COLD PLUNGE \u00B7 45 MIN SESSION"),
+      React.createElement("div",{className:"well-badge"},
+        React.createElement("div",{className:"well-badge-dot"}),
+        React.createElement("div",{className:"well-badge-txt"},"ONE PERSON PER SESSION")
+      ),
+      // Week nav
+      React.createElement("div",{className:"week-nav",style:{padding:"0 0 10px"}},
+        React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"\u2039"),
+        React.createElement("div",{className:"wk-label"},`${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} \u2013 ${MONTHS[weekDates[5].getMonth()]} ${weekDates[5].getDate()}  ${weekDates[0].getFullYear()}`),
+        React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,7))},"\u203a")
+      ),
+      // Day strip
+      React.createElement("div",{className:"day-strip",style:{padding:"0 0 12px"}},
+        weekDates.map((d,i)=>React.createElement("button",{key:i,onClick:()=>setSelDay(i),
+          className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}${weekDots[i]?" dhb":""}`},
+          React.createElement("div",{className:"d-name"},DAY_SHORT[i]),
+          React.createElement("div",{className:"d-num"},d.getDate()),
+          React.createElement("div",{className:"d-dot"})
+        ))
+      ),
+      React.createElement("div",{className:"day-hdr",style:{padding:"0"}},
+        React.createElement("span",null,DAY_LONG[selDay].toUpperCase()),
+        React.createElement("em",null,` \u00B7 ${WELL_TIMES.length} SLOTS`)
+      )
+    ),
+    React.createElement("div",{className:"well-slots"},
+      WELL_TIMES.map(time=>{
+        const bk=dayBks.find(b=>b.time===time);
+        const ismine=bk&&bk.email===session?.email;
+        const taken=!!bk&&!ismine;
+        const past=isPastSlot(time);
+        const lk=`${selDK}-${time}`;
+        const isBusy=!!busy[lk];
+        return React.createElement("div",{key:time,className:`well-slot${ismine?" ws-mine":bk?" ws-booked":""}${past?" ws-past":""}`},
+          React.createElement("div",{className:"well-slot-time"},fmt12(time)),
+          React.createElement("div",{className:"well-slot-mid"},
+            React.createElement("div",{className:"well-slot-name"},"SAUNA + COLD PLUNGE"),
+            React.createElement("div",{className:`well-slot-status${ismine?" wss-mine":taken?" wss-taken":""}`},
+              ismine?"Your booking \u2713":taken?"Unavailable":"Available"
+            )
+          ),
+          !past&&(ismine
+            ?React.createElement("button",{className:"well-btn wb-cancel",onClick:()=>handleCancel(time)},"Cancel")
+            :taken
+              ?React.createElement("button",{className:"well-btn wb-taken",disabled:true},"Taken")
+              :React.createElement("button",{className:"well-btn wb-book",onClick:()=>handleBook(time),disabled:isBusy},isBusy?"...":"Book")
+          )
+        );
+      })
+    )
+  );
+}
+
 // ── Community Board ───────────────────────────────────────────────────────────
-function CommunityView({session,isAdmin,showToast}){
-  const [posts,   setPosts]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [text,    setText]    = useState("");
-  const [posting, setPosting] = useState(false);
-  const MAX_CHARS = 300;
+function CommunityView({session,isAdmin,showToast,memberPhotos}){
+  const [posts,  setPosts]  = useState([]);
+  const [loading,setLoading]= useState(true);
+  const [text,   setText]   = useState("");
+  const [posting,setPosting]= useState(false);
+  const MAX_CHARS=300;
 
   useEffect(()=>{loadPosts();const id=setInterval(loadPosts,30000);return()=>clearInterval(id);},[]);
 
   async function loadPosts(){
-    const data=await sbGet("posts","order=created_at.desc&limit=50");
+    const data=await sbGet("posts","order=pinned.desc,created_at.desc&limit=60");
     setPosts(data||[]);setLoading(false);
   }
 
   async function handlePost(){
-    const content=text.trim();
-    if(!content||content.length>MAX_CHARS)return;
+    const content=text.trim();if(!content||content.length>MAX_CHARS)return;
     setPosting(true);
-    const post={author_email:session.email,author_name:session.name,content,created_at:Date.now()};
+    const post={author_email:session.email,author_name:session.name,content,created_at:Date.now(),likes:[],pinned:false};
     const ok=await sbPost("posts",post);
-    if(ok){setPosts(prev=>[{...post,id:"temp-"+Date.now()},...prev]);setText("");}
-    else showToast("Failed to post — try again");
+    if(ok){setPosts(prev=>[post,...prev].sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||(b.created_at-a.created_at)));setText("");}
+    else showToast("Failed to post \u2014 try again");
     setPosting(false);
+  }
+
+  async function handleLike(post,idx){
+    const likes=Array.isArray(post.likes)?post.likes:[];
+    const alreadyLiked=likes.includes(session.email);
+    const newLikes=alreadyLiked?likes.filter(e=>e!==session.email):[...likes,session.email];
+    const updated=[...posts];updated[idx]={...post,likes:newLikes};setPosts(updated);
+    await sbPatch("posts",`id=eq.${post.id}`,{likes:newLikes});
+  }
+
+  async function handlePin(post,idx){
+    const newPinned=!post.pinned;
+    const updated=[...posts];updated[idx]={...post,pinned:newPinned};
+    setPosts([...updated].sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||(b.created_at-a.created_at)));
+    await sbPatch("posts",`id=eq.${post.id}`,{pinned:newPinned});
   }
 
   async function handleDelete(id){
@@ -318,28 +494,32 @@ function CommunityView({session,isAdmin,showToast}){
 
   return React.createElement("div",{className:"comm-wrap"},
     React.createElement("div",{className:"comm-hdr"},
-      React.createElement("div",{className:"comm-title"},"COMMUNITY"),
+      React.createElement("div",{className:"comm-title"},"COMMUNITY BOARD"),
       React.createElement("div",{className:"comm-sub"},"TEAM 365 \u00B7 LAMONT"),
-      // Compose box
       React.createElement("div",{className:"comm-compose"},
         React.createElement("textarea",{className:"comm-textarea",placeholder:"Share something with the team...",value:text,maxLength:MAX_CHARS,onChange:e=>setText(e.target.value)}),
         React.createElement("div",{className:"comm-compose-footer"},
           React.createElement("div",{className:`comm-char${charsLeft<50?" warn":""}`},`${charsLeft}`),
-          React.createElement("button",{className:"comm-post-btn",onClick:handlePost,disabled:posting||!text.trim()||text.length>MAX_CHARS},posting?"...":"POST")
+          React.createElement("button",{className:"comm-post-btn",onClick:handlePost,disabled:posting||!text.trim()},posting?"...":"POST")
         )
       )
     ),
-    // Feed
     React.createElement("div",{className:"comm-feed"},
       loading?React.createElement("div",{className:"comm-loading"},"LOADING...")
       :posts.length===0?React.createElement("div",{className:"comm-empty"},"No posts yet.\nBe the first to post!")
       :posts.map((post,i)=>{
         const isAdminPost=post.author_email===ADMIN_EMAIL;
         const canDelete=isAdmin||(post.author_email===session.email);
-        return React.createElement("div",{key:post.id||i,className:`post-card${isAdminPost?" admin-post":""}`},
+        const likes=Array.isArray(post.likes)?post.likes:[];
+        const liked=likes.includes(session.email);
+        const photo=memberPhotos[post.author_email]||"";
+        return React.createElement("div",{key:post.id||i,className:`post-card${post.pinned?" pinned-post":""}${isAdminPost?" admin-post":""}`},
+          post.pinned&&React.createElement("div",{className:"post-pin-label"},"\uD83D\uDCCC PINNED"),
           React.createElement("div",{className:"post-top"},
             React.createElement("div",{className:"post-author"},
-              React.createElement("div",{className:`post-avatar${isAdminPost?" admin-av":""}`},initials(post.author_name)),
+              photo
+                ?React.createElement("img",{src:photo,className:"post-av-img",alt:""})
+                :React.createElement("div",{className:`post-av-init${isAdminPost?" admin-av":""}`},initials(post.author_name)),
               React.createElement("div",null,
                 React.createElement("div",{className:"post-name"},post.author_name.split(" ")[0]),
                 React.createElement("div",{className:`post-badge${isAdminPost?" admin-badge":""}`},isAdminPost?"COACH \u00B7 TEAM 365":"MEMBER")
@@ -348,7 +528,14 @@ function CommunityView({session,isAdmin,showToast}){
             React.createElement("div",{className:"post-time"},timeAgo(post.created_at))
           ),
           React.createElement("div",{className:"post-content"},post.content),
-          canDelete&&React.createElement("button",{className:"post-delete",onClick:()=>handleDelete(post.id)},"Delete")
+          React.createElement("div",{className:"post-actions"},
+            React.createElement("button",{className:`post-like-btn${liked?" liked":""}`,onClick:()=>handleLike(post,i)},
+              React.createElement("div",{className:"post-like-icon"},liked?"\u2665":"\u2661"),
+              React.createElement("div",{className:"post-like-count"},likes.length||"")
+            ),
+            isAdmin&&React.createElement("button",{className:`post-pin-btn${post.pinned?" pinned":""}`,onClick:()=>handlePin(post,i)},post.pinned?"Unpin":"Pin"),
+            canDelete&&React.createElement("button",{className:"post-delete",onClick:()=>handleDelete(post.id)},"Delete")
+          )
         );
       })
     )
@@ -369,12 +556,10 @@ function AdminView({bookings,setBookings,showToast}){
     }
   },[admSeg]);
 
-  const admDK=toDS(admDate);
-  const admDOW=admDate.getDay();
+  const admDK=toDS(admDate);const admDOW=admDate.getDay();
   const admTimes=admDOW===0?[]:admDOW===6?SAT_TIMES:WD_TIMES;
   const dayBks=bookings.filter(b=>b.date_key===admDK);
-  const totalBooked=dayBks.length;
-  const totalSpots=admTimes.length*MAX_SPOTS;
+  const totalBooked=dayBks.length;const totalSpots=admTimes.length*MAX_SPOTS;
 
   function changeDay(n){let d=new Date(admDate);d.setDate(d.getDate()+n);if(d.getDay()===0)d.setDate(d.getDate()+n);setAdmDate(d);setExpanded({});}
 
@@ -405,13 +590,12 @@ function AdminView({bookings,setBookings,showToast}){
       ),
       admTimes.length===0?React.createElement("div",{className:"adm-no-classes"},"No classes on Sunday")
       :admTimes.map(time=>{
-        const slotBks=dayBks.filter(b=>b.time===time);
-        const taken=slotBks.length;const isOpen=!!expanded[time];
+        const slotBks=dayBks.filter(b=>b.time===time);const taken=slotBks.length;const isOpen=!!expanded[time];
         return React.createElement("div",{key:time,className:"adm-class-card"},
           React.createElement("div",{className:"adm-class-hdr",onClick:()=>setExpanded(p=>({...p,[time]:!p[time]}))},
             React.createElement("div",{className:"adm-class-time"},fmt12(time)),
             React.createElement("div",{className:"adm-class-mid"},
-              React.createElement("div",{className:`adm-class-count${taken>=MAX_SPOTS?" full":""}`},`${taken} / ${MAX_SPOTS}${taken>=MAX_SPOTS?" · FULL":""}`),
+              React.createElement("div",{className:`adm-class-count${taken>=MAX_SPOTS?" full":""}`},`${taken} / ${MAX_SPOTS}${taken>=MAX_SPOTS?" \u00B7 FULL":""}`),
               React.createElement("div",{className:"adm-class-bars"},Array.from({length:MAX_SPOTS}).map((_,i)=>React.createElement("div",{key:i,className:`adm-bar${i<taken?" at":""}`})))
             ),
             React.createElement("div",{className:`adm-chev${isOpen?" open":""}`},"\u25BE")
@@ -426,56 +610,64 @@ function AdminView({bookings,setBookings,showToast}){
         );
       })
     ),
-    admSeg==="members"&&React.createElement(React.Fragment,null,
-      !membersLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
-      :React.createElement(React.Fragment,null,
-        React.createElement("div",{className:"adm-stats-row"},
-          React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},members.length),React.createElement("div",{className:"adm-stat-lbl"},"MEMBERS")),
-          React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},bookings.filter(b=>b.date_key>=toDS(new Date())).length),React.createElement("div",{className:"adm-stat-lbl"},"UPCOMING BKS"))
-        ),
-        members.map((mb,i)=>{
-          const mbBks=bookings.filter(b=>b.email===mb.email&&b.date_key>=toDS(new Date())).length;
-          return React.createElement("div",{key:i,className:"adm-member-card"},
-            React.createElement("div",{className:"adm-mc-name"},mb.name.toUpperCase()),
-            React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.email)),
-            mb.phone&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.phone)),
-            React.createElement("div",{className:"adm-mc-detail"},`Joined ${new Date(mb.joined_at).getFullYear()} \u00B7 ${mbBks} upcoming class${mbBks!==1?"es":""}`)
-          );
-        })
-      )
-    )
+    admSeg==="members"&&(!membersLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
+    :React.createElement(React.Fragment,null,
+      React.createElement("div",{className:"adm-stats-row"},
+        React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},members.length),React.createElement("div",{className:"adm-stat-lbl"},"MEMBERS")),
+        React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},bookings.filter(b=>b.date_key>=toDS(new Date())).length),React.createElement("div",{className:"adm-stat-lbl"},"UPCOMING BKS"))
+      ),
+      members.map((mb,i)=>{
+        const mbBks=bookings.filter(b=>b.email===mb.email&&b.date_key>=toDS(new Date())).length;
+        return React.createElement("div",{key:i,className:"adm-member-card"},
+          React.createElement("div",{className:"adm-mc-name"},mb.name.toUpperCase()),
+          React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.email)),
+          mb.phone&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.phone)),
+          React.createElement("div",{className:"adm-mc-detail"},`Joined ${new Date(mb.joined_at).getFullYear()} \u00B7 ${mbBks} upcoming class${mbBks!==1?"es":""}`)
+        );
+      })
+    ))
   );
 }
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 function App(){
-  const [ready,      setReady]      = useState(false);
-  const [session,    setSession]    = useState(null);
-  const [bookings,   setBookings]   = useState([]);
-  const [weekStart,  setWeekStart]  = useState(getWeekStart);
-  const [selDay,     setSelDay]     = useState(getInitDay);
-  const [tab,        setTab]        = useState("book");
-  const [authMode,   setAuthMode]   = useState("login");
-  const [authForm,   setAuthForm]   = useState({name:"",email:"",phone:"",password:""});
-  const [authErr,    setAuthErr]    = useState("");
-  const [authBusy,   setAuthBusy]   = useState(false);
-  const [bkBusy,     setBkBusy]     = useState({});
-  const [toast,      setToast]      = useState({msg:"",show:false});
-  const [showProf,   setShowProf]   = useState(false);
-  const [memberData, setMemberData] = useState(null);
-  const [profForm,   setProfForm]   = useState({name:"",email:"",phone:"",photo:"",newPw:"",confirmPw:""});
-  const [profErr,    setProfErr]    = useState("");
-  const [profOk,     setProfOk]     = useState("");
-  const [profBusy,   setProfBusy]   = useState(false);
-  const [cropSrc,    setCropSrc]    = useState(null);
+  const [ready,       setReady]       = useState(false);
+  const [session,     setSession]     = useState(null);
+  const [bookings,    setBookings]    = useState([]);
+  const [memberPhotos,setMemberPhotos]= useState({});
+  const [weekStart,   setWeekStart]   = useState(getWeekStart);
+  const [selDay,      setSelDay]      = useState(getInitDay);
+  const [tab,         setTab]         = useState("book");
+  const [authMode,    setAuthMode]    = useState("login");
+  const [authForm,    setAuthForm]    = useState({name:"",email:"",phone:"",password:""});
+  const [authErr,     setAuthErr]     = useState("");
+  const [authBusy,    setAuthBusy]    = useState(false);
+  const [bkBusy,      setBkBusy]      = useState({});
+  const [toast,       setToast]       = useState({msg:"",show:false});
+  const [showProf,    setShowProf]    = useState(false);
+  const [memberData,  setMemberData]  = useState(null);
+  const [profForm,    setProfForm]    = useState({name:"",email:"",phone:"",photo:"",newPw:"",confirmPw:""});
+  const [profErr,     setProfErr]     = useState("");
+  const [profOk,      setProfOk]      = useState("");
+  const [profBusy,    setProfBusy]    = useState(false);
+  const [cropSrc,     setCropSrc]     = useState(null);
   const photoRef=useRef(null);
   const isAdmin=session?.email===ADMIN_EMAIL;
 
   useEffect(()=>{
     (async()=>{
       const s=lsGet("t365-session",null);
-      if(s){setSession(s);const mb=await sbGet("members",`email=eq.${encodeURIComponent(s.email)}`);if(mb.length)setMemberData(mb[0]);}
-      await refreshBookings();setReady(true);
+      if(s){
+        setSession(s);
+        const mb=await sbGet("members",`email=eq.${encodeURIComponent(s.email)}`);
+        if(mb.length)setMemberData(mb[0]);
+      }
+      await refreshBookings();
+      // Load member photos for community
+      const allMembers=await sbGet("members","select=email,photo");
+      const photoMap={};(allMembers||[]).forEach(m=>{if(m.photo)photoMap[m.email]=m.photo;});
+      setMemberPhotos(photoMap);
+      setReady(true);
     })();
   },[]);
 
@@ -513,6 +705,7 @@ function App(){
       const mb=rows[0];
       if(mb.password!==hashPw(password)){setAuthErr("Incorrect password.");setAuthBusy(false);return;}
       const s={email:em,name:mb.name};lsSet("t365-session",s);setSession(s);setMemberData(mb);
+      if(mb.photo)setMemberPhotos(p=>({...p,[em]:mb.photo}));
     }else{
       const existing=await sbGet("members",`email=eq.${encodeURIComponent(em)}`);
       if(existing.length){setAuthErr("An account already exists with this email.");setAuthBusy(false);return;}
@@ -574,6 +767,7 @@ function App(){
     if(!ok){setProfErr("Update failed. Please try again.");setProfBusy(false);return;}
     const ns={email:em,name:name.trim()};
     lsSet("t365-session",ns);setSession(ns);setMemberData(d=>({...d,...upd,email:em}));
+    if(photo)setMemberPhotos(p=>({...p,[em]:photo}));
     setProfOk("Profile updated.");setProfErr("");setProfBusy(false);
   }
 
@@ -620,6 +814,7 @@ function App(){
       )
     ),
 
+    // CLASSES TAB
     tab==="book"&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"week-nav"},
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"\u2039"),
@@ -657,6 +852,7 @@ function App(){
       )
     ),
 
+    // MY CLASSES TAB
     tab==="my"&&React.createElement("div",{className:"my-wrap"},
       React.createElement("div",{className:"my-hdr"},"MY UPCOMING CLASSES"),
       myUpcoming.length===0?React.createElement("div",{className:"no-bk"},"No upcoming bookings")
@@ -675,18 +871,27 @@ function App(){
       })
     ),
 
-    tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast}),
+    // COMMUNITY TAB
+    tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos}),
+
+    // WELLNESS TAB
+    tab==="wellness"&&React.createElement(WellnessView,{session,showToast}),
+
+    // ADMIN TAB
     tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast}),
 
+    // Tab bar
     React.createElement("div",{className:"tab-bar"},
-      React.createElement("button",{className:`tab-btn${tab==="book"?" ta":""}`,onClick:()=>setTab("book")},"Book"),
+      React.createElement("button",{className:`tab-btn${tab==="book"?" ta":""}`,onClick:()=>setTab("book")},"Classes"),
       React.createElement("button",{className:`tab-btn${tab==="my"?" ta":""}`,onClick:()=>setTab("my")},"My Classes"),
       React.createElement("button",{className:`tab-btn${tab==="community"?" ta":""}`,onClick:()=>setTab("community")},"Community"),
+      React.createElement("button",{className:`tab-btn${tab==="wellness"?" ta":""}`,onClick:()=>setTab("wellness")},"Wellness"),
       isAdmin&&React.createElement("button",{className:`tab-btn${tab==="admin"?" ta":""}`,onClick:()=>setTab("admin")},"Admin")
     ),
     React.createElement("div",{className:"foot"},"EVERYDAY \u00B7 ALL YEAR ROUND"),
     React.createElement("div",{className:`toast${toast.show?" show":""}`},toast.msg),
 
+    // Profile overlay
     showProf&&React.createElement("div",{className:"prof-overlay"},
       React.createElement("div",{className:"prof-hdr"},React.createElement("div",{className:"prof-title"},"MY PROFILE"),React.createElement("button",{className:"prof-close",onClick:()=>setShowProf(false)},"\u2715")),
       React.createElement("div",{className:"prof-body"},
