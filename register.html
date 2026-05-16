@@ -88,6 +88,22 @@ const hashPw = s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)^s.charCode
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const today = ()=>{const d=new Date();return`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;};
 
+// Apps Script webhook for sending welcome email
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyTBLWR-uU69c_egATa0LH-z0Evjp630eGA6mUKvJFk4olI7hN-VVSgSmu3BGwEys3m/exec";
+
+async function sendWelcomeEmailViaScript(to, firstName, tempPassword) {
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: {"Content-Type": "text/plain"},
+      body: JSON.stringify({
+        action: "welcome",
+        to, firstName, tempPassword
+      })
+    });
+  } catch(e) { console.log("Email send error:", e); }
+}
 const PARQ = [
   "Has your doctor ever said that you have a heart condition and that you should only do physical activity recommended by a doctor?",
   "Do you feel pain in your chest when you do physical activity?",
@@ -246,7 +262,10 @@ async function handleSubmit(){
       ...regData
     };
     ok = await sbPost("members", member);
+    // Send welcome email for new members
+    if(ok) sendWelcomeEmailViaScript(email, firstName, tempPw);
   }
+
   if(!ok){
     errEl.textContent="Something went wrong. Please try again.";
     btn.disabled=false; btn.textContent="SUBMIT REGISTRATION";
@@ -257,13 +276,12 @@ async function handleSubmit(){
   document.getElementById("root").innerHTML = `
     <div class="success-page">
       <div class="success-icon">✓</div>
-      <div class="success-title">Welcome to the Team</div>
+      <div class="success-title">${isExisting ? "Form Updated" : "Welcome to the Team"}</div>
       <div class="success-body">
-        Your registration is complete, ${firstName}.<br><br>
-        Check your email for your login details.<br>
-        Your temporary password is:<br><br>
-        <strong style="font-size:18px;color:#fff;letter-spacing:0.1em;">${tempPw}</strong><br><br>
-        You can change this after your first login.
+        ${isExisting
+          ? `Thanks ${firstName}. Your health screening form has been updated successfully.`
+          : `Welcome ${firstName}. A welcome email with your login details and app install instructions has been sent to <strong style="color:#fff;">${email}</strong>.`
+        }
       </div>
       <a href="https://team365-booking.vercel.app" class="success-link">OPEN BOOKING APP</a>
     </div>`;
