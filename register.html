@@ -93,14 +93,15 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz5cruljVDUVScw
 
 async function sendWelcomeEmailViaScript(to, firstName, tempPassword) {
   try {
-    await fetch(APPS_SCRIPT_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: {"Content-Type": "text/plain"},
-      body: JSON.stringify({
-        action: "welcome",
-        to, firstName, tempPassword
-      })
+    const params = new URLSearchParams({
+      action: "welcome",
+      to: to,
+      firstName: firstName,
+      tempPassword: tempPassword
+    });
+    await fetch(APPS_SCRIPT_URL + "?" + params.toString(), {
+      method: "GET",
+      mode: "no-cors"
     });
   } catch(e) { console.log("Email send error:", e); }
 }
