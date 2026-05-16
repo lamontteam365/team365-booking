@@ -350,12 +350,37 @@ function ImageCropper({imageSrc,onSave,onCancel}){
 }
 
 // ── Member Profile Overlay (Admin) ────────────────────────────────────────────
-function MemberProfileOverlay({member,bookings,onClose}){
+function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
   const upcomingBks=bookings.filter(b=>b.email===member.email&&b.date_key>=toDS(new Date())).length;
+  const attendedBks=bookings.filter(b=>b.email===member.email&&b.date_key<toDS(new Date())).length;
   const joinDate=fmtJoinDate(member.joined_at);
   const PARQ_LABELS=["Heart condition","Chest pain during activity","Chest pain at rest","Dizziness/loss of consciousness","Bone or joint problem","Blood pressure medication","Other reason to avoid activity"];
   const PARQ_KEYS=["parq_heart","parq_chest_activity","parq_chest_rest","parq_dizziness","parq_joint","parq_blood_pressure","parq_other"];
   const anyYes=PARQ_KEYS.some(k=>member[k]==="Yes");
+  const [editingParq,setEditingParq]=useState(false);
+  const [parqEdits,setParqEdits]=useState({});
+  const [savingParq,setSavingParq]=useState(false);
+  const [parqOk,setParqOk]=useState(false);
+  const [togglingAdmin,setTogglingAdmin]=useState(false);
+  const [memberIsAdmin,setMemberIsAdmin]=useState(member.is_admin||false);
+
+  async function saveParq(){
+    setSavingParq(true);
+    const updates={};
+    PARQ_KEYS.forEach((k,i)=>{if(parqEdits[i]!==undefined)updates[k]=parqEdits[i];});
+    await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,updates);
+    Object.assign(member,updates);
+    setSavingParq(false);setEditingParq(false);setParqOk(true);
+    setTimeout(()=>setParqOk(false),2000);
+  }
+
+  async function toggleAdmin(){
+    if(member.email===ADMIN_EMAIL)return; // can't remove primary admin
+    setTogglingAdmin(true);
+    const newVal=!memberIsAdmin;
+    await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,{is_admin:newVal});
+    setMemberIsAdmin(newVal);setTogglingAdmin(false);
+  }
 
   function Row({label,value,type}){
     const cls=type==="yes"?"yes":type==="no"?"no":type==="na"?"na":"";
@@ -379,7 +404,23 @@ function MemberProfileOverlay({member,bookings,onClose}){
         React.createElement("div",null,
           React.createElement("div",{className:"mp-name"},(member.name||"").toUpperCase()),
           React.createElement("div",{className:"mp-meta"},`Joined ${joinDate}`),
-          React.createElement("div",{className:"mp-meta",style:{marginTop:2}},`${upcomingBks} upcoming booking${upcomingBks!==1?"s":""}`)
+          memberIsAdmin&&React.createElement("div",{className:"mp-meta",style:{color:"#4aaa66",marginTop:2}},"ADMIN")
+        )
+      ),
+
+      // Stats row
+      React.createElement("div",{className:"adm-stats-row",style:{marginBottom:20}},
+        React.createElement("div",{className:"adm-stat"},
+          React.createElement("div",{className:"adm-stat-num"},attendedBks),
+          React.createElement("div",{className:"adm-stat-lbl"},"ATTENDED")
+        ),
+        React.createElement("div",{className:"adm-stat"},
+          React.createElement("div",{className:"adm-stat-num"},upcomingBks),
+          React.createElement("div",{className:"adm-stat-lbl"},"UPCOMING")
+        ),
+        React.createElement("div",{className:"adm-stat"},
+          React.createElement("div",{className:"adm-stat-num"},attendedBks+upcomingBks),
+          React.createElement("div",{className:"adm-stat-lbl"},"TOTAL")
         )
       ),
 
@@ -396,15 +437,54 @@ function MemberProfileOverlay({member,bookings,onClose}){
       React.createElement(Row,{label:"Name",value:member.emergency_name}),
       React.createElement(Row,{label:"Phone",value:member.emergency_phone}),
 
-      // PAR-Q
-      React.createElement("div",{className:"mp-section"},
-        "HEALTH SCREENING",
-        anyYes?React.createElement("span",{style:{marginLeft:8,fontSize:9,color:"#e06040",fontWeight:600}}," \u26A0 MEDICAL NOTES"):" "
+      // PAR-Q with edit
+      React.createElement("div",{className:"mp-section",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
+        React.createElement("span",null,
+          "HEALTH SCREENING",
+          anyYes?React.createElement("span",{style:{marginLeft:8,fontSize:9,color:"#e06040",fontWeight:600}},"\u26A0 MEDICAL NOTES"):" "
+        ),
+        React.createElement("button",{
+          onClick:()=>{
+            if(!editingParq){
+              const init={};
+              PARQ_KEYS.forEach((k,i)=>{init[i]=member[k]||"No";});
+              setParqEdits(init);
+            }
+            setEditingParq(e=>!e);
+          },
+          style:{background:"none",border:"1px solid #333",color:"#888",fontSize:9,letterSpacing:"0.12em",padding:"3px 8px",borderRadius:3,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600}
+        },editingParq?"CANCEL":"EDIT")
       ),
-      ...PARQ_KEYS.map((k,i)=>React.createElement("div",{key:k,className:"mp-row"},
-        React.createElement("div",{className:"mp-label",style:{fontSize:9,maxWidth:"65%"}},PARQ_LABELS[i]),
-        React.createElement("span",{className:`parq-flag ${(member[k]||"No").toLowerCase()}`},member[k]||"No")
-      )),
+
+      editingParq
+        ?React.createElement(React.Fragment,null,
+          ...PARQ_KEYS.map((k,i)=>React.createElement("div",{key:k,style:{padding:"10px 0",borderBottom:"1px solid #0f0f0f"}},
+            React.createElement("div",{style:{fontSize:9,color:"#666",letterSpacing:"0.08em",marginBottom:6}},PARQ_LABELS[i]),
+            React.createElement("div",{style:{display:"flex",gap:8}},
+              ["Yes","No"].map(val=>React.createElement("button",{
+                key:val,
+                onClick:()=>setParqEdits(p=>({...p,[i]:val})),
+                style:{
+                  flex:1,padding:"8px",background:(parqEdits[i]||member[k]||"No")===val?(val==="Yes"?"#1a0808":"#081a08"):"#111",
+                  border:`1px solid ${(parqEdits[i]||member[k]||"No")===val?(val==="Yes"?"#4a2a2a":"#2a4a2a"):"#222"}`,
+                  color:(parqEdits[i]||member[k]||"No")===val?(val==="Yes"?"#e06040":"#4aaa66"):"#555",
+                  borderRadius:3,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.1em",cursor:"pointer"
+                }
+              },val))
+            )
+          )),
+          React.createElement("button",{
+            onClick:saveParq,disabled:savingParq,
+            style:{width:"100%",background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.15em",padding:"14px",borderRadius:3,cursor:"pointer",marginTop:12}
+          },savingParq?"SAVING...":"SAVE HEALTH SCREENING"),
+          parqOk&&React.createElement("div",{style:{fontSize:11,color:"#4aaa88",textAlign:"center",marginTop:8}},"Updated successfully")
+        )
+        :React.createElement(React.Fragment,null,
+          ...PARQ_KEYS.map((k,i)=>React.createElement("div",{key:k,className:"mp-row"},
+            React.createElement("div",{className:"mp-label",style:{fontSize:9,maxWidth:"65%"}},PARQ_LABELS[i]),
+            React.createElement("span",{className:`parq-flag ${(member[k]||"No").toLowerCase()}`},member[k]||"No")
+          ))
+        ),
 
       // Medical
       React.createElement("div",{className:"mp-section"},"MEDICAL INFORMATION"),
@@ -426,6 +506,21 @@ function MemberProfileOverlay({member,bookings,onClose}){
       member.signature&&React.createElement(React.Fragment,null,
         React.createElement("div",{className:"mp-section"},"SIGNATURE"),
         React.createElement("img",{src:member.signature,className:"sig-preview",alt:"signature"})
+      ),
+
+      // Admin controls
+      currentUserIsAdmin&&member.email!==ADMIN_EMAIL&&React.createElement(React.Fragment,null,
+        React.createElement("div",{className:"mp-section"},"ADMIN CONTROLS"),
+        React.createElement("button",{
+          onClick:toggleAdmin,disabled:togglingAdmin,
+          style:{
+            width:"100%",background:"transparent",
+            border:`1px solid ${memberIsAdmin?"#4a2a2a":"#2a4a2a"}`,
+            color:memberIsAdmin?"#e06040":"#4aaa66",
+            fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.15em",
+            padding:"14px",borderRadius:3,cursor:"pointer",marginTop:4
+          }
+        },togglingAdmin?"...":(memberIsAdmin?"REMOVE ADMIN ACCESS":"GRANT ADMIN ACCESS"))
       )
     )
   );
@@ -623,7 +718,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos}){
 }
 
 // ── Admin View ────────────────────────────────────────────────────────────────
-function AdminView({bookings,setBookings,showToast}){
+function AdminView({bookings,setBookings,showToast,isAdmin}){
   const [admSeg,setAdmSeg]=useState("members");
   const [admDate,setAdmDate]=useState(new Date());
   const [expanded,setExpanded]=useState({});
@@ -673,7 +768,7 @@ function AdminView({bookings,setBookings,showToast}){
   const admDateLabel=`${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][admDOW]} ${admDate.getDate()} ${MONTHS[admDate.getMonth()]} ${admDate.getFullYear()}`;
 
   return React.createElement("div",{className:"adm-wrap"},
-    selectedMember&&React.createElement(MemberProfileOverlay,{member:selectedMember,bookings,onClose:()=>setSelectedMember(null)}),
+    selectedMember&&React.createElement(MemberProfileOverlay,{member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin}),
     React.createElement("div",{className:"adm-title"},"ADMIN"),
     React.createElement("div",{className:"adm-seg"},
       React.createElement("button",{className:`adm-seg-btn${admSeg==="members"?" aas":""}`,onClick:()=>setAdmSeg("members")},"MEMBERS"),
@@ -800,7 +895,7 @@ function App(){
   const [cropSrc,setCropSrc]=useState(null);
   const [myWellness,setMyWellness]=useState([]);
   const photoRef=useRef(null);
-  const isAdmin=session?.email===ADMIN_EMAIL;
+  const isAdmin=session?.email===ADMIN_EMAIL||memberData?.is_admin===true;
 
   useEffect(()=>{
     (async()=>{
@@ -829,7 +924,8 @@ function App(){
 
   async function refreshBookings(){
     const keys=[];const now=new Date();now.setHours(0,0,0,0);
-    for(let i=0;i<28;i++){const d=addDays(now,i);if(d.getDay()!==0)keys.push(toDS(d));}
+    // Load past 90 days + next 28 days for attended count
+    for(let i=-90;i<28;i++){const d=addDays(now,i);if(d.getDay()!==0)keys.push(toDS(d));}
     if(!keys.length)return;
     const data=await sbGet("bookings",`date_key=in.(${keys.join(",")})&select=email,name,date_key,time`);
     setBookings(data||[]);
@@ -1058,7 +1154,7 @@ function App(){
 
     tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos}),
     tab==="wellness"&&React.createElement(WellnessView,{session,showToast}),
-    tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast}),
+    tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin}),
 
     React.createElement("div",{className:"tab-bar"},
       React.createElement("button",{className:`tab-btn${tab==="book"?" ta":""}`,onClick:()=>setTab("book")},"Classes"),
