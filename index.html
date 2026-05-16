@@ -149,8 +149,9 @@ html,body{background:#080808;min-height:100vh}
 .toast{position:fixed;bottom:68px;left:50%;transform:translateX(-50%);background:#fff;color:#000;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.15em;padding:10px 22px;border-radius:3px;pointer-events:none;transition:opacity .3s;z-index:200;white-space:nowrap;opacity:0}
 .toast.show{opacity:1}
 .auth-page{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;background:#080808;font-family:'DM Sans',sans-serif}
-.auth-logo{font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:0.2em;margin-bottom:2px;color:#fff}
-.auth-tag{font-size:10px;letter-spacing:0.24em;color:#fff;margin-bottom:48px;font-weight:500}
+.auth-logo-sub{font-size:9px;letter-spacing:0.22em;color:#777;font-weight:500;margin-bottom:4px;text-align:center}
+.auth-logo{font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:0.2em;margin-bottom:2px;color:#fff;text-align:center}
+.auth-tag{font-size:8px;letter-spacing:0.22em;color:#555;margin-bottom:48px;font-weight:600;text-align:center}
 .auth-card{width:100%;max-width:380px}
 .auth-title{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:0.1em;margin-bottom:24px;color:#fff}
 .fl{display:block;font-size:10px;letter-spacing:0.18em;color:#bbb;font-weight:600;margin-bottom:7px}
@@ -632,6 +633,19 @@ function AdminView({bookings,setBookings,showToast}){
   const [wellAdmLoaded,setWellAdmLoaded]=useState(false);
   const [selectedMember,setSelectedMember]=useState(null);
 
+  function openMemberProfile(mb){
+    setSelectedMember(mb);
+    window.history.pushState({overlay:"member"},"");
+  }
+
+  useEffect(()=>{
+    const handlePop=()=>{
+      if(selectedMember){setSelectedMember(null);return;}
+    };
+    window.addEventListener("popstate",handlePop);
+    return()=>window.removeEventListener("popstate",handlePop);
+  },[selectedMember]);
+
   useEffect(()=>{
     if(admSeg==="members"&&!membersLoaded){
       sbGet("members","select=*&order=name.asc").then(data=>{setMembers(data||[]);setMembersLoaded(true);});
@@ -677,7 +691,7 @@ function AdminView({bookings,setBookings,showToast}){
       members.map((mb,i)=>{
         const mbBks=bookings.filter(b=>b.email===mb.email&&b.date_key>=toDS(new Date())).length;
         const joinDate=fmtJoinDate(mb.joined_at);
-        return React.createElement("div",{key:i,className:"adm-member-card",onClick:()=>setSelectedMember(mb)},
+        return React.createElement("div",{key:i,className:"adm-member-card",onClick:()=>openMemberProfile(mb)},
           React.createElement("div",{className:"adm-mc-top"},
             React.createElement("div",{className:"adm-mc-name"},(mb.name||"").toUpperCase()),
             React.createElement("div",{className:"adm-mc-chev"},"\u203a")
@@ -889,7 +903,17 @@ function App(){
   function openProf(){
     setProfForm({name:session.name,email:session.email,phone:memberData?.phone||"",photo:memberData?.photo||"",newPw:"",confirmPw:""});
     setProfErr("");setProfOk("");setShowProf(true);
+    window.history.pushState({overlay:"profile"},"");
   }
+
+  // Handle back button for all overlays
+  useEffect(()=>{
+    const handlePop=()=>{
+      if(showProf){setShowProf(false);return;}
+    };
+    window.addEventListener("popstate",handlePop);
+    return()=>window.removeEventListener("popstate",handlePop);
+  },[showProf]);
 
   function handlePhotoChange(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>setCropSrc(ev.target.result);reader.readAsDataURL(file);e.target.value="";}
   function handleCropSave(dataUrl){setProfForm(f=>({...f,photo:dataUrl}));setCropSrc(null);}
@@ -917,8 +941,9 @@ function App(){
   if(!ready)return React.createElement("div",{className:"loading-screen"},React.createElement("div",null,"TEAM 365"),React.createElement("div",{className:"loading-bar"},React.createElement("div",{className:"loading-fill"})));
 
   if(!session)return React.createElement("div",{className:"auth-page"},
+    React.createElement("div",{className:"auth-logo-sub"},"LAMONT"),
     React.createElement("div",{className:"auth-logo"},"TEAM 365"),
-    React.createElement("div",{className:"auth-tag"},"LAMONT"),
+    React.createElement("div",{className:"auth-tag"},"EVERYDAY. ALL YEAR ROUND."),
     React.createElement("div",{className:"auth-card"},
       React.createElement("div",{className:"auth-title"},authMode==="login"?"Welcome Back":"Join Team 365"),
       authMode==="signup"&&React.createElement(React.Fragment,null,
