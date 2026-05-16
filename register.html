@@ -105,6 +105,16 @@ async function sendWelcomeEmailViaScript(to, firstName, tempPassword) {
     });
   } catch(e) { console.log("Email send error:", e); }
 }
+
+async function logHealthToSheets(data) {
+  try {
+    const params = new URLSearchParams({action: "logHealth", ...data});
+    await fetch(APPS_SCRIPT_URL + "?" + params.toString(), {
+      method: "GET",
+      mode: "no-cors"
+    });
+  } catch(e) { console.log("Sheets log error:", e); }
+}
 const PARQ = [
   "Has your doctor ever said that you have a heart condition and that you should only do physical activity recommended by a doctor?",
   "Do you feel pain in your chest when you do physical activity?",
@@ -263,8 +273,22 @@ async function handleSubmit(){
       ...regData
     };
     ok = await sbPost("members", member);
-    // Send welcome email for new members
-    if(ok) sendWelcomeEmailViaScript(email, firstName, tempPw);
+    // Send welcome email and log to Sheets for new members
+    if(ok){
+      sendWelcomeEmailViaScript(email, firstName, tempPw);
+      logHealthToSheets({
+        name, email, phone,
+        dob, membershipType: memType,
+        emergencyName: eName, emergencyPhone: ePhone,
+        parqHeart: parqAnswers[0]||"", parqChestActivity: parqAnswers[1]||"",
+        parqChestRest: parqAnswers[2]||"", parqDizziness: parqAnswers[3]||"",
+        parqJoint: parqAnswers[4]||"", parqBloodPressure: parqAnswers[5]||"",
+        parqOther: parqAnswers[6]||"",
+        medicalConditions: medCond, medications: meds,
+        fitnessLevel, healthDeclaration, mediaConsent,
+        registrationDate: regDate
+      });
+    }
   }
 
   if(!ok){
