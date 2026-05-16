@@ -364,17 +364,14 @@ function generatePDF(data) {
   const W = 210, pad = 20;
   let y = 20;
 
-  // Header
-  doc.setFillColor(8,8,8);
-  doc.rect(0,0,W,45,"F");
-  doc.setTextColor(255,255,255);
-  doc.setFontSize(7);doc.setFont("helvetica","normal");
-  doc.text("LAMONT", W/2, y, {align:"center"});y+=5;
-  doc.setFontSize(22);doc.setFont("helvetica","bold");
-  doc.text("TEAM 365", W/2, y, {align:"center"});y+=6;
-  doc.setFontSize(6);doc.setFont("helvetica","normal");
-  doc.text("EVERYDAY. ALL YEAR ROUND.", W/2, y, {align:"center"});y+=12;
+  // Header - no background, left aligned
   doc.setTextColor(0,0,0);
+  doc.setFontSize(7);doc.setFont("helvetica","normal");
+  doc.text("LAMONT", pad, y);y+=5;
+  doc.setFontSize(20);doc.setFont("helvetica","bold");
+  doc.text("TEAM 365", pad, y);y+=6;
+  doc.setFontSize(6);doc.setFont("helvetica","normal");
+  doc.text("EVERYDAY. ALL YEAR ROUND.", pad, y);y+=12;
 
   // Title
   doc.setFontSize(16);doc.setFont("helvetica","bold");
