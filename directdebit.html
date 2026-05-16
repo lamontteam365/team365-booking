@@ -223,11 +223,11 @@ function renderForm() {
       <div class="section-label">DIRECT DEBIT AUTHORITY</div>
       <div class="decl-box">
         <div class="decl-text">
-          I/We authorise <strong>Lamont Team 365</strong> (the Initiator) to debit my/our account with all amounts the Initiator reasonably considers I/we owe the Initiator from time to time, and I/we authorise the bank to accept and act on those instructions.<br><br>
-          I/We acknowledge that:<br>
+          I authorise <strong>Lamont Team 365</strong> (the Initiator) to debit my account with all amounts the Initiator reasonably considers I owe from time to time, and I authorise the bank to accept and act on those instructions.<br><br>
+          I acknowledge that:<br>
           · This membership is <strong>locked in for the full term selected</strong> and is non-cancellable during that period.<br>
           · The weekly fee shown will be debited at the frequency selected above.<br>
-          · I/We will be notified 5 days before membership renewal is due.<br>
+          · I will be notified 5 days before membership renewal is due.<br>
           · This authority will remain in force until cancelled in writing after the membership term ends.
         </div>
       </div>
@@ -364,14 +364,12 @@ function generatePDF(data) {
   const W = 210, pad = 20;
   let y = 20;
 
-  // Header - no background, left aligned
+  // Header - clean professional
   doc.setTextColor(0,0,0);
-  doc.setFontSize(7);doc.setFont("helvetica","normal");
-  doc.text("LAMONT", pad, y);y+=5;
   doc.setFontSize(20);doc.setFont("helvetica","bold");
-  doc.text("TEAM 365", pad, y);y+=6;
-  doc.setFontSize(6);doc.setFont("helvetica","normal");
-  doc.text("EVERYDAY. ALL YEAR ROUND.", pad, y);y+=12;
+  doc.text("TEAM 365", pad, y);y+=8;
+  doc.setFontSize(9);doc.setFont("helvetica","normal");doc.setTextColor(100,100,100);
+  doc.text("Lamont Collective · New Brighton · Christchurch", pad, y);y+=12;
 
   // Title
   doc.setFontSize(16);doc.setFont("helvetica","bold");
@@ -422,7 +420,7 @@ function generatePDF(data) {
   doc.setTextColor(0,0,0);doc.setFontSize(8);doc.setFont("helvetica","bold");
   doc.text("DIRECT DEBIT AUTHORITY DECLARATION",pad+2,y+4);y+=10;
   doc.setFont("helvetica","normal");doc.setFontSize(7);doc.setTextColor(60,60,60);
-  const decl = `I/We authorise Lamont Team 365 to debit my/our account with all amounts owed from time to time. I/We acknowledge this membership is locked in for the full ${data.term}-month term and is non-cancellable during that period. The amount of $${data.freqAmt} will be debited ${data.frequency.toLowerCase()}. I/We will be notified 5 days before membership renewal.`;
+  const decl = `I authorise Lamont Team 365 to debit my account with all amounts owed from time to time. I acknowledge this membership is locked in for the full ${data.term}-month term and is non-cancellable during that period. The amount of $${data.freqAmt} will be debited ${data.frequency.toLowerCase()}. I will be notified 5 days before membership renewal.`;
   const lines = doc.splitTextToSize(decl, W-pad*2-4);
   doc.text(lines, pad+2, y);y+=lines.length*4+8;
 
@@ -509,7 +507,27 @@ async function handleSubmit(){
   const startDate=new Date();
   const endDate=addMonths(startDate,selectedTerm);
   const endStr=`${endDate.getDate()} ${MONTHS[endDate.getMonth()]} ${endDate.getFullYear()}`;
-  const sigData=sigCanvas.toDataURL("image/png",0.7);
+  // Convert signature to black on white for PDF
+  const sigData = (()=>{
+    const offCanvas = document.createElement("canvas");
+    offCanvas.width = sigCanvas.width;
+    offCanvas.height = sigCanvas.height;
+    const offCtx = offCanvas.getContext("2d");
+    // White background
+    offCtx.fillStyle = "#ffffff";
+    offCtx.fillRect(0,0,offCanvas.width,offCanvas.height);
+    // Draw original signature inverted (white lines become black)
+    offCtx.drawImage(sigCanvas,0,0);
+    // Invert colors
+    const imgData = offCtx.getImageData(0,0,offCanvas.width,offCanvas.height);
+    for(let i=0;i<imgData.data.length;i+=4){
+      imgData.data[i]   = 255-imgData.data[i];
+      imgData.data[i+1] = 255-imgData.data[i+1];
+      imgData.data[i+2] = 255-imgData.data[i+2];
+    }
+    offCtx.putImageData(imgData,0,0);
+    return offCanvas.toDataURL("image/png",0.9);
+  })();
 
   const ddData={
     name,email,phone,
