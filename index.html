@@ -579,7 +579,7 @@ function AdminView({bookings,setBookings,showToast}){
   const admDateLabel=`${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][admDOW]} ${admDate.getDate()} ${MONTHS[admDate.getMonth()]} ${admDate.getFullYear()}`;
 
   return React.createElement("div",{className:"adm-wrap"},
-    React.createElement("div",{className:"adm-top"},React.createElement("div",null,React.createElement("div",{className:"adm-title"},"ADMIN"),React.createElement("div",{className:"adm-sub"},"TEAM 365 \u00B7 LAMONT"))),
+    React.createElement("div",{className:"adm-top"},React.createElement("div",null,React.createElement("div",{className:"adm-title"},"ADMIN"))),
     React.createElement("div",{className:"adm-seg"},
       React.createElement("button",{className:`adm-seg-btn${admSeg==="members"?" aas":""}`,onClick:()=>setAdmSeg("members")},"MEMBERS"),
       React.createElement("button",{className:`adm-seg-btn${admSeg==="classes"?" aas":""}`,onClick:()=>setAdmSeg("classes")},"CLASSES"),
@@ -659,8 +659,8 @@ function AdminView({bookings,setBookings,showToast}){
             React.createElement("div",{className:"adm-class-hdr",style:{cursor:"default"}},
               React.createElement("div",{className:"adm-class-time"},fmt12(time)),
               React.createElement("div",{className:"adm-class-mid"},
-                React.createElement("div",{className:"adm-class-count"},bk?`Booked \u2713`:"Available"),
-                bk&&React.createElement("div",{className:"adm-member-email",style:{marginTop:4}},bk.name+" \u00B7 "+bk.email)
+                React.createElement("div",{className:"adm-class-count",style:bk?{color:"#4aaa66"}:{}},bk?"Booked \u2713":"Available"),
+                bk&&React.createElement("div",{className:"adm-member-email",style:{marginTop:4,color:"#4aaa66"}},bk.name+" \u00B7 "+bk.email)
               ),
               bk&&React.createElement("button",{className:"adm-remove-btn",style:{fontSize:11},onClick:async()=>{
                 setWellAdmBks(prev=>prev.filter(b=>!(b.date_key===admDK&&b.time===time)));
@@ -966,9 +966,9 @@ function App(){
     // Tab bar
     React.createElement("div",{className:"tab-bar"},
       React.createElement("button",{className:`tab-btn${tab==="book"?" ta":""}`,onClick:()=>setTab("book")},"Classes"),
+      React.createElement("button",{className:`tab-btn${tab==="wellness"?" ta":""}`,onClick:()=>setTab("wellness")},"Wellness"),
       React.createElement("button",{className:`tab-btn${tab==="my"?" ta":""}`,onClick:()=>setTab("my")},"My Bookings"),
       React.createElement("button",{className:`tab-btn${tab==="community"?" ta":""}`,onClick:()=>setTab("community")},"Community"),
-      React.createElement("button",{className:`tab-btn${tab==="wellness"?" ta":""}`,onClick:()=>setTab("wellness")},"Wellness"),
       isAdmin&&React.createElement("button",{className:`tab-btn${tab==="admin"?" ta":""}`,onClick:()=>setTab("admin")},"Admin")
     ),
     React.createElement("div",{className:"foot"},"EVERYDAY \u00B7 ALL YEAR ROUND"),
