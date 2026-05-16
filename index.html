@@ -144,9 +144,9 @@ html,body{background:#080808;min-height:100vh}
 .post-actions{display:flex;align-items:center;gap:14px}
 .post-like-btn{display:flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;padding:0;transition:opacity .15s}
 .post-like-btn:hover{opacity:0.7}
-.post-like-icon{font-size:13px;line-height:1}
-.post-like-count{font-size:10px;letter-spacing:0.06em;color:#777;font-weight:500}
-.post-like-btn.liked .post-like-count{color:#e06040}
+.post-like-icon{font-size:14px;line-height:1;color:#cc2200}
+.post-like-count{font-size:10px;letter-spacing:0.06em;color:#888;font-weight:500}
+.post-like-btn.liked .post-like-count{color:#cc2200}
 .post-delete{background:none;border:none;color:#333;cursor:pointer;font-size:10px;font-family:'DM Sans',sans-serif;letter-spacing:0.06em;transition:color .15s;font-weight:500}
 .post-delete:hover{color:#e06040}
 .post-pin-btn{background:none;border:none;color:#444;cursor:pointer;font-size:10px;font-family:'DM Sans',sans-serif;letter-spacing:0.06em;transition:color .15s;font-weight:500}
@@ -495,7 +495,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos}){
   return React.createElement("div",{className:"comm-wrap"},
     React.createElement("div",{className:"comm-hdr"},
       React.createElement("div",{className:"comm-title"},"COMMUNITY BOARD"),
-      React.createElement("div",{className:"comm-sub"},"TEAM 365 \u00B7 LAMONT"),
+      React.createElement("div",{className:"comm-sub"},"EVERYDAY \u00B7 ALL YEAR ROUND"),
       React.createElement("div",{className:"comm-compose"},
         React.createElement("textarea",{className:"comm-textarea",placeholder:"Share something with the team...",value:text,maxLength:MAX_CHARS,onChange:e=>setText(e.target.value)}),
         React.createElement("div",{className:"comm-compose-footer"},
@@ -531,7 +531,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos}){
           React.createElement("div",{className:"post-actions"},
             React.createElement("button",{className:`post-like-btn${liked?" liked":""}`,onClick:()=>handleLike(post,i)},
               React.createElement("div",{className:"post-like-icon"},liked?"\u2665":"\u2661"),
-              React.createElement("div",{className:"post-like-count"},likes.length||"")
+              React.createElement("div",{className:"post-like-count"},likes.length>0?likes.length:"0")
             ),
             isAdmin&&React.createElement("button",{className:`post-pin-btn${post.pinned?" pinned":""}`,onClick:()=>handlePin(post,i)},post.pinned?"Unpin":"Pin"),
             canDelete&&React.createElement("button",{className:"post-delete",onClick:()=>handleDelete(post.id)},"Delete")
@@ -549,10 +549,17 @@ function AdminView({bookings,setBookings,showToast}){
   const [expanded,setExpanded]= useState({});
   const [members, setMembers] = useState([]);
   const [membersLoaded,setMembersLoaded]=useState(false);
+  const [wellAdmBks, setWellAdmBks] = useState([]);
+  const [wellAdmLoaded, setWellAdmLoaded] = useState(false);
 
   useEffect(()=>{
     if(admSeg==="members"&&!membersLoaded){
       sbGet("members","select=email,name,phone,joined_at&order=name.asc").then(data=>{setMembers(data||[]);setMembersLoaded(true);});
+    }
+    if(admSeg==="wellness"&&!wellAdmLoaded){
+      const keys=[];const now=new Date();now.setHours(0,0,0,0);
+      for(let i=0;i<28;i++){const d=addDays(now,i);if(d.getDay()!==0)keys.push(toDS(d));}
+      sbGet("wellness_bookings",`date_key=in.(${keys.join(",")})&select=email,name,date_key,time`).then(data=>{setWellAdmBks(data||[]);setWellAdmLoaded(true);});
     }
   },[admSeg]);
 
@@ -575,7 +582,8 @@ function AdminView({bookings,setBookings,showToast}){
     React.createElement("div",{className:"adm-top"},React.createElement("div",null,React.createElement("div",{className:"adm-title"},"ADMIN"),React.createElement("div",{className:"adm-sub"},"TEAM 365 \u00B7 LAMONT"))),
     React.createElement("div",{className:"adm-seg"},
       React.createElement("button",{className:`adm-seg-btn${admSeg==="classes"?" aas":""}`,onClick:()=>setAdmSeg("classes")},"CLASSES"),
-      React.createElement("button",{className:`adm-seg-btn${admSeg==="members"?" aas":""}`,onClick:()=>setAdmSeg("members")},"MEMBERS")
+      React.createElement("button",{className:`adm-seg-btn${admSeg==="members"?" aas":""}`,onClick:()=>setAdmSeg("members")},"MEMBERS"),
+      React.createElement("button",{className:`adm-seg-btn${admSeg==="wellness"?" aas":""}`,onClick:()=>setAdmSeg("wellness")},"WELLNESS")
     ),
     admSeg==="classes"&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"adm-day-nav"},
@@ -625,7 +633,45 @@ function AdminView({bookings,setBookings,showToast}){
           React.createElement("div",{className:"adm-mc-detail"},`Joined ${new Date(mb.joined_at).getFullYear()} \u00B7 ${mbBks} upcoming class${mbBks!==1?"es":""}`)
         );
       })
-    ))
+    )),
+    admSeg==="wellness"&&React.createElement(React.Fragment,null,
+      React.createElement("div",{className:"adm-day-nav"},
+        React.createElement("button",{className:"adm-arrow",onClick:()=>changeDay(-1)},"\u2039"),
+        React.createElement("div",{className:"adm-day-lbl"},admDateLabel.toUpperCase()),
+        React.createElement("button",{className:"adm-arrow",onClick:()=>changeDay(1)},"\u203a")
+      ),
+      !wellAdmLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
+      :React.createElement(React.Fragment,null,
+        React.createElement("div",{className:"adm-stats-row"},
+          React.createElement("div",{className:"adm-stat"},
+            React.createElement("div",{className:"adm-stat-num"},wellAdmBks.filter(b=>b.date_key===admDK).length),
+            React.createElement("div",{className:"adm-stat-lbl"},"BOOKED TODAY")
+          ),
+          React.createElement("div",{className:"adm-stat"},
+            React.createElement("div",{className:"adm-stat-num"},WELL_TIMES.length-wellAdmBks.filter(b=>b.date_key===admDK).length),
+            React.createElement("div",{className:"adm-stat-lbl"},"AVAILABLE")
+          )
+        ),
+        admDOW===0?React.createElement("div",{className:"adm-no-classes"},"No wellness on Sunday")
+        :WELL_TIMES.map(time=>{
+          const bk=wellAdmBks.find(b=>b.date_key===admDK&&b.time===time);
+          return React.createElement("div",{key:time,className:"adm-class-card"},
+            React.createElement("div",{className:"adm-class-hdr",style:{cursor:"default"}},
+              React.createElement("div",{className:"adm-class-time"},fmt12(time)),
+              React.createElement("div",{className:"adm-class-mid"},
+                React.createElement("div",{className:"adm-class-count"},bk?`Booked \u2713`:"Available"),
+                bk&&React.createElement("div",{className:"adm-member-email",style:{marginTop:4}},bk.name+" \u00B7 "+bk.email)
+              ),
+              bk&&React.createElement("button",{className:"adm-remove-btn",style:{fontSize:11},onClick:async()=>{
+                setWellAdmBks(prev=>prev.filter(b=>!(b.date_key===admDK&&b.time===time)));
+                await sbDelete("wellness_bookings",`email=eq.${encodeURIComponent(bk.email)}&date_key=eq.${admDK}&time=eq.${encodeURIComponent(time)}`);
+                showToast("Wellness booking removed");
+              }},"Remove")
+            )
+          );
+        })
+      )
+    )
   );
 }
 
