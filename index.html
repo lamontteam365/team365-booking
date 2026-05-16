@@ -17,8 +17,6 @@
 html,body{background:#080808;min-height:100vh}
 #root{min-height:100vh}
 .app{font-family:'DM Sans',sans-serif;background:#080808;color:#fff;min-height:100vh;display:flex;flex-direction:column;max-width:480px;margin:0 auto}
-
-/* ── Header ── */
 .hdr{padding:20px 20px 0;display:flex;justify-content:space-between;align-items:center}
 .logo-sub{font-size:9px;letter-spacing:0.22em;color:#fff;font-weight:500}
 .logo{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:0.15em;line-height:1;color:#fff}
@@ -26,15 +24,11 @@ html,body{background:#080808;min-height:100vh}
 .avatar-init-sm{width:38px;height:38px;border-radius:50%;background:#1a1a1a;border:1px solid #333;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:14px;color:#999;cursor:pointer;flex-shrink:0}
 .name-lbl{font-size:10px;letter-spacing:0.12em;color:#fff;font-weight:600;text-align:center;margin-top:5px}
 .edit-lbl{font-size:9px;letter-spacing:0.1em;color:#888;text-align:center;margin-top:1px}
-
-/* ── Week nav ── */
 .week-nav{display:flex;align-items:center;padding:18px 14px 0}
 .wk-arrow{background:none;border:none;color:#888;cursor:pointer;font-size:24px;padding:4px 10px;line-height:1;transition:color .15s}
 .wk-arrow:hover:not(:disabled){color:#fff}
 .wk-arrow:disabled{color:#333;cursor:default}
 .wk-label{flex:1;text-align:center;font-size:10px;letter-spacing:0.18em;color:#fff;font-weight:600}
-
-/* ── Day strip ── */
 .day-strip{display:flex;gap:5px;padding:10px 16px 0;overflow-x:auto;scrollbar-width:none}
 .day-strip::-webkit-scrollbar{display:none}
 .day-btn{flex:1;min-width:44px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;background:#0e0e0e;border:1px solid #222;border-radius:6px;cursor:pointer;transition:all .15s}
@@ -49,8 +43,6 @@ html,body{background:#080808;min-height:100vh}
 .d-dot{width:4px;height:4px;border-radius:50%;background:transparent}
 .day-btn.dhb .d-dot{background:#666}
 .day-btn.da.dhb .d-dot{background:#888}
-
-/* ── Class list ── */
 .cls-wrap{flex:1;padding:14px 16px;display:flex;flex-direction:column;gap:7px}
 .day-hdr{font-size:9px;letter-spacing:0.22em;font-weight:600;margin-bottom:6px;line-height:1.6}
 .day-hdr span{color:#fff}
@@ -75,8 +67,6 @@ html,body{background:#080808;min-height:100vh}
 .c-btn.bc{background:transparent;color:#8a2515;border:1px solid #3a1208;cursor:pointer;font-size:10px}
 .c-btn.bc:hover{border-color:#8a2515;color:#e06040}
 .c-btn:disabled{opacity:.4;cursor:not-allowed}
-
-/* ── My Classes ── */
 .my-wrap{padding:18px 16px;flex:1;overflow-y:auto}
 .my-hdr{font-size:10px;letter-spacing:0.22em;color:#fff;font-weight:600;margin-bottom:14px}
 .my-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:7px;margin-bottom:7px}
@@ -86,11 +76,8 @@ html,body{background:#080808;min-height:100vh}
 .my-x{font-size:10px;letter-spacing:0.08em;color:#666;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:color .15s;font-weight:500}
 .my-x:hover{color:#e06040}
 .no-bk{text-align:center;padding:48px 0;font-size:11px;letter-spacing:0.16em;color:#444;line-height:2.4}
-
-/* ── Wellness tab ── */
 .well-wrap{flex:1;overflow-y:auto}
 .well-hdr{padding:16px 16px 0}
-.well-title-row{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
 .well-title{font-size:10px;letter-spacing:0.22em;color:#fff;font-weight:600}
 .well-sub{font-size:9px;letter-spacing:0.14em;color:#888;font-weight:500;margin-bottom:14px}
 .well-badge{display:inline-flex;align-items:center;gap:6px;background:#111;border:1px solid #222;border-radius:20px;padding:4px 10px;margin-bottom:14px}
@@ -98,7 +85,6 @@ html,body{background:#080808;min-height:100vh}
 .well-badge-txt{font-size:9px;letter-spacing:0.14em;color:#888;font-weight:600}
 .well-slots{padding:0 16px 16px;display:flex;flex-direction:column;gap:7px}
 .well-slot{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:7px}
-.well-slot.ws-booked{border-color:#333}
 .well-slot.ws-mine{border-color:#2a3a2a}
 .well-slot.ws-past{opacity:0.3;pointer-events:none}
 .well-slot-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;min-width:72px}
@@ -114,8 +100,6 @@ html,body{background:#080808;min-height:100vh}
 .well-btn.wb-cancel{background:transparent;color:#8a2515;border:1px solid #3a1208;font-size:10px;cursor:pointer}
 .well-btn.wb-cancel:hover{border-color:#8a2515;color:#e06040}
 .well-btn:disabled{opacity:.4;cursor:not-allowed}
-
-/* ── Community ── */
 .comm-wrap{display:flex;flex-direction:column;flex:1;overflow:hidden}
 .comm-hdr{padding:16px 16px 0;flex-shrink:0}
 .comm-title{font-size:10px;letter-spacing:0.22em;color:#fff;font-weight:600;margin-bottom:2px}
@@ -131,11 +115,8 @@ html,body{background:#080808;min-height:100vh}
 .comm-post-btn:disabled{background:#2a2a2a;color:#777;cursor:not-allowed}
 .comm-feed{flex:1;overflow-y:auto;padding:0 16px 16px}
 .comm-feed::-webkit-scrollbar{width:0}
-
-/* Post cards */
 .post-card{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:8px;padding:13px 14px;margin-bottom:8px}
 .post-card.pinned-post{border-color:#2a2a2a;background:#111;border-left:2px solid #fff}
-.post-card.admin-post{background:#0f0f0f}
 .post-pin-label{font-size:8px;letter-spacing:0.18em;color:#888;font-weight:600;margin-bottom:8px}
 .post-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
 .post-author{display:flex;align-items:center;gap:9px}
@@ -160,8 +141,6 @@ html,body{background:#080808;min-height:100vh}
 .post-pin-btn.pinned{color:#888}
 .comm-loading{text-align:center;padding:32px;font-size:10px;letter-spacing:0.18em;color:#333}
 .comm-empty{text-align:center;padding:48px 16px;font-size:11px;letter-spacing:0.16em;color:#333;line-height:2.4}
-
-/* ── Tab bar ── */
 .tab-bar{display:flex;border-top:1px solid #1a1a1a;margin-top:auto}
 .tab-btn{flex:1;padding:12px 2px;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:8.5px;letter-spacing:0.12em;color:#777;font-weight:600;transition:color .15s;white-space:nowrap}
 .tab-btn.ta{color:#fff;border-top:1px solid #fff;margin-top:-1px}
@@ -169,8 +148,6 @@ html,body{background:#080808;min-height:100vh}
 .foot{text-align:center;font-size:9px;letter-spacing:0.22em;color:#fff;padding:9px 0 13px}
 .toast{position:fixed;bottom:68px;left:50%;transform:translateX(-50%);background:#fff;color:#000;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.15em;padding:10px 22px;border-radius:3px;pointer-events:none;transition:opacity .3s;z-index:200;white-space:nowrap;opacity:0}
 .toast.show{opacity:1}
-
-/* ── Auth ── */
 .auth-page{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;background:#080808;font-family:'DM Sans',sans-serif}
 .auth-logo{font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:0.2em;margin-bottom:2px;color:#fff}
 .auth-tag{font-size:10px;letter-spacing:0.24em;color:#fff;margin-bottom:48px;font-weight:500}
@@ -187,8 +164,9 @@ html,body{background:#080808;min-height:100vh}
 .auth-sw{text-align:center;margin-top:22px;font-size:12px;color:#888;letter-spacing:0.04em}
 .auth-sw button{background:none;border:none;color:#ccc;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;text-decoration:underline;text-underline-offset:3px;font-weight:500}
 .auth-sw button:hover{color:#fff}
-
-/* ── Profile ── */
+.auth-reg{text-align:center;margin-top:14px;font-size:11px;color:#555;letter-spacing:0.04em}
+.auth-reg a{color:#888;text-decoration:underline;text-underline-offset:3px}
+.auth-reg a:hover{color:#fff}
 .prof-overlay{position:fixed;inset:0;background:#080808;z-index:50;display:flex;flex-direction:column;max-width:480px;margin:0 auto;overflow-y:auto}
 .prof-hdr{display:flex;align-items:center;justify-content:space-between;padding:20px 20px 0;flex-shrink:0}
 .prof-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:0.15em;color:#fff}
@@ -210,8 +188,6 @@ html,body{background:#080808;min-height:100vh}
 .prof-logout:hover{border-color:#666;color:#aaa}
 .prof-err{font-size:12px;color:#e06040;letter-spacing:0.04em;margin-top:10px;line-height:1.5}
 .prof-ok{font-size:12px;color:#4aaa88;letter-spacing:0.06em;margin-top:10px;font-weight:500}
-
-/* ── Crop ── */
 .crop-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.97);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
 .crop-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.15em;color:#fff;margin-bottom:20px}
 .crop-canvas-wrap{position:relative;width:280px;height:280px;border-radius:50%;overflow:hidden;border:2px solid #444;cursor:grab;touch-action:none}
@@ -224,12 +200,13 @@ html,body{background:#080808;min-height:100vh}
 .zoom-lbl{font-size:9px;letter-spacing:0.18em;color:#777;font-weight:600;white-space:nowrap}
 .zoom-slider{flex:1;-webkit-appearance:none;appearance:none;height:2px;background:#333;border-radius:1px;outline:none;cursor:pointer}
 .zoom-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;cursor:pointer}
-
-/* ── Admin ── */
+.loading-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#080808;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.2em;color:#555;gap:16px}
+.loading-bar{width:120px;height:1px;background:#1a1a1a;border-radius:1px;overflow:hidden}
+.loading-fill{height:100%;background:#fff;border-radius:1px;animation:ld 1.5s ease-in-out infinite}
+@keyframes ld{0%{width:0}50%{width:100%}100%{width:0}}
+/* Admin */
 .adm-wrap{padding:16px;flex:1;overflow-y:auto}
-.adm-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-.adm-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.15em;color:#fff}
-.adm-sub{font-size:9px;letter-spacing:0.2em;color:#777;font-weight:600}
+.adm-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.15em;color:#fff;margin-bottom:16px}
 .adm-seg{display:flex;gap:6px;margin-bottom:16px}
 .adm-seg-btn{flex:1;padding:9px;background:#0e0e0e;border:1px solid #2a2a2a;border-radius:5px;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.14em;color:#888;font-weight:600;cursor:pointer;transition:all .15s}
 .adm-seg-btn.aas{background:#fff;color:#000;border-color:#fff}
@@ -250,7 +227,7 @@ html,body{background:#080808;min-height:100vh}
 .adm-bar.at{background:#4aaa66}
 .adm-chev{font-size:14px;color:#555;transition:transform .2s}
 .adm-chev.open{transform:rotate(180deg)}
-.adm-members{border-top:1px solid #141414}
+.adm-members-list{border-top:1px solid #141414}
 .adm-member-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #0f0f0f}
 .adm-member-row:last-child{border-bottom:none}
 .adm-member-name{font-size:13px;color:#fff;font-weight:500}
@@ -259,20 +236,46 @@ html,body{background:#080808;min-height:100vh}
 .adm-remove-btn:hover{color:#e06040}
 .adm-empty{text-align:center;padding:14px;font-size:10px;letter-spacing:0.14em;color:#333;font-weight:500}
 .adm-no-classes{text-align:center;padding:48px 0;font-size:11px;letter-spacing:0.16em;color:#333;line-height:2.4}
-.adm-member-card{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:8px;padding:13px 14px;margin-bottom:8px}
-.adm-mc-name{font-family:'Bebas Neue',sans-serif;font-size:18px;color:#fff;letter-spacing:0.06em;margin-bottom:4px}
-.adm-mc-detail{font-size:10px;letter-spacing:0.08em;color:#777;font-weight:500;margin-bottom:2px}
-.adm-mc-detail span{color:#aaa}
 .adm-stats-row{display:flex;gap:8px;margin-bottom:16px}
 .adm-stat{flex:1;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:7px;padding:12px;text-align:center}
 .adm-stat-num{font-family:'Bebas Neue',sans-serif;font-size:32px;color:#fff;line-height:1}
 .adm-stat-lbl{font-size:9px;letter-spacing:0.16em;color:#666;font-weight:600;margin-top:3px}
-
-/* ── Loading ── */
-.loading-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#080808;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.2em;color:#555;gap:16px}
-.loading-bar{width:120px;height:1px;background:#1a1a1a;border-radius:1px;overflow:hidden}
-.loading-fill{height:100%;background:#fff;border-radius:1px;animation:ld 1.5s ease-in-out infinite}
-@keyframes ld{0%{width:0}50%{width:100%}100%{width:0}}
+/* Member cards - tappable */
+.adm-member-card{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:8px;padding:14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
+.adm-member-card:hover{border-color:#333}
+.adm-mc-top{display:flex;align-items:center;justify-content:space-between}
+.adm-mc-name{font-family:'Bebas Neue',sans-serif;font-size:18px;color:#fff;letter-spacing:0.06em}
+.adm-mc-chev{font-size:14px;color:#444}
+.adm-mc-detail{font-size:10px;letter-spacing:0.08em;color:#777;font-weight:500;margin-top:3px}
+.adm-mc-detail span{color:#aaa}
+/* Member profile overlay */
+.member-profile-overlay{position:fixed;inset:0;background:#080808;z-index:60;display:flex;flex-direction:column;max-width:480px;margin:0 auto;overflow-y:auto;animation:su .2s ease}
+@keyframes su{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+.mp-hdr{display:flex;align-items:center;justify-content:space-between;padding:20px 20px 0;flex-shrink:0}
+.mp-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.15em;color:#fff}
+.mp-close{background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:4px;line-height:1;transition:color .15s}
+.mp-close:hover{color:#fff}
+.mp-body{padding:20px 20px 48px}
+.mp-avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid #333}
+.mp-avatar-init{width:64px;height:64px;border-radius:50%;background:#111;border:2px solid #222;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:24px;color:#555}
+.mp-top{display:flex;align-items:center;gap:16px;margin-bottom:24px}
+.mp-name{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:0.08em;color:#fff}
+.mp-meta{font-size:10px;letter-spacing:0.1em;color:#777;margin-top:3px}
+.mp-section{font-size:9px;letter-spacing:0.22em;color:#666;font-weight:600;margin:20px 0 10px;padding-top:16px;border-top:1px solid #141414}
+.mp-section:first-of-type{margin-top:0;border-top:none;padding-top:0}
+.mp-row{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid #0f0f0f}
+.mp-row:last-child{border-bottom:none}
+.mp-label{font-size:10px;letter-spacing:0.1em;color:#555;font-weight:500;flex-shrink:0;margin-right:12px}
+.mp-value{font-size:11px;color:#ccc;font-weight:400;text-align:right;line-height:1.5}
+.mp-value.yes{color:#4aaa66}
+.mp-value.no{color:#e06040}
+.mp-value.na{color:#444}
+.mp-bks-count{font-family:'Bebas Neue',sans-serif;font-size:28px;color:#fff;margin-bottom:2px}
+.mp-bks-lbl{font-size:9px;letter-spacing:0.16em;color:#555}
+.parq-flag{display:inline-block;padding:2px 8px;border-radius:2px;font-size:9px;letter-spacing:0.1em;font-weight:600}
+.parq-flag.yes{background:#1a0808;color:#e06040}
+.parq-flag.no{background:#081a08;color:#4aaa66}
+.sig-preview{width:100%;max-height:80px;object-fit:contain;border:1px solid #1a1a1a;border-radius:4px;background:#0a0a0a}
 </style>
 </head>
 <body>
@@ -315,6 +318,7 @@ const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
 const getWeekStart=()=>{const now=new Date();const m=mondayOf(now);return now.getDay()===0?addDays(m,7):m;};
 const getInitDay=()=>{const d=new Date().getDay();return d===0?0:Math.min(d-1,5);};
 function timeAgo(ts){const s=Math.floor((Date.now()-ts)/1000);if(s<60)return"just now";if(s<3600)return`${Math.floor(s/60)}m ago`;if(s<86400)return`${Math.floor(s/3600)}h ago`;return`${Math.floor(s/86400)}d ago`;}
+const fmtJoinDate=ts=>{if(!ts)return"Unknown";const d=new Date(ts);return`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;};
 
 // ── Image Cropper ─────────────────────────────────────────────────────────────
 function ImageCropper({imageSrc,onSave,onCancel}){
@@ -344,12 +348,94 @@ function ImageCropper({imageSrc,onSave,onCancel}){
   );
 }
 
+// ── Member Profile Overlay (Admin) ────────────────────────────────────────────
+function MemberProfileOverlay({member,bookings,onClose}){
+  const upcomingBks=bookings.filter(b=>b.email===member.email&&b.date_key>=toDS(new Date())).length;
+  const joinDate=fmtJoinDate(member.joined_at);
+  const PARQ_LABELS=["Heart condition","Chest pain during activity","Chest pain at rest","Dizziness/loss of consciousness","Bone or joint problem","Blood pressure medication","Other reason to avoid activity"];
+  const PARQ_KEYS=["parq_heart","parq_chest_activity","parq_chest_rest","parq_dizziness","parq_joint","parq_blood_pressure","parq_other"];
+  const anyYes=PARQ_KEYS.some(k=>member[k]==="Yes");
+
+  function Row({label,value,type}){
+    const cls=type==="yes"?"yes":type==="no"?"no":type==="na"?"na":"";
+    return React.createElement("div",{className:"mp-row"},
+      React.createElement("div",{className:"mp-label"},label),
+      React.createElement("div",{className:`mp-value ${cls}`},value||"\u2014")
+    );
+  }
+
+  return React.createElement("div",{className:"member-profile-overlay"},
+    React.createElement("div",{className:"mp-hdr"},
+      React.createElement("div",{className:"mp-title"},"MEMBER PROFILE"),
+      React.createElement("button",{className:"mp-close",onClick:onClose},"\u2715")
+    ),
+    React.createElement("div",{className:"mp-body"},
+      // Top
+      React.createElement("div",{className:"mp-top"},
+        member.photo
+          ?React.createElement("img",{src:member.photo,className:"mp-avatar",alt:""})
+          :React.createElement("div",{className:"mp-avatar-init"},initials(member.name||"?")),
+        React.createElement("div",null,
+          React.createElement("div",{className:"mp-name"},(member.name||"").toUpperCase()),
+          React.createElement("div",{className:"mp-meta"},`Joined ${joinDate}`),
+          React.createElement("div",{className:"mp-meta",style:{marginTop:2}},`${upcomingBks} upcoming booking${upcomingBks!==1?"s":""}`)
+        )
+      ),
+
+      // Contact
+      React.createElement("div",{className:"mp-section"},"CONTACT DETAILS"),
+      React.createElement(Row,{label:"Email",value:member.email}),
+      React.createElement(Row,{label:"Phone",value:member.phone}),
+      React.createElement(Row,{label:"Date of Birth",value:member.dob}),
+      React.createElement(Row,{label:"Membership",value:member.membership_type}),
+      React.createElement(Row,{label:"Registered",value:member.registration_date}),
+
+      // Emergency
+      React.createElement("div",{className:"mp-section"},"EMERGENCY CONTACT"),
+      React.createElement(Row,{label:"Name",value:member.emergency_name}),
+      React.createElement(Row,{label:"Phone",value:member.emergency_phone}),
+
+      // PAR-Q
+      React.createElement("div",{className:"mp-section"},
+        "HEALTH SCREENING",
+        anyYes?React.createElement("span",{style:{marginLeft:8,fontSize:9,color:"#e06040",fontWeight:600}}," \u26A0 MEDICAL NOTES"):" "
+      ),
+      ...PARQ_KEYS.map((k,i)=>React.createElement("div",{key:k,className:"mp-row"},
+        React.createElement("div",{className:"mp-label",style:{fontSize:9,maxWidth:"65%"}},PARQ_LABELS[i]),
+        React.createElement("span",{className:`parq-flag ${(member[k]||"No").toLowerCase()}`},member[k]||"No")
+      )),
+
+      // Medical
+      React.createElement("div",{className:"mp-section"},"MEDICAL INFORMATION"),
+      React.createElement(Row,{label:"Conditions",value:member.medical_conditions||"None"}),
+      React.createElement(Row,{label:"Medications",value:member.medications||"None"}),
+
+      // Fitness
+      React.createElement("div",{className:"mp-section"},"FITNESS LEVEL"),
+      React.createElement("div",{className:"mp-row"},
+        React.createElement("div",{className:"mp-value",style:{textAlign:"left",color:"#ccc"}},member.fitness_level||"\u2014")
+      ),
+
+      // Declarations
+      React.createElement("div",{className:"mp-section"},"DECLARATIONS"),
+      React.createElement(Row,{label:"Health Declaration",value:member.health_declaration||"\u2014",type:member.health_declaration==="Yes"?"yes":"no"}),
+      React.createElement(Row,{label:"Media Consent",value:member.media_consent||"\u2014",type:member.media_consent==="Yes"?"yes":"no"}),
+
+      // Signature
+      member.signature&&React.createElement(React.Fragment,null,
+        React.createElement("div",{className:"mp-section"},"SIGNATURE"),
+        React.createElement("img",{src:member.signature,className:"sig-preview",alt:"signature"})
+      )
+    )
+  );
+}
+
 // ── Wellness View ─────────────────────────────────────────────────────────────
 function WellnessView({session,showToast}){
-  const [wellBks,  setWellBks]  = useState([]);
-  const [weekStart,setWeekStart]= useState(getWeekStart);
-  const [selDay,   setSelDay]   = useState(getInitDay);
-  const [busy,     setBusy]     = useState({});
+  const [wellBks,setWellBks]=useState([]);
+  const [weekStart,setWeekStart]=useState(getWeekStart);
+  const [selDay,setSelDay]=useState(getInitDay);
+  const [busy,setBusy]=useState({});
 
   useEffect(()=>{loadWellBks();},[]);
 
@@ -369,8 +455,7 @@ function WellnessView({session,showToast}){
   const weekDots=weekDates.map(d=>session&&wellBks.some(b=>b.date_key===toDS(d)&&b.email===session.email));
 
   function isPastSlot(time){
-    if(isPastD(selDate))return true;
-    if(!isToday(selDate))return false;
+    if(isPastD(selDate))return true;if(!isToday(selDate))return false;
     const now=new Date();const[h,m]=time.split(":").map(Number);
     return(h*60+m+45)<(now.getHours()*60+now.getMinutes());
   }
@@ -399,20 +484,14 @@ function WellnessView({session,showToast}){
     React.createElement("div",{className:"well-hdr"},
       React.createElement("div",{className:"well-title"},"WELLNESS"),
       React.createElement("div",{className:"well-sub"},"SAUNA \u00B7 COLD PLUNGE \u00B7 45 MIN SESSION"),
-      React.createElement("div",{className:"well-badge"},
-        React.createElement("div",{className:"well-badge-dot"}),
-        React.createElement("div",{className:"well-badge-txt"},"ONE PERSON PER SESSION")
-      ),
-      // Week nav
+      React.createElement("div",{className:"well-badge"},React.createElement("div",{className:"well-badge-dot"}),React.createElement("div",{className:"well-badge-txt"},"ONE PERSON PER SESSION")),
       React.createElement("div",{className:"week-nav",style:{padding:"0 0 10px"}},
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"\u2039"),
         React.createElement("div",{className:"wk-label"},`${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} \u2013 ${MONTHS[weekDates[5].getMonth()]} ${weekDates[5].getDate()}  ${weekDates[0].getFullYear()}`),
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,7))},"\u203a")
       ),
-      // Day strip
       React.createElement("div",{className:"day-strip",style:{padding:"0 0 12px"}},
-        weekDates.map((d,i)=>React.createElement("button",{key:i,onClick:()=>setSelDay(i),
-          className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}${weekDots[i]?" dhb":""}`},
+        weekDates.map((d,i)=>React.createElement("button",{key:i,onClick:()=>setSelDay(i),className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}${weekDots[i]?" dhb":""}`},
           React.createElement("div",{className:"d-name"},DAY_SHORT[i]),
           React.createElement("div",{className:"d-num"},d.getDate()),
           React.createElement("div",{className:"d-dot"})
@@ -429,21 +508,17 @@ function WellnessView({session,showToast}){
         const ismine=bk&&bk.email===session?.email;
         const taken=!!bk&&!ismine;
         const past=isPastSlot(time);
-        const lk=`${selDK}-${time}`;
-        const isBusy=!!busy[lk];
-        return React.createElement("div",{key:time,className:`well-slot${ismine?" ws-mine":bk?" ws-booked":""}${past?" ws-past":""}`},
+        const lk=`${selDK}-${time}`;const isBusy=!!busy[lk];
+        return React.createElement("div",{key:time,className:`well-slot${ismine?" ws-mine":""}${past?" ws-past":""}`},
           React.createElement("div",{className:"well-slot-time"},fmt12(time)),
           React.createElement("div",{className:"well-slot-mid"},
             React.createElement("div",{className:"well-slot-name"},"SAUNA + COLD PLUNGE"),
-            React.createElement("div",{className:`well-slot-status${ismine?" wss-mine":taken?" wss-taken":""}`},
-              ismine?"Your booking \u2713":taken?"Unavailable":"Available"
-            )
+            React.createElement("div",{className:`well-slot-status${ismine?" wss-mine":taken?" wss-taken":""}`},ismine?"Your booking \u2713":taken?"Unavailable":"Available")
           ),
           !past&&(ismine
             ?React.createElement("button",{className:"well-btn wb-cancel",onClick:()=>handleCancel(time)},"Cancel")
-            :taken
-              ?React.createElement("button",{className:"well-btn wb-taken",disabled:true},"Taken")
-              :React.createElement("button",{className:"well-btn wb-book",onClick:()=>handleBook(time),disabled:isBusy},isBusy?"...":"Book")
+            :taken?React.createElement("button",{className:"well-btn wb-taken",disabled:true},"Taken")
+            :React.createElement("button",{className:"well-btn wb-book",onClick:()=>handleBook(time),disabled:isBusy},isBusy?"...":"Book")
           )
         );
       })
@@ -453,10 +528,10 @@ function WellnessView({session,showToast}){
 
 // ── Community Board ───────────────────────────────────────────────────────────
 function CommunityView({session,isAdmin,showToast,memberPhotos}){
-  const [posts,  setPosts]  = useState([]);
-  const [loading,setLoading]= useState(true);
-  const [text,   setText]   = useState("");
-  const [posting,setPosting]= useState(false);
+  const [posts,setPosts]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [text,setText]=useState("");
+  const [posting,setPosting]=useState(false);
   const MAX_CHARS=300;
 
   useEffect(()=>{loadPosts();const id=setInterval(loadPosts,30000);return()=>clearInterval(id);},[]);
@@ -472,7 +547,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos}){
     const post={author_email:session.email,author_name:session.name,content,created_at:Date.now(),likes:[],pinned:false};
     const ok=await sbPost("posts",post);
     if(ok){setPosts(prev=>[post,...prev].sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||(b.created_at-a.created_at)));setText("");}
-    else showToast("Failed to post \u2014 try again");
+    else showToast("Failed to post");
     setPosting(false);
   }
 
@@ -498,7 +573,6 @@ function CommunityView({session,isAdmin,showToast,memberPhotos}){
   }
 
   const charsLeft=MAX_CHARS-text.length;
-
   return React.createElement("div",{className:"comm-wrap"},
     React.createElement("div",{className:"comm-hdr"},
       React.createElement("div",{className:"comm-title"},"COMMUNITY BOARD"),
@@ -524,9 +598,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos}){
           post.pinned&&React.createElement("div",{className:"post-pin-label"},"\uD83D\uDCCC PINNED"),
           React.createElement("div",{className:"post-top"},
             React.createElement("div",{className:"post-author"},
-              photo
-                ?React.createElement("img",{src:photo,className:"post-av-img",alt:""})
-                :React.createElement("div",{className:`post-av-init${isAdminPost?" admin-av":""}`},initials(post.author_name)),
+              photo?React.createElement("img",{src:photo,className:"post-av-img",alt:""}):React.createElement("div",{className:`post-av-init${isAdminPost?" admin-av":""}`},initials(post.author_name)),
               React.createElement("div",null,
                 React.createElement("div",{className:"post-name"},post.author_name.split(" ")[0]),
                 React.createElement("div",{className:`post-badge${isAdminPost?" admin-badge":""}`},isAdminPost?"COACH \u00B7 TEAM 365":"MEMBER")
@@ -551,17 +623,18 @@ function CommunityView({session,isAdmin,showToast,memberPhotos}){
 
 // ── Admin View ────────────────────────────────────────────────────────────────
 function AdminView({bookings,setBookings,showToast}){
-  const [admSeg,  setAdmSeg]  = useState("classes");
-  const [admDate, setAdmDate] = useState(new Date());
-  const [expanded,setExpanded]= useState({});
-  const [members, setMembers] = useState([]);
+  const [admSeg,setAdmSeg]=useState("members");
+  const [admDate,setAdmDate]=useState(new Date());
+  const [expanded,setExpanded]=useState({});
+  const [members,setMembers]=useState([]);
   const [membersLoaded,setMembersLoaded]=useState(false);
-  const [wellAdmBks, setWellAdmBks] = useState([]);
-  const [wellAdmLoaded, setWellAdmLoaded] = useState(false);
+  const [wellAdmBks,setWellAdmBks]=useState([]);
+  const [wellAdmLoaded,setWellAdmLoaded]=useState(false);
+  const [selectedMember,setSelectedMember]=useState(null);
 
   useEffect(()=>{
     if(admSeg==="members"&&!membersLoaded){
-      sbGet("members","select=email,name,phone,joined_at&order=name.asc").then(data=>{setMembers(data||[]);setMembersLoaded(true);});
+      sbGet("members","select=*&order=name.asc").then(data=>{setMembers(data||[]);setMembersLoaded(true);});
     }
     if(admSeg==="wellness"&&!wellAdmLoaded){
       const keys=[];const now=new Date();now.setHours(0,0,0,0);
@@ -586,12 +659,37 @@ function AdminView({bookings,setBookings,showToast}){
   const admDateLabel=`${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][admDOW]} ${admDate.getDate()} ${MONTHS[admDate.getMonth()]} ${admDate.getFullYear()}`;
 
   return React.createElement("div",{className:"adm-wrap"},
-    React.createElement("div",{className:"adm-top"},React.createElement("div",null,React.createElement("div",{className:"adm-title"},"ADMIN"))),
+    selectedMember&&React.createElement(MemberProfileOverlay,{member:selectedMember,bookings,onClose:()=>setSelectedMember(null)}),
+    React.createElement("div",{className:"adm-title"},"ADMIN"),
     React.createElement("div",{className:"adm-seg"},
       React.createElement("button",{className:`adm-seg-btn${admSeg==="members"?" aas":""}`,onClick:()=>setAdmSeg("members")},"MEMBERS"),
       React.createElement("button",{className:`adm-seg-btn${admSeg==="classes"?" aas":""}`,onClick:()=>setAdmSeg("classes")},"CLASSES"),
       React.createElement("button",{className:`adm-seg-btn${admSeg==="wellness"?" aas":""}`,onClick:()=>setAdmSeg("wellness")},"WELLNESS")
     ),
+
+    // MEMBERS
+    admSeg==="members"&&(!membersLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
+    :React.createElement(React.Fragment,null,
+      React.createElement("div",{className:"adm-stats-row"},
+        React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},members.length),React.createElement("div",{className:"adm-stat-lbl"},"MEMBERS")),
+        React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},bookings.filter(b=>b.date_key>=toDS(new Date())).length),React.createElement("div",{className:"adm-stat-lbl"},"UPCOMING BKS"))
+      ),
+      members.map((mb,i)=>{
+        const mbBks=bookings.filter(b=>b.email===mb.email&&b.date_key>=toDS(new Date())).length;
+        const joinDate=fmtJoinDate(mb.joined_at);
+        return React.createElement("div",{key:i,className:"adm-member-card",onClick:()=>setSelectedMember(mb)},
+          React.createElement("div",{className:"adm-mc-top"},
+            React.createElement("div",{className:"adm-mc-name"},(mb.name||"").toUpperCase()),
+            React.createElement("div",{className:"adm-mc-chev"},"\u203a")
+          ),
+          React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.email)),
+          mb.phone&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.phone)),
+          React.createElement("div",{className:"adm-mc-detail"},`Joined ${joinDate} \u00B7 ${mbBks} upcoming booking${mbBks!==1?"s":""}`)
+        );
+      })
+    )),
+
+    // CLASSES
     admSeg==="classes"&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"adm-day-nav"},
         React.createElement("button",{className:"adm-arrow",onClick:()=>changeDay(-1)},"\u2039"),
@@ -615,7 +713,7 @@ function AdminView({bookings,setBookings,showToast}){
             ),
             React.createElement("div",{className:`adm-chev${isOpen?" open":""}`},"\u25BE")
           ),
-          isOpen&&React.createElement("div",{className:"adm-members"},
+          isOpen&&React.createElement("div",{className:"adm-members-list"},
             slotBks.length===0?React.createElement("div",{className:"adm-empty"},"NO BOOKINGS")
             :slotBks.map((bk,i)=>React.createElement("div",{key:i,className:"adm-member-row"},
               React.createElement("div",null,React.createElement("div",{className:"adm-member-name"},bk.name),React.createElement("div",{className:"adm-member-email"},bk.email)),
@@ -625,22 +723,8 @@ function AdminView({bookings,setBookings,showToast}){
         );
       })
     ),
-    admSeg==="members"&&(!membersLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
-    :React.createElement(React.Fragment,null,
-      React.createElement("div",{className:"adm-stats-row"},
-        React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},members.length),React.createElement("div",{className:"adm-stat-lbl"},"MEMBERS")),
-        React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},bookings.filter(b=>b.date_key>=toDS(new Date())).length),React.createElement("div",{className:"adm-stat-lbl"},"UPCOMING BKS"))
-      ),
-      members.map((mb,i)=>{
-        const mbBks=bookings.filter(b=>b.email===mb.email&&b.date_key>=toDS(new Date())).length;
-        return React.createElement("div",{key:i,className:"adm-member-card"},
-          React.createElement("div",{className:"adm-mc-name"},mb.name.toUpperCase()),
-          React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.email)),
-          mb.phone&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.phone)),
-          React.createElement("div",{className:"adm-mc-detail"},`Joined ${new Date(mb.joined_at).getFullYear()} \u00B7 ${mbBks} upcoming class${mbBks!==1?"es":""}`)
-        );
-      })
-    )),
+
+    // WELLNESS
     admSeg==="wellness"&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"adm-day-nav"},
         React.createElement("button",{className:"adm-arrow",onClick:()=>changeDay(-1)},"\u2039"),
@@ -650,35 +734,29 @@ function AdminView({bookings,setBookings,showToast}){
       !wellAdmLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
       :React.createElement(React.Fragment,null,
         React.createElement("div",{className:"adm-stats-row"},
-          React.createElement("div",{className:"adm-stat"},
-            React.createElement("div",{className:"adm-stat-num"},wellAdmBks.filter(b=>b.date_key===admDK).length),
-            React.createElement("div",{className:"adm-stat-lbl"},"BOOKED TODAY")
-          ),
-          React.createElement("div",{className:"adm-stat"},
-            React.createElement("div",{className:"adm-stat-num"},WELL_TIMES.length-wellAdmBks.filter(b=>b.date_key===admDK).length),
-            React.createElement("div",{className:"adm-stat-lbl"},"AVAILABLE")
-          )
+          React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},wellAdmBks.filter(b=>b.date_key===admDK).length),React.createElement("div",{className:"adm-stat-lbl"},"BOOKED TODAY")),
+          React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},WELL_TIMES.length-wellAdmBks.filter(b=>b.date_key===admDK).length),React.createElement("div",{className:"adm-stat-lbl"},"AVAILABLE"))
         ),
         admDOW===0?React.createElement("div",{className:"adm-no-classes"},"No wellness on Sunday")
         :wellAdmBks.filter(b=>b.date_key===admDK).length===0
           ?React.createElement("div",{className:"adm-no-classes"},"No wellness bookings today")
           :WELL_TIMES.filter(time=>wellAdmBks.find(b=>b.date_key===admDK&&b.time===time)).map(time=>{
-          const bk=wellAdmBks.find(b=>b.date_key===admDK&&b.time===time);
-          return React.createElement("div",{key:time,className:"adm-class-card"},
-            React.createElement("div",{className:"adm-class-hdr",style:{cursor:"default"}},
-              React.createElement("div",{className:"adm-class-time"},fmt12(time)),
-              React.createElement("div",{className:"adm-class-mid"},
-                React.createElement("div",{className:"adm-class-count",style:{color:"#4aaa66"}},`Booked \u2713`),
-                React.createElement("div",{className:"adm-member-email",style:{marginTop:4,color:"#4aaa66"}},bk.name+" \u00B7 "+bk.email)
-              ),
-              React.createElement("button",{className:"adm-remove-btn",style:{fontSize:11},onClick:async()=>{
-                setWellAdmBks(prev=>prev.filter(b=>!(b.date_key===admDK&&b.time===time)));
-                await sbDelete("wellness_bookings",`email=eq.${encodeURIComponent(bk.email)}&date_key=eq.${admDK}&time=eq.${encodeURIComponent(time)}`);
-                showToast("Wellness booking removed");
-              }},"Remove")
-            )
-          );
-        })
+            const bk=wellAdmBks.find(b=>b.date_key===admDK&&b.time===time);
+            return React.createElement("div",{key:time,className:"adm-class-card"},
+              React.createElement("div",{className:"adm-class-hdr",style:{cursor:"default"}},
+                React.createElement("div",{className:"adm-class-time"},fmt12(time)),
+                React.createElement("div",{className:"adm-class-mid"},
+                  React.createElement("div",{className:"adm-class-count",style:{color:"#4aaa66"}},"Booked \u2713"),
+                  React.createElement("div",{className:"adm-member-email",style:{marginTop:4,color:"#4aaa66"}},bk.name+" \u00B7 "+bk.email)
+                ),
+                React.createElement("button",{className:"adm-remove-btn",style:{fontSize:11},onClick:async()=>{
+                  setWellAdmBks(prev=>prev.filter(b=>!(b.date_key===admDK&&b.time===time)));
+                  await sbDelete("wellness_bookings",`email=eq.${encodeURIComponent(bk.email)}&date_key=eq.${admDK}&time=eq.${encodeURIComponent(time)}`);
+                  showToast("Wellness booking removed");
+                }},"Remove")
+              )
+            );
+          })
       )
     )
   );
@@ -686,26 +764,27 @@ function AdminView({bookings,setBookings,showToast}){
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 function App(){
-  const [ready,       setReady]       = useState(false);
-  const [session,     setSession]     = useState(null);
-  const [bookings,    setBookings]    = useState([]);
-  const [memberPhotos,setMemberPhotos]= useState({});
-  const [weekStart,   setWeekStart]   = useState(getWeekStart);
-  const [selDay,      setSelDay]      = useState(getInitDay);
-  const [tab,         setTab]         = useState("book");
-  const [authMode,    setAuthMode]    = useState("login");
-  const [authForm,    setAuthForm]    = useState({name:"",email:"",phone:"",password:""});
-  const [authErr,     setAuthErr]     = useState("");
-  const [authBusy,    setAuthBusy]    = useState(false);
-  const [bkBusy,      setBkBusy]      = useState({});
-  const [toast,       setToast]       = useState({msg:"",show:false});
-  const [showProf,    setShowProf]    = useState(false);
-  const [memberData,  setMemberData]  = useState(null);
-  const [profForm,    setProfForm]    = useState({name:"",email:"",phone:"",photo:"",newPw:"",confirmPw:""});
-  const [profErr,     setProfErr]     = useState("");
-  const [profOk,      setProfOk]      = useState("");
-  const [profBusy,    setProfBusy]    = useState(false);
-  const [cropSrc,     setCropSrc]     = useState(null);
+  const [ready,setReady]=useState(false);
+  const [session,setSession]=useState(null);
+  const [bookings,setBookings]=useState([]);
+  const [memberPhotos,setMemberPhotos]=useState({});
+  const [weekStart,setWeekStart]=useState(getWeekStart);
+  const [selDay,setSelDay]=useState(getInitDay);
+  const [tab,setTab]=useState("book");
+  const [authMode,setAuthMode]=useState("login");
+  const [authForm,setAuthForm]=useState({name:"",email:"",phone:"",password:""});
+  const [authErr,setAuthErr]=useState("");
+  const [authBusy,setAuthBusy]=useState(false);
+  const [bkBusy,setBkBusy]=useState({});
+  const [toast,setToast]=useState({msg:"",show:false});
+  const [showProf,setShowProf]=useState(false);
+  const [memberData,setMemberData]=useState(null);
+  const [profForm,setProfForm]=useState({name:"",email:"",phone:"",photo:"",newPw:"",confirmPw:""});
+  const [profErr,setProfErr]=useState("");
+  const [profOk,setProfOk]=useState("");
+  const [profBusy,setProfBusy]=useState(false);
+  const [cropSrc,setCropSrc]=useState(null);
+  const [myWellness,setMyWellness]=useState([]);
   const photoRef=useRef(null);
   const isAdmin=session?.email===ADMIN_EMAIL;
 
@@ -718,7 +797,6 @@ function App(){
         if(mb.length)setMemberData(mb[0]);
       }
       await refreshBookings();
-      // Load member photos for community
       const allMembers=await sbGet("members","select=email,photo");
       const photoMap={};(allMembers||[]).forEach(m=>{if(m.photo)photoMap[m.email]=m.photo;});
       setMemberPhotos(photoMap);
@@ -727,6 +805,13 @@ function App(){
   },[]);
 
   useEffect(()=>{const id=setInterval(refreshBookings,30000);return()=>clearInterval(id);},[]);
+
+  useEffect(()=>{
+    if(!session)return;
+    const keys=[];const now=new Date();now.setHours(0,0,0,0);
+    for(let i=0;i<28;i++){const d=addDays(now,i);if(d.getDay()!==0)keys.push(toDS(d));}
+    sbGet("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=in.(${keys.join(",")})&select=email,name,date_key,time`).then(data=>setMyWellness(data||[]));
+  },[session]);
 
   async function refreshBookings(){
     const keys=[];const now=new Date();now.setHours(0,0,0,0);
@@ -745,14 +830,6 @@ function App(){
   const userBooked=(dk,t)=>session&&getBksFor(dk,t).some(b=>b.email===session.email);
   const weekDots=weekDates.map(d=>session&&bookings.some(b=>b.date_key===toDS(d)&&b.email===session.email));
   const myUpcoming=session?bookings.filter(b=>b.email===session.email&&b.date_key>=toDS(new Date())).sort((a,b)=>a.date_key.localeCompare(b.date_key)||a.time.localeCompare(b.time)):[];
-  const [myWellness, setMyWellness] = useState([]);
-
-  useEffect(()=>{
-    if(!session) return;
-    const keys=[];const now=new Date();now.setHours(0,0,0,0);
-    for(let i=0;i<28;i++){const d=addDays(now,i);if(d.getDay()!==0)keys.push(toDS(d));}
-    sbGet("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=in.(${keys.join(",")})&select=email,name,date_key,time`).then(data=>setMyWellness(data||[]));
-  },[session]);
 
   function showToast(msg){setToast({msg,show:true});setTimeout(()=>setToast(t=>({...t,show:false})),2200);}
 
@@ -860,6 +937,9 @@ function App(){
         authMode==="login"
           ?React.createElement(React.Fragment,null,"New member? ",React.createElement("button",{onClick:()=>{setAuthMode("signup");setAuthErr("");}},"Create an account"))
           :React.createElement(React.Fragment,null,"Already a member? ",React.createElement("button",{onClick:()=>{setAuthMode("login");setAuthErr("");}},"Log in"))
+      ),
+      React.createElement("div",{className:"auth-reg"},
+        React.createElement("a",{href:"/register.html"},"Complete registration & PAR-Q form")
       )
     ),
     React.createElement("div",{className:"foot",style:{marginTop:48}},"EVERYDAY \u00B7 ALL YEAR ROUND")
@@ -877,7 +957,6 @@ function App(){
       )
     ),
 
-    // CLASSES TAB
     tab==="book"&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"week-nav"},
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"\u2039"),
@@ -915,64 +994,47 @@ function App(){
       )
     ),
 
-    // MY CLASSES TAB
     tab==="my"&&React.createElement("div",{className:"my-wrap"},
       React.createElement("div",{className:"my-hdr"},"MY UPCOMING BOOKINGS"),
-
-      // Classes section
-      React.createElement("div",{className:"day-hdr",style:{marginBottom:10}},
-        React.createElement("span",null,"CLASSES")
-      ),
-      myUpcoming.length===0
-        ?React.createElement("div",{className:"no-bk",style:{padding:"16px 0 24px"}},"No upcoming classes")
-        :myUpcoming.map((bk,i)=>{
-          const d=new Date(bk.date_key+"T12:00:00");const dow=d.getDay();
-          const dayLbl=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][dow];
-          const sessIdx=dow===6?5:Math.max(0,dow-1);
-          return React.createElement("div",{key:i,className:"my-item"},
-            React.createElement("div",null,
-              React.createElement("div",{className:"my-date"},`${dayLbl.toUpperCase()} \u00B7 ${dateStr(d).toUpperCase()}`),
-              React.createElement("div",{className:"my-time"},fmt12(bk.time)),
-              React.createElement("div",{className:"my-sess"},DAY_SESS[sessIdx].toUpperCase())
-            ),
-            React.createElement("button",{className:"my-x",onClick:()=>handleCancel(bk.time,bk.date_key)},"Cancel")
-          );
-        }),
-
-      // Wellness section
-      React.createElement("div",{className:"day-hdr",style:{marginTop:20,marginBottom:10}},
-        React.createElement("span",null,"WELLNESS")
-      ),
-      myWellness.length===0
-        ?React.createElement("div",{className:"no-bk",style:{padding:"16px 0 24px"}},"No upcoming wellness sessions")
-        :myWellness.sort((a,b)=>a.date_key.localeCompare(b.date_key)||a.time.localeCompare(b.time)).map((bk,i)=>{
-          const d=new Date(bk.date_key+"T12:00:00");const dow=d.getDay();
-          const dayLbl=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][dow];
-          return React.createElement("div",{key:i,className:"my-item"},
-            React.createElement("div",null,
-              React.createElement("div",{className:"my-date"},`${dayLbl.toUpperCase()} \u00B7 ${dateStr(d).toUpperCase()}`),
-              React.createElement("div",{className:"my-time"},fmt12(bk.time)),
-              React.createElement("div",{className:"my-sess"},"SAUNA + COLD PLUNGE")
-            ),
-            React.createElement("button",{className:"my-x",onClick:async()=>{
-              setMyWellness(prev=>prev.filter(b=>!(b.date_key===bk.date_key&&b.time===bk.time)));
-              await sbDelete("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=eq.${bk.date_key}&time=eq.${encodeURIComponent(bk.time)}`);
-              showToast("Booking cancelled");
-            }},"Cancel")
-          );
-        })
+      React.createElement("div",{className:"day-hdr",style:{marginBottom:10}},React.createElement("span",null,"CLASSES")),
+      myUpcoming.length===0?React.createElement("div",{className:"no-bk",style:{padding:"16px 0 24px"}},"No upcoming classes")
+      :myUpcoming.map((bk,i)=>{
+        const d=new Date(bk.date_key+"T12:00:00");const dow=d.getDay();
+        const dayLbl=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][dow];
+        const sessIdx=dow===6?5:Math.max(0,dow-1);
+        return React.createElement("div",{key:i,className:"my-item"},
+          React.createElement("div",null,
+            React.createElement("div",{className:"my-date"},`${dayLbl.toUpperCase()} \u00B7 ${dateStr(d).toUpperCase()}`),
+            React.createElement("div",{className:"my-time"},fmt12(bk.time)),
+            React.createElement("div",{className:"my-sess"},DAY_SESS[sessIdx].toUpperCase())
+          ),
+          React.createElement("button",{className:"my-x",onClick:()=>handleCancel(bk.time,bk.date_key)},"Cancel")
+        );
+      }),
+      React.createElement("div",{className:"day-hdr",style:{marginTop:20,marginBottom:10}},React.createElement("span",null,"WELLNESS")),
+      myWellness.length===0?React.createElement("div",{className:"no-bk",style:{padding:"16px 0 24px"}},"No upcoming wellness sessions")
+      :myWellness.sort((a,b)=>a.date_key.localeCompare(b.date_key)||a.time.localeCompare(b.time)).map((bk,i)=>{
+        const d=new Date(bk.date_key+"T12:00:00");const dow=d.getDay();
+        const dayLbl=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][dow];
+        return React.createElement("div",{key:i,className:"my-item"},
+          React.createElement("div",null,
+            React.createElement("div",{className:"my-date"},`${dayLbl.toUpperCase()} \u00B7 ${dateStr(d).toUpperCase()}`),
+            React.createElement("div",{className:"my-time"},fmt12(bk.time)),
+            React.createElement("div",{className:"my-sess"},"SAUNA + COLD PLUNGE")
+          ),
+          React.createElement("button",{className:"my-x",onClick:async()=>{
+            setMyWellness(prev=>prev.filter(b=>!(b.date_key===bk.date_key&&b.time===bk.time)));
+            await sbDelete("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=eq.${bk.date_key}&time=eq.${encodeURIComponent(bk.time)}`);
+            showToast("Booking cancelled");
+          }},"Cancel")
+        );
+      })
     ),
 
-    // COMMUNITY TAB
     tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos}),
-
-    // WELLNESS TAB
     tab==="wellness"&&React.createElement(WellnessView,{session,showToast}),
-
-    // ADMIN TAB
     tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast}),
 
-    // Tab bar
     React.createElement("div",{className:"tab-bar"},
       React.createElement("button",{className:`tab-btn${tab==="book"?" ta":""}`,onClick:()=>setTab("book")},"Classes"),
       React.createElement("button",{className:`tab-btn${tab==="wellness"?" ta":""}`,onClick:()=>setTab("wellness")},"Wellness"),
@@ -983,11 +1045,10 @@ function App(){
     React.createElement("div",{className:"foot"},"EVERYDAY \u00B7 ALL YEAR ROUND"),
     React.createElement("div",{className:`toast${toast.show?" show":""}`},toast.msg),
 
-    // Profile overlay
     showProf&&React.createElement("div",{className:"prof-overlay"},
       React.createElement("div",{className:"prof-hdr"},React.createElement("div",{className:"prof-title"},"MY PROFILE"),React.createElement("button",{className:"prof-close",onClick:()=>setShowProf(false)},"\u2715")),
       React.createElement("div",{className:"prof-body"},
-        React.createElement("div",{className:"prof-since"},`MEMBER SINCE ${new Date(memberData?.joined_at||Date.now()).getFullYear()}`),
+        React.createElement("div",{className:"prof-since"},`MEMBER SINCE ${fmtJoinDate(memberData?.joined_at)}`),
         React.createElement("div",{className:"photo-wrap"},
           profForm.photo?React.createElement("img",{src:profForm.photo,className:"avatar-lg",alt:"profile"}):React.createElement("div",{className:"avatar-init-lg"},initials(profForm.name||session.name)),
           React.createElement("div",{className:"prof-name-lbl"},session.name.toUpperCase()),
@@ -1017,10 +1078,8 @@ function App(){
 
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
 
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js");
-  });
+if("serviceWorker"in navigator){
+  window.addEventListener("load",()=>{navigator.serviceWorker.register("/sw.js");});
 }
 </script>
 </body>
