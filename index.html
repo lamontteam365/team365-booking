@@ -509,7 +509,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
       ),
 
       // Admin controls
-      currentUserIsAdmin&&member.email!==ADMIN_EMAIL&&React.createElement(React.Fragment,null,
+      currentUserIsAdmin&&React.createElement(React.Fragment,null,
         React.createElement("div",{className:"mp-section"},"ADMIN CONTROLS"),
         React.createElement("button",{
           onClick:toggleAdmin,disabled:togglingAdmin,
@@ -518,9 +518,24 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
             border:`1px solid ${memberIsAdmin?"#4a2a2a":"#2a4a2a"}`,
             color:memberIsAdmin?"#e06040":"#4aaa66",
             fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.15em",
-            padding:"14px",borderRadius:3,cursor:"pointer",marginTop:4
+            padding:"14px",borderRadius:3,cursor:"pointer",marginTop:4,marginBottom:8
           }
-        },togglingAdmin?"...":(memberIsAdmin?"REMOVE ADMIN ACCESS":"GRANT ADMIN ACCESS"))
+        },togglingAdmin?"...":(memberIsAdmin?"REMOVE ADMIN ACCESS":"GRANT ADMIN ACCESS")),
+        member.email!==ADMIN_EMAIL&&React.createElement("button",{
+          onClick:async()=>{
+            if(!window.confirm(`Remove ${member.name} from Team 365? This cannot be undone.`))return;
+            await sbDelete("members",`email=eq.${encodeURIComponent(member.email)}`);
+            await sbDelete("bookings",`email=eq.${encodeURIComponent(member.email)}`);
+            await sbDelete("wellness_bookings",`email=eq.${encodeURIComponent(member.email)}`);
+            onClose();
+          },
+          style:{
+            width:"100%",background:"transparent",
+            border:"1px solid #3a1008",color:"#8a2515",
+            fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.15em",
+            padding:"14px",borderRadius:3,cursor:"pointer"
+          }
+        },"REMOVE MEMBER")
       )
     )
   );
