@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="theme-color" content="#080808"/>
-<title>Team 365 · Registration</title>
+<title>Team 365 · Health Screening Form</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
 <style>
@@ -196,23 +196,19 @@ async function handleSubmit(){
   if(!hasSig){errEl.textContent="Please sign the form.";return;}
   if(!memType){errEl.textContent="Please select a membership type.";return;}
 
-  // Check email not already registered
+  // Check if account already exists
   const existing = await sbGet("members",`email=eq.${encodeURIComponent(email)}`);
-  if(existing.length){errEl.textContent="An account already exists with this email. Please log in to the booking app.";return;}
+  const isExisting = existing.length > 0;
 
   const btn = document.getElementById("submit-btn");
   btn.disabled=true; btn.textContent="SUBMITTING...";
 
-  // Generate temp password
-  const tempPw = Math.random().toString(36).slice(2,10);
-  const name = `${firstName} ${lastName}`;
   const sigData = sigCanvas.toDataURL("image/png",0.7);
   const regDate = today();
+  const name = `${firstName} ${lastName}`;
 
-  const member = {
-    email, name, phone, photo:"",
-    password: hashPw(tempPw),
-    joined_at: Date.now(),
+  const regData = {
+    name, phone,
     dob, emergency_name: eName, emergency_phone: ePhone,
     parq_heart:           parqAnswers[0]||"",
     parq_chest_activity:  parqAnswers[1]||"",
@@ -231,7 +227,26 @@ async function handleSubmit(){
     registration_date:    regDate
   };
 
-  const ok = await sbPost("members", member);
+  let ok = false;
+  let tempPw = "";
+
+  if(isExisting){
+    // Update existing member with registration data
+    const patchRes = await fetch(`${SB_URL}/rest/v1/members?email=eq.${encodeURIComponent(email)}`,{
+      method:"PATCH", headers:SB_HDR, body:JSON.stringify(regData)
+    });
+    ok = patchRes.ok;
+  } else {
+    // Create new account
+    tempPw = Math.random().toString(36).slice(2,10);
+    const member = {
+      email, photo:"",
+      password: hashPw(tempPw),
+      joined_at: Date.now(),
+      ...regData
+    };
+    ok = await sbPost("members", member);
+  }
   if(!ok){
     errEl.textContent="Something went wrong. Please try again.";
     btn.disabled=false; btn.textContent="SUBMIT REGISTRATION";
@@ -263,7 +278,7 @@ document.getElementById("root").innerHTML = `
     <div class="logo-tag">EVERYDAY. ALL YEAR ROUND.</div>
   </div>
 
-  <div class="form-title">Registration & PAR-Q</div>
+  <div class="form-title">Health Screening Form</div>
   <div class="form-sub">COMPLETE BEFORE YOUR FIRST SESSION</div>
 
   <!-- Personal Details -->
