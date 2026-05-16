@@ -443,8 +443,59 @@ document.getElementById("root").innerHTML = `
   <button id="submit-btn" class="submit-btn" onclick="handleSubmit()">SUBMIT REGISTRATION</button>
 </div>`;
 
+// Pre-fill form if member is already logged in
+async function prefillForm() {
+  try {
+    const session = JSON.parse(localStorage.getItem("t365-session"));
+    if(!session || !session.email) return;
+
+    const rows = await sbGet("members", `email=eq.${encodeURIComponent(session.email)}`);
+    if(!rows.length) return;
+    const mb = rows[0];
+
+    // Personal details
+    const nameParts = (mb.name||"").split(" ");
+    const fname = nameParts[0]||"";
+    const lname = nameParts.slice(1).join(" ")||"";
+    if(document.getElementById("fname")) document.getElementById("fname").value = fname;
+    if(document.getElementById("lname")) document.getElementById("lname").value = lname;
+    if(document.getElementById("dob"))   document.getElementById("dob").value   = mb.dob||"";
+    if(document.getElementById("phone")) document.getElementById("phone").value = mb.phone||"";
+    if(document.getElementById("email")) document.getElementById("email").value = mb.email||"";
+
+    // Membership
+    const memSel = document.getElementById("mem-type");
+    if(memSel && mb.membership_type) memSel.value = mb.membership_type;
+
+    // Emergency contact
+    if(document.getElementById("ename"))  document.getElementById("ename").value  = mb.emergency_name||"";
+    if(document.getElementById("ephone")) document.getElementById("ephone").value = mb.emergency_phone||"";
+
+    // PAR-Q
+    const parqMap = {
+      0: mb.parq_heart, 1: mb.parq_chest_activity, 2: mb.parq_chest_rest,
+      3: mb.parq_dizziness, 4: mb.parq_joint, 5: mb.parq_blood_pressure, 6: mb.parq_other
+    };
+    Object.entries(parqMap).forEach(([idx, val]) => {
+      if(val) selectParq(parseInt(idx), val);
+    });
+
+    // Fitness level
+    if(mb.fitness_level) selectFitness(mb.fitness_level);
+
+    // Declarations
+    if(mb.health_declaration) selectConsent("health", mb.health_declaration);
+    if(mb.media_consent)      selectConsent("media",  mb.media_consent);
+
+    // Medical info
+    if(document.getElementById("med-cond")) document.getElementById("med-cond").value = mb.medical_conditions||"";
+    if(document.getElementById("meds"))     document.getElementById("meds").value     = mb.medications||"";
+
+  } catch(e) { console.log("Prefill error:", e); }
+}
+
 // Init signature canvas after render
-setTimeout(initCanvas, 100);
+setTimeout(()=>{ initCanvas(); prefillForm(); }, 100);
 </script>
 </body>
 </html>
