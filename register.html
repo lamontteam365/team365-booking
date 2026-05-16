@@ -254,17 +254,29 @@ async function handleSubmit(){
     registration_date:    regDate
   };
 
+  const healthData = {
+    name, email, phone,
+    dob, membershipType: memType,
+    emergencyName: eName, emergencyPhone: ePhone,
+    parqHeart: parqAnswers[0]||"", parqChestActivity: parqAnswers[1]||"",
+    parqChestRest: parqAnswers[2]||"", parqDizziness: parqAnswers[3]||"",
+    parqJoint: parqAnswers[4]||"", parqBloodPressure: parqAnswers[5]||"",
+    parqOther: parqAnswers[6]||"",
+    medicalConditions: medCond, medications: meds,
+    fitnessLevel, healthDeclaration, mediaConsent,
+    registrationDate: regDate
+  };
+
   let ok = false;
   let tempPw = "";
 
   if(isExisting){
-    // Update existing member with registration data
     const patchRes = await fetch(`${SB_URL}/rest/v1/members?email=eq.${encodeURIComponent(email)}`,{
       method:"PATCH", headers:SB_HDR, body:JSON.stringify(regData)
     });
     ok = patchRes.ok;
+    if(ok) logHealthToSheets(healthData);
   } else {
-    // Create new account
     tempPw = Math.random().toString(36).slice(2,10);
     const member = {
       email, photo:"",
@@ -273,21 +285,9 @@ async function handleSubmit(){
       ...regData
     };
     ok = await sbPost("members", member);
-    // Send welcome email and log to Sheets for new members
     if(ok){
       sendWelcomeEmailViaScript(email, firstName, tempPw);
-      logHealthToSheets({
-        name, email, phone,
-        dob, membershipType: memType,
-        emergencyName: eName, emergencyPhone: ePhone,
-        parqHeart: parqAnswers[0]||"", parqChestActivity: parqAnswers[1]||"",
-        parqChestRest: parqAnswers[2]||"", parqDizziness: parqAnswers[3]||"",
-        parqJoint: parqAnswers[4]||"", parqBloodPressure: parqAnswers[5]||"",
-        parqOther: parqAnswers[6]||"",
-        medicalConditions: medCond, medications: meds,
-        fitnessLevel, healthDeclaration, mediaConsent,
-        registrationDate: regDate
-      });
+      logHealthToSheets(healthData);
     }
   }
 
