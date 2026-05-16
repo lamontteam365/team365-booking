@@ -89,7 +89,7 @@ const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov
 const today = ()=>{const d=new Date();return`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;};
 
 // Apps Script webhook for sending welcome email
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyTBLWR-uU69c_egATa0LH-z0Evjp630eGA6mUKvJFk4olI7hN-VVSgSmu3BGwEys3m/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz5cruljVDUVScwm14Sj1z5_6cRrNK9cgOaq7Tx8P9LfPAEI7p_kx8ZJnaghF_SmU46Fw/exec";
 
 async function sendWelcomeEmailViaScript(to, firstName, tempPassword) {
   try {
