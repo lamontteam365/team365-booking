@@ -1313,7 +1313,7 @@ function App(){
   if(!session)return React.createElement("div",{className:"auth-page"},
     React.createElement("div",{className:"auth-logo-sub"},"LAMONT"),
     React.createElement("div",{className:"auth-logo"},"TEAM 365"),
-    React.createElement("div",{className:"auth-tag"},"COMMITMENT. CONSISTENCY. DETERMINATION."),
+    React.createElement("div",{className:"auth-tag"},"EVERYDAY. ALL YEAR ROUND."),
     React.createElement("div",{className:"auth-card"},
       React.createElement("div",{className:"auth-title"},authMode==="login"?"Welcome Back":"Join Team 365"),
       authMode==="signup"&&React.createElement(React.Fragment,null,
@@ -1337,7 +1337,7 @@ function App(){
         React.createElement("a",{href:"/register.html"},"Complete registration & PAR-Q form")
       )
     ),
-    React.createElement("div",{className:"foot",style:{marginTop:48}},"COMMITMENT. CONSISTENCY. DETERMINATION.")
+    React.createElement("div",{className:"foot",style:{marginTop:48,fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION.")
   );
 
   return React.createElement("div",{className:"app"},
@@ -1347,7 +1347,7 @@ function App(){
       React.createElement("div",{className:"logo-area"},
         React.createElement("div",{className:"logo-sub"},"LAMONT"),
         React.createElement("div",{className:"logo"},"TEAM 365"),
-        React.createElement("div",{className:"logo-tag"},"COMMITMENT. CONSISTENCY. DETERMINATION.")
+        React.createElement("div",{className:"logo-tag"},"EVERYDAY. ALL YEAR ROUND.")
       ),
       React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",cursor:"pointer"},onClick:openProf},
         memberPhoto?React.createElement("img",{src:memberPhoto,className:"avatar-sm",alt:"profile"}):React.createElement("div",{className:"avatar-init-sm"},memberInit),
@@ -1444,7 +1444,7 @@ function App(){
       ),
       isAdmin&&React.createElement("button",{className:`tab-btn${tab==="admin"?" ta":""}`,onClick:()=>setTab("admin")},"Admin")
     ),
-    React.createElement("div",{className:"foot"},"COMMITMENT. CONSISTENCY. DETERMINATION."),
+    React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION."),
     React.createElement("div",{className:`toast${toast.show?" show":""}`},toast.msg),
 
     showProf&&React.createElement("div",{className:"prof-overlay"},
