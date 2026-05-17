@@ -310,6 +310,26 @@ html,body{background:#080808;min-height:100vh}
 const { useState, useEffect, useRef } = React;
 
 const ADMIN_EMAIL = "lamont.team365@gmail.com";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz5cruljVDUVScwm14Sj1z5_6cRrNK9cgOaq7Tx8P9LfPAEI7p_kx8ZJnaghF_SmU46Fw/exec";
+
+async function notifyWellnessBooking(name, email, dateKey, time) {
+  try {
+    const d = new Date(dateKey + "T12:00:00");
+    const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const dateLabel = `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+    const h = parseInt(time.split(":")[0]);
+    const timeLabel = `${h%12||12}:00${h<12?"am":"pm"}`;
+    const params = new URLSearchParams({
+      action: "wellnessNotify",
+      memberName: name,
+      memberEmail: email,
+      dateLabel,
+      timeLabel
+    });
+    await fetch(APPS_SCRIPT_URL + "?" + params.toString(), {method:"GET", mode:"no-cors"});
+  } catch(e) { console.log("Notify error:", e); }
+}
 const SB_URL = "https://xczwmexavysvljmobbgv.supabase.co";
 const SB_KEY = "sb_publishable_tujGGhPRUimflq1-IFzuvA_Crw6knMO";
 const SB_HDR = {"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return=minimal"};
@@ -722,7 +742,7 @@ function WellnessView({session,showToast}){
     setWellBks(prev=>[...prev,newBk]);
     const ok=await sbPost("wellness_bookings",newBk);
     if(!ok){setWellBks(prev=>prev.filter(b=>!(b.date_key===selDK&&b.time===time)));showToast("Booking failed \u2014 try again");}
-    else showToast("Wellness session booked \u2713");
+    else{showToast("Wellness session booked \u2713");notifyWellnessBooking(session.name,session.email,selDK,time);}
     setBusy(p=>({...p,[lk]:false}));
   }
 
@@ -825,7 +845,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
     setPosting(true);
     const post={author_email:session.email,author_name:session.name,content,created_at:Date.now(),likes:[],pinned:false};
     const ok=await sbPost("posts",post);
-    if(ok){setPosts(prev=>[post,...prev].sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||(b.created_at-a.created_at)));setText("");}
+    if(ok){setText("");await loadPosts();}
     else showToast("Failed to post");
     setPosting(false);
   }
@@ -838,7 +858,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
       reply_to:parentPost.id,reply_to_name:parentPost.author_name
     };
     const ok=await sbPost("posts",reply);
-    if(ok){setPosts(prev=>[reply,...prev]);setReplyingTo(null);setReplyText("");}
+    if(ok){setReplyingTo(null);setReplyText("");await loadPosts();}
     else showToast("Failed to post reply");
   }
 
