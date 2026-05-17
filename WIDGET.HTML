@@ -28,7 +28,7 @@ body{font-family:'DM Sans',sans-serif;color:#fff}
 .w-dot.done{background:#444}
 /* Type cards */
 .type-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
-.type-card{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:10px;padding:20px 16px 54px 18px;cursor:pointer;transition:all .2s;text-align:left;position:relative;overflow:hidden}
+.type-card{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:10px;padding:20px 16px 22px 18px;cursor:pointer;transition:all .2s;text-align:left}
 .type-card:hover{border-color:#333;background:#111}
 .type-icon{font-size:40px;position:absolute;bottom:10px;right:14px}
 .type-label{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:0.1em;color:#fff}
@@ -40,9 +40,8 @@ body{font-family:'DM Sans',sans-serif;color:#fff}
 .wk-arrow:disabled{color:#222;cursor:default}
 .wk-label{flex:1;text-align:center;font-size:10px;letter-spacing:0.16em;color:#fff;font-weight:600}
 /* Day strip */
-.day-strip{display:flex;gap:5px;overflow-x:auto;margin-bottom:16px;scrollbar-width:none;padding-bottom:2px}
-.day-strip::-webkit-scrollbar{display:none}
-.day-btn{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 10px;background:#0e0e0e;border:1px solid #222;border-radius:6px;cursor:pointer;transition:all .15s;min-width:50px}
+.day-strip{display:flex;gap:5px;margin-bottom:16px}
+.day-btn{flex:1;min-width:44px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;background:#0e0e0e;border:1px solid #222;border-radius:6px;cursor:pointer;transition:all .15s}
 .day-btn:hover:not(.da){border-color:#444}
 .day-btn.dt{border-color:#555}
 .day-btn.da{background:#fff;border-color:#fff}
@@ -274,14 +273,12 @@ function BookingWidget(){
         React.createElement("div",{className:"type-card",onClick:()=>goType("class")},
           React.createElement("div",{className:"type-label"},"BOOK A CLASS"),
           React.createElement("div",{className:"type-desc"},"MONDAY – SATURDAY"),
-          React.createElement("div",{className:"type-desc",style:{marginTop:3}},"UP TO 10 SPOTS PER CLASS"),
-          React.createElement("div",{className:"type-icon"},"💪")
+          React.createElement("div",{className:"type-desc",style:{marginTop:3}},"UP TO 10 SPOTS PER CLASS")
         ),
         React.createElement("div",{className:"type-card",onClick:()=>goType("wellness")},
           React.createElement("div",{className:"type-label"},"SAUNA + COLD PLUNGE"),
           React.createElement("div",{className:"type-desc"},"MONDAY – SATURDAY"),
-          React.createElement("div",{className:"type-desc",style:{marginTop:3}},"SESSIONS AVAILABLE EVERY 2 HOURS"),
-          React.createElement("div",{className:"type-icon"},"🧖")
+          React.createElement("div",{className:"type-desc",style:{marginTop:3}},"SESSIONS AVAILABLE EVERY 2 HOURS")
         )
       ),
       React.createElement("div",{className:"guest-notice"},
