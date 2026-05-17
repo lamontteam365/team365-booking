@@ -1110,8 +1110,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin}){
       !wellAdmLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
       :React.createElement(React.Fragment,null,
         React.createElement("div",{className:"adm-stats-row"},
-          React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},wellAdmBks.filter(b=>b.date_key===admDK).length),React.createElement("div",{className:"adm-stat-lbl"},"BOOKED TODAY")),
-          React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},WELL_TIMES.length-wellAdmBks.filter(b=>b.date_key===admDK).length),React.createElement("div",{className:"adm-stat-lbl"},"AVAILABLE"))
+          React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},wellAdmBks.filter(b=>b.date_key===admDK&&WELL_TIMES.includes(b.time)).length),React.createElement("div",{className:"adm-stat-lbl"},"BOOKED TODAY")),
+          React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},WELL_TIMES.length-wellAdmBks.filter(b=>b.date_key===admDK&&WELL_TIMES.includes(b.time)).length),React.createElement("div",{className:"adm-stat-lbl"},"AVAILABLE"))
         ),
         admDOW===0?React.createElement("div",{className:"adm-no-classes"},"No wellness on Sunday")
         :wellAdmBks.filter(b=>b.date_key===admDK).length===0
