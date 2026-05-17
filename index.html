@@ -813,7 +813,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
   useEffect(()=>{loadPosts();const id=setInterval(loadPosts,30000);return()=>clearInterval(id);},[]);
 
   async function loadPosts(){
-    const data=await sbGet("posts","order=pinned.desc,created_at.desc&limit=80");
+    const data=await sbGet("posts","select=id,author_email,author_name,content,created_at,likes,pinned,reply_to,reply_to_name&order=pinned.desc,created_at.desc&limit=80");
     setPosts(data||[]);setLoading(false);
   }
 
