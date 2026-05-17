@@ -884,9 +884,14 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
   }
 
   async function handleDelete(id){
+    const snapshot=posts.find(p=>p.id===id);
     setPosts(prev=>prev.filter(p=>p.id!==id));
-    await sbDelete("posts",`id=eq.${id}`);
-    showToast("Post removed");
+    const ok=await sbDelete("posts",`id=eq.${id}`);
+    if(ok){showToast("Post removed");}
+    else{
+      if(snapshot)setPosts(prev=>[...prev,snapshot].sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||(b.created_at-a.created_at)));
+      showToast("Delete failed — check Supabase permissions");
+    }
   }
 
   const charsLeft=MAX_CHARS-text.length;
@@ -933,13 +938,16 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
 
           // Replies
           replies.length>0&&React.createElement("div",{style:{marginTop:8}},
-            replies.map((r,ri)=>React.createElement("div",{key:ri,className:"reply-card"},
-              React.createElement("div",{className:"reply-author"},
-                r.author_name.split(" ")[0],
-                React.createElement("span",null," replied")
-              ),
-              React.createElement("div",{className:"reply-content",dangerouslySetInnerHTML:{__html:renderContent(r.content)}})
-            ))
+            replies.map((r,ri)=>{
+              const canDeleteReply=isAdmin||(r.author_email===session.email);
+              return React.createElement("div",{key:ri,className:"reply-card"},
+                React.createElement("div",{className:"reply-author",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
+                  React.createElement("span",null,r.author_name.split(" ")[0],React.createElement("span",null," replied")),
+                  canDeleteReply&&React.createElement("button",{className:"post-delete",style:{fontSize:"9px",color:"#333"},onClick:()=>handleDelete(r.id)},"Delete")
+                ),
+                React.createElement("div",{className:"reply-content",dangerouslySetInnerHTML:{__html:renderContent(r.content)}})
+              );
+            })
           ),
 
           // Actions
