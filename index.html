@@ -18,8 +18,10 @@ html,body{background:#080808;min-height:100vh}
 #root{min-height:100vh}
 .app{font-family:'DM Sans',sans-serif;background:#080808;color:#fff;min-height:100vh;display:flex;flex-direction:column;max-width:480px;margin:0 auto}
 .hdr{padding:20px 20px 0;display:flex;justify-content:space-between;align-items:center}
-.logo-sub{font-size:9px;letter-spacing:0.22em;color:#fff;font-weight:500}
-.logo{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:0.15em;line-height:1;color:#fff}
+.logo-area{text-align:center;margin-bottom:0}
+.logo-sub{font-size:9px;letter-spacing:0.22em;color:#aaa;font-weight:500;text-align:center}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:0.15em;line-height:1;color:#fff;text-align:center}
+.logo-tag{font-size:7px;letter-spacing:0.2em;color:#555;text-align:center;margin-top:1px}
 .avatar-sm{width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid #444;cursor:pointer;display:block}
 .avatar-init-sm{width:38px;height:38px;border-radius:50%;background:#1a1a1a;border:1px solid #333;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:14px;color:#999;cursor:pointer;flex-shrink:0}
 .name-lbl{font-size:10px;letter-spacing:0.12em;color:#fff;font-weight:600;text-align:center;margin-top:5px}
@@ -142,9 +144,30 @@ html,body{background:#080808;min-height:100vh}
 .comm-loading{text-align:center;padding:32px;font-size:10px;letter-spacing:0.18em;color:#333}
 .comm-empty{text-align:center;padding:48px 16px;font-size:11px;letter-spacing:0.16em;color:#333;line-height:2.4}
 .tab-bar{display:flex;border-top:1px solid #1a1a1a;margin-top:auto}
-.tab-btn{flex:1;padding:12px 2px;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:8.5px;letter-spacing:0.12em;color:#777;font-weight:600;transition:color .15s;white-space:nowrap}
+.tab-btn{flex:1;padding:12px 2px;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:8.5px;letter-spacing:0.12em;color:#777;font-weight:600;transition:color .15s;white-space:nowrap;position:relative}
 .tab-btn.ta{color:#fff;border-top:1px solid #fff;margin-top:-1px}
 .tab-btn:hover:not(.ta){color:#bbb}
+.tab-dot{position:absolute;top:8px;right:calc(50% - 14px);width:7px;height:7px;background:#e06040;border-radius:50%;border:1px solid #080808}
+/* Reply styles */
+.post-reply-btn{background:none;border:none;color:#444;cursor:pointer;font-size:10px;font-family:'DM Sans',sans-serif;letter-spacing:0.06em;transition:color .15s;font-weight:500}
+.post-reply-btn:hover{color:#aaa}
+.reply-compose{background:#111;border:1px solid #1e1e1e;border-radius:6px;padding:10px;margin-top:8px}
+.reply-textarea{width:100%;background:transparent;border:none;color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:300;resize:none;outline:none;min-height:44px;line-height:1.6}
+.reply-textarea::placeholder{color:#444}
+.reply-footer{display:flex;align-items:center;justify-content:space-between;margin-top:6px;padding-top:6px;border-top:1px solid #1a1a1a}
+.reply-post-btn{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:0.12em;padding:6px 14px;background:#fff;color:#000;border:none;border-radius:3px;cursor:pointer}
+.reply-post-btn:disabled{background:#222;color:#555;cursor:not-allowed}
+.reply-cancel-btn{background:none;border:none;color:#555;font-size:10px;cursor:pointer;font-family:'DM Sans',sans-serif;letter-spacing:0.06em}
+.reply-card{background:#0a0a0a;border-left:2px solid #222;padding:8px 10px;margin-top:6px;border-radius:0 4px 4px 0}
+.reply-author{font-size:10px;color:#666;font-weight:600;letter-spacing:0.06em;margin-bottom:3px}
+.reply-author span{color:#4aaa66}
+.reply-content{font-size:12px;color:#bbb;line-height:1.6;font-weight:300}
+/* Tag styles */
+.tag-highlight{color:#4aaa66;font-weight:500}
+.tag-dropdown{position:absolute;bottom:100%;left:0;right:0;background:#111;border:1px solid #2a2a2a;border-radius:6px;max-height:160px;overflow-y:auto;z-index:50;margin-bottom:4px}
+.tag-option{padding:8px 12px;font-size:12px;color:#ccc;cursor:pointer;transition:background .1s}
+.tag-option:hover{background:#1a1a1a}
+.compose-wrap{position:relative}
 .foot{text-align:center;font-size:9px;letter-spacing:0.22em;color:#fff;padding:9px 0 13px}
 .toast{position:fixed;bottom:68px;left:50%;transform:translateX(-50%);background:#fff;color:#000;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.15em;padding:10px 22px;border-radius:3px;pointer-events:none;transition:opacity .3s;z-index:200;white-space:nowrap;opacity:0}
 .toast.show{opacity:1}
@@ -724,19 +747,46 @@ function WellnessView({session,showToast}){
   );
 }
 
-// ── Community Board ───────────────────────────────────────────────────────────
-function CommunityView({session,isAdmin,showToast,memberPhotos}){
+// ── Notice Board ───────────────────────────────────────────────────────────
+function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
   const [posts,setPosts]=useState([]);
   const [loading,setLoading]=useState(true);
   const [text,setText]=useState("");
   const [posting,setPosting]=useState(false);
+  const [replyingTo,setReplyingTo]=useState(null);
+  const [replyText,setReplyText]=useState("");
+  const [tagQuery,setTagQuery]=useState("");
+  const [showTags,setShowTags]=useState(false);
   const MAX_CHARS=300;
 
   useEffect(()=>{loadPosts();const id=setInterval(loadPosts,30000);return()=>clearInterval(id);},[]);
 
   async function loadPosts(){
-    const data=await sbGet("posts","order=pinned.desc,created_at.desc&limit=60");
+    const data=await sbGet("posts","order=pinned.desc,created_at.desc&limit=80");
     setPosts(data||[]);setLoading(false);
+  }
+
+  function handleTextChange(e,setter){
+    const val=e.target.value;
+    setter(val);
+    // Check for @ tag
+    const atIdx=val.lastIndexOf("@");
+    if(atIdx>=0&&atIdx===val.length-1){setTagQuery("");setShowTags(true);}
+    else if(atIdx>=0&&val.slice(atIdx+1).match(/^\w+$/)){setTagQuery(val.slice(atIdx+1).toLowerCase());setShowTags(true);}
+    else{setShowTags(false);}
+  }
+
+  function insertTag(name,setter,currentText){
+    const atIdx=currentText.lastIndexOf("@");
+    const newText=currentText.slice(0,atIdx)+"@"+name.replace(/ /g,"")+" ";
+    setter(newText);setShowTags(false);
+  }
+
+  const filteredMembers=allMemberNames.filter(n=>n.toLowerCase().replace(/ /g,"").includes(tagQuery)).slice(0,5);
+
+  function renderContent(content){
+    if(!content) return "";
+    return content.replace(/@(\S+)/g,'<span class="tag-highlight">@$1</span>');
   }
 
   async function handlePost(){
@@ -747,6 +797,18 @@ function CommunityView({session,isAdmin,showToast,memberPhotos}){
     if(ok){setPosts(prev=>[post,...prev].sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||(b.created_at-a.created_at)));setText("");}
     else showToast("Failed to post");
     setPosting(false);
+  }
+
+  async function handleReply(parentPost){
+    const content=replyText.trim();if(!content)return;
+    const reply={
+      author_email:session.email,author_name:session.name,
+      content,created_at:Date.now(),likes:[],pinned:false,
+      reply_to:parentPost.id,reply_to_name:parentPost.author_name
+    };
+    const ok=await sbPost("posts",reply);
+    if(ok){setPosts(prev=>[reply,...prev]);setReplyingTo(null);setReplyText("");}
+    else showToast("Failed to post reply");
   }
 
   async function handleLike(post,idx){
@@ -771,12 +833,17 @@ function CommunityView({session,isAdmin,showToast,memberPhotos}){
   }
 
   const charsLeft=MAX_CHARS-text.length;
+  const topLevelPosts=posts.filter(p=>!p.reply_to);
+
   return React.createElement("div",{className:"comm-wrap"},
     React.createElement("div",{className:"comm-hdr"},
-      React.createElement("div",{className:"comm-title"},"COMMUNITY BOARD"),
+      React.createElement("div",{className:"comm-title"},"NOTICE BOARD"),
       React.createElement("div",{className:"comm-sub"},"EVERYDAY \u00B7 ALL YEAR ROUND"),
-      React.createElement("div",{className:"comm-compose"},
-        React.createElement("textarea",{className:"comm-textarea",placeholder:"Share something with the team...",value:text,maxLength:MAX_CHARS,onChange:e=>setText(e.target.value)}),
+      React.createElement("div",{className:"comm-compose compose-wrap"},
+        showTags&&filteredMembers.length>0&&React.createElement("div",{className:"tag-dropdown"},
+          filteredMembers.map((n,i)=>React.createElement("div",{key:i,className:"tag-option",onClick:()=>insertTag(n,setText,text)},n))
+        ),
+        React.createElement("textarea",{className:"comm-textarea",placeholder:"Share something with the team...",value:text,maxLength:MAX_CHARS,onChange:e=>handleTextChange(e,setText)}),
         React.createElement("div",{className:"comm-compose-footer"},
           React.createElement("div",{className:`comm-char${charsLeft<50?" warn":""}`},`${charsLeft}`),
           React.createElement("button",{className:"comm-post-btn",onClick:handlePost,disabled:posting||!text.trim()},posting?"...":"POST")
@@ -785,13 +852,15 @@ function CommunityView({session,isAdmin,showToast,memberPhotos}){
     ),
     React.createElement("div",{className:"comm-feed"},
       loading?React.createElement("div",{className:"comm-loading"},"LOADING...")
-      :posts.length===0?React.createElement("div",{className:"comm-empty"},"No posts yet.\nBe the first to post!")
-      :posts.map((post,i)=>{
+      :topLevelPosts.length===0?React.createElement("div",{className:"comm-empty"},"No posts yet.\nBe the first to post!")
+      :topLevelPosts.map((post,i)=>{
         const isAdminPost=post.author_email===ADMIN_EMAIL;
         const canDelete=isAdmin||(post.author_email===session.email);
         const likes=Array.isArray(post.likes)?post.likes:[];
         const liked=likes.includes(session.email);
         const photo=memberPhotos[post.author_email]||"";
+        const replies=posts.filter(p=>p.reply_to===post.id).sort((a,b)=>a.created_at-b.created_at);
+        const isReplying=replyingTo===post.id;
         return React.createElement("div",{key:post.id||i,className:`post-card${post.pinned?" pinned-post":""}${isAdminPost?" admin-post":""}`},
           post.pinned&&React.createElement("div",{className:"post-pin-label"},"\uD83D\uDCCC PINNED"),
           React.createElement("div",{className:"post-top"},
@@ -804,14 +873,42 @@ function CommunityView({session,isAdmin,showToast,memberPhotos}){
             ),
             React.createElement("div",{className:"post-time"},timeAgo(post.created_at))
           ),
-          React.createElement("div",{className:"post-content"},post.content),
-          React.createElement("div",{className:"post-actions"},
+          React.createElement("div",{className:"post-content",dangerouslySetInnerHTML:{__html:renderContent(post.content)}}),
+
+          // Replies
+          replies.length>0&&React.createElement("div",{style:{marginTop:8}},
+            replies.map((r,ri)=>React.createElement("div",{key:ri,className:"reply-card"},
+              React.createElement("div",{className:"reply-author"},
+                r.author_name.split(" ")[0],
+                React.createElement("span",null," replied")
+              ),
+              React.createElement("div",{className:"reply-content",dangerouslySetInnerHTML:{__html:renderContent(r.content)}})
+            ))
+          ),
+
+          // Actions
+          React.createElement("div",{className:"post-actions",style:{marginTop:8}},
             React.createElement("button",{className:`post-like-btn${liked?" liked":""}`,onClick:()=>handleLike(post,i)},
               React.createElement("div",{className:"post-like-icon"},liked?"\u2665":"\u2661"),
               React.createElement("div",{className:"post-like-count"},likes.length>0?likes.length:"0")
             ),
+            React.createElement("button",{className:"post-reply-btn",onClick:()=>setReplyingTo(isReplying?null:post.id)},
+              isReplying?"Cancel":"Reply"
+            ),
             isAdmin&&React.createElement("button",{className:`post-pin-btn${post.pinned?" pinned":""}`,onClick:()=>handlePin(post,i)},post.pinned?"Unpin":"Pin"),
             canDelete&&React.createElement("button",{className:"post-delete",onClick:()=>handleDelete(post.id)},"Delete")
+          ),
+
+          // Reply compose
+          isReplying&&React.createElement("div",{className:"reply-compose compose-wrap"},
+            showTags&&filteredMembers.length>0&&React.createElement("div",{className:"tag-dropdown"},
+              filteredMembers.map((n,idx2)=>React.createElement("div",{key:idx2,className:"tag-option",onClick:()=>insertTag(n,setReplyText,replyText)},n))
+            ),
+            React.createElement("textarea",{className:"reply-textarea",placeholder:`Reply to ${post.author_name.split(" ")[0]}...`,value:replyText,onChange:e=>handleTextChange(e,setReplyText),maxLength:300}),
+            React.createElement("div",{className:"reply-footer"},
+              React.createElement("button",{className:"reply-cancel-btn",onClick:()=>{setReplyingTo(null);setReplyText("");}}, "Cancel"),
+              React.createElement("button",{className:"reply-post-btn",onClick:()=>handleReply(post),disabled:!replyText.trim()},"REPLY")
+            )
           )
         );
       })
@@ -996,6 +1093,8 @@ function App(){
   const [profBusy,setProfBusy]=useState(false);
   const [cropSrc,setCropSrc]=useState(null);
   const [myWellness,setMyWellness]=useState([]);
+  const [unreadPosts,setUnreadPosts]=useState(0);
+  const [allMemberNames,setAllMemberNames]=useState([]);
   const photoRef=useRef(null);
   const isAdmin=session?.email===ADMIN_EMAIL||memberData?.is_admin===true;
 
@@ -1008,9 +1107,14 @@ function App(){
         if(mb.length)setMemberData(mb[0]);
       }
       await refreshBookings();
-      const allMembers=await sbGet("members","select=email,photo");
-      const photoMap={};(allMembers||[]).forEach(m=>{if(m.photo)photoMap[m.email]=m.photo;});
-      setMemberPhotos(photoMap);
+      // Check for unread posts
+      const lastRead = lsGet("t365-last-read", 0);
+      const recentPosts = await sbGet("posts",`created_at=gt.${lastRead}&select=id`);
+      setUnreadPosts((recentPosts||[]).length);
+      const allMembers=await sbGet("members","select=email,photo,name");
+      const photoMap={};const nameList=[];
+      (allMembers||[]).forEach(m=>{if(m.photo)photoMap[m.email]=m.photo;if(m.name)nameList.push(m.name);});
+      setMemberPhotos(photoMap);setAllMemberNames(nameList);
       setReady(true);
     })();
   },[]);
@@ -1172,7 +1276,11 @@ function App(){
     cropSrc&&React.createElement(ImageCropper,{imageSrc:cropSrc,onSave:handleCropSave,onCancel:()=>setCropSrc(null)}),
 
     React.createElement("div",{className:"hdr"},
-      React.createElement("div",null,React.createElement("div",{className:"logo-sub"},"LAMONT"),React.createElement("div",{className:"logo"},"TEAM 365")),
+      React.createElement("div",{className:"logo-area"},
+        React.createElement("div",{className:"logo-sub"},"LAMONT"),
+        React.createElement("div",{className:"logo"},"TEAM 365"),
+        React.createElement("div",{className:"logo-tag"},"EVERYDAY. ALL YEAR ROUND.")
+      ),
       React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",cursor:"pointer"},onClick:openProf},
         memberPhoto?React.createElement("img",{src:memberPhoto,className:"avatar-sm",alt:"profile"}):React.createElement("div",{className:"avatar-init-sm"},memberInit),
         React.createElement("div",{className:"name-lbl"},session.name.split(" ")[0].toUpperCase()),
@@ -1254,7 +1362,7 @@ function App(){
       })
     ),
 
-    tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos}),
+    tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
     tab==="wellness"&&React.createElement(WellnessView,{session,showToast}),
     tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin}),
 
@@ -1262,7 +1370,10 @@ function App(){
       React.createElement("button",{className:`tab-btn${tab==="book"?" ta":""}`,onClick:()=>setTab("book")},"Classes"),
       React.createElement("button",{className:`tab-btn${tab==="wellness"?" ta":""}`,onClick:()=>setTab("wellness")},"Wellness"),
       React.createElement("button",{className:`tab-btn${tab==="my"?" ta":""}`,onClick:()=>setTab("my")},"My Bookings"),
-      React.createElement("button",{className:`tab-btn${tab==="community"?" ta":""}`,onClick:()=>setTab("community")},"Community"),
+      React.createElement("button",{className:`tab-btn${tab==="community"?" ta":""}`,onClick:()=>{setTab("community");lsSet("t365-last-read",Date.now());}},
+        "Notice Board",
+        unreadPosts>0&&tab!=="community"&&React.createElement("div",{className:"tab-dot"})
+      ),
       isAdmin&&React.createElement("button",{className:`tab-btn${tab==="admin"?" ta":""}`,onClick:()=>setTab("admin")},"Admin")
     ),
     React.createElement("div",{className:"foot"},"EVERYDAY \u00B7 ALL YEAR ROUND"),
