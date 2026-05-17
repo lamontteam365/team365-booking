@@ -94,7 +94,7 @@ html,body{background:#080808;min-height:100vh}
 .well-slot-name{font-size:11px;letter-spacing:0.08em;color:#aaa;font-weight:500}
 .well-slot-status{font-size:10px;letter-spacing:0.1em;color:#999;font-weight:500;margin-top:2px}
 .well-slot-status.wss-mine{color:#4aaa66}
-.well-slot-status.wss-taken{color:#555}
+.well-slot-status.wss-taken{color:#e06040}
 .well-btn{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:0.12em;padding:8px 12px;border-radius:3px;border:none;cursor:pointer;white-space:nowrap;transition:all .15s}
 .well-btn.wb-book{background:#fff;color:#000}
 .well-btn.wb-book:hover:not(:disabled){background:#ddd}
@@ -337,7 +337,13 @@ const SB_HDR = {"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type
 async function sbGet(t,q=""){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
 async function sbPost(t,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
 async function sbPatch(t,q,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{method:"PATCH",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
-async function sbDelete(t,q){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{method:"DELETE",headers:SB_HDR});return r.ok;}catch{return false;}}
+async function sbDelete(t,q){
+  try{
+    const headers={"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"};
+    const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{method:"DELETE",headers});
+    return r.ok;
+  }catch{return false;}
+}
 
 const MAX_SPOTS=10;
 const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
@@ -785,11 +791,11 @@ function WellnessView({session,showToast}){
           React.createElement("div",{className:"well-slot-time"},fmt12(time)),
           React.createElement("div",{className:"well-slot-mid"},
             React.createElement("div",{className:"well-slot-name"},"SAUNA + COLD PLUNGE"),
-            React.createElement("div",{className:`well-slot-status${ismine?" wss-mine":taken?" wss-taken":""}`},ismine?"Your booking \u2713":taken?"Unavailable":"Available")
+            React.createElement("div",{className:`well-slot-status${ismine?" wss-mine":taken?" wss-taken":""}`},ismine?"Your booking \u2713":taken?"Booked":"Available")
           ),
           !past&&(ismine
             ?React.createElement("button",{className:"well-btn wb-cancel",onClick:()=>handleCancel(time)},"Cancel")
-            :taken?React.createElement("button",{className:"well-btn wb-taken",disabled:true},"Taken")
+            :taken?React.createElement("button",{className:"well-btn wb-taken",disabled:true},"Booked")
             :React.createElement("button",{className:"well-btn wb-book",onClick:()=>handleBook(time),disabled:isBusy},isBusy?"...":"Book")
           )
         );
