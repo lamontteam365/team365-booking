@@ -158,12 +158,12 @@ html,body{background:#080808;min-height:100vh}
 .reply-post-btn{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:0.12em;padding:6px 14px;background:#fff;color:#000;border:none;border-radius:3px;cursor:pointer}
 .reply-post-btn:disabled{background:#222;color:#555;cursor:not-allowed}
 .reply-cancel-btn{background:none;border:none;color:#555;font-size:10px;cursor:pointer;font-family:'DM Sans',sans-serif;letter-spacing:0.06em}
-.reply-card{background:#0a0a0a;border-left:2px solid #222;padding:8px 10px;margin-top:6px;border-radius:0 4px 4px 0}
+.reply-card{background:#0a0a0a;border-left:2px solid #1d9bf0;padding:8px 10px;margin-top:6px;border-radius:0 4px 4px 0}
 .reply-author{font-size:10px;color:#666;font-weight:600;letter-spacing:0.06em;margin-bottom:3px}
-.reply-author span{color:#4aaa66}
+.reply-author span{color:#1d9bf0}
 .reply-content{font-size:12px;color:#bbb;line-height:1.6;font-weight:300}
 /* Tag styles */
-.tag-highlight{color:#4aaa66;font-weight:500}
+.tag-highlight{color:#1d9bf0;font-weight:500}
 .tag-dropdown{position:absolute;bottom:100%;left:0;right:0;background:#111;border:1px solid #2a2a2a;border-radius:6px;max-height:160px;overflow-y:auto;z-index:50;margin-bottom:4px}
 .tag-option{padding:8px 12px;font-size:12px;color:#ccc;cursor:pointer;transition:background .1s}
 .tag-option:hover{background:#1a1a1a}
@@ -322,7 +322,7 @@ async function sbDelete(t,q){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q
 const MAX_SPOTS=10;
 const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
 const SAT_TIMES=["06:30","07:30","08:30","09:30"];
-const WELL_TIMES=["05:00","06:00","07:00","08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00"];
+const WELL_TIMES=["06:00","08:00","10:00","12:00","14:00","16:00","18:00"];
 const DAY_SHORT=["Mon","Tue","Wed","Thu","Fri","Sat"];
 const DAY_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const DAY_SESS=["Rise Up","Strength Lower","Ascend","Strength Upper","Elevate","Summit"];
@@ -386,6 +386,8 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
   const [parqOk,setParqOk]=useState(false);
   const [togglingAdmin,setTogglingAdmin]=useState(false);
   const [memberIsAdmin,setMemberIsAdmin]=useState(member.is_admin||false);
+  const [editingEmergency,setEditingEmergency]=useState(false);
+  const [emergencyEdits,setEmergencyEdits]=useState({emergency_name:"",emergency_phone:""});
   const [editingExtra,setEditingExtra]=useState(false);
   const [extraEdits,setExtraEdits]=useState({
     medical_conditions: member.medical_conditions||"",
@@ -473,10 +475,40 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
       React.createElement(Row,{label:"Membership",value:member.membership_type}),
       React.createElement(Row,{label:"Registered",value:member.registration_date}),
 
-      // Emergency
-      React.createElement("div",{className:"mp-section"},"EMERGENCY CONTACT"),
-      React.createElement(Row,{label:"Name",value:member.emergency_name}),
-      React.createElement(Row,{label:"Phone",value:member.emergency_phone}),
+      // Emergency - editable
+      React.createElement("div",{className:"mp-section",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
+        React.createElement("span",null,"EMERGENCY CONTACT"),
+        currentUserIsAdmin&&React.createElement("button",{
+          onClick:()=>{
+            if(!editingEmergency){setEmergencyEdits({emergency_name:member.emergency_name||"",emergency_phone:member.emergency_phone||""});}
+            setEditingEmergency(e=>!e);
+          },
+          style:{background:"none",border:"1px solid #333",color:"#888",fontSize:9,letterSpacing:"0.12em",padding:"3px 8px",borderRadius:3,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600}
+        },editingEmergency?"CANCEL":"EDIT")
+      ),
+      editingEmergency
+        ?React.createElement(React.Fragment,null,
+          React.createElement("div",{style:{marginBottom:8}},
+            React.createElement("div",{style:{fontSize:9,color:"#666",letterSpacing:"0.1em",marginBottom:4}},"CONTACT NAME"),
+            React.createElement("input",{value:emergencyEdits.emergency_name,onChange:e=>setEmergencyEdits(p=>({...p,emergency_name:e.target.value})),style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:300,padding:"10px 12px",borderRadius:3,outline:"none"}})
+          ),
+          React.createElement("div",{style:{marginBottom:10}},
+            React.createElement("div",{style:{fontSize:9,color:"#666",letterSpacing:"0.1em",marginBottom:4}},"CONTACT PHONE"),
+            React.createElement("input",{value:emergencyEdits.emergency_phone,onChange:e=>setEmergencyEdits(p=>({...p,emergency_phone:e.target.value})),style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:300,padding:"10px 12px",borderRadius:3,outline:"none"}})
+          ),
+          React.createElement("button",{
+            onClick:async()=>{
+              await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,emergencyEdits);
+              Object.assign(member,emergencyEdits);
+              setEditingEmergency(false);
+            },
+            style:{width:"100%",background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.15em",padding:"14px",borderRadius:3,cursor:"pointer",marginBottom:4}
+          },"SAVE EMERGENCY CONTACT")
+        )
+        :React.createElement(React.Fragment,null,
+          React.createElement(Row,{label:"Name",value:member.emergency_name}),
+          React.createElement(Row,{label:"Phone",value:member.emergency_phone})
+        ),
 
       // PAR-Q with edit
       React.createElement("div",{className:"mp-section",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
@@ -704,8 +736,7 @@ function WellnessView({session,showToast}){
   return React.createElement("div",{className:"well-wrap"},
     React.createElement("div",{className:"well-hdr"},
       React.createElement("div",{className:"well-title"},"WELLNESS"),
-      React.createElement("div",{className:"well-sub"},"SAUNA \u00B7 COLD PLUNGE \u00B7 45 MIN SESSION"),
-      React.createElement("div",{className:"well-badge"},React.createElement("div",{className:"well-badge-dot"}),React.createElement("div",{className:"well-badge-txt"},"ONE PERSON PER SESSION")),
+      React.createElement("div",{className:"well-sub"},"SAUNA \u00B7 COLD PLUNGE"),
       React.createElement("div",{className:"week-nav",style:{padding:"0 0 10px"}},
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"\u2039"),
         React.createElement("div",{className:"wk-label"},`${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} \u2013 ${MONTHS[weekDates[5].getMonth()]} ${weekDates[5].getDate()}  ${weekDates[0].getFullYear()}`),
@@ -838,7 +869,6 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
   return React.createElement("div",{className:"comm-wrap"},
     React.createElement("div",{className:"comm-hdr"},
       React.createElement("div",{className:"comm-title"},"NOTICE BOARD"),
-      React.createElement("div",{className:"comm-sub"},"EVERYDAY \u00B7 ALL YEAR ROUND"),
       React.createElement("div",{className:"comm-compose compose-wrap"},
         showTags&&filteredMembers.length>0&&React.createElement("div",{className:"tag-dropdown"},
           filteredMembers.map((n,i)=>React.createElement("div",{key:i,className:"tag-option",onClick:()=>insertTag(n,setText,text)},n))
@@ -987,8 +1017,12 @@ function AdminView({bookings,setBookings,showToast,isAdmin}){
         const joinDate=fmtJoinDate(mb.joined_at);
         return React.createElement("div",{key:i,className:"adm-member-card",onClick:()=>openMemberProfile(mb)},
           React.createElement("div",{className:"adm-mc-top"},
-            React.createElement("div",{className:"adm-mc-name"},(mb.name||"").toUpperCase()),
-            React.createElement("div",{className:"adm-mc-chev"},"\u203a")
+            React.createElement("div",null,
+              React.createElement("div",{className:"adm-mc-name"},(mb.name||"").toUpperCase())
+            ),
+            mb.photo
+              ?React.createElement("img",{src:mb.photo,style:{width:32,height:32,borderRadius:"50%",objectFit:"cover",border:"1px solid #333",flexShrink:0},alt:""})
+              :React.createElement("div",{style:{width:32,height:32,borderRadius:"50%",background:"#1a1a1a",border:"1px solid #2a2a2a",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,color:"#666",flexShrink:0}},initials(mb.name||"?"))
           ),
           React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.email)),
           mb.phone&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.phone)),
@@ -1203,7 +1237,7 @@ function App(){
   }
 
   function openProf(){
-    setProfForm({name:session.name,email:session.email,phone:memberData?.phone||"",photo:memberData?.photo||"",newPw:"",confirmPw:""});
+    setProfForm({name:session.name,email:session.email,phone:memberData?.phone||"",photo:memberData?.photo||"",newPw:"",confirmPw:"",emergencyName:memberData?.emergency_name||"",emergencyPhone:memberData?.emergency_phone||""});
     setProfErr("");setProfOk("");setShowProf(true);
     window.history.pushState({overlay:"profile"},"");
   }
@@ -1227,7 +1261,7 @@ function App(){
     if(newPw&&newPw.length<6){setProfErr("Password must be at least 6 characters.");return;}
     if(newPw&&newPw!==confirmPw){setProfErr("Passwords do not match.");return;}
     setProfBusy(true);
-    const upd={name:name.trim(),phone:phone.trim(),photo:photo||""};
+    const upd={name:name.trim(),phone:phone.trim(),photo:photo||"",emergency_name:profForm.emergencyName||"",emergency_phone:profForm.emergencyPhone||""};
     if(newPw)upd.password=hashPw(newPw);if(em!==session.email)upd.email=em;
     const ok=await sbPatch("members",`email=eq.${encodeURIComponent(session.email)}`,upd);
     if(!ok){setProfErr("Update failed. Please try again.");setProfBusy(false);return;}
@@ -1396,6 +1430,11 @@ function App(){
         React.createElement("input",{className:"fi",type:"email",value:profForm.email,autoComplete:"email",onChange:e=>{setProfForm(f=>({...f,email:e.target.value}));setProfErr("");setProfOk("");}}),
         React.createElement("label",{className:"fl"},"PHONE NUMBER"),
         React.createElement("input",{className:"fi",type:"tel",value:profForm.phone,autoComplete:"tel",onChange:e=>{setProfForm(f=>({...f,phone:e.target.value}));setProfErr("");setProfOk("");}}),
+        React.createElement("div",{className:"prof-section"},"EMERGENCY CONTACT"),
+        React.createElement("label",{className:"fl"},"CONTACT NAME"),
+        React.createElement("input",{className:"fi",placeholder:"Emergency contact name",value:profForm.emergencyName||"",onChange:e=>{setProfForm(f=>({...f,emergencyName:e.target.value}));setProfErr("");setProfOk("");}}),
+        React.createElement("label",{className:"fl"},"CONTACT PHONE"),
+        React.createElement("input",{className:"fi",type:"tel",placeholder:"Emergency contact phone",value:profForm.emergencyPhone||"",onChange:e=>{setProfForm(f=>({...f,emergencyPhone:e.target.value}));setProfErr("");setProfOk("");}}),
         React.createElement("div",{className:"prof-section"},"HEALTH INFORMATION"),
         React.createElement("a",{href:"/register.html",style:{display:"block",width:"100%",background:"transparent",color:"#aaa",border:"1px solid #2a2a2a",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.18em",padding:"15px",borderRadius:3,textAlign:"center",textDecoration:"none",marginBottom:4}},"UPDATE HEALTH SCREENING FORM"),
         React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.06em",marginBottom:4}},"Update your medical conditions, fitness level, or consents"),
