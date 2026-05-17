@@ -191,6 +191,12 @@ html,body{background:#080808;min-height:100vh}
 .auth-reg{text-align:center;margin-top:14px;font-size:11px;color:#555;letter-spacing:0.04em}
 .auth-reg a{color:#888;text-decoration:underline;text-underline-offset:3px}
 .auth-reg a:hover{color:#fff}
+.auth-guest-divider{display:flex;align-items:center;gap:10px;margin:20px 0 4px}
+.auth-guest-divider::before,.auth-guest-divider::after{content:"";flex:1;height:1px;background:#1e1e1e}
+.auth-guest-divider span{font-size:9px;letter-spacing:0.18em;color:#333;font-weight:600}
+.auth-guest{text-align:center;margin-top:10px;font-size:11px;color:#555;letter-spacing:0.04em}
+.auth-guest a{color:#777;text-decoration:underline;text-underline-offset:3px;font-weight:500}
+.auth-guest a:hover{color:#ccc}
 .prof-overlay{position:fixed;inset:0;background:#080808;z-index:50;display:flex;flex-direction:column;max-width:480px;margin:0 auto;overflow-y:auto}
 .prof-hdr{display:flex;align-items:center;justify-content:space-between;padding:20px 20px 0;flex-shrink:0}
 .prof-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:0.15em;color:#fff}
@@ -1335,6 +1341,11 @@ function App(){
       ),
       React.createElement("div",{className:"auth-reg"},
         React.createElement("a",{href:"/register.html"},"Complete registration & PAR-Q form")
+      ),
+      React.createElement("div",{className:"auth-guest-divider"},React.createElement("span",null,"OR")),
+      React.createElement("div",{className:"auth-guest"},
+        "Not a member? ",
+        React.createElement("a",{href:"/widget.html",target:"_blank"},"Book as a guest")
       )
     ),
     React.createElement("div",{className:"foot",style:{marginTop:48,fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION.")
