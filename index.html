@@ -61,7 +61,7 @@ html,body{background:#080808;min-height:100vh}
 .c-sub.cl{color:#e06040}
 .c-sub.co{color:#aaa}
 .c-sub.ck{color:#777}
-.c-sub.cf{color:#555}
+.c-sub.cf{color:#555}.c-sub.cg{color:#4aaa66}
 .c-btn{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:0.12em;padding:8px 12px;border-radius:3px;border:none;cursor:pointer;white-space:nowrap;transition:all .15s}
 .c-btn.bb{background:#fff;color:#000}
 .c-btn.bb:hover:not(:disabled){background:#ddd}
@@ -899,7 +899,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
 
   return React.createElement("div",{className:"comm-wrap"},
     React.createElement("div",{className:"comm-hdr"},
-      React.createElement("div",{className:"comm-title"},"NOTICE BOARD"),
+      React.createElement("div",{className:"comm-title"},"THE 365 NOTICE BOARD"),
       React.createElement("div",{className:"comm-compose compose-wrap"},
         showTags&&filteredMembers.length>0&&React.createElement("div",{className:"tag-dropdown"},
           filteredMembers.map((n,i)=>React.createElement("div",{key:i,className:"tag-option",onClick:()=>insertTag(n,setText,text)},n))
@@ -928,7 +928,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
             React.createElement("div",{className:"post-author"},
               photo?React.createElement("img",{src:photo,className:"post-av-img",alt:""}):React.createElement("div",{className:`post-av-init${isAdminPost?" admin-av":""}`},initials(post.author_name)),
               React.createElement("div",null,
-                React.createElement("div",{className:"post-name"},post.author_name.split(" ")[0]),
+                React.createElement("div",{className:"post-name"},post.author_name),
                 React.createElement("div",{className:`post-badge${isAdminPost?" admin-badge":""}`},isAdminPost?"COACH \u00B7 TEAM 365":"MEMBER")
               )
             ),
@@ -942,7 +942,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
               const canDeleteReply=isAdmin||(r.author_email===session.email);
               return React.createElement("div",{key:ri,className:"reply-card"},
                 React.createElement("div",{className:"reply-author",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
-                  React.createElement("span",null,r.author_name.split(" ")[0],React.createElement("span",null," replied")),
+                  React.createElement("span",null,r.author_name,React.createElement("span",null," replied")),
                   canDeleteReply&&React.createElement("button",{className:"post-delete",style:{fontSize:"9px",color:"#333"},onClick:()=>handleDelete(r.id)},"Delete")
                 ),
                 React.createElement("div",{className:"reply-content",dangerouslySetInnerHTML:{__html:renderContent(r.content)}})
@@ -1313,7 +1313,7 @@ function App(){
   if(!session)return React.createElement("div",{className:"auth-page"},
     React.createElement("div",{className:"auth-logo-sub"},"LAMONT"),
     React.createElement("div",{className:"auth-logo"},"TEAM 365"),
-    React.createElement("div",{className:"auth-tag"},"EVERYDAY. ALL YEAR ROUND."),
+    React.createElement("div",{className:"auth-tag"},"COMMITMENT. CONSISTENCY. DETERMINATION."),
     React.createElement("div",{className:"auth-card"},
       React.createElement("div",{className:"auth-title"},authMode==="login"?"Welcome Back":"Join Team 365"),
       authMode==="signup"&&React.createElement(React.Fragment,null,
@@ -1337,7 +1337,7 @@ function App(){
         React.createElement("a",{href:"/register.html"},"Complete registration & PAR-Q form")
       )
     ),
-    React.createElement("div",{className:"foot",style:{marginTop:48}},"EVERYDAY \u00B7 ALL YEAR ROUND")
+    React.createElement("div",{className:"foot",style:{marginTop:48}},"COMMITMENT. CONSISTENCY. DETERMINATION.")
   );
 
   return React.createElement("div",{className:"app"},
@@ -1347,11 +1347,11 @@ function App(){
       React.createElement("div",{className:"logo-area"},
         React.createElement("div",{className:"logo-sub"},"LAMONT"),
         React.createElement("div",{className:"logo"},"TEAM 365"),
-        React.createElement("div",{className:"logo-tag"},"EVERYDAY. ALL YEAR ROUND.")
+        React.createElement("div",{className:"logo-tag"},"COMMITMENT. CONSISTENCY. DETERMINATION.")
       ),
       React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",cursor:"pointer"},onClick:openProf},
         memberPhoto?React.createElement("img",{src:memberPhoto,className:"avatar-sm",alt:"profile"}):React.createElement("div",{className:"avatar-init-sm"},memberInit),
-        React.createElement("div",{className:"name-lbl"},session.name.split(" ")[0].toUpperCase()),
+        React.createElement("div",{className:"name-lbl"},session.name.toUpperCase()),
         React.createElement("div",{className:"edit-lbl"},"EDIT PROFILE")
       )
     ),
@@ -1376,7 +1376,7 @@ function App(){
           const userBkd=userBooked(selDK,time);const full=left===0&&!userBkd;
           const past=isPastClass(time);const lk=`${selDK}-${time}`;const busy=!!bkBusy[lk];
           const subText=userBkd?"Booked \u2713":full?"Full":`${left} ${left===1?"Spot":"Spots"} Available`;
-          const subCls=userBkd?"ck":full?"cf":left<=3?"cl":"co";
+          const subCls=userBkd?"cg":full?"cf":left<=3?"cl":"co";
           return React.createElement("div",{key:time,className:`c-row${userBkd?" cb":""}${past?" cp":""}`},
             React.createElement("div",{className:"c-time"},fmt12(time)),
             React.createElement("div",{className:"c-mid"},
@@ -1444,7 +1444,7 @@ function App(){
       ),
       isAdmin&&React.createElement("button",{className:`tab-btn${tab==="admin"?" ta":""}`,onClick:()=>setTab("admin")},"Admin")
     ),
-    React.createElement("div",{className:"foot"},"EVERYDAY \u00B7 ALL YEAR ROUND"),
+    React.createElement("div",{className:"foot"},"COMMITMENT. CONSISTENCY. DETERMINATION."),
     React.createElement("div",{className:`toast${toast.show?" show":""}`},toast.msg),
 
     showProf&&React.createElement("div",{className:"prof-overlay"},
