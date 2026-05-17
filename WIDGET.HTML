@@ -28,9 +28,9 @@ body{font-family:'DM Sans',sans-serif;color:#fff}
 .w-dot.done{background:#444}
 /* Type cards */
 .type-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
-.type-card{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:10px;padding:22px 14px;cursor:pointer;transition:all .2s;text-align:center}
+.type-card{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:10px;padding:20px 16px 54px 18px;cursor:pointer;transition:all .2s;text-align:left;position:relative;overflow:hidden}
 .type-card:hover{border-color:#333;background:#111}
-.type-icon{font-size:30px;margin-bottom:10px}
+.type-icon{font-size:40px;position:absolute;bottom:10px;right:14px}
 .type-label{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:0.1em;color:#fff}
 .type-desc{font-size:9px;letter-spacing:0.1em;color:#555;margin-top:5px;line-height:1.6}
 /* Week nav */
@@ -46,7 +46,7 @@ body{font-family:'DM Sans',sans-serif;color:#fff}
 .day-btn:hover:not(.da){border-color:#444}
 .day-btn.dt{border-color:#555}
 .day-btn.da{background:#fff;border-color:#fff}
-.d-name{font-size:9px;letter-spacing:0.12em;font-weight:600;color:#999}
+.d-name{font-size:9px;letter-spacing:0.12em;font-weight:600;color:#999;text-align:center}
 .d-num{font-family:'Bebas Neue',sans-serif;font-size:20px;line-height:1;color:#777}
 .day-btn.dt .d-num{color:#fff}
 .day-btn.dt .d-name{color:#ccc}
@@ -173,6 +173,13 @@ async function notifyAdmin(data){
     await fetch(APPS_URL+"?"+p.toString(),{method:"GET",mode:"no-cors"});
   }catch(e){console.log("notify:",e);}
 }
+// ── Guest confirmation email ────────────────────────────────────────────────────
+async function notifyGuest(data){
+  try{
+    const p=new URLSearchParams({action:"guestConfirm",...data});
+    await fetch(APPS_URL+"?"+p.toString(),{method:"GET",mode:"no-cors"});
+  }catch(e){console.log("guest email:",e);}
+}
 
 // ── Widget ─────────────────────────────────────────────────────────────────────
 function BookingWidget(){
@@ -225,8 +232,10 @@ function BookingWidget(){
     const dateLabel=`${DAY_LONG[selDay]} ${selDate.getDate()} ${MONTHS[selDate.getMonth()]}`;
     const timeLabel=fmt12(selTime);
     const sessName=bookType==="class"?DAY_SESS[selDay]:null;
-    // Notify admin
-    notifyAdmin({guestName:nm,guestEmail:em,guestPhone:ph||"N/A",bookingType:bookType==="class"?`Class – ${sessName}`:"Sauna + Cold Plunge",dateLabel,timeLabel,bookingRef:ref,payment:payment==="gym"?"Pay at gym":"Online"});
+    // Notify admin + send guest confirmation
+    const bookingData={guestName:nm,guestEmail:em,guestPhone:ph||"N/A",bookingType:bookType==="class"?`Class – ${sessName}`:"Sauna + Cold Plunge",dateLabel,timeLabel,bookingRef:ref,payment:payment==="gym"?"Pay at gym":"Online"};
+    notifyAdmin(bookingData);
+    notifyGuest(bookingData);
     setConf({ref,nm,em,type:bookType,dateLabel,timeLabel,sessName});
     setStep(3);setBusy(false);
   }
@@ -263,14 +272,16 @@ function BookingWidget(){
       React.createElement("div",{className:"w-sub"},"WHAT WOULD YOU LIKE TO BOOK?"),
       React.createElement("div",{className:"type-grid"},
         React.createElement("div",{className:"type-card",onClick:()=>goType("class")},
-          React.createElement("div",{className:"type-icon"},"💪"),
           React.createElement("div",{className:"type-label"},"BOOK A CLASS"),
-          React.createElement("div",{className:"type-desc"},"MON – SAT\nUP TO 10 SPOTS PER CLASS")
+          React.createElement("div",{className:"type-desc"},"MONDAY – SATURDAY"),
+          React.createElement("div",{className:"type-desc",style:{marginTop:3}},"UP TO 10 SPOTS PER CLASS"),
+          React.createElement("div",{className:"type-icon"},"💪")
         ),
         React.createElement("div",{className:"type-card",onClick:()=>goType("wellness")},
-          React.createElement("div",{className:"type-icon"},"🧖"),
           React.createElement("div",{className:"type-label"},"SAUNA + COLD PLUNGE"),
-          React.createElement("div",{className:"type-desc"},"MON – SAT\nSOLO SESSIONS · EVERY 2 HRS")
+          React.createElement("div",{className:"type-desc"},"MONDAY – SATURDAY"),
+          React.createElement("div",{className:"type-desc",style:{marginTop:3}},"SESSIONS AVAILABLE EVERY 2 HOURS"),
+          React.createElement("div",{className:"type-icon"},"🧖")
         )
       ),
       React.createElement("div",{className:"guest-notice"},
