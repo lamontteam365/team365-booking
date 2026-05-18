@@ -144,6 +144,7 @@ const SB_URL="https://xczwmexavysvljmobbgv.supabase.co";
 const SB_KEY="sb_publishable_tujGGhPRUimflq1-IFzuvA_Crw6knMO";
 const SB_HDR={"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return=minimal"};
 const APPS_URL="https://script.google.com/macros/s/AKfycbz5cruljVDUVScwm14Sj1z5_6cRrNK9cgOaq7Tx8P9LfPAEI7p_kx8ZJnaghF_SmU46Fw/exec";
+const SHOPIFY_PAY_URL="https://www.lamontcollective.com/products/casual-gym-session";
 const MAX_SPOTS=10;
 const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
 const SAT_TIMES=["06:30","07:30","08:30","09:30"];
@@ -267,24 +268,27 @@ function ClassWidget(){
     setBkBusy(b=>({...b,[lk]:false}));
   }
 
-  // Guest book
-  async function handleGuestBook(){
+  // Guest book — shared booking logic
+  async function submitBooking(payMethod){
     const nm=form.name.trim(),em=form.email.trim().toLowerCase(),ph=form.phone.trim();
     if(!nm){setErr("Please enter your full name.");return;}
     if(!em||!em.includes("@")||!em.includes(".")){setErr("Please enter a valid email address.");return;}
     setErr("");setBusy(true);
     const ref=genRef();
-    const row={email:em,name:nm,date_key:selDK,time:selTime,is_guest:true,booking_ref:ref,phone:ph,created_at:Date.now()};
-    const ok=await sbPost("bookings",row);
-    if(!ok){setErr("Booking failed — please try again.");setBusy(false);return;}
     const dateLabel=`${DAY_LONG[selDay]} ${selDate.getDate()} ${MONTHS[selDate.getMonth()]}`;
     const timeLabel=fmt12(selTime);
     const sessName=DAY_SESS[selDay];
-    const bookData={guestName:nm,guestEmail:em,guestPhone:ph||"N/A",bookingType:`Class – ${sessName}`,dateLabel,timeLabel,bookingRef:ref,payment:payment==="gym"?"Pay at gym":"Online"};
+    const row={email:em,name:nm,date_key:selDK,time:selTime,is_guest:true,booking_ref:ref,phone:ph,created_at:Date.now()};
+    const ok=await sbPost("bookings",row);
+    if(!ok){setErr("Booking failed — please try again.");setBusy(false);return;}
+    const bookData={guestName:nm,guestEmail:em,guestPhone:ph||"N/A",bookingType:`Class – ${sessName}`,dateLabel,timeLabel,bookingRef:ref,payment:payMethod==="gym"?"Pay at gym":"Online"};
     notifyAdmin(bookData);notifyGuest(bookData);
-    setConf({ref,nm,em,dateLabel,timeLabel,sessName});
+    if(payMethod==="online")window.open(SHOPIFY_PAY_URL,"_blank");
+    setConf({ref,nm,em,dateLabel,timeLabel,sessName,payment:payMethod});
     setStep(3);setBusy(false);
   }
+
+  function handleGuestBook(){submitBooking(payment);}
 
   function resetGuest(){setStep(1);setSelTime(null);setForm({name:"",email:"",phone:""});setPayment("gym");setConf(null);setErr("");}
 
@@ -444,22 +448,26 @@ function ClassWidget(){
             React.createElement("div",{className:"pay-name"},"PAY AT GYM"),
             React.createElement("div",{className:"pay-hint"},"Pay when you arrive")
           ),
-          React.createElement("div",{className:"pay-opt dim"},
+          React.createElement("div",{className:`pay-opt clickable${payment==="online"?" sel":""}`,onClick:()=>setPayment("online")},
             React.createElement("div",{className:"pay-icon"},"💳"),
             React.createElement("div",{className:"pay-name"},"PAY ONLINE"),
-            React.createElement("div",{className:"pay-hint"},"Coming soon")
+            React.createElement("div",{className:"pay-hint"},"Pay now via Shopify")
           )
         ),
         err&&React.createElement("div",{className:"err-msg"},err),
-        React.createElement("button",{className:"btn-p",onClick:handleGuestBook,disabled:busy||!form.name.trim()||!form.email.trim()},busy?"CONFIRMING…":"CONFIRM BOOKING"),
+        React.createElement("button",{className:"btn-p",onClick:handleGuestBook,disabled:busy||!form.name.trim()||!form.email.trim()},busy?"CONFIRMING…":payment==="online"?"RESERVE & PAY ONLINE":"CONFIRM BOOKING"),
         React.createElement("button",{className:"btn-g",onClick:()=>{setStep(1);setErr("");}},"BACK")
       ),
 
       // STEP 3: Confirmation
       step===3&&conf&&React.createElement("div",{className:"conf"},
-        React.createElement("div",{className:"conf-icon"},"✅"),
-        React.createElement("div",{className:"conf-title"},"BOOKING CONFIRMED"),
-        React.createElement("div",{className:"conf-msg"},`You're booked in for ${conf.timeLabel} on ${conf.dateLabel} — ${conf.sessName}.\nA confirmation has been sent to ${conf.em}.`),
+        React.createElement("div",{className:"conf-icon"},conf.payment==="online"?"💳":"✅"),
+        React.createElement("div",{className:"conf-title"},conf.payment==="online"?"SLOT RESERVED":"BOOKING CONFIRMED"),
+        React.createElement("div",{className:"conf-msg"},
+          conf.payment==="online"
+            ?"Your spot is reserved. Complete payment in the Shopify tab that just opened — your booking is confirmed once payment is done."
+            :`You're booked in for ${conf.timeLabel} on ${conf.dateLabel} — ${conf.sessName}.\nA confirmation has been sent to ${conf.em}.`
+        ),
         React.createElement("div",{className:"ref-box"},
           React.createElement("div",{className:"ref-lbl"},"YOUR BOOKING REFERENCE"),
           React.createElement("div",{className:"ref-code"},conf.ref)
@@ -469,9 +477,10 @@ function ClassWidget(){
           React.createElement("div",{className:"summ-row"},React.createElement("div",{className:"summ-lbl"},"SESSION"),React.createElement("div",{className:"summ-val"},conf.sessName)),
           React.createElement("div",{className:"summ-row"},React.createElement("div",{className:"summ-lbl"},"DATE"),React.createElement("div",{className:"summ-val"},conf.dateLabel.toUpperCase())),
           React.createElement("div",{className:"summ-row"},React.createElement("div",{className:"summ-lbl"},"TIME"),React.createElement("div",{className:"summ-val"},conf.timeLabel)),
-          React.createElement("div",{className:"summ-row"},React.createElement("div",{className:"summ-lbl"},"PAYMENT"),React.createElement("div",{className:"summ-val"},"PAY AT THE GYM"))
+          React.createElement("div",{className:"summ-row"},React.createElement("div",{className:"summ-lbl"},"PAYMENT"),React.createElement("div",{className:"summ-val"},conf.payment==="online"?"PAY ONLINE (SHOPIFY)":"PAY AT THE GYM"))
         ),
-        React.createElement("button",{className:"btn-p",onClick:resetGuest},"BOOK ANOTHER CLASS")
+        conf.payment==="online"&&React.createElement("button",{className:"btn-p",style:{marginTop:4},onClick:()=>window.open(SHOPIFY_PAY_URL,"_blank")},"COMPLETE PAYMENT →"),
+        React.createElement("button",{className:"btn-g",style:{marginTop:conf.payment==="online"?0:4},onClick:resetGuest},"BOOK ANOTHER CLASS")
       )
     ),
 
