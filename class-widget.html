@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Team 365 · Book a Class</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#080808;color:#fff;font-family:'DM Sans',sans-serif}
+.widget{max-width:520px;margin:0 auto;padding:24px 16px 48px}
+/* Mode bar */
+.mode-bar{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.mode-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.12em;color:#fff}
+.mode-link{background:none;border:none;font-size:10px;letter-spacing:0.14em;color:#444;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;transition:color .15s;padding:2px 0}
+.mode-link:hover{color:#aaa}
+.w-sub{font-size:10px;letter-spacing:0.14em;color:#555;font-weight:600;margin-bottom:20px}
+/* Progress dots */
+.w-dots{display:flex;gap:6px;justify-content:center;margin-bottom:24px}
+.w-dot{width:6px;height:6px;border-radius:50%;background:#1a1a1a;transition:all .2s}
+.w-dot.active{background:#fff;width:18px;border-radius:3px}
+.w-dot.done{background:#444}
+/* Login panel */
+.login-panel{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:8px;padding:20px;margin-bottom:20px}
+.login-title{font-size:10px;letter-spacing:0.2em;color:#555;font-weight:600;margin-bottom:16px}
+.form-group{margin-bottom:12px}
+.fl{display:block;font-size:10px;letter-spacing:0.18em;color:#bbb;font-weight:600;margin-bottom:7px}
+.fi{width:100%;background:#080808;border:1px solid #2a2a2a;color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:300;padding:13px 14px;outline:none;border-radius:3px;transition:border-color .2s;-webkit-appearance:none}
+.fi:focus{border-color:#555}
+.fi::placeholder{color:#333}
+/* Member bar */
+.member-bar{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:6px;padding:10px 14px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center}
+.member-name{font-size:11px;letter-spacing:0.1em;color:#aaa;font-weight:500}
+.logout-btn{background:none;border:none;font-size:10px;letter-spacing:0.14em;color:#444;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600}
+.logout-btn:hover{color:#aaa}
+/* Week nav */
+.week-nav{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.wk-arrow{background:none;border:none;color:#888;cursor:pointer;font-size:22px;padding:4px 10px;line-height:1;transition:color .15s}
+.wk-arrow:hover:not(:disabled){color:#fff}
+.wk-arrow:disabled{color:#222;cursor:default}
+.wk-label{flex:1;text-align:center;font-size:10px;letter-spacing:0.16em;color:#fff;font-weight:600}
+/* Day strip */
+.day-strip{display:flex;gap:5px;margin-bottom:16px}
+.day-btn{flex:1;min-width:44px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;background:#0e0e0e;border:1px solid #222;border-radius:6px;cursor:pointer;transition:all .15s}
+.day-btn:hover:not(.da){border-color:#444}
+.day-btn.dt{border-color:#555}
+.day-btn.da{background:#fff;border-color:#fff}
+.d-name{font-size:9px;letter-spacing:0.12em;font-weight:600;color:#999;text-align:center}
+.d-num{font-family:'Bebas Neue',sans-serif;font-size:20px;line-height:1;color:#777}
+.day-btn.dt .d-num{color:#fff}
+.day-btn.dt .d-name{color:#ccc}
+.day-btn.da .d-name,.day-btn.da .d-num{color:#000}
+/* Session label */
+.sess-lbl{font-size:9px;letter-spacing:0.2em;color:#555;font-weight:600;margin-bottom:12px}
+/* Slot list */
+.slot-list{display:flex;flex-direction:column;gap:7px;margin-bottom:20px}
+/* Guest slots */
+.slot-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:7px;cursor:pointer;transition:all .15s}
+.slot-row:hover:not(.full):not(.past){border-color:#333}
+.slot-row.sel{border-color:#fff;background:#111}
+.slot-row.full{opacity:0.3;cursor:default}
+.slot-row.past{opacity:0.2;cursor:default;pointer-events:none}
+.slot-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;min-width:72px}
+.slot-mid{flex:1}
+.slot-bars{display:flex;gap:2px;margin-bottom:5px}
+.slot-bar{flex:1;height:2px;border-radius:1px;background:#222;transition:background .3s}
+.slot-bar.t{background:#fff}
+.slot-info{font-size:10px;letter-spacing:0.1em;font-weight:500}
+.slot-info.av{color:#aaa}.slot-info.lo{color:#e06040}.slot-info.fl{color:#444}.slot-info.ok{color:#4aaa66}
+.slot-radio{width:18px;height:18px;border-radius:50%;border:1.5px solid #2a2a2a;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.slot-row.sel .slot-radio{border-color:#fff;background:#fff}
+.slot-radio-dot{width:8px;height:8px;border-radius:50%;background:#000}
+/* Member slots */
+.c-row{display:flex;align-items:center;gap:10px;padding:10px 13px;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:7px;transition:border-color .15s}
+.c-row.cb{border-color:#333}
+.c-row.cp{opacity:0.3;pointer-events:none}
+.c-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;min-width:72px}
+.c-mid{flex:1}
+.c-bars{display:flex;gap:2px;margin-bottom:5px}
+.c-bar{flex:1;height:2px;border-radius:1px;background:#222;transition:background .3s}
+.c-bar.ct{background:#fff}
+.c-sub{font-size:10px;letter-spacing:0.1em;font-weight:500}
+.co{color:#999}.cl{color:#e06040}.cf{color:#444}.cg{color:#4aaa66}
+.c-btn{border:none;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:0.1em;padding:8px 14px;border-radius:3px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.bb{background:#fff;color:#000}
+.bb:hover:not(:disabled){background:#ddd}
+.bb:disabled{background:#111;color:#333;cursor:not-allowed}
+.bc{background:transparent;color:#555;border:1px solid #333}
+.bc:hover{border-color:#666;color:#aaa}
+.bf{background:transparent;color:#333;border:1px solid #1e1e1e;cursor:default}
+/* Summary */
+.summ{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:8px;padding:16px;margin-bottom:20px}
+.summ-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #111}
+.summ-row:last-child{border-bottom:none}
+.summ-lbl{font-size:10px;letter-spacing:0.12em;color:#555;font-weight:500}
+.summ-val{font-size:10px;letter-spacing:0.08em;color:#ccc;font-weight:500;text-align:right}
+/* Payment */
+.pay-lbl{font-size:10px;letter-spacing:0.18em;color:#bbb;font-weight:600;margin-bottom:10px}
+.pay-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px}
+.pay-opt{padding:14px 10px;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:7px;text-align:center;transition:all .15s}
+.pay-opt.clickable{cursor:pointer}
+.pay-opt.clickable:hover{border-color:#333}
+.pay-opt.sel{border-color:#fff}
+.pay-opt.dim{opacity:0.3;cursor:default}
+.pay-icon{font-size:20px;margin-bottom:7px}
+.pay-name{font-size:11px;letter-spacing:0.1em;color:#ccc;font-weight:600}
+.pay-hint{font-size:9px;color:#444;margin-top:3px}
+/* Buttons */
+.btn-p{width:100%;background:#fff;color:#000;border:none;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:0.18em;padding:16px;cursor:pointer;border-radius:3px;transition:background .15s;margin-bottom:10px}
+.btn-p:hover:not(:disabled){background:#ddd}
+.btn-p:disabled{background:#111;color:#333;cursor:not-allowed}
+.btn-g{width:100%;background:transparent;color:#555;border:1px solid #1e1e1e;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:0.16em;padding:13px;cursor:pointer;border-radius:3px;transition:all .15s}
+.btn-g:hover{border-color:#333;color:#aaa}
+/* Confirmation */
+.conf{text-align:center;padding:10px 0}
+.conf-icon{font-size:48px;margin-bottom:14px}
+.conf-title{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:0.12em;margin-bottom:6px}
+.conf-msg{font-size:12px;letter-spacing:0.04em;color:#777;line-height:1.9;margin-bottom:20px}
+.ref-box{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:7px;padding:14px;text-align:center;margin-bottom:18px}
+.ref-lbl{font-size:9px;letter-spacing:0.2em;color:#555;margin-bottom:4px}
+.ref-code{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:0.14em;color:#fff}
+/* Misc */
+.err-msg{font-size:12px;color:#e06040;letter-spacing:0.04em;margin-bottom:12px;line-height:1.5}
+.loading{text-align:center;padding:30px 0;font-size:10px;letter-spacing:0.22em;color:#333}
+.load-bar{width:80px;height:1px;background:#1a1a1a;border-radius:1px;overflow:hidden;margin:12px auto 0}
+.load-fill{height:100%;background:#fff;animation:ld 1.5s ease-in-out infinite}
+@keyframes ld{0%{width:0}50%{width:100%}100%{width:0}}
+.guest-notice{background:#0a0a0a;border:1px solid #1a1a1a;border-radius:6px;padding:12px 14px;margin-bottom:16px;font-size:10px;letter-spacing:0.06em;color:#555;line-height:1.7}
+.guest-notice a{color:#888;text-decoration:underline;text-underline-offset:3px}
+.guest-notice a:hover{color:#fff}
+.w-foot{text-align:center;font-size:7px;letter-spacing:0.18em;color:#2a2a2a;margin-top:32px}
+</style>
+</head>
+<body>
+<div id="root"><div class="loading" style="padding:60px 0">LOADING<div class="load-bar"><div class="load-fill"></div></div></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+const{useState,useEffect,useCallback}=React;
+
+// ── Config ────────────────────────────────────────────────────────────────────
+const SB_URL="https://xczwmexavysvljmobbgv.supabase.co";
+const SB_KEY="sb_publishable_tujGGhPRUimflq1-IFzuvA_Crw6knMO";
+const SB_HDR={"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return=minimal"};
+const APPS_URL="https://script.google.com/macros/s/AKfycbz5cruljVDUVScwm14Sj1z5_6cRrNK9cgOaq7Tx8P9LfPAEI7p_kx8ZJnaghF_SmU46Fw/exec";
+const MAX_SPOTS=10;
+const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
+const SAT_TIMES=["06:30","07:30","08:30","09:30"];
+const DAY_SHORT=["Mon","Tue","Wed","Thu","Fri","Sat"];
+const DAY_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const DAY_SESS=["Rise Up","Strength Lower","Ascend","Strength Upper","Elevate","Summit"];
+const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const mondayOf=d=>{const x=new Date(d);x.setHours(0,0,0,0);const day=x.getDay();x.setDate(x.getDate()-(day===0?6:day-1));return x;};
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
+const toDS=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const isToday=d=>toDS(d)===toDS(new Date());
+const isPastD=d=>toDS(d)<toDS(new Date());
+const fmt12=t=>{const[h,m]=t.split(":").map(Number);return`${h%12||12}:${String(m).padStart(2,"0")}${h<12?"am":"pm"}`;};
+const getWeekStart=()=>{const now=new Date();const m=mondayOf(now);return now.getDay()===0?addDays(m,7):m;};
+const hashPw=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)^s.charCodeAt(i);return(h>>>0).toString(36);};
+function genRef(){const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let r="T365-";for(let i=0;i<6;i++)r+=c[Math.floor(Math.random()*c.length)];return r;}
+function isPastSlot(date,time){
+  if(isPastD(date))return true;
+  if(!isToday(date))return false;
+  const now=new Date();const[h,m]=time.split(":").map(Number);
+  return(h*60+m+30)<(now.getHours()*60+now.getMinutes());
+}
+const lsGet=(k,fb=null)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
+
+// ── Supabase ──────────────────────────────────────────────────────────────────
+async function sbGet(t,q=""){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
+async function sbPost(t,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
+async function sbDelete(t,q){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{method:"DELETE",headers:SB_HDR});return r.ok;}catch{return false;}}
+
+// ── Notify ────────────────────────────────────────────────────────────────────
+async function notifyAdmin(data){
+  try{const p=new URLSearchParams({action:"guestBooking",...data});await fetch(APPS_URL+"?"+p.toString(),{method:"GET",mode:"no-cors"});}catch{}
+}
+async function notifyGuest(data){
+  try{const p=new URLSearchParams({action:"guestConfirm",...data});await fetch(APPS_URL+"?"+p.toString(),{method:"GET",mode:"no-cors"});}catch{}
+}
+
+// ── Main Widget ───────────────────────────────────────────────────────────────
+function ClassWidget(){
+  // mode: 'guest' | 'login' | 'member'
+  const[mode,setMode]=useState(()=>{const s=lsGet("t365-cw-session");return s?"member":"guest";});
+  const[session,setSession]=useState(()=>lsGet("t365-cw-session"));
+  const[loginForm,setLoginForm]=useState({email:"",password:""});
+  const[loginErr,setLoginErr]=useState("");
+  const[loginBusy,setLoginBusy]=useState(false);
+
+  // Shared state
+  const[weekStart,setWeekStart]=useState(getWeekStart);
+  const[selDay,setSelDay]=useState(()=>{const d=new Date().getDay();return d===0?0:Math.min(d-1,5);});
+  const[bookings,setBookings]=useState([]);
+  const[loading,setLoading]=useState(false);
+
+  // Guest state
+  const[step,setStep]=useState(1);
+  const[selTime,setSelTime]=useState(null);
+  const[form,setForm]=useState({name:"",email:"",phone:""});
+  const[payment,setPayment]=useState("gym");
+  const[busy,setBusy]=useState(false);
+  const[err,setErr]=useState("");
+  const[conf,setConf]=useState(null);
+
+  // Member state
+  const[bkBusy,setBkBusy]=useState({});
+
+  const weekDates=Array.from({length:6},(_,i)=>addDays(weekStart,i));
+  const isThisWeek=toDS(weekStart)===toDS(mondayOf(new Date()));
+  const selDate=weekDates[selDay];
+  const selDK=toDS(selDate);
+  const curTimes=selDate.getDay()===6?SAT_TIMES:WD_TIMES;
+
+  // Load bookings
+  useEffect(()=>{
+    setLoading(true);setSelTime(null);
+    const keys=weekDates.map(toDS);
+    sbGet("bookings",`date_key=in.(${keys.join(",")})&select=date_key,time,email,name`).then(d=>{setBookings(d||[]);setLoading(false);});
+  },[weekStart]);
+
+  useEffect(()=>{setSelTime(null);},[selDay]);
+
+  const getBksFor=(dk,t)=>bookings.filter(b=>b.date_key===dk&&b.time===t);
+  const userBooked=(dk,t)=>session&&getBksFor(dk,t).some(b=>b.email===session.email);
+
+  // Login
+  async function handleLogin(){
+    const em=loginForm.email.trim().toLowerCase();
+    const pw=loginForm.password;
+    if(!em||!pw){setLoginErr("Please enter your email and password.");return;}
+    setLoginBusy(true);setLoginErr("");
+    const rows=await sbGet("members",`email=eq.${encodeURIComponent(em)}&select=email,name,password`);
+    if(!rows||rows.length===0){setLoginErr("No account found with that email.");setLoginBusy(false);return;}
+    const mb=rows[0];
+    if(mb.password!==hashPw(pw)){setLoginErr("Incorrect password.");setLoginBusy(false);return;}
+    const s={email:mb.email,name:mb.name};
+    lsSet("t365-cw-session",s);setSession(s);setMode("member");setLoginBusy(false);
+  }
+
+  function handleLogout(){lsSet("t365-cw-session",null);setSession(null);setMode("guest");setStep(1);setSelTime(null);setConf(null);}
+
+  // Member book
+  async function handleMemberBook(time){
+    const lk=`${selDK}-${time}`;
+    setBkBusy(b=>({...b,[lk]:true}));
+    const ok=await sbPost("bookings",{email:session.email,name:session.name,date_key:selDK,time,created_at:Date.now()});
+    if(ok){
+      setBookings(prev=>[...prev,{email:session.email,name:session.name,date_key:selDK,time}]);
+    }
+    setBkBusy(b=>({...b,[lk]:false}));
+  }
+
+  // Member cancel
+  async function handleMemberCancel(time){
+    const lk=`${selDK}-${time}`;
+    setBkBusy(b=>({...b,[lk]:true}));
+    const ok=await sbDelete("bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=eq.${selDK}&time=eq.${encodeURIComponent(time)}`);
+    if(ok){
+      setBookings(prev=>prev.filter(b=>!(b.email===session.email&&b.date_key===selDK&&b.time===time)));
+    }
+    setBkBusy(b=>({...b,[lk]:false}));
+  }
+
+  // Guest book
+  async function handleGuestBook(){
+    const nm=form.name.trim(),em=form.email.trim().toLowerCase(),ph=form.phone.trim();
+    if(!nm){setErr("Please enter your full name.");return;}
+    if(!em||!em.includes("@")||!em.includes(".")){setErr("Please enter a valid email address.");return;}
+    setErr("");setBusy(true);
+    const ref=genRef();
+    const row={email:em,name:nm,date_key:selDK,time:selTime,is_guest:true,booking_ref:ref,phone:ph,created_at:Date.now()};
+    const ok=await sbPost("bookings",row);
+    if(!ok){setErr("Booking failed — please try again.");setBusy(false);return;}
+    const dateLabel=`${DAY_LONG[selDay]} ${selDate.getDate()} ${MONTHS[selDate.getMonth()]}`;
+    const timeLabel=fmt12(selTime);
+    const sessName=DAY_SESS[selDay];
+    const bookData={guestName:nm,guestEmail:em,guestPhone:ph||"N/A",bookingType:`Class – ${sessName}`,dateLabel,timeLabel,bookingRef:ref,payment:payment==="gym"?"Pay at gym":"Online"};
+    notifyAdmin(bookData);notifyGuest(bookData);
+    setConf({ref,nm,em,dateLabel,timeLabel,sessName});
+    setStep(3);setBusy(false);
+  }
+
+  function resetGuest(){setStep(1);setSelTime(null);setForm({name:"",email:"",phone:""});setPayment("gym");setConf(null);setErr("");}
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+  return React.createElement("div",{className:"widget"},
+
+    // Mode bar
+    React.createElement("div",{className:"mode-bar"},
+      React.createElement("div",null,
+        React.createElement("div",{className:"mode-title"},"BOOK A CLASS"),
+        React.createElement("div",{className:"w-sub"},"TEAM 365 · MONDAY – SATURDAY")
+      ),
+      mode==="guest"&&step===1&&React.createElement("button",{className:"mode-link",onClick:()=>setMode("login")},"MEMBER? LOG IN ›"),
+      mode==="login"&&React.createElement("button",{className:"mode-link",onClick:()=>setMode("guest")},"BOOK AS GUEST ›")
+    ),
+
+    // ── LOGIN PANEL ───────────────────────────────────────────────────────────
+    mode==="login"&&React.createElement("div",null,
+      React.createElement("div",{className:"login-panel"},
+        React.createElement("div",{className:"login-title"},"MEMBER LOGIN"),
+        React.createElement("div",{className:"form-group"},
+          React.createElement("label",{className:"fl"},"EMAIL ADDRESS"),
+          React.createElement("input",{className:"fi",type:"email",placeholder:"your@email.com",value:loginForm.email,autoComplete:"email",onChange:e=>setLoginForm(f=>({...f,email:e.target.value})),onKeyDown:e=>e.key==="Enter"&&handleLogin()})
+        ),
+        React.createElement("div",{className:"form-group"},
+          React.createElement("label",{className:"fl"},"PASSWORD"),
+          React.createElement("input",{className:"fi",type:"password",placeholder:"••••••••",value:loginForm.password,autoComplete:"current-password",onChange:e=>setLoginForm(f=>({...f,password:e.target.value})),onKeyDown:e=>e.key==="Enter"&&handleLogin()})
+        ),
+        loginErr&&React.createElement("div",{className:"err-msg"},loginErr),
+        React.createElement("button",{className:"btn-p",onClick:handleLogin,disabled:loginBusy},loginBusy?"CHECKING…":"LOG IN")
+      ),
+      React.createElement("div",{className:"guest-notice"},
+        "Not a member yet? ",
+        React.createElement("a",{href:"https://team365-booking.vercel.app/register.html",target:"_blank"},"Register here"),
+        " to get full access to bookings, your profile, and class history."
+      )
+    ),
+
+    // ── MEMBER VIEW ───────────────────────────────────────────────────────────
+    mode==="member"&&session&&React.createElement("div",null,
+      React.createElement("div",{className:"member-bar"},
+        React.createElement("div",{className:"member-name"},session.name.toUpperCase()),
+        React.createElement("button",{className:"logout-btn",onClick:handleLogout},"LOG OUT")
+      ),
+
+      // Week nav
+      React.createElement("div",{className:"week-nav"},
+        React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"‹"),
+        React.createElement("div",{className:"wk-label"},`${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} – ${MONTHS[weekDates[5].getMonth()]} ${weekDates[5].getDate()} ${weekDates[0].getFullYear()}`),
+        React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,7))},"›")
+      ),
+
+      // Day strip
+      React.createElement("div",{className:"day-strip"},
+        weekDates.map((d,i)=>React.createElement("button",{key:i,className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}`,onClick:()=>setSelDay(i)},
+          React.createElement("div",{className:"d-name"},DAY_SHORT[i]),
+          React.createElement("div",{className:"d-num"},d.getDate())
+        ))
+      ),
+
+      React.createElement("div",{className:"sess-lbl"},`${DAY_LONG[selDay].toUpperCase()} · ${DAY_SESS[selDay].toUpperCase()} · ${curTimes.length} CLASSES`),
+
+      loading
+        ?React.createElement("div",{className:"loading"},"CHECKING AVAILABILITY…",React.createElement("div",{className:"load-bar"},React.createElement("div",{className:"load-fill"})))
+        :React.createElement("div",{className:"slot-list"},
+          curTimes.map(time=>{
+            const list=getBksFor(selDK,time);const taken=list.length;const left=MAX_SPOTS-taken;
+            const booked=userBooked(selDK,time);const full=left===0&&!booked;
+            const past=isPastSlot(selDate,time);const lk=`${selDK}-${time}`;const isBusy=!!bkBusy[lk];
+            const subText=booked?"Booked ✓":full?"Full":`${left} ${left===1?"Spot":"Spots"} Available`;
+            const subCls=booked?"cg":full?"cf":left<=3?"cl":"co";
+            return React.createElement("div",{key:time,className:`c-row${booked?" cb":""}${past?" cp":""}`},
+              React.createElement("div",{className:"c-time"},fmt12(time)),
+              React.createElement("div",{className:"c-mid"},
+                React.createElement("div",{className:"c-bars"},Array.from({length:MAX_SPOTS}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}`}))),
+                React.createElement("div",{className:`c-sub ${subCls}`},subText)
+              ),
+              !past&&(booked
+                ?React.createElement("button",{className:"c-btn bc",onClick:()=>handleMemberCancel(time)},"Cancel")
+                :full?React.createElement("button",{className:"c-btn bf",disabled:true},"Full")
+                :React.createElement("button",{className:"c-btn bb",onClick:()=>handleMemberBook(time),disabled:isBusy},isBusy?"…":"Book")
+              )
+            );
+          })
+        )
+    ),
+
+    // ── GUEST VIEW ────────────────────────────────────────────────────────────
+    mode==="guest"&&React.createElement("div",null,
+
+      // Progress dots
+      step<3&&React.createElement("div",{className:"w-dots"},
+        [0,1].map(i=>React.createElement("div",{key:i,className:`w-dot${step-1===i?" active":step-1>i?" done":""}`}))
+      ),
+
+      // STEP 1: Day + Time
+      step===1&&React.createElement("div",null,
+        React.createElement("div",{className:"week-nav"},
+          React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"‹"),
+          React.createElement("div",{className:"wk-label"},`${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} – ${MONTHS[weekDates[5].getMonth()]} ${weekDates[5].getDate()} ${weekDates[0].getFullYear()}`),
+          React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,7))},"›")
+        ),
+        React.createElement("div",{className:"day-strip"},
+          weekDates.map((d,i)=>React.createElement("button",{key:i,className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}`,onClick:()=>setSelDay(i)},
+            React.createElement("div",{className:"d-name"},DAY_SHORT[i]),
+            React.createElement("div",{className:"d-num"},d.getDate())
+          ))
+        ),
+        React.createElement("div",{className:"sess-lbl"},`${DAY_LONG[selDay].toUpperCase()} · ${DAY_SESS[selDay].toUpperCase()} · ${curTimes.length} CLASSES`),
+        loading
+          ?React.createElement("div",{className:"loading"},"CHECKING AVAILABILITY…",React.createElement("div",{className:"load-bar"},React.createElement("div",{className:"load-fill"})))
+          :React.createElement("div",{className:"slot-list"},
+            curTimes.map(time=>{
+              const{taken,left}=(s=>{const t=bookings.filter(b=>b.date_key===selDK&&b.time===time).length;return{taken:t,left:MAX_SPOTS-t};})(0);
+              const full=left===0;const low=left<=3&&left>0;const past=isPastSlot(selDate,time);
+              return React.createElement("div",{key:time,className:`slot-row${selTime===time?" sel":""}${full?" full":""}${past?" past":""}`,onClick:()=>{if(!full&&!past)setSelTime(time);}},
+                React.createElement("div",{className:"slot-time"},fmt12(time)),
+                React.createElement("div",{className:"slot-mid"},
+                  React.createElement("div",{className:"slot-bars"},Array.from({length:MAX_SPOTS}).map((_,i)=>React.createElement("div",{key:i,className:`slot-bar${i<taken?" t":""}`}))),
+                  React.createElement("div",{className:`slot-info ${full?"fl":low?"lo":"av"}`},full?"Full":`${left} spot${left===1?"":"s"} available`)
+                ),
+                !full&&!past&&React.createElement("div",{className:"slot-radio"},selTime===time&&React.createElement("div",{className:"slot-radio-dot"}))
+              );
+            })
+          ),
+        React.createElement("button",{className:"btn-p",onClick:()=>setStep(2),disabled:!selTime},"CONTINUE"),
+        React.createElement("div",{className:"guest-notice"},
+          "Already a member? ",React.createElement("button",{onClick:()=>setMode("login"),style:{background:"none",border:"none",color:"#888",cursor:"pointer",fontFamily:"inherit",fontSize:"inherit",textDecoration:"underline",textUnderlineOffset:"3px",padding:0}},"Log in"),
+          " for full access to your bookings and history."
+        )
+      ),
+
+      // STEP 2: Details
+      step===2&&React.createElement("div",null,
+        React.createElement("div",{className:"w-sub"},"YOUR DETAILS · ALMOST THERE"),
+        React.createElement("div",{className:"summ"},
+          React.createElement("div",{className:"summ-row"},React.createElement("div",{className:"summ-lbl"},"SESSION"),React.createElement("div",{className:"summ-val"},DAY_SESS[selDay].toUpperCase())),
+          React.createElement("div",{className:"summ-row"},React.createElement("div",{className:"summ-lbl"},"DATE"),React.createElement("div",{className:"summ-val"},`${DAY_LONG[selDay].toUpperCase()} ${selDate.getDate()} ${MONTHS[selDate.getMonth()].toUpperCase()}`)),
+          React.createElement("div",{className:"summ-row"},React.createElement("div",{className:"summ-lbl"},"TIME"),React.createElement("div",{className:"summ-val"},fmt12(selTime)))
+        ),
+        React.createElement("div",{className:"form-group"},
+          React.createElement("label",{className:"fl"},"FULL NAME · REQUIRED"),
+          React.createElement("input",{className:"fi",placeholder:"Your full name",value:form.name,autoComplete:"name",onChange:e=>setForm(f=>({...f,name:e.target.value}))})
+        ),
+        React.createElement("div",{className:"form-group"},
+          React.createElement("label",{className:"fl"},"EMAIL · REQUIRED"),
+          React.createElement("input",{className:"fi",type:"email",placeholder:"your@email.com",value:form.email,autoComplete:"email",onChange:e=>setForm(f=>({...f,email:e.target.value}))})
+        ),
+        React.createElement("div",{className:"form-group",style:{marginBottom:22}},
+          React.createElement("label",{className:"fl"},"PHONE · OPTIONAL"),
+          React.createElement("input",{className:"fi",type:"tel",placeholder:"Mobile number",value:form.phone,autoComplete:"tel",onChange:e=>setForm(f=>({...f,phone:e.target.value}))})
+        ),
+        React.createElement("div",{className:"pay-lbl"},"PAYMENT METHOD"),
+        React.createElement("div",{className:"pay-opts"},
+          React.createElement("div",{className:`pay-opt clickable${payment==="gym"?" sel":""}`,onClick:()=>setPayment("gym")},
+            React.createElement("div",{className:"pay-icon"},"🏋️"),
+            React.createElement("div",{className:"pay-name"},"PAY AT GYM"),
+            React.createElement("div",{className:"pay-hint"},"Pay when you arrive")
+          ),
+          React.createElement("div",{className:"pay-opt dim"},
+            React.createElement("div",{className:"pay-icon"},"💳"),
+            React.createElement("div",{className:"pay-name"},"PAY ONLINE"),
+            React.createElement("div",{className:"pay-hint"},"Coming soon")
+          )
+        ),
+        err&&React.createElement("div",{className:"err-msg"},err),
+        React.createElement("button",{className:"btn-p",onClick:handleGuestBook,disabled:busy||!form.name.trim()||!form.email.trim()},busy?"CONFIRMING…":"CONFIRM BOOKING"),
+        React.createElement("button",{className:"btn-g",onClick:()=>{setStep(1);setErr("");}},"BACK")
+      ),
+
+      // STEP 3: Confirmation
+      step===3&&conf&&React.createElement("div",{className:"conf"},
+        React.createElement("div",{className:"conf-icon"},"✅"),
+        React.createElement("div",{className:"conf-title"},"BOOKING CONFIRMED"),
+        React.createElement("div",{className:"conf-msg"},`You're booked in for ${conf.timeLabel} on ${conf.dateLabel} — ${conf.sessName}.\nA confirmation has been sent to ${conf.em}.`),
+        React.createElement("div",{className:"ref-box"},
+          React.createElement("div",{className:"ref-lbl"},"YOUR BOOKING REFERENCE"),
+          React.createElement("div",{className:"ref-code"},conf.ref)
+        ),
+        React.createElement("div",{className:"summ"},
+          React.createElement("div",{className:"summ-row"},React.createElement("div",{className:"summ-lbl"},"NAME"),React.createElement("div",{className:"summ-val"},conf.nm)),
+          React.createElement("div",{className:"summ-row"},React.createElement("div",{className:"summ-lbl"},"SESSION"),React.createElement("div",{className:"summ-val"},conf.sessName)),
+          React.createElement("div",{className:"summ-row"},React.createElement("div",{className:"summ-lbl"},"DATE"),React.createElement("div",{className:"summ-val"},conf.dateLabel.toUpperCase())),
+          React.createElement("div",{className:"summ-row"},React.createElement("div",{className:"summ-lbl"},"TIME"),React.createElement("div",{className:"summ-val"},conf.timeLabel)),
+          React.createElement("div",{className:"summ-row"},React.createElement("div",{className:"summ-lbl"},"PAYMENT"),React.createElement("div",{className:"summ-val"},"PAY AT THE GYM"))
+        ),
+        React.createElement("button",{className:"btn-p",onClick:resetGuest},"BOOK ANOTHER CLASS")
+      )
+    ),
+
+    React.createElement("div",{className:"w-foot"},"COMMITMENT. CONSISTENCY. DETERMINATION.")
+  );
+}
+
+ReactDOM.render(React.createElement(ClassWidget),document.getElementById("root"));
+</script>
+</body>
+</html>
