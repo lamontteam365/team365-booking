@@ -17,15 +17,19 @@
 html,body{background:#080808;min-height:100vh}
 #root{min-height:100vh}
 .app{font-family:'DM Sans',sans-serif;background:#080808;color:#fff;min-height:100vh;display:flex;flex-direction:column;max-width:480px;margin:0 auto}
-.hdr{padding:20px 20px 0;display:flex;justify-content:space-between;align-items:center}
-.logo-area{text-align:center;margin-bottom:0}
-.logo-sub{font-size:9px;letter-spacing:0.22em;color:#aaa;font-weight:500;text-align:center}
-.logo{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:0.15em;line-height:1;color:#fff;text-align:center}
-.logo-tag{font-size:7px;letter-spacing:0.2em;color:#555;text-align:center;margin-top:1px}
+.hdr{padding:24px 20px 16px;display:flex;flex-direction:column;align-items:center;text-align:center}
+.logo-area{text-align:center;margin-top:8px}
+.logo-sub{font-size:9px;letter-spacing:0.22em;color:#555;font-weight:500;text-align:center}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.18em;line-height:1;color:#444;text-align:center}
+.logo-tag{font-size:7px;letter-spacing:0.2em;color:#333;text-align:center;margin-top:2px}
+.avatar-hdr{width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid #333;display:block;cursor:pointer}
+.avatar-init-hdr{width:64px;height:64px;border-radius:50%;background:#1a1a1a;border:2px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:24px;color:#777;cursor:pointer;flex-shrink:0}
+/* keep old small avatar classes for any other usage */
 .avatar-sm{width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid #444;cursor:pointer;display:block}
 .avatar-init-sm{width:38px;height:38px;border-radius:50%;background:#1a1a1a;border:1px solid #333;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:14px;color:#999;cursor:pointer;flex-shrink:0}
-.name-lbl{font-size:10px;letter-spacing:0.12em;color:#fff;font-weight:600;text-align:center;margin-top:5px}
-.edit-lbl{font-size:9px;letter-spacing:0.1em;color:#888;text-align:center;margin-top:1px}
+.name-lbl{font-size:11px;letter-spacing:0.12em;color:#fff;font-weight:600;text-align:center;margin-top:10px}
+.edit-lbl{font-size:9px;letter-spacing:0.14em;color:#555;text-align:center;margin-top:3px;transition:color .15s}
+.edit-lbl:hover{color:#aaa}
 .week-nav{display:flex;align-items:center;padding:18px 14px 0}
 .wk-arrow{background:none;border:none;color:#888;cursor:pointer;font-size:24px;padding:4px 10px;line-height:1;transition:color .15s}
 .wk-arrow:hover:not(:disabled){color:#fff}
@@ -306,6 +310,52 @@ html,body{background:#080808;min-height:100vh}
 .parq-flag.yes{background:#1a0808;color:#e06040}
 .parq-flag.no{background:#081a08;color:#4aaa66}
 .sig-preview{width:100%;max-height:80px;object-fit:contain;border:1px solid #1a1a1a;border-radius:4px;background:#0a0a0a}
+/* Profile tabs */
+.prof-tab-bar{display:flex;border-bottom:1px solid #1a1a1a;flex-shrink:0;margin:0}
+.prof-tab-btn{flex:1;padding:13px 4px;background:none;border:none;border-bottom:2px solid transparent;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.16em;color:#666;font-weight:600;cursor:pointer;transition:all .15s;margin-bottom:-1px}
+.prof-tab-btn.pta{color:#fff;border-bottom-color:#fff}
+.prof-tab-btn:hover:not(.pta){color:#aaa}
+/* Strength program */
+.sp-wrap{padding:20px 20px 48px}
+.sp-toggle{display:flex;gap:6px;margin-bottom:16px}
+.sp-toggle-btn{flex:1;padding:10px;background:#0e0e0e;border:1px solid #2a2a2a;border-radius:5px;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.14em;color:#666;cursor:pointer;transition:all .15s}
+.sp-toggle-btn.spta{background:#fff;color:#000;border-color:#fff}
+.sp-weeks{display:flex;gap:6px;margin-bottom:20px}
+.sp-wk{flex:1;padding:8px 4px;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:4px;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:0.1em;color:#555;cursor:pointer;transition:all .15s;text-align:center}
+.sp-wk.spwa{background:#1a1a1a;border-color:#555;color:#fff}
+.sp-wk.spwc{border-color:#4aaa66;color:#4aaa66}
+.sp-section-hdr{font-size:9px;letter-spacing:0.22em;color:#666;font-weight:600;margin:20px 0 10px;padding-top:16px;border-top:1px solid #141414}
+.sp-section-hdr:first-child{border-top:none;padding-top:0;margin-top:0}
+.sp-ex{background:#0e0e0e;border:1px solid #1a1a1a;border-radius:7px;padding:12px 13px;margin-bottom:6px}
+.sp-ex-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.sp-ex-name{font-size:13px;color:#fff;font-weight:500;line-height:1.4}
+.sp-ex-meta{font-size:10px;letter-spacing:0.06em;color:#555;margin-top:3px}
+.sp-ex-edit{background:none;border:1px solid #252525;color:#555;font-size:9px;letter-spacing:0.1em;padding:3px 7px;border-radius:3px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;flex-shrink:0;transition:color .15s}
+.sp-ex-edit:hover{color:#aaa;border-color:#444}
+.sp-weight-row{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid #141414}
+.sp-weight-lbl{font-size:9px;letter-spacing:0.14em;color:#555;font-weight:600;flex-shrink:0}
+.sp-weight-saved{font-size:12px;color:#aaa;font-weight:500;flex:1}
+.sp-weight-input{flex:1;background:#141414;border:1px solid #2a2a2a;border-radius:4px;padding:7px 10px;color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .15s}
+.sp-weight-input:focus{border-color:#555}
+.sp-weight-input::placeholder{color:#333}
+.sp-weight-save{background:#fff;color:#000;border:none;border-radius:3px;font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:0.1em;padding:7px 12px;cursor:pointer;flex-shrink:0}
+.sp-weight-save:disabled{background:#222;color:#555;cursor:not-allowed}
+.sp-edit-form{background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:12px;margin-bottom:6px}
+.sp-edit-lbl{font-size:9px;letter-spacing:0.14em;color:#555;font-weight:600;margin-bottom:5px}
+.sp-edit-input{width:100%;background:#0e0e0e;border:1px solid #2a2a2a;border-radius:4px;padding:8px 10px;color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;margin-bottom:8px}
+.sp-edit-row{display:flex;gap:6px;margin-bottom:8px}
+.sp-edit-row .sp-edit-input{margin-bottom:0}
+.sp-edit-actions{display:flex;gap:6px}
+.sp-edit-save{flex:1;background:#fff;color:#000;border:none;border-radius:3px;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:0.12em;padding:10px;cursor:pointer}
+.sp-edit-cancel{background:none;border:1px solid #333;color:#666;border-radius:3px;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:0.12em;padding:10px 14px;cursor:pointer}
+.sp-loading{text-align:center;padding:48px 0;font-size:10px;letter-spacing:0.2em;color:#333}
+/* Forgot password inline */
+.fp-section{margin-top:16px;padding:14px;background:#0a0a0a;border:1px solid #1e1e1e;border-radius:6px}
+.fp-title{font-size:10px;letter-spacing:0.16em;color:#aaa;font-weight:600;margin-bottom:12px}
+.fp-msg{font-size:11px;color:#4aaa66;letter-spacing:0.04em;margin-top:10px;line-height:1.6}
+.fp-err{font-size:11px;color:#e06040;letter-spacing:0.04em;margin-top:10px}
+.fp-link{background:none;border:none;color:#555;font-family:'DM Sans',sans-serif;font-size:11px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;transition:color .15s;letter-spacing:0.04em;margin-top:6px;display:block;text-align:center}
+.fp-link:hover{color:#aaa}
 </style>
 </head>
 <body>
@@ -418,6 +468,8 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
   const [parqOk,setParqOk]=useState(false);
   const [togglingAdmin,setTogglingAdmin]=useState(false);
   const [memberIsAdmin,setMemberIsAdmin]=useState(member.is_admin||false);
+  const [resettingPw,setResettingPw]=useState(false);
+  const [pwResetOk,setPwResetOk]=useState("");
   const [editingEmergency,setEditingEmergency]=useState(false);
   const [emergencyEdits,setEmergencyEdits]=useState({emergency_name:"",emergency_phone:""});
   const [editingExtra,setEditingExtra]=useState(false);
@@ -695,6 +747,26 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
             padding:"14px",borderRadius:3,cursor:"pointer",marginTop:4,marginBottom:8
           }
         },togglingAdmin?"...":(memberIsAdmin?"REMOVE ADMIN ACCESS":"GRANT ADMIN ACCESS")),
+        React.createElement("button",{
+          disabled:resettingPw,
+          onClick:async()=>{
+            setResettingPw(true);setPwResetOk("");
+            const tmpPw="T365"+String(Math.floor(1000+Math.random()*9000));
+            const hashed=hashPw(tmpPw);
+            await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,{password:hashed});
+            const firstName=member.name?member.name.split(" ")[0]:"there";
+            const params=new URLSearchParams({action:"adminReset",to:member.email,firstName,tempPassword:tmpPw});
+            try{await fetch(APPS_SCRIPT_URL+"?"+params.toString(),{method:"GET",mode:"no-cors"});}catch(e){}
+            setResettingPw(false);setPwResetOk(`Password reset. Temp: ${tmpPw} — email sent to member.`);
+          },
+          style:{
+            width:"100%",background:"transparent",
+            border:"1px solid #2a3a4a",color:"#4a8aaa",
+            fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.15em",
+            padding:"14px",borderRadius:3,cursor:"pointer",marginBottom:8
+          }
+        },resettingPw?"SENDING...":"RESET PASSWORD"),
+        pwResetOk&&React.createElement("div",{style:{fontSize:10,color:"#4aaa88",letterSpacing:"0.04em",marginBottom:8,lineHeight:1.6}},pwResetOk),
         member.email!==ADMIN_EMAIL&&React.createElement("button",{
           onClick:async()=>{
             if(!window.confirm(`Remove ${member.name} from Team 365? This cannot be undone.`))return;
@@ -1144,6 +1216,143 @@ function AdminView({bookings,setBookings,showToast,isAdmin}){
   );
 }
 
+// ── Strength Program Tab ──────────────────────────────────────────────────────
+function StrengthTab({session,isAdmin,showToast}){
+  const autoWeek=()=>{const d=new Date().getDate();return d<=7?1:d<=14?2:d<=21?3:4;};
+  const autoType=()=>(new Date().getDay()===4?"Upper":"Lower");
+  const monthYear=(()=>{const n=new Date();return`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`;})();
+
+  const [sessType,setSessType]=useState(autoType);
+  const [weekNum,setWeekNum]=useState(autoWeek);
+  const [program,setProgram]=useState([]);
+  const [weights,setWeights]=useState({});
+  const [weightEdits,setWeightEdits]=useState({});
+  const [savingWt,setSavingWt]=useState({});
+  const [loading,setLoading]=useState(true);
+  const [editingId,setEditingId]=useState(null);
+  const [exEdit,setExEdit]=useState({});
+  const [savingEx,setSavingEx]=useState(false);
+
+  useEffect(()=>{loadData();},[sessType,weekNum]);
+
+  async function loadData(){
+    setLoading(true);
+    const prog=await sbGet("strength_program",`session_type=eq.${sessType}&week_number=eq.${weekNum}&order=order_num.asc`);
+    const wts=session?await sbGet("member_weights",`email=eq.${encodeURIComponent(session.email)}&session_type=eq.${sessType}&week_number=eq.${weekNum}&month_year=eq.${monthYear}`):[];
+    setProgram(prog||[]);
+    const wtMap={};(wts||[]).forEach(w=>{wtMap[w.exercise]=w.weight;});
+    setWeights(wtMap);setWeightEdits({});setLoading(false);
+  }
+
+  async function saveWeight(exercise){
+    if(!session)return;
+    const w=weightEdits[exercise];if(w===undefined||w==="")return;
+    setSavingWt(p=>({...p,[exercise]:true}));
+    const existing=await sbGet("member_weights",`email=eq.${encodeURIComponent(session.email)}&session_type=eq.${sessType}&week_number=eq.${weekNum}&month_year=eq.${monthYear}&exercise=eq.${encodeURIComponent(exercise)}`);
+    if(existing.length){await sbPatch("member_weights",`email=eq.${encodeURIComponent(session.email)}&session_type=eq.${sessType}&week_number=eq.${weekNum}&month_year=eq.${monthYear}&exercise=eq.${encodeURIComponent(exercise)}`,{weight:w,logged_at:Date.now()});}
+    else{await sbPost("member_weights",{email:session.email,session_type:sessType,week_number:weekNum,month_year:monthYear,exercise,weight:w,logged_at:Date.now()});}
+    setWeights(p=>({...p,[exercise]:w}));setWeightEdits(p=>({...p,[exercise]:undefined}));
+    setSavingWt(p=>({...p,[exercise]:false}));showToast("Weight saved ✓");
+  }
+
+  async function saveExercise(){
+    setSavingEx(true);
+    const{id,...updates}=exEdit;
+    await sbPatch("strength_program",`id=eq.${id}`,updates);
+    setProgram(prev=>prev.map(ex=>ex.id===id?{...ex,...updates}:ex));
+    setEditingId(null);setSavingEx(false);showToast("Exercise updated ✓");
+  }
+
+  // Group by section
+  const sections={};
+  program.forEach(ex=>{if(!sections[ex.section])sections[ex.section]=[];sections[ex.section].push(ex);});
+  const sectionOrder=weekNum===4?["Mobility","Main","Core"]:["Mobility","Core","Main"];
+  const currentWeek=autoWeek();
+
+  function ExSection({sectionName,exercises}){
+    return React.createElement(React.Fragment,null,
+      React.createElement("div",{className:"sp-section-hdr"},sectionName.toUpperCase()),
+      exercises.map(ex=>{
+        const isMain=ex.section==="Main";
+        const metaParts=[];
+        if(ex.sets)metaParts.push(`${ex.sets} sets`);
+        if(ex.reps)metaParts.push(`${ex.reps} reps`);
+        if(ex.duration)metaParts.push(ex.duration);
+        if(ex.side)metaParts.push(ex.side);
+        const meta=metaParts.join(" · ");
+        const isEditing=editingId===ex.id;
+        if(isEditing&&isAdmin){
+          return React.createElement("div",{key:ex.id,className:"sp-edit-form"},
+            React.createElement("div",{className:"sp-edit-lbl"},"EXERCISE"),
+            React.createElement("input",{className:"sp-edit-input",value:exEdit.exercise||"",onChange:e=>setExEdit(p=>({...p,exercise:e.target.value})),placeholder:"Exercise name"}),
+            React.createElement("div",{className:"sp-edit-row"},
+              React.createElement("div",{style:{flex:1}},
+                React.createElement("div",{className:"sp-edit-lbl"},"SETS"),
+                React.createElement("input",{className:"sp-edit-input",value:exEdit.sets||"",onChange:e=>setExEdit(p=>({...p,sets:e.target.value})),placeholder:"e.g. 3"})
+              ),
+              React.createElement("div",{style:{flex:1}},
+                React.createElement("div",{className:"sp-edit-lbl"},"REPS"),
+                React.createElement("input",{className:"sp-edit-input",value:exEdit.reps||"",onChange:e=>setExEdit(p=>({...p,reps:e.target.value})),placeholder:"e.g. 10"})
+              )
+            ),
+            React.createElement("div",{className:"sp-edit-lbl"},"DURATION (optional)"),
+            React.createElement("input",{className:"sp-edit-input",value:exEdit.duration||"",onChange:e=>setExEdit(p=>({...p,duration:e.target.value})),placeholder:"e.g. 45 sec"}),
+            React.createElement("div",{className:"sp-edit-actions"},
+              React.createElement("button",{className:"sp-edit-cancel",onClick:()=>setEditingId(null)},"Cancel"),
+              React.createElement("button",{className:"sp-edit-save",onClick:saveExercise,disabled:savingEx},savingEx?"SAVING...":"SAVE")
+            )
+          );
+        }
+        const wtVal=weightEdits[ex.exercise]!==undefined?weightEdits[ex.exercise]:(weights[ex.exercise]||"");
+        return React.createElement("div",{key:ex.id,className:"sp-ex"},
+          React.createElement("div",{className:"sp-ex-top"},
+            React.createElement("div",null,
+              React.createElement("div",{className:"sp-ex-name"},ex.exercise),
+              meta&&React.createElement("div",{className:"sp-ex-meta"},meta)
+            ),
+            isAdmin&&React.createElement("button",{className:"sp-ex-edit",onClick:()=>{setEditingId(ex.id);setExEdit({id:ex.id,exercise:ex.exercise,sets:ex.sets||"",reps:ex.reps||"",duration:ex.duration||""});}},"Edit")
+          ),
+          isMain&&session&&React.createElement("div",{className:"sp-weight-row"},
+            React.createElement("div",{className:"sp-weight-lbl"},"WEIGHT"),
+            React.createElement("input",{
+              className:"sp-weight-input",
+              placeholder:weights[ex.exercise]?`Last: ${weights[ex.exercise]}`:"e.g. 60kg",
+              value:weightEdits[ex.exercise]!==undefined?weightEdits[ex.exercise]:"",
+              onChange:e=>setWeightEdits(p=>({...p,[ex.exercise]:e.target.value})),
+              onKeyDown:e=>e.key==="Enter"&&saveWeight(ex.exercise)
+            }),
+            React.createElement("button",{className:"sp-weight-save",disabled:!!savingWt[ex.exercise]||weightEdits[ex.exercise]===undefined||weightEdits[ex.exercise]==="",onClick:()=>saveWeight(ex.exercise)},savingWt[ex.exercise]?"...":"Save")
+          )
+        );
+      })
+    );
+  }
+
+  return React.createElement("div",{className:"sp-wrap"},
+    // Session toggle
+    React.createElement("div",{className:"sp-toggle"},
+      React.createElement("button",{className:`sp-toggle-btn${sessType==="Lower"?" spta":""}`,onClick:()=>setSessType("Lower")},"STRENGTH LOWER"),
+      React.createElement("button",{className:`sp-toggle-btn${sessType==="Upper"?" spta":""}`,onClick:()=>setSessType("Upper")},"STRENGTH UPPER")
+    ),
+    // Week pills
+    React.createElement("div",{className:"sp-weeks"},
+      [1,2,3,4].map(w=>React.createElement("button",{
+        key:w,className:`sp-wk${weekNum===w?" spwa":""}${w===currentWeek&&weekNum!==w?" spwc":""}`,
+        onClick:()=>setWeekNum(w)
+      },`W${w}`))
+    ),
+    // Current week indicator
+    React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.14em",marginBottom:16,fontWeight:600}},
+      `${sessType.toUpperCase()} · WEEK ${weekNum}${weekNum===currentWeek?" · CURRENT WEEK":""}`
+    ),
+    loading?React.createElement("div",{className:"sp-loading"},"LOADING...")
+    :program.length===0?React.createElement("div",{className:"sp-loading"},"NO PROGRAM DATA")
+    :sectionOrder.filter(s=>sections[s]&&sections[s].length>0).map(s=>
+      React.createElement(ExSection,{key:s,sectionName:s,exercises:sections[s]})
+    )
+  );
+}
+
 // ── Main App ──────────────────────────────────────────────────────────────────
 function App(){
   const [ready,setReady]=useState(false);
@@ -1165,8 +1374,14 @@ function App(){
   const [profErr,setProfErr]=useState("");
   const [profOk,setProfOk]=useState("");
   const [profBusy,setProfBusy]=useState(false);
+  const [profTab,setProfTab]=useState("details");
   const [cropSrc,setCropSrc]=useState(null);
   const [myWellness,setMyWellness]=useState([]);
+  const [showForgotPw,setShowForgotPw]=useState(false);
+  const [fpEmail,setFpEmail]=useState("");
+  const [fpBusy,setFpBusy]=useState(false);
+  const [fpMsg,setFpMsg]=useState("");
+  const [fpErr,setFpErr]=useState("");
   const [unreadPosts,setUnreadPosts]=useState(0);
   const [allMemberNames,setAllMemberNames]=useState([]);
   const photoRef=useRef(null);
@@ -1249,6 +1464,26 @@ function App(){
 
   function handleLogout(){lsSet("t365-session",null);setSession(null);setMemberData(null);setShowProf(false);}
 
+  async function handleForgotPw(){
+    const em=fpEmail.toLowerCase().trim();
+    if(!em||!/\S+@\S+\.\S+/.test(em)){setFpErr("Please enter a valid email address.");return;}
+    setFpBusy(true);setFpErr("");
+    const rows=await sbGet("members",`email=eq.${encodeURIComponent(em)}&select=name`);
+    if(!rows.length){setFpBusy(false);setFpErr("No account found with that email.");return;}
+    const firstName=rows[0].name?rows[0].name.split(" ")[0]:"there";
+    // Generate token
+    const token=Math.random().toString(36).slice(2)+Date.now().toString(36)+Math.random().toString(36).slice(2);
+    const expiresAt=Date.now()+86400000; // 24 hours
+    // Delete any existing tokens for this email first
+    await sbDelete("password_resets",`email=eq.${encodeURIComponent(em)}`);
+    // Insert new token
+    await sbPost("password_resets",{email:em,token,expires_at:expiresAt});
+    // Email reset link
+    const params=new URLSearchParams({action:"passwordReset",to:em,firstName,token});
+    try{await fetch(APPS_SCRIPT_URL+"?"+params.toString(),{method:"GET",mode:"no-cors"});}catch(e){}
+    setFpBusy(false);setFpMsg("Reset link sent! Check your email. The link expires in 24 hours.");
+  }
+
   async function handleBook(time){
     if(!session)return;
     const lk=`${selDK}-${time}`;setBkBusy(p=>({...p,[lk]:true}));
@@ -1278,7 +1513,7 @@ function App(){
 
   function openProf(){
     setProfForm({name:session.name,email:session.email,phone:memberData?.phone||"",photo:memberData?.photo||"",newPw:"",confirmPw:"",emergencyName:memberData?.emergency_name||"",emergencyPhone:memberData?.emergency_phone||""});
-    setProfErr("");setProfOk("");setShowProf(true);
+    setProfErr("");setProfOk("");setProfTab("details");setShowProf(true);
     window.history.pushState({overlay:"profile"},"");
   }
 
@@ -1334,9 +1569,17 @@ function App(){
       React.createElement("input",{className:"fi",type:"password",placeholder:"\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",value:authForm.password,autoComplete:authMode==="login"?"current-password":"new-password",onChange:e=>setAuthForm(f=>({...f,password:e.target.value})),onKeyDown:e=>e.key==="Enter"&&handleAuth()}),
       authErr&&React.createElement("div",{className:"auth-err"},authErr),
       React.createElement("button",{className:"auth-btn",onClick:handleAuth,disabled:authBusy},authBusy?"...":(authMode==="login"?"LOG IN":"CREATE ACCOUNT")),
+      authMode==="login"&&React.createElement("button",{className:"fp-link",onClick:()=>{setShowForgotPw(p=>!p);setFpMsg("");setFpErr("");setFpEmail("");}},"Forgot password?"),
+      authMode==="login"&&showForgotPw&&React.createElement("div",{className:"fp-section"},
+        React.createElement("div",{className:"fp-title"},"RESET YOUR PASSWORD"),
+        React.createElement("input",{className:"fi",type:"email",placeholder:"Enter your email address",value:fpEmail,onChange:e=>{setFpEmail(e.target.value);setFpErr("");setFpMsg("");},onKeyDown:e=>e.key==="Enter"&&!fpBusy&&!fpMsg&&handleForgotPw(),style:{marginBottom:4}}),
+        fpErr&&React.createElement("div",{className:"fp-err"},fpErr),
+        fpMsg?React.createElement("div",{className:"fp-msg"},fpMsg)
+        :React.createElement("button",{className:"auth-btn",onClick:handleForgotPw,disabled:fpBusy,style:{fontSize:14,padding:14,marginTop:8}},fpBusy?"SENDING...":"SEND RESET LINK")
+      ),
       React.createElement("div",{className:"auth-sw"},
         authMode==="login"
-          ?React.createElement(React.Fragment,null,"New member? ",React.createElement("button",{onClick:()=>{setAuthMode("signup");setAuthErr("");}},"Create an account"))
+          ?React.createElement(React.Fragment,null,"New member? ",React.createElement("button",{onClick:()=>{setAuthMode("signup");setAuthErr("");setShowForgotPw(false);}},"Create an account"))
           :React.createElement(React.Fragment,null,"Already a member? ",React.createElement("button",{onClick:()=>{setAuthMode("login");setAuthErr("");}},"Log in"))
       ),
       React.createElement("div",{className:"auth-reg"},
@@ -1355,16 +1598,16 @@ function App(){
     cropSrc&&React.createElement(ImageCropper,{imageSrc:cropSrc,onSave:handleCropSave,onCancel:()=>setCropSrc(null)}),
 
     React.createElement("div",{className:"hdr"},
+      React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",cursor:"pointer"},onClick:openProf},
+        memberPhoto?React.createElement("img",{src:memberPhoto,className:"avatar-hdr",alt:"profile"}):React.createElement("div",{className:"avatar-init-hdr"},memberInit),
+        React.createElement("div",{className:"name-lbl"},session.name.toUpperCase()),
+        React.createElement("div",{className:"edit-lbl"},"PROFILE")
+      ),
       React.createElement("div",{className:"logo-area"},
         React.createElement("div",{className:"logo-sub"},"LAMONT"),
         React.createElement("div",{className:"logo"},"TEAM 365"),
         React.createElement("div",{className:"logo-tag"},"EVERYDAY. ALL YEAR ROUND.")
       ),
-      React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",cursor:"pointer"},onClick:openProf},
-        memberPhoto?React.createElement("img",{src:memberPhoto,className:"avatar-sm",alt:"profile"}):React.createElement("div",{className:"avatar-init-sm"},memberInit),
-        React.createElement("div",{className:"name-lbl"},session.name.toUpperCase()),
-        React.createElement("div",{className:"edit-lbl"},"EDIT PROFILE")
-      )
     ),
 
     tab==="book"&&React.createElement(React.Fragment,null,
@@ -1459,8 +1702,13 @@ function App(){
     React.createElement("div",{className:`toast${toast.show?" show":""}`},toast.msg),
 
     showProf&&React.createElement("div",{className:"prof-overlay"},
-      React.createElement("div",{className:"prof-hdr"},React.createElement("div",{className:"prof-title"},"MY PROFILE"),React.createElement("button",{className:"prof-close",onClick:()=>setShowProf(false)},"\u2715")),
-      React.createElement("div",{className:"prof-body"},
+      React.createElement("div",{className:"prof-hdr"},React.createElement("div",{className:"prof-title"},"PROFILE"),React.createElement("button",{className:"prof-close",onClick:()=>setShowProf(false)},"\u2715")),
+      React.createElement("div",{className:"prof-tab-bar"},
+        React.createElement("button",{className:`prof-tab-btn${profTab==="details"?" pta":""}`,onClick:()=>setProfTab("details")},"MY DETAILS"),
+        React.createElement("button",{className:`prof-tab-btn${profTab==="strength"?" pta":""}`,onClick:()=>setProfTab("strength")},"STRENGTH PROGRAM")
+      ),
+      profTab==="strength"&&React.createElement(StrengthTab,{session,isAdmin,showToast}),
+      profTab==="details"&&React.createElement("div",{className:"prof-body"},
         React.createElement("div",{className:"prof-since"},`MEMBER SINCE ${fmtJoinDate(memberData?.joined_at)}`),
         React.createElement("div",{className:"photo-wrap"},
           profForm.photo?React.createElement("img",{src:profForm.photo,className:"avatar-lg",alt:"profile"}):React.createElement("div",{className:"avatar-init-lg"},initials(profForm.name||session.name)),
