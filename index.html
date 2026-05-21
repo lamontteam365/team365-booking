@@ -17,19 +17,27 @@
 html,body{background:#080808;min-height:100vh}
 #root{min-height:100vh}
 .app{font-family:'DM Sans',sans-serif;background:#080808;color:#fff;min-height:100vh;display:flex;flex-direction:column;max-width:480px;margin:0 auto}
-.hdr{padding:24px 20px 16px;display:flex;flex-direction:column;align-items:center;text-align:center}
-.logo-area{text-align:center;margin-top:8px}
-.logo-sub{font-size:9px;letter-spacing:0.22em;color:#555;font-weight:500;text-align:center}
-.logo{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.18em;line-height:1;color:#444;text-align:center}
-.logo-tag{font-size:7px;letter-spacing:0.2em;color:#333;text-align:center;margin-top:2px}
-.avatar-hdr{width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid #333;display:block;cursor:pointer}
-.avatar-init-hdr{width:64px;height:64px;border-radius:50%;background:#1a1a1a;border:2px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:24px;color:#777;cursor:pointer;flex-shrink:0}
+.hdr{padding:14px 20px 0;display:flex;flex-direction:column}
+.hdr-row{display:flex;align-items:center;justify-content:space-between}
+.hdr-left{display:flex;align-items:center;gap:10px;cursor:pointer}
+.hdr-avatar-wrap{position:relative;flex-shrink:0}
+.avatar-hdr{width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid #333;display:block}
+.avatar-init-hdr{width:46px;height:46px;border-radius:50%;background:#1a1a1a;border:2px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:18px;color:#777;flex-shrink:0}
+.hdr-avatar-plus{position:absolute;bottom:-1px;right:-1px;width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid #080808;display:flex;align-items:center;justify-content:center;font-size:11px;color:#000;font-weight:700;line-height:1}
+.hdr-name-col{display:flex;flex-direction:column}
+.name-lbl{font-size:13px;letter-spacing:0.08em;color:#fff;font-weight:600}
+.edit-lbl{font-size:8px;letter-spacing:0.14em;color:#555;margin-top:2px;transition:color .15s}
+.hdr-left:hover .edit-lbl{color:#aaa}
+.logo-area{text-align:right}
+.logo-sub{font-size:8px;letter-spacing:0.22em;color:#555;font-weight:500}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.18em;line-height:1;color:#444}
+.logo-tag{font-size:6px;letter-spacing:0.2em;color:#333;margin-top:1px}
+.hdr-website{text-align:center;padding:8px 0 10px;border-top:1px solid #111;margin-top:10px}
+.hdr-website a{font-size:9px;letter-spacing:0.1em;color:#1d9bf0;text-decoration:none;font-weight:400}
+.hdr-website a:hover{text-decoration:underline}
 /* keep old small avatar classes for any other usage */
 .avatar-sm{width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid #444;cursor:pointer;display:block}
 .avatar-init-sm{width:38px;height:38px;border-radius:50%;background:#1a1a1a;border:1px solid #333;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:14px;color:#999;cursor:pointer;flex-shrink:0}
-.name-lbl{font-size:11px;letter-spacing:0.12em;color:#fff;font-weight:600;text-align:center;margin-top:10px}
-.edit-lbl{font-size:9px;letter-spacing:0.14em;color:#555;text-align:center;margin-top:3px;transition:color .15s}
-.edit-lbl:hover{color:#aaa}
 .week-nav{display:flex;align-items:center;padding:18px 14px 0}
 .wk-arrow{background:none;border:none;color:#888;cursor:pointer;font-size:24px;padding:4px 10px;line-height:1;transition:color .15s}
 .wk-arrow:hover:not(:disabled){color:#fff}
@@ -1598,16 +1606,28 @@ function App(){
     cropSrc&&React.createElement(ImageCropper,{imageSrc:cropSrc,onSave:handleCropSave,onCancel:()=>setCropSrc(null)}),
 
     React.createElement("div",{className:"hdr"},
-      React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",cursor:"pointer"},onClick:openProf},
-        memberPhoto?React.createElement("img",{src:memberPhoto,className:"avatar-hdr",alt:"profile"}):React.createElement("div",{className:"avatar-init-hdr"},memberInit),
-        React.createElement("div",{className:"name-lbl"},session.name.toUpperCase()),
-        React.createElement("div",{className:"edit-lbl"},"PROFILE")
+      React.createElement("div",{className:"hdr-row"},
+        React.createElement("div",{className:"hdr-left",onClick:openProf},
+          React.createElement("div",{className:"hdr-avatar-wrap"},
+            memberPhoto
+              ?React.createElement("img",{src:memberPhoto,className:"avatar-hdr",alt:"profile"})
+              :React.createElement("div",{className:"avatar-init-hdr"},memberInit),
+            React.createElement("div",{className:"hdr-avatar-plus"},"+")
+          ),
+          React.createElement("div",{className:"hdr-name-col"},
+            React.createElement("div",{className:"name-lbl"},session.name.toUpperCase()),
+            React.createElement("div",{className:"edit-lbl"},"PROFILE")
+          )
+        ),
+        React.createElement("div",{className:"logo-area"},
+          React.createElement("div",{className:"logo-sub"},"LAMONT"),
+          React.createElement("div",{className:"logo"},"TEAM 365"),
+          React.createElement("div",{className:"logo-tag"},"EVERYDAY. ALL YEAR ROUND.")
+        )
       ),
-      React.createElement("div",{className:"logo-area"},
-        React.createElement("div",{className:"logo-sub"},"LAMONT"),
-        React.createElement("div",{className:"logo"},"TEAM 365"),
-        React.createElement("div",{className:"logo-tag"},"EVERYDAY. ALL YEAR ROUND.")
-      ),
+      React.createElement("div",{className:"hdr-website"},
+        React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener"},"www.lamontcollective.com")
+      )
     ),
 
     tab==="book"&&React.createElement(React.Fragment,null,
