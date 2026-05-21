@@ -1399,6 +1399,7 @@ function StrengthTab({session,isAdmin,showToast}){
       exercises.map(ex=>{
         const isMain=ex.section==="Main";
         const isCore=ex.section==="Core";
+        const isMobility=ex.section==="Mobility";
         const setCount=parseInt(ex.sets)||1;
         const repsList=ex.reps?ex.reps.split(",").map(r=>r.trim()):[];
         const metaParts=[];
@@ -1442,8 +1443,8 @@ function StrengthTab({session,isAdmin,showToast}){
               React.createElement("div",{style:{color:"#444",fontSize:13,transition:"transform .2s",transform:isExpanded?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
             )
           ),
-          // Core: persistent tick circles — shown when expanded
-          isExpanded&&isCore&&session&&React.createElement("div",{className:"sp-ticks-row"},
+          // Core + Mobility: persistent tick circles — shown when expanded
+          isExpanded&&(isCore||isMobility)&&session&&React.createElement("div",{className:"sp-ticks-row"},
             Array.from({length:setCount}).map((_,idx)=>{
               const tKey=`${ex.exercise}_${idx}`;
               const done=!!ticks[tKey];
