@@ -1382,7 +1382,7 @@ function StrengthTab({session,isAdmin,showToast}){
   // Month navigation helpers
   const [myY,myM]=monthYear.split("-").map(Number);
   const monthLabel=`${SP_MONTHS[myM-1]} ${myY}`;
-  const atCurrent=monthYear===nowMY;
+  const atCurrent=!isAdmin&&monthYear===nowMY;
   const atStart=myY===2026&&myM===5; // program started May 2026
   function shiftMonth(dir){
     const d=new Date(myY,myM-1+dir,1);
@@ -1777,28 +1777,16 @@ function App(){
   return React.createElement("div",{className:"app"},
     cropSrc&&React.createElement(ImageCropper,{imageSrc:cropSrc,onSave:handleCropSave,onCancel:()=>setCropSrc(null)}),
 
-    React.createElement("div",{className:"hdr"},
-      React.createElement("div",{className:"hdr-row"},
-        React.createElement("div",{className:"hdr-left",onClick:openProf},
-          React.createElement("div",{className:"hdr-avatar-wrap"},
-            memberPhoto
-              ?React.createElement("img",{src:memberPhoto,className:"avatar-hdr",alt:"profile"})
-              :React.createElement("div",{className:"avatar-init-hdr"},memberInit),
-            React.createElement("div",{className:"hdr-avatar-plus"},"+")
-          ),
-          React.createElement("div",{className:"hdr-name-col"},
-            React.createElement("div",{className:"name-lbl"},session.name.toUpperCase()),
-            React.createElement("div",{className:"edit-lbl"},"PROFILE")
-          )
-        ),
-        React.createElement("div",{className:"logo-area"},
-          React.createElement("div",{className:"logo-sub"},"LAMONT"),
-          React.createElement("div",{className:"logo"},"TEAM 365"),
-          React.createElement("div",{className:"logo-tag"},"EVERYDAY. ALL YEAR ROUND.")
-        )
-      ),
-      React.createElement("div",{className:"hdr-website"},
-        React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener"},"www.lamontcollective.com")
+    React.createElement("div",{className:"hdr",style:{alignItems:"center",paddingBottom:10},onClick:openProf,cursor:"pointer"},
+      memberPhoto
+        ?React.createElement("img",{src:memberPhoto,className:"avatar-hdr",alt:"profile",style:{display:"block",margin:"0 auto 8px"}})
+        :React.createElement("div",{className:"avatar-init-hdr",style:{margin:"0 auto 8px"}},memberInit),
+      React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:600,letterSpacing:"0.08em",color:"#fff",textAlign:"center",lineHeight:1.2}},session.name.toUpperCase()),
+      React.createElement("div",{style:{fontSize:8,letterSpacing:"0.18em",color:"#555",fontWeight:600,textAlign:"center",marginBottom:10}},"PROFILE"),
+      React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:"0.2em",color:"#fff",textAlign:"center",lineHeight:1}},"LAMONT TEAM 365"),
+      React.createElement("div",{style:{fontSize:9,color:"#555",textAlign:"center",marginTop:4,letterSpacing:"0.04em"}},
+        "Powered by ",
+        React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"},onClick:e=>e.stopPropagation()},"www.lamontcollective.com")
       )
     ),
 
