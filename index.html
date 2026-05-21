@@ -1797,7 +1797,7 @@ function App(){
         "Powered by ",
         React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"},onClick:e=>e.stopPropagation()},"www.lamontcollective.com")
       ),
-      React.createElement("div",{style:{display:"flex",marginTop:10,marginLeft:-20,marginRight:-20,borderTop:"1px solid #1a1a1a"},onClick:e=>e.stopPropagation()},
+      React.createElement("div",{style:{display:"flex",marginTop:10,marginLeft:-20,marginRight:-20,width:"calc(100% + 40px)",borderTop:"1px solid #1a1a1a"},onClick:e=>e.stopPropagation()},
         React.createElement("button",{style:{flex:1,padding:"10px 2px",background:"none",border:"none",borderTop:`2px solid ${tab==="book"?"#fff":"transparent"}`,marginTop:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="book"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("book")},"Classes"),
         React.createElement("button",{style:{flex:1,padding:"10px 2px",background:"none",border:"none",borderTop:`2px solid ${tab==="wellness"?"#fff":"transparent"}`,marginTop:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="wellness"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("wellness")},"Wellness"),
         React.createElement("button",{style:{flex:1,padding:"10px 2px",background:"none",border:"none",borderTop:`2px solid ${tab==="strength"?"#fff":"transparent"}`,marginTop:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="strength"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("strength")},"Strength"),
