@@ -901,7 +901,7 @@ function WellnessView({session,showToast}){
           React.createElement("div",{className:"d-dot"})
         ))
       ),
-      React.createElement("div",{className:"day-hdr",style:{padding:"0"}},
+      React.createElement("div",{className:"day-hdr",style:{padding:"0",textAlign:"center"}},
         React.createElement("span",null,DAY_LONG[selDay].toUpperCase()),
         React.createElement("em",null,` \u00B7 ${WELL_TIMES.length} SLOTS`)
       )
@@ -1850,7 +1850,7 @@ function App(){
         ))
       ),
       React.createElement("div",{className:"cls-wrap"},
-        React.createElement("div",{className:"day-hdr"},React.createElement("span",null,DAY_LONG[selDay].toUpperCase()),React.createElement("em",null,` \u00B7 ${DAY_SESS[selDay].toUpperCase()} \u00B7 ${times.length} CLASSES`)),
+        React.createElement("div",{className:"day-hdr",style:{textAlign:"center"}},React.createElement("span",null,DAY_LONG[selDay].toUpperCase()),React.createElement("em",null,` \u00B7 ${DAY_SESS[selDay].toUpperCase()} \u00B7 ${times.length} CLASSES`)),
         times.map(time=>{
           const list=getBksFor(selDK,time);const taken=list.length;const left=MAX_SPOTS-taken;
           const userBkd=userBooked(selDK,time);const full=left===0&&!userBkd;
