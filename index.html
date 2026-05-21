@@ -91,7 +91,7 @@ html,body{background:#080808;min-height:100vh}
 .my-x:hover{color:#e06040}
 .no-bk{text-align:center;padding:48px 0;font-size:11px;letter-spacing:0.16em;color:#444;line-height:2.4}
 .well-wrap{flex:1;overflow-y:auto}
-.well-hdr{padding:16px 16px 0}
+.well-hdr{padding:16px 16px 0;text-align:center}
 .well-title{font-size:10px;letter-spacing:0.22em;color:#fff;font-weight:600}
 .well-sub{font-size:9px;letter-spacing:0.14em;color:#888;font-weight:500;margin-bottom:14px}
 .well-badge{display:inline-flex;align-items:center;gap:6px;background:#111;border:1px solid #222;border-radius:20px;padding:4px 10px;margin-bottom:14px}
@@ -1497,6 +1497,10 @@ function StrengthTab({session,isAdmin,showToast}){
   const released=isWorkoutReleased(monthYear,weekNum,isAdmin);
 
   return React.createElement("div",{className:"sp-wrap"},
+    React.createElement("div",{className:"well-hdr",style:{padding:"0 0 4px"}},
+      React.createElement("div",{className:"well-title"},"STRENGTH"),
+      React.createElement("div",{className:"well-sub"},"LOWER · UPPER BODY")
+    ),
     // Month navigator
     React.createElement("div",{className:"sp-month-nav"},
       React.createElement("button",{className:"sp-month-arrow",disabled:atStart,onClick:()=>shiftMonth(-1)},"‹"),
@@ -1829,6 +1833,10 @@ function App(){
     ),
 
     tab==="book"&&React.createElement(React.Fragment,null,
+      React.createElement("div",{className:"well-hdr"},
+        React.createElement("div",{className:"well-title"},"CLASSES"),
+        React.createElement("div",{className:"well-sub"},"HIIT · STRENGTH · CONDITIONING")
+      ),
       React.createElement("div",{className:"week-nav"},
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"\u2039"),
         React.createElement("div",{className:"wk-label"},`${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} \u2013 ${MONTHS[weekDates[5].getMonth()]} ${weekDates[5].getDate()}  ${weekDates[0].getFullYear()}`),
