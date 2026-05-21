@@ -1277,10 +1277,10 @@ function isWorkoutReleased(monthYear,weekNum,isAdmin){
   if(y<nowY||(y===nowY&&m<nowM))return true;
   if(y>nowY||(y===nowY&&m>nowM))return false;
   const nowDay=now.getDate(),nowHour=now.getHours();
-  const curWk=nowDay<=7?1:nowDay<=14?2:nowDay<=21?3:4;
+  const curWk=nowDay<=7?1:nowDay<=14?2:nowDay<=24?3:4;
   if(weekNum<curWk)return true;
   if(weekNum>curWk)return false;
-  const wkStart=[1,8,15,22][weekNum-1];
+  const wkStart=[1,8,15,25][weekNum-1];
   if(nowDay>=wkStart)return true;
   if(wkStart>1&&nowDay===wkStart-1&&nowHour>=21)return true;
   return false;
@@ -1288,7 +1288,7 @@ function isWorkoutReleased(monthYear,weekNum,isAdmin){
 function StrengthTab({session,isAdmin,showToast}){
   const SP_MONTHS=["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
   const nowMY=(()=>{const n=new Date();return`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`;})();
-  const autoWeek=()=>{const d=getNZDate().getDate();return d<=7?1:d<=14?2:d<=21?3:4;};
+  const autoWeek=()=>{const d=getNZDate().getDate();return d<=7?1:d<=14?2:d<=24?3:4;};
   const autoType=()=>(getNZDate().getDay()===4?"Upper":"Lower");
 
   const [sessType,setSessType]=useState(autoType);
