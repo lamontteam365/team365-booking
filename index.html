@@ -1452,7 +1452,7 @@ function StrengthTab({session,isAdmin,showToast}){
                 key:idx,
                 className:`sp-tick${done?" sptd":""}`,
                 onClick:()=>toggleTick(ex.exercise,idx,!done)
-              },done?"✓":`${idx+1}`);
+              },isMobility?"✓":(done?"✓":`${idx+1}`))
             })
           ),
           // Main: per-set weight inputs — shown when expanded
