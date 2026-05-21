@@ -1599,7 +1599,7 @@ function App(){
     setBookings(data||[]);
   }
 
-  const TAB_ORDER=["book","wellness","strength","my","community",...(isAdmin?["admin"]:[])];
+  const TAB_ORDER=["book","wellness","my","strength","community",...(isAdmin?["admin"]:[])];
   function handleTouchStart(e){
     touchStartX.current=e.touches[0].clientX;
     touchStartY.current=e.touches[0].clientY;
@@ -1800,8 +1800,8 @@ function App(){
       React.createElement("div",{style:{display:"flex",marginTop:10,marginLeft:-20,marginRight:-20,width:"calc(100% + 40px)",borderTop:"1px solid #1a1a1a"},onClick:e=>e.stopPropagation()},
         React.createElement("button",{style:{flex:1,padding:"10px 2px",background:"none",border:"none",borderTop:`2px solid ${tab==="book"?"#fff":"transparent"}`,marginTop:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="book"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("book")},"Classes"),
         React.createElement("button",{style:{flex:1,padding:"10px 2px",background:"none",border:"none",borderTop:`2px solid ${tab==="wellness"?"#fff":"transparent"}`,marginTop:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="wellness"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("wellness")},"Wellness"),
-        React.createElement("button",{style:{flex:1,padding:"10px 2px",background:"none",border:"none",borderTop:`2px solid ${tab==="strength"?"#fff":"transparent"}`,marginTop:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="strength"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("strength")},"Strength"),
         React.createElement("button",{style:{flex:1,padding:"10px 2px",background:"none",border:"none",borderTop:`2px solid ${tab==="my"?"#fff":"transparent"}`,marginTop:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="my"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("my")},"My Bookings"),
+        React.createElement("button",{style:{flex:1,padding:"10px 2px",background:"none",border:"none",borderTop:`2px solid ${tab==="strength"?"#fff":"transparent"}`,marginTop:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="strength"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("strength")},"Strength"),
         React.createElement("button",{style:{flex:1,padding:"10px 2px",background:"none",border:"none",borderTop:`2px solid ${tab==="community"?"#fff":"transparent"}`,marginTop:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="community"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap",position:"relative"},onClick:()=>{setTab("community");lsSet("t365-last-read",Date.now());}},
           "Notice Board",
           unreadPosts>0&&tab!=="community"&&React.createElement("div",{className:"tab-dot"})
@@ -1892,8 +1892,8 @@ function App(){
     React.createElement("div",{className:"tab-bar"},
       React.createElement("button",{className:`tab-btn${tab==="book"?" ta":""}`,onClick:()=>setTab("book")},"Classes"),
       React.createElement("button",{className:`tab-btn${tab==="wellness"?" ta":""}`,onClick:()=>setTab("wellness")},"Wellness"),
-      React.createElement("button",{className:`tab-btn${tab==="strength"?" ta":""}`,onClick:()=>setTab("strength")},"Strength"),
       React.createElement("button",{className:`tab-btn${tab==="my"?" ta":""}`,onClick:()=>setTab("my")},"My Bookings"),
+      React.createElement("button",{className:`tab-btn${tab==="strength"?" ta":""}`,onClick:()=>setTab("strength")},"Strength"),
       React.createElement("button",{className:`tab-btn${tab==="community"?" ta":""}`,onClick:()=>{setTab("community");lsSet("t365-last-read",Date.now());}},
         "Notice Board",
         unreadPosts>0&&tab!=="community"&&React.createElement("div",{className:"tab-dot"})
