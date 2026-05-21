@@ -1881,7 +1881,17 @@ function App(){
             showToast("Booking cancelled");
           }},"Cancel")
         );
-      })
+      }),
+      React.createElement("div",{className:"adm-stats-row",style:{marginTop:28}},
+        React.createElement("div",{className:"adm-stat"},
+          React.createElement("div",{className:"adm-stat-num"},bookings.filter(b=>b.email===session.email&&b.date_key<toDS(new Date())).length),
+          React.createElement("div",{className:"adm-stat-lbl"},"CLASSES ATTENDED")
+        ),
+        React.createElement("div",{className:"adm-stat"},
+          React.createElement("div",{className:"adm-stat-num"},myUpcoming.length),
+          React.createElement("div",{className:"adm-stat-lbl"},"UPCOMING")
+        )
+      )
     ),
 
     tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
