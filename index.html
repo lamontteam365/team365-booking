@@ -1837,7 +1837,7 @@ function App(){
         React.createElement("div",{className:"well-title"},"CLASSES"),
         React.createElement("div",{className:"well-sub"},"HIIT · STRENGTH · CONDITIONING")
       ),
-      React.createElement("div",{className:"week-nav"},
+      React.createElement("div",{className:"week-nav",style:{paddingTop:0}},
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"\u2039"),
         React.createElement("div",{className:"wk-label"},`${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} \u2013 ${MONTHS[weekDates[5].getMonth()]} ${weekDates[5].getDate()}  ${weekDates[0].getFullYear()}`),
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,7))},"\u203a")
