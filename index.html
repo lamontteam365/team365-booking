@@ -1561,7 +1561,9 @@ function App(){
   const [profTab,setProfTab]=useState("details");
   const [cropSrc,setCropSrc]=useState(null);
   const [myWellness,setMyWellness]=useState([]);
-  const [wellnessAttended,setWellnessAttended]=useState(0);
+  const [wellnessPast,setWellnessPast]=useState([]);
+  const nowMY2=(()=>{const n=new Date();return`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`;})();
+  const [statMonth,setStatMonth]=useState(nowMY2);
   const [showForgotPw,setShowForgotPw]=useState(false);
   const [fpEmail,setFpEmail]=useState("");
   const [fpBusy,setFpBusy]=useState(false);
@@ -1602,8 +1604,8 @@ function App(){
     const keys=[];const now=new Date();now.setHours(0,0,0,0);
     for(let i=0;i<28;i++){const d=addDays(now,i);if(d.getDay()!==0)keys.push(toDS(d));}
     sbGet("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=in.(${keys.join(",")})&select=email,name,date_key,time`).then(data=>setMyWellness(data||[]));
-    // Count past wellness sessions separately using Supabase lte filter
-    sbGet("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=lt.${toDS(now)}&select=email`).then(data=>setWellnessAttended((data||[]).length));
+    // Fetch past wellness sessions so we can filter by month
+    sbGet("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=lt.${toDS(now)}&select=date_key`).then(data=>setWellnessPast(data||[]));
   },[session]);
 
   async function refreshBookings(){
@@ -1898,18 +1900,33 @@ function App(){
           }},"Cancel")
         );
       }),
-      React.createElement("div",{className:"adm-stats-row",style:{marginTop:28}},
-        React.createElement("div",{className:"adm-stat"},
-          React.createElement("div",{className:"adm-stat-num"},bookings.filter(b=>b.email===session.email&&b.date_key<toDS(new Date())).length),
-          React.createElement("div",{className:"adm-stat-lbl"},"CLASSES ATTENDED")
+      React.createElement("div",{style:{marginTop:28}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",marginBottom:12}},
+          React.createElement("button",{
+            onClick:()=>{const d=new Date(statMonth+"-15");d.setMonth(d.getMonth()-1);setStatMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);},
+            style:{background:"none",border:"none",color:"#555",fontSize:20,cursor:"pointer",padding:"0 14px",lineHeight:1}
+          },"‹"),
+          React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.2em",color:"#fff"}},
+            `${["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"][parseInt(statMonth.split("-")[1])-1]} ${statMonth.split("-")[0]}`
+          ),
+          React.createElement("button",{
+            onClick:()=>{const d=new Date(statMonth+"-15");d.setMonth(d.getMonth()+1);const next=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;if(next<=nowMY2)setStatMonth(next);},
+            style:{background:"none",border:"none",color:statMonth>=nowMY2?"#2a2a2a":"#555",fontSize:20,cursor:statMonth>=nowMY2?"default":"pointer",padding:"0 14px",lineHeight:1}
+          },"›")
         ),
-        React.createElement("div",{className:"adm-stat"},
-          React.createElement("div",{className:"adm-stat-num"},wellnessAttended),
-          React.createElement("div",{className:"adm-stat-lbl"},"WELLNESS SESSIONS")
-        ),
-        React.createElement("div",{className:"adm-stat"},
-          React.createElement("div",{className:"adm-stat-num"},myUpcoming.length),
-          React.createElement("div",{className:"adm-stat-lbl"},"UPCOMING")
+        React.createElement("div",{className:"adm-stats-row"},
+          React.createElement("div",{className:"adm-stat"},
+            React.createElement("div",{className:"adm-stat-num"},bookings.filter(b=>b.email===session.email&&b.date_key.startsWith(statMonth)&&b.date_key<toDS(new Date())).length),
+            React.createElement("div",{className:"adm-stat-lbl"},"CLASSES ATTENDED")
+          ),
+          React.createElement("div",{className:"adm-stat"},
+            React.createElement("div",{className:"adm-stat-num"},wellnessPast.filter(b=>b.date_key.startsWith(statMonth)).length),
+            React.createElement("div",{className:"adm-stat-lbl"},"WELLNESS SESSIONS")
+          ),
+          React.createElement("div",{className:"adm-stat"},
+            React.createElement("div",{className:"adm-stat-num"},myUpcoming.length),
+            React.createElement("div",{className:"adm-stat-lbl"},"UPCOMING EVENTS")
+          )
         )
       )
     ),
