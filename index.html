@@ -82,7 +82,7 @@ html,body{background:#080808;min-height:100vh}
 .c-btn.bc:hover{border-color:#8a2515;color:#e06040}
 .c-btn:disabled{opacity:.4;cursor:not-allowed}
 .my-wrap{padding:18px 16px;flex:1;overflow-y:auto}
-.my-hdr{font-size:10px;letter-spacing:0.22em;color:#fff;font-weight:600;margin-bottom:14px}
+.my-hdr{font-size:10px;letter-spacing:0.22em;color:#fff;font-weight:600;margin-bottom:14px;text-align:center}
 .my-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:7px;margin-bottom:7px}
 .my-date{font-size:10px;letter-spacing:0.12em;color:#999;font-weight:500;margin-bottom:2px}
 .my-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff}
@@ -116,7 +116,7 @@ html,body{background:#080808;min-height:100vh}
 .well-btn:disabled{opacity:.4;cursor:not-allowed}
 .comm-wrap{display:flex;flex-direction:column;flex:1;overflow:hidden}
 .comm-hdr{padding:16px 16px 0;flex-shrink:0}
-.comm-title{font-size:10px;letter-spacing:0.22em;color:#fff;font-weight:600;margin-bottom:2px}
+.comm-title{font-size:10px;letter-spacing:0.22em;color:#fff;font-weight:600;margin-bottom:2px;text-align:center}
 .comm-sub{font-size:9px;letter-spacing:0.14em;color:#888;font-weight:500;margin-bottom:12px}
 .comm-compose{background:#0e0e0e;border:1px solid #2a2a2a;border-radius:8px;padding:12px;margin-bottom:12px}
 .comm-textarea{width:100%;background:transparent;border:none;color:#fff;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:300;resize:none;outline:none;min-height:60px;line-height:1.6}
@@ -1814,8 +1814,8 @@ function App(){
         :React.createElement("div",{style:{width:70,height:70,borderRadius:"50%",background:"#1a1a1a",border:"2px solid #2a2a2a",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:"#777",margin:"0 auto 8px"}},memberInit),
       React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:600,letterSpacing:"0.08em",color:"#fff",textAlign:"center",lineHeight:1.2}},session.name.toUpperCase()),
       React.createElement("div",{style:{fontSize:8,letterSpacing:"0.18em",color:"#555",fontWeight:600,textAlign:"center",paddingBottom:10,marginBottom:10}},"PROFILE"),
-      React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:"0.2em",color:"#fff",textAlign:"center",lineHeight:1}},"LAMONT TEAM 365"),
-      React.createElement("div",{style:{fontSize:9,color:"#555",textAlign:"center",marginTop:4,letterSpacing:"0.04em"}},
+      React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.2em",color:"#fff",textAlign:"center",lineHeight:1}},"LAMONT TEAM 365"),
+      React.createElement("div",{style:{fontSize:8,color:"#555",textAlign:"center",marginTop:4,letterSpacing:"0.04em"}},
         "Powered by ",
         React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"},onClick:e=>e.stopPropagation()},"www.lamontcollective.com")
       ),
