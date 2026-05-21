@@ -357,6 +357,17 @@ html,body{background:#080808;min-height:100vh}
 .sp-edit-save{flex:1;background:#fff;color:#000;border:none;border-radius:3px;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:0.12em;padding:10px;cursor:pointer}
 .sp-edit-cancel{background:none;border:1px solid #333;color:#666;border-radius:3px;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:0.12em;padding:10px 14px;cursor:pointer}
 .sp-loading{text-align:center;padding:48px 0;font-size:10px;letter-spacing:0.2em;color:#333}
+.sp-section-hdr.spsh-first{border-top:none;padding-top:0;margin-top:0}
+.sp-ticks-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.sp-tick{width:34px;height:34px;border-radius:50%;background:#141414;border:1px solid #252525;color:#444;font-family:'Bebas Neue',sans-serif;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0;line-height:1}
+.sp-tick.sptd{background:#0d2b1a;border-color:#4aaa66;color:#4aaa66}
+.sp-sets-col{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid #141414}
+.sp-set-row{display:flex;align-items:center;gap:8px}
+.sp-set-lbl{font-size:10px;letter-spacing:0.1em;color:#444;font-weight:600;width:22px;flex-shrink:0}
+.sp-set-input{width:62px;background:#141414;border:1px solid #252525;border-radius:4px;padding:8px 8px;color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;outline:none;text-align:center;-webkit-appearance:none;appearance:none}
+.sp-set-input:focus{border-color:#555}
+.sp-set-kg{font-size:10px;color:#444;letter-spacing:0.08em;flex-shrink:0}
+.sp-set-reps{font-size:10px;color:#3a3a3a;letter-spacing:0.06em;flex-shrink:0}
 /* Forgot password inline */
 .fp-section{margin-top:16px;padding:14px;background:#0a0a0a;border:1px solid #1e1e1e;border-radius:6px}
 .fp-title{font-size:10px;letter-spacing:0.16em;color:#aaa;font-weight:600;margin-bottom:12px}
@@ -1234,8 +1245,7 @@ function StrengthTab({session,isAdmin,showToast}){
   const [weekNum,setWeekNum]=useState(autoWeek);
   const [program,setProgram]=useState([]);
   const [weights,setWeights]=useState({});
-  const [weightEdits,setWeightEdits]=useState({});
-  const [savingWt,setSavingWt]=useState({});
+  const [ticks,setTicks]=useState({});
   const [loading,setLoading]=useState(true);
   const [editingId,setEditingId]=useState(null);
   const [exEdit,setExEdit]=useState({});
@@ -1249,18 +1259,21 @@ function StrengthTab({session,isAdmin,showToast}){
     const wts=session?await sbGet("member_weights",`email=eq.${encodeURIComponent(session.email)}&session_type=eq.${sessType}&week_number=eq.${weekNum}&month_year=eq.${monthYear}`):[];
     setProgram(prog||[]);
     const wtMap={};(wts||[]).forEach(w=>{wtMap[w.exercise]=w.weight;});
-    setWeights(wtMap);setWeightEdits({});setLoading(false);
+    setWeights(wtMap);setTicks({});setLoading(false);
   }
 
-  async function saveWeight(exercise){
-    if(!session)return;
-    const w=weightEdits[exercise];if(w===undefined||w==="")return;
-    setSavingWt(p=>({...p,[exercise]:true}));
-    const existing=await sbGet("member_weights",`email=eq.${encodeURIComponent(session.email)}&session_type=eq.${sessType}&week_number=eq.${weekNum}&month_year=eq.${monthYear}&exercise=eq.${encodeURIComponent(exercise)}`);
-    if(existing.length){await sbPatch("member_weights",`email=eq.${encodeURIComponent(session.email)}&session_type=eq.${sessType}&week_number=eq.${weekNum}&month_year=eq.${monthYear}&exercise=eq.${encodeURIComponent(exercise)}`,{weight:w,logged_at:Date.now()});}
-    else{await sbPost("member_weights",{email:session.email,session_type:sessType,week_number:weekNum,month_year:monthYear,exercise,weight:w,logged_at:Date.now()});}
-    setWeights(p=>({...p,[exercise]:w}));setWeightEdits(p=>({...p,[exercise]:undefined}));
-    setSavingWt(p=>({...p,[exercise]:false}));showToast("Weight saved ✓");
+  async function saveSetWeight(exercise,setNum,val){
+    if(!session||!val||!val.trim())return;
+    const key=`${exercise}_s${setNum}`;
+    const v=val.trim();
+    setWeights(p=>({...p,[key]:v}));
+    const existing=await sbGet("member_weights",`email=eq.${encodeURIComponent(session.email)}&session_type=eq.${sessType}&week_number=eq.${weekNum}&month_year=eq.${monthYear}&exercise=eq.${encodeURIComponent(key)}`);
+    if(existing.length){
+      await sbPatch("member_weights",`email=eq.${encodeURIComponent(session.email)}&session_type=eq.${sessType}&week_number=eq.${weekNum}&month_year=eq.${monthYear}&exercise=eq.${encodeURIComponent(key)}`,{weight:v,logged_at:Date.now()});
+    }else{
+      await sbPost("member_weights",{email:session.email,session_type:sessType,week_number:weekNum,month_year:monthYear,exercise:key,weight:v,logged_at:Date.now()});
+    }
+    showToast("Saved ✓");
   }
 
   async function saveExercise(){
@@ -1271,20 +1284,23 @@ function StrengthTab({session,isAdmin,showToast}){
     setEditingId(null);setSavingEx(false);showToast("Exercise updated ✓");
   }
 
-  // Group by section
+  // Group by section — always Core → Main → Mobility
   const sections={};
   program.forEach(ex=>{if(!sections[ex.section])sections[ex.section]=[];sections[ex.section].push(ex);});
-  const sectionOrder=weekNum===4?["Mobility","Main","Core"]:["Mobility","Core","Main"];
+  const sectionOrder=["Core","Main","Mobility"];
   const currentWeek=autoWeek();
 
-  function ExSection({sectionName,exercises}){
+  function ExSection({sectionName,exercises,isFirst}){
     return React.createElement(React.Fragment,null,
-      React.createElement("div",{className:"sp-section-hdr"},sectionName.toUpperCase()),
+      React.createElement("div",{className:`sp-section-hdr${isFirst?" spsh-first":""}`},sectionName.toUpperCase()),
       exercises.map(ex=>{
         const isMain=ex.section==="Main";
+        const isCore=ex.section==="Core";
+        const setCount=parseInt(ex.sets)||1;
+        const repsList=ex.reps?ex.reps.split(",").map(r=>r.trim()):[];
         const metaParts=[];
         if(ex.sets)metaParts.push(`${ex.sets} sets`);
-        if(ex.reps)metaParts.push(`${ex.reps} reps`);
+        if(ex.reps&&repsList.length===1)metaParts.push(`${ex.reps} reps`);
         if(ex.duration)metaParts.push(ex.duration);
         if(ex.side)metaParts.push(ex.side);
         const meta=metaParts.join(" · ");
@@ -1311,7 +1327,6 @@ function StrengthTab({session,isAdmin,showToast}){
             )
           );
         }
-        const wtVal=weightEdits[ex.exercise]!==undefined?weightEdits[ex.exercise]:(weights[ex.exercise]||"");
         return React.createElement("div",{key:ex.id,className:"sp-ex"},
           React.createElement("div",{className:"sp-ex-top"},
             React.createElement("div",null,
@@ -1320,16 +1335,39 @@ function StrengthTab({session,isAdmin,showToast}){
             ),
             isAdmin&&React.createElement("button",{className:"sp-ex-edit",onClick:()=>{setEditingId(ex.id);setExEdit({id:ex.id,exercise:ex.exercise,sets:ex.sets||"",reps:ex.reps||"",duration:ex.duration||""});}},"Edit")
           ),
-          isMain&&session&&React.createElement("div",{className:"sp-weight-row"},
-            React.createElement("div",{className:"sp-weight-lbl"},"WEIGHT"),
-            React.createElement("input",{
-              className:"sp-weight-input",
-              placeholder:weights[ex.exercise]?`Last: ${weights[ex.exercise]}`:"e.g. 60kg",
-              value:weightEdits[ex.exercise]!==undefined?weightEdits[ex.exercise]:"",
-              onChange:e=>setWeightEdits(p=>({...p,[ex.exercise]:e.target.value})),
-              onKeyDown:e=>e.key==="Enter"&&saveWeight(ex.exercise)
-            }),
-            React.createElement("button",{className:"sp-weight-save",disabled:!!savingWt[ex.exercise]||weightEdits[ex.exercise]===undefined||weightEdits[ex.exercise]==="",onClick:()=>saveWeight(ex.exercise)},savingWt[ex.exercise]?"...":"Save")
+          // Core: tick circles per set
+          isCore&&React.createElement("div",{className:"sp-ticks-row"},
+            Array.from({length:setCount}).map((_,idx)=>{
+              const tKey=`${ex.id}_${idx}`;
+              const done=!!ticks[tKey];
+              return React.createElement("button",{
+                key:idx,
+                className:`sp-tick${done?" sptd":""}`,
+                onClick:()=>setTicks(p=>({...p,[tKey]:!p[tKey]}))
+              },done?"✓":`${idx+1}`);
+            })
+          ),
+          // Main: per-set weight inputs (uncontrolled — saves onBlur, no focus loss)
+          isMain&&session&&React.createElement("div",{className:"sp-sets-col"},
+            Array.from({length:setCount}).map((_,idx)=>{
+              const setKey=`${ex.exercise}_s${idx+1}`;
+              const savedVal=weights[setKey]||"";
+              const repTarget=repsList.length>1?(repsList[idx]||repsList[repsList.length-1]):null;
+              return React.createElement("div",{key:`${ex.id}_s${idx}`,className:"sp-set-row"},
+                React.createElement("span",{className:"sp-set-lbl"},`S${idx+1}`),
+                React.createElement("input",{
+                  className:"sp-set-input",
+                  type:"text",
+                  inputMode:"numeric",
+                  pattern:"[0-9]*",
+                  defaultValue:savedVal,
+                  placeholder:"—",
+                  onBlur:e=>saveSetWeight(ex.exercise,idx+1,e.target.value)
+                }),
+                React.createElement("span",{className:"sp-set-kg"},"kg"),
+                repTarget&&React.createElement("span",{className:"sp-set-reps"},`· ${repTarget} reps`)
+              );
+            })
           )
         );
       })
@@ -1355,8 +1393,8 @@ function StrengthTab({session,isAdmin,showToast}){
     ),
     loading?React.createElement("div",{className:"sp-loading"},"LOADING...")
     :program.length===0?React.createElement("div",{className:"sp-loading"},"NO PROGRAM DATA")
-    :sectionOrder.filter(s=>sections[s]&&sections[s].length>0).map(s=>
-      React.createElement(ExSection,{key:s,sectionName:s,exercises:sections[s]})
+    :sectionOrder.filter(s=>sections[s]&&sections[s].length>0).map((s,i)=>
+      React.createElement(ExSection,{key:s,sectionName:s,exercises:sections[s],isFirst:i===0})
     )
   );
 }
