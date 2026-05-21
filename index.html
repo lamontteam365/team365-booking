@@ -1431,6 +1431,31 @@ function StrengthTab({session,isAdmin,showToast}){
             )
           );
         }
+        // Core + Mobility: flat row with inline ticks, no expand/collapse
+        if(isCore||isMobility){
+          return React.createElement("div",{key:ex.id,className:"sp-ex"},
+            React.createElement("div",{className:"sp-ex-top",style:{cursor:"default"}},
+              React.createElement("div",{style:{flex:1}},
+                React.createElement("div",{className:"sp-ex-name"},ex.exercise),
+                meta&&React.createElement("div",{className:"sp-ex-meta"},meta)
+              ),
+              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+                isAdmin&&React.createElement("button",{className:"sp-ex-edit",onClick:e=>{e.stopPropagation();setEditingId(ex.id);setExEdit({id:ex.id,exercise:ex.exercise,sets:ex.sets||"",reps:ex.reps||"",duration:ex.duration||""});}},"Edit"),
+                session&&Array.from({length:setCount}).map((_,idx)=>{
+                  const tKey=`${ex.exercise}_${idx}`;
+                  const done=!!ticks[tKey];
+                  return React.createElement("button",{
+                    key:idx,
+                    className:`sp-tick${done?" sptd":""}`,
+                    style:{width:30,height:30,fontSize:13},
+                    onClick:e=>{e.stopPropagation();toggleTick(ex.exercise,idx,!done);}
+                  },isMobility?"✓":(done?"✓":`${idx+1}`));
+                })
+              )
+            )
+          );
+        }
+        // Main: expand/collapse for per-set weight inputs
         const isExpanded=expandedEx.has(ex.id);
         return React.createElement("div",{key:ex.id,className:"sp-ex"},
           React.createElement("div",{className:"sp-ex-top",style:{cursor:"pointer"},onClick:()=>toggleEx(ex.id)},
@@ -1443,20 +1468,7 @@ function StrengthTab({session,isAdmin,showToast}){
               React.createElement("div",{style:{color:"#444",fontSize:13,transition:"transform .2s",transform:isExpanded?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
             )
           ),
-          // Core + Mobility: persistent tick circles — shown when expanded
-          isExpanded&&(isCore||isMobility)&&session&&React.createElement("div",{className:"sp-ticks-row"},
-            Array.from({length:setCount}).map((_,idx)=>{
-              const tKey=`${ex.exercise}_${idx}`;
-              const done=!!ticks[tKey];
-              return React.createElement("button",{
-                key:idx,
-                className:`sp-tick${done?" sptd":""}`,
-                onClick:()=>toggleTick(ex.exercise,idx,!done)
-              },isMobility?"✓":(done?"✓":`${idx+1}`))
-            })
-          ),
-          // Main: per-set weight inputs — shown when expanded
-          isExpanded&&isMain&&session&&React.createElement("div",{className:"sp-sets-col"},
+          isExpanded&&session&&React.createElement("div",{className:"sp-sets-col"},
             Array.from({length:setCount}).map((_,idx)=>{
               const setKey=`${ex.exercise}_s${idx+1}`;
               const savedVal=weights[setKey]||"";
