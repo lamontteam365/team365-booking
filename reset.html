@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#080808"/>
+<title>Team 365 · Reset Password</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#080808;min-height:100vh;font-family:'DM Sans',sans-serif;color:#fff}
+.wrap{max-width:420px;margin:0 auto;padding:48px 24px 32px;display:flex;flex-direction:column;align-items:center;min-height:100vh}
+.logo-area{text-align:center;margin-bottom:40px}
+.logo-sub{font-size:9px;letter-spacing:0.22em;color:#555;font-weight:500}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:0.18em;line-height:1;color:#444}
+.logo-tag{font-size:7px;letter-spacing:0.2em;color:#333;margin-top:2px}
+.card{width:100%;background:#0e0e0e;border:1px solid #222;border-radius:12px;padding:28px 24px}
+.card-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.14em;color:#fff;margin-bottom:6px}
+.card-sub{font-size:12px;color:#666;letter-spacing:0.04em;margin-bottom:24px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:10px;letter-spacing:0.16em;color:#666;font-weight:600;margin-bottom:6px}
+.field input{width:100%;background:#161616;border:1px solid #2a2a2a;border-radius:6px;padding:11px 13px;font-family:'DM Sans',sans-serif;font-size:14px;color:#fff;outline:none;transition:border-color .15s}
+.field input:focus{border-color:#555}
+.field input::placeholder{color:#3a3a3a}
+.err-msg{font-size:11px;color:#e05555;margin-top:5px;letter-spacing:0.04em}
+.pw-hint{font-size:10px;color:#444;margin-top:5px;letter-spacing:0.03em}
+.btn{width:100%;padding:13px;background:#fff;color:#000;border:none;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.14em;cursor:pointer;transition:opacity .15s;margin-top:4px}
+.btn:hover:not(:disabled){opacity:0.88}
+.btn:disabled{opacity:0.35;cursor:not-allowed}
+.btn-outline{background:transparent;color:#555;border:1px solid #2a2a2a;margin-top:10px;font-size:11px;letter-spacing:0.12em}
+.btn-outline:hover:not(:disabled){border-color:#555;color:#aaa}
+
+/* states */
+.state{width:100%;text-align:center}
+.state-icon{font-size:48px;margin-bottom:16px}
+.state-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:0.14em;margin-bottom:8px}
+.state-sub{font-size:13px;color:#666;letter-spacing:0.03em;line-height:1.6;margin-bottom:28px}
+.loading-ring{width:40px;height:40px;border:2px solid #222;border-top-color:#555;border-radius:50%;animation:spin .8s linear infinite;margin:16px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-txt{font-size:11px;color:#555;letter-spacing:0.12em;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo-area">
+    <div class="logo-sub">LAMONT</div>
+    <div class="logo">TEAM 365</div>
+    <div class="logo-tag">EVERYDAY. ALL YEAR ROUND.</div>
+  </div>
+  <div id="app" style="width:100%"></div>
+</div>
+
+<script>
+const SB_URL = "https://xczwmexavysvljmobbgv.supabase.co";
+const SB_KEY = "sb_publishable_tujGGhPRUimflq1-IFzuvA_Crw6knMO";
+const SB_HDR = {"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"};
+const APP_URL = "https://team365-booking.vercel.app/";
+
+const hashPw = s => {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h) ^ s.charCodeAt(i);
+  return (h >>> 0).toString(36);
+};
+
+async function sbGet(table, query = "") {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/${table}?${query}`, { headers: SB_HDR });
+    return r.ok ? await r.json() : [];
+  } catch { return []; }
+}
+
+async function sbPatch(table, query, data) {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/${table}?${query}`, {
+      method: "PATCH",
+      headers: { ...SB_HDR, "Prefer": "return=minimal" },
+      body: JSON.stringify(data)
+    });
+    return r.ok;
+  } catch { return false; }
+}
+
+async function sbDelete(table, query) {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/${table}?${query}`, {
+      method: "DELETE",
+      headers: SB_HDR
+    });
+    return r.ok;
+  } catch { return false; }
+}
+
+const app = document.getElementById("app");
+
+function renderLoading() {
+  app.innerHTML = `
+    <div class="state">
+      <div class="loading-ring"></div>
+      <div class="loading-txt">VALIDATING RESET LINK</div>
+    </div>`;
+}
+
+function renderInvalid(msg) {
+  app.innerHTML = `
+    <div class="card">
+      <div class="state">
+        <div class="state-icon">⚠️</div>
+        <div class="state-title">LINK INVALID</div>
+        <div class="state-sub">${msg}</div>
+        <button class="btn" onclick="window.location.href='${APP_URL}'">BACK TO APP</button>
+      </div>
+    </div>`;
+}
+
+function renderForm(email) {
+  app.innerHTML = `
+    <div class="card">
+      <div class="card-title">SET NEW PASSWORD</div>
+      <div class="card-sub">Choose a new password for <strong style="color:#aaa">${email}</strong></div>
+      <div class="field">
+        <label>NEW PASSWORD</label>
+        <input type="password" id="pw1" placeholder="Enter new password" autocomplete="new-password"/>
+        <div class="pw-hint">Minimum 6 characters</div>
+      </div>
+      <div class="field">
+        <label>CONFIRM PASSWORD</label>
+        <input type="password" id="pw2" placeholder="Confirm new password" autocomplete="new-password"/>
+        <div id="pw-err" class="err-msg" style="display:none"></div>
+      </div>
+      <button class="btn" id="submit-btn" onclick="doReset('${email}')">UPDATE PASSWORD</button>
+      <button class="btn btn-outline" onclick="window.location.href='${APP_URL}'">CANCEL</button>
+    </div>`;
+  document.getElementById("pw1").addEventListener("input", clearErr);
+  document.getElementById("pw2").addEventListener("input", clearErr);
+}
+
+function renderSuccess() {
+  app.innerHTML = `
+    <div class="card">
+      <div class="state">
+        <div class="state-icon">✅</div>
+        <div class="state-title">PASSWORD UPDATED</div>
+        <div class="state-sub">Your password has been changed successfully. You can now log in with your new password.</div>
+        <button class="btn" onclick="window.location.href='${APP_URL}'">GO TO APP</button>
+      </div>
+    </div>`;
+}
+
+function renderError(msg) {
+  app.innerHTML = `
+    <div class="card">
+      <div class="state">
+        <div class="state-icon">❌</div>
+        <div class="state-title">SOMETHING WENT WRONG</div>
+        <div class="state-sub">${msg}</div>
+        <button class="btn" onclick="window.location.href='${APP_URL}'">BACK TO APP</button>
+      </div>
+    </div>`;
+}
+
+function clearErr() {
+  const e = document.getElementById("pw-err");
+  if (e) { e.style.display = "none"; e.textContent = ""; }
+}
+
+function showErr(msg) {
+  const e = document.getElementById("pw-err");
+  if (e) { e.textContent = msg; e.style.display = "block"; }
+}
+
+async function doReset(email) {
+  const pw1 = document.getElementById("pw1").value.trim();
+  const pw2 = document.getElementById("pw2").value.trim();
+
+  if (pw1.length < 6) { showErr("Password must be at least 6 characters."); return; }
+  if (pw1 !== pw2) { showErr("Passwords do not match."); return; }
+
+  const btn = document.getElementById("submit-btn");
+  btn.disabled = true;
+  btn.textContent = "UPDATING...";
+
+  const hashed = hashPw(pw1);
+  const ok = await sbPatch("members", `email=eq.${encodeURIComponent(email)}`, { password: hashed });
+
+  if (!ok) {
+    btn.disabled = false;
+    btn.textContent = "UPDATE PASSWORD";
+    showErr("Failed to update password. Please try again.");
+    return;
+  }
+
+  // Delete the token (clean up)
+  const token = new URLSearchParams(window.location.search).get("token");
+  if (token) await sbDelete("password_resets", `token=eq.${encodeURIComponent(token)}`);
+
+  renderSuccess();
+}
+
+async function init() {
+  renderLoading();
+
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("token");
+
+  if (!token) {
+    renderInvalid("No reset token found. Please request a new password reset link.");
+    return;
+  }
+
+  // Look up the token
+  const rows = await sbGet("password_resets", `token=eq.${encodeURIComponent(token)}&select=email,expires_at`);
+
+  if (!rows || rows.length === 0) {
+    renderInvalid("This reset link is invalid or has already been used. Please request a new one.");
+    return;
+  }
+
+  const { email, expires_at } = rows[0];
+  const now = Date.now();
+
+  if (expires_at && now > expires_at) {
+    // Clean up expired token
+    await sbDelete("password_resets", `token=eq.${encodeURIComponent(token)}`);
+    renderInvalid("This reset link has expired (links are valid for 24 hours). Please request a new one.");
+    return;
+  }
+
+  renderForm(email);
+}
+
+init();
+</script>
+</body>
+</html>
