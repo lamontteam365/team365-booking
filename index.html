@@ -1297,14 +1297,13 @@ function StrengthTab({session,isAdmin,showToast}){
   const [program,setProgram]=useState([]);
   const [weights,setWeights]=useState({});
   const [ticks,setTicks]=useState({});
-  const [monthStats,setMonthStats]=useState({sets:0,weights:0});
+  const [expandedEx,setExpandedEx]=useState(new Set());
   const [loading,setLoading]=useState(true);
   const [editingId,setEditingId]=useState(null);
   const [exEdit,setExEdit]=useState({});
   const [savingEx,setSavingEx]=useState(false);
 
   useEffect(()=>{loadData();},[sessType,weekNum,monthYear]);
-  useEffect(()=>{loadMonthStats();},[monthYear,session]);
 
   async function loadData(){
     setLoading(true);
@@ -1330,18 +1329,15 @@ function StrengthTab({session,isAdmin,showToast}){
     setWeights(wtMap);setTicks(initTicks);setLoading(false);
   }
 
-  async function loadMonthStats(){
-    if(!session)return;
-    const all=await sbGet("member_weights",`email=eq.${encodeURIComponent(session.email)}&month_year=eq.${monthYear}`);
-    const ticked=(all||[]).filter(w=>w.exercise.endsWith("_tick")&&w.weight==="1").length;
-    const wt=(all||[]).filter(w=>!w.exercise.endsWith("_tick")).length;
-    setMonthStats({sets:ticked,weights:wt});
-  }
-
   async function saveSetWeight(exercise,setNum,val){
-    if(!session||!val||!val.trim())return;
+    if(!session)return;
     const key=`${exercise}_s${setNum}`;
     const v=val.trim();
+    if(v===""){
+      setWeights(p=>{const n={...p};delete n[key];return n;});
+      await sbDelete("member_weights",`email=eq.${encodeURIComponent(session.email)}&session_type=eq.${sessType}&week_number=eq.${weekNum}&month_year=eq.${monthYear}&exercise=eq.${encodeURIComponent(key)}`);
+      return;
+    }
     setWeights(p=>({...p,[key]:v}));
     const existing=await sbGet("member_weights",`email=eq.${encodeURIComponent(session.email)}&session_type=eq.${sessType}&week_number=eq.${weekNum}&month_year=eq.${monthYear}&exercise=eq.${encodeURIComponent(key)}`);
     if(existing.length){
@@ -1350,7 +1346,6 @@ function StrengthTab({session,isAdmin,showToast}){
       await sbPost("member_weights",{email:session.email,session_type:sessType,week_number:weekNum,month_year:monthYear,exercise:key,weight:v,logged_at:Date.now()});
     }
     showToast("Saved ✓");
-    loadMonthStats();
   }
 
   async function toggleTick(exercise,setIdx,newState){
@@ -1368,7 +1363,6 @@ function StrengthTab({session,isAdmin,showToast}){
     }else{
       await sbDelete("member_weights",`email=eq.${encodeURIComponent(session.email)}&session_type=eq.${sessType}&week_number=eq.${weekNum}&month_year=eq.${monthYear}&exercise=eq.${encodeURIComponent(dbKey)}`);
     }
-    loadMonthStats();
   }
 
   async function saveExercise(){
@@ -1377,6 +1371,10 @@ function StrengthTab({session,isAdmin,showToast}){
     await sbPatch("strength_program",`id=eq.${id}`,updates);
     setProgram(prev=>prev.map(ex=>ex.id===id?{...ex,...updates}:ex));
     setEditingId(null);setSavingEx(false);showToast("Exercise updated ✓");
+  }
+
+  function toggleEx(id){
+    setExpandedEx(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});
   }
 
   // Month navigation helpers
@@ -1432,16 +1430,20 @@ function StrengthTab({session,isAdmin,showToast}){
             )
           );
         }
+        const isExpanded=expandedEx.has(ex.id);
         return React.createElement("div",{key:ex.id,className:"sp-ex"},
-          React.createElement("div",{className:"sp-ex-top"},
+          React.createElement("div",{className:"sp-ex-top",style:{cursor:"pointer"},onClick:()=>toggleEx(ex.id)},
             React.createElement("div",null,
               React.createElement("div",{className:"sp-ex-name"},ex.exercise),
               meta&&React.createElement("div",{className:"sp-ex-meta"},meta)
             ),
-            isAdmin&&React.createElement("button",{className:"sp-ex-edit",onClick:()=>{setEditingId(ex.id);setExEdit({id:ex.id,exercise:ex.exercise,sets:ex.sets||"",reps:ex.reps||"",duration:ex.duration||""});}},"Edit")
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+              isAdmin&&React.createElement("button",{className:"sp-ex-edit",onClick:e=>{e.stopPropagation();setEditingId(ex.id);setExEdit({id:ex.id,exercise:ex.exercise,sets:ex.sets||"",reps:ex.reps||"",duration:ex.duration||""});}},"Edit"),
+              React.createElement("div",{style:{color:"#444",fontSize:13,transition:"transform .2s",transform:isExpanded?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
+            )
           ),
-          // Core: persistent tick circles per set
-          isCore&&session&&React.createElement("div",{className:"sp-ticks-row"},
+          // Core: persistent tick circles — shown when expanded
+          isExpanded&&isCore&&session&&React.createElement("div",{className:"sp-ticks-row"},
             Array.from({length:setCount}).map((_,idx)=>{
               const tKey=`${ex.exercise}_${idx}`;
               const done=!!ticks[tKey];
@@ -1452,8 +1454,8 @@ function StrengthTab({session,isAdmin,showToast}){
               },done?"✓":`${idx+1}`);
             })
           ),
-          // Main: per-set weight inputs (uncontrolled — saves onBlur, no focus loss)
-          isMain&&session&&React.createElement("div",{className:"sp-sets-col"},
+          // Main: per-set weight inputs — shown when expanded
+          isExpanded&&isMain&&session&&React.createElement("div",{className:"sp-sets-col"},
             Array.from({length:setCount}).map((_,idx)=>{
               const setKey=`${ex.exercise}_s${idx+1}`;
               const savedVal=weights[setKey]||"";
@@ -1487,17 +1489,6 @@ function StrengthTab({session,isAdmin,showToast}){
       React.createElement("button",{className:"sp-month-arrow",disabled:atStart,onClick:()=>shiftMonth(-1)},"‹"),
       React.createElement("div",{className:"sp-month-lbl"},monthLabel),
       React.createElement("button",{className:"sp-month-arrow",disabled:atCurrent,onClick:()=>shiftMonth(1)},"›")
-    ),
-    // Monthly totals
-    session&&React.createElement("div",{className:"sp-totals-row"},
-      React.createElement("div",{className:"sp-total-card"},
-        React.createElement("div",{className:"sp-total-num"},monthStats.sets),
-        React.createElement("div",{className:"sp-total-lbl"},"SETS TICKED")
-      ),
-      React.createElement("div",{className:"sp-total-card"},
-        React.createElement("div",{className:"sp-total-num"},monthStats.weights),
-        React.createElement("div",{className:"sp-total-lbl"},"WEIGHTS LOGGED")
-      )
     ),
     // Session toggle
     React.createElement("div",{className:"sp-toggle"},
@@ -1779,8 +1770,8 @@ function App(){
 
     React.createElement("div",{className:"hdr",style:{alignItems:"center",paddingBottom:10},onClick:openProf,cursor:"pointer"},
       memberPhoto
-        ?React.createElement("img",{src:memberPhoto,className:"avatar-hdr",alt:"profile",style:{display:"block",margin:"0 auto 8px"}})
-        :React.createElement("div",{className:"avatar-init-hdr",style:{margin:"0 auto 8px"}},memberInit),
+        ?React.createElement("img",{src:memberPhoto,alt:"profile",style:{display:"block",width:70,height:70,borderRadius:"50%",objectFit:"cover",border:"2px solid #333",margin:"0 auto 8px"}})
+        :React.createElement("div",{style:{width:70,height:70,borderRadius:"50%",background:"#1a1a1a",border:"2px solid #2a2a2a",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:"#777",margin:"0 auto 8px"}},memberInit),
       React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:600,letterSpacing:"0.08em",color:"#fff",textAlign:"center",lineHeight:1.2}},session.name.toUpperCase()),
       React.createElement("div",{style:{fontSize:8,letterSpacing:"0.18em",color:"#555",fontWeight:600,textAlign:"center",marginBottom:10}},"PROFILE"),
       React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:"0.2em",color:"#fff",textAlign:"center",lineHeight:1}},"LAMONT TEAM 365"),
@@ -1884,17 +1875,9 @@ function App(){
     React.createElement("div",{className:`toast${toast.show?" show":""}`},toast.msg),
 
     showProf&&React.createElement("div",{className:"prof-overlay"},
-      React.createElement("div",{className:"prof-hdr-new"},
-        React.createElement("button",{className:"prof-close-abs",onClick:()=>setShowProf(false)},"\u2715"),
-        profForm.photo
-          ?React.createElement("img",{src:profForm.photo,className:"prof-hdr-avatar",alt:"profile"})
-          :React.createElement("div",{className:"prof-hdr-avatar-init"},initials(profForm.name||session.name)),
-        React.createElement("div",{className:"prof-hdr-name"},session.name.toUpperCase()),
-        React.createElement("div",{className:"prof-hdr-sublabel"},"PROFILE"),
-        React.createElement("div",{className:"prof-hdr-brand"},"LE MOND TEAM 365"),
-        React.createElement("div",{className:"prof-hdr-powered"},"Powered by"),
-        React.createElement("a",{href:"https://www.lemondcollective.com",target:"_blank",rel:"noopener",className:"prof-hdr-site"},"www.lemondcollective.com"),
-        React.createElement("hr",{className:"prof-hdr-divider"})
+      React.createElement("div",{className:"prof-hdr"},
+        React.createElement("div",{className:"prof-title"},"PROFILE"),
+        React.createElement("button",{className:"prof-close",onClick:()=>setShowProf(false)},"\u2715")
       ),
       React.createElement("div",{className:"prof-body"},
         React.createElement("div",{className:"prof-since"},`MEMBER SINCE ${fmtJoinDate(memberData?.joined_at)}`),
