@@ -1302,6 +1302,9 @@ function StrengthTab({session,isAdmin,showToast}){
   const [editingId,setEditingId]=useState(null);
   const [exEdit,setExEdit]=useState({});
   const [savingEx,setSavingEx]=useState(false);
+  const [addingEx,setAddingEx]=useState(false);
+  const [newEx,setNewEx]=useState({exercise:"",section:"Main",sets:"",reps:"",duration:"",weeks:[1,2,3,4]});
+  const [savingNew,setSavingNew]=useState(false);
 
   useEffect(()=>{loadData();},[sessType,weekNum,monthYear]);
 
@@ -1371,6 +1374,19 @@ function StrengthTab({session,isAdmin,showToast}){
     await sbPatch("strength_program",`id=eq.${id}`,updates);
     setProgram(prev=>prev.map(ex=>ex.id===id?{...ex,...updates}:ex));
     setEditingId(null);setSavingEx(false);showToast("Exercise updated ✓");
+  }
+
+  async function addExercise(){
+    if(!newEx.exercise.trim()||!newEx.weeks.length)return;
+    setSavingNew(true);
+    const sectionExes=program.filter(e=>e.section===newEx.section);
+    const maxOrder=sectionExes.length>0?Math.max(...sectionExes.map(e=>e.order_num||0)):0;
+    for(const wk of newEx.weeks){
+      await sbPost("strength_program",{session_type:sessType,week_number:wk,section:newEx.section,exercise:newEx.exercise.trim().toUpperCase(),sets:newEx.sets?parseInt(newEx.sets):null,reps:newEx.reps||null,duration:newEx.duration||null,order_num:maxOrder+1});
+    }
+    setSavingNew(false);setAddingEx(false);
+    setNewEx({exercise:"",section:"Main",sets:"",reps:"",duration:"",weeks:[1,2,3,4]});
+    await loadData();showToast("Exercise added ✓");
   }
 
   function toggleEx(id){
@@ -1534,9 +1550,51 @@ function StrengthTab({session,isAdmin,showToast}){
       "AT 9PM THE NIGHT BEFORE"
     )
     :loading?React.createElement("div",{className:"sp-loading"},"LOADING...")
-    :program.length===0?React.createElement("div",{className:"sp-loading"},"NO PROGRAM DATA")
-    :sectionOrder.filter(s=>sections[s]&&sections[s].length>0).map((s,i)=>
-      React.createElement(ExSection,{key:s,sectionName:s,exercises:sections[s],isFirst:i===0})
+    :React.createElement(React.Fragment,null,
+      program.length===0&&React.createElement("div",{className:"sp-loading"},"NO PROGRAM DATA"),
+      ...sectionOrder.filter(s=>sections[s]&&sections[s].length>0).map((s,i)=>
+        React.createElement(ExSection,{key:s,sectionName:s,exercises:sections[s],isFirst:i===0})
+      ),
+      isAdmin&&(addingEx
+        ?React.createElement("div",{className:"sp-edit-form",style:{marginTop:16}},
+            React.createElement("div",{className:"sp-edit-lbl"},"EXERCISE NAME"),
+            React.createElement("input",{className:"sp-edit-input",value:newEx.exercise,onChange:e=>setNewEx(p=>({...p,exercise:e.target.value})),placeholder:"e.g. DEADLIFT"}),
+            React.createElement("div",{className:"sp-edit-lbl"},"SECTION"),
+            React.createElement("select",{className:"sp-edit-input",value:newEx.section,onChange:e=>setNewEx(p=>({...p,section:e.target.value}))},
+              React.createElement("option",{value:"Core"},"Core"),
+              React.createElement("option",{value:"Main"},"Main"),
+              React.createElement("option",{value:"Mobility"},"Mobility")
+            ),
+            React.createElement("div",{className:"sp-edit-row"},
+              React.createElement("div",{style:{flex:1}},
+                React.createElement("div",{className:"sp-edit-lbl"},"SETS"),
+                React.createElement("input",{className:"sp-edit-input",value:newEx.sets,onChange:e=>setNewEx(p=>({...p,sets:e.target.value})),placeholder:"e.g. 3"})
+              ),
+              React.createElement("div",{style:{flex:1}},
+                React.createElement("div",{className:"sp-edit-lbl"},"REPS"),
+                React.createElement("input",{className:"sp-edit-input",value:newEx.reps,onChange:e=>setNewEx(p=>({...p,reps:e.target.value})),placeholder:"e.g. 10"})
+              )
+            ),
+            React.createElement("div",{className:"sp-edit-lbl"},"DURATION (optional)"),
+            React.createElement("input",{className:"sp-edit-input",value:newEx.duration,onChange:e=>setNewEx(p=>({...p,duration:e.target.value})),placeholder:"e.g. 45 sec"}),
+            React.createElement("div",{className:"sp-edit-lbl"},"APPLY TO WEEKS"),
+            React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}},
+              [1,2,3,4].map(w=>React.createElement("button",{
+                key:w,
+                onClick:()=>setNewEx(p=>({...p,weeks:p.weeks.includes(w)?p.weeks.filter(x=>x!==w):[...p.weeks,w]})),
+                style:{flex:1,padding:"6px 0",borderRadius:6,border:"1px solid",borderColor:newEx.weeks.includes(w)?"#4ade80":"#333",background:newEx.weeks.includes(w)?"rgba(74,222,128,0.15)":"transparent",color:newEx.weeks.includes(w)?"#4ade80":"#555",fontSize:12,fontWeight:600,letterSpacing:"0.1em",cursor:"pointer"}
+              },`W${w}`))
+            ),
+            React.createElement("div",{className:"sp-edit-actions"},
+              React.createElement("button",{className:"sp-edit-cancel",onClick:()=>setAddingEx(false)},"Cancel"),
+              React.createElement("button",{className:"sp-edit-save",onClick:addExercise,disabled:savingNew||!newEx.exercise.trim()||!newEx.weeks.length},savingNew?"SAVING...":"ADD EXERCISE")
+            )
+          )
+        :React.createElement("button",{
+            onClick:()=>setAddingEx(true),
+            style:{display:"block",width:"100%",marginTop:20,padding:"12px",background:"transparent",border:"1px dashed #333",borderRadius:8,color:"#555",fontSize:11,letterSpacing:"0.15em",fontWeight:600,cursor:"pointer"}
+          },"+ ADD EXERCISE")
+      )
     )
   );
 }
