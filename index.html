@@ -1599,7 +1599,7 @@ function App(){
   useEffect(()=>{
     if(!session)return;
     const keys=[];const now=new Date();now.setHours(0,0,0,0);
-    for(let i=0;i<28;i++){const d=addDays(now,i);if(d.getDay()!==0)keys.push(toDS(d));}
+    for(let i=-90;i<28;i++){const d=addDays(now,i);if(d.getDay()!==0)keys.push(toDS(d));}
     sbGet("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=in.(${keys.join(",")})&select=email,name,date_key,time`).then(data=>setMyWellness(data||[]));
   },[session]);
 
@@ -1878,8 +1878,8 @@ function App(){
         );
       }),
       React.createElement("div",{className:"day-hdr",style:{marginTop:20,marginBottom:10}},React.createElement("span",null,"WELLNESS")),
-      myWellness.length===0?React.createElement("div",{className:"no-bk",style:{padding:"16px 0 24px"}},"No upcoming wellness sessions")
-      :myWellness.sort((a,b)=>a.date_key.localeCompare(b.date_key)||a.time.localeCompare(b.time)).map((bk,i)=>{
+      myWellness.filter(b=>b.date_key>=toDS(new Date())).length===0?React.createElement("div",{className:"no-bk",style:{padding:"16px 0 24px"}},"No upcoming wellness sessions")
+      :myWellness.filter(b=>b.date_key>=toDS(new Date())).sort((a,b)=>a.date_key.localeCompare(b.date_key)||a.time.localeCompare(b.time)).map((bk,i)=>{
         const d=new Date(bk.date_key+"T12:00:00");const dow=d.getDay();
         const dayLbl=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][dow];
         return React.createElement("div",{key:i,className:"my-item"},
@@ -1899,6 +1899,10 @@ function App(){
         React.createElement("div",{className:"adm-stat"},
           React.createElement("div",{className:"adm-stat-num"},bookings.filter(b=>b.email===session.email&&b.date_key<toDS(new Date())).length),
           React.createElement("div",{className:"adm-stat-lbl"},"CLASSES ATTENDED")
+        ),
+        React.createElement("div",{className:"adm-stat"},
+          React.createElement("div",{className:"adm-stat-num"},myWellness.filter(b=>b.date_key<toDS(new Date())).length),
+          React.createElement("div",{className:"adm-stat-lbl"},"WELLNESS SESSIONS")
         ),
         React.createElement("div",{className:"adm-stat"},
           React.createElement("div",{className:"adm-stat-num"},myUpcoming.length),
