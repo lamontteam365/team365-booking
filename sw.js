@@ -1,37 +1,75 @@
-const CACHE = "team365-v3";
-const STATIC = ["/manifest.json", "/icon-192.png", "/icon-512.png"];
+const CACHE = "team365-v4";
 
-self.addEventListener("install", e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC)));
+const STATIC_ASSETS = [
+  "/manifest.json",
+  "/icon-192.png",
+  "/icon-512.png"
+];
+
+// INSTALL
+self.addEventListener("install", event => {
+  event.waitUntil(
+    caches.open(CACHE).then(cache => {
+      return cache.addAll(STATIC_ASSETS);
+    })
+  );
+
   self.skipWaiting();
 });
 
-self.addEventListener("activate", e => {
-  e.waitUntil(caches.keys().then(keys =>
-    Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-  ));
+// ACTIVATE
+self.addEventListener("activate", event => {
+  event.waitUntil(
+    caches.keys().then(keys => {
+      return Promise.all(
+        keys
+          .filter(key => key !== CACHE)
+          .map(key => caches.delete(key))
+      );
+    })
+  );
+
   self.clients.claim();
 });
 
-self.addEventListener("fetch", e => {
-  if (e.request.method !== "GET") return;
+// FETCH
+self.addEventListener("fetch", event => {
+  // Only handle GET requests
+  if (event.request.method !== "GET") return;
 
-  // HTML (the app itself) — always fetch fresh, never cache
-  if (e.request.headers.get("accept") && e.request.headers.get("accept").includes("text/html")) {
-    e.respondWith(
-      fetch(e.request).catch(() => caches.match(e.request))
-    );
-    return;
-  }
+  event.respondWith(
+    (async () => {
+      try {
+        // Always try network first
+        const response = await fetch(event.request);
 
-  // Everything else — network first, cache as fallback
-  e.respondWith(
-    fetch(e.request)
-      .then(res => {
-        const clone = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, clone));
-        return res;
-      })
-      .catch(() => caches.match(e.request))
+        // Cache ONLY safe successful same-origin responses
+        if (
+          response &&
+          response.status === 200 &&
+          response.type === "basic"
+        ) {
+          const cache = await caches.open(CACHE);
+          cache.put(event.request, response.clone());
+        }
+
+        return response;
+
+      } catch (error) {
+
+        // Try cache fallback
+        const cached = await caches.match(event.request);
+
+        if (cached) {
+          return cached;
+        }
+
+        // Final fallback response
+        return new Response("Offline", {
+          status: 503,
+          statusText: "Offline"
+        });
+      }
+    })()
   );
 });
