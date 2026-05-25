@@ -35,7 +35,6 @@ html,body{background:#080808;min-height:100vh}
 .hdr-website{text-align:center;padding:8px 0 10px;border-top:1px solid #111;margin-top:10px}
 .hdr-website a{font-size:9px;letter-spacing:0.1em;color:#1d9bf0;text-decoration:none;font-weight:400}
 .hdr-website a:hover{text-decoration:underline}
-/* keep old small avatar classes for any other usage */
 .avatar-sm{width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid #444;cursor:pointer;display:block}
 .avatar-init-sm{width:38px;height:38px;border-radius:50%;background:#1a1a1a;border:1px solid #333;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:14px;color:#999;cursor:pointer;flex-shrink:0}
 .week-nav{display:flex;align-items:center;padding:18px 14px 0}
@@ -153,14 +152,11 @@ html,body{background:#080808;min-height:100vh}
 .post-pin-btn{background:none;border:none;color:#444;cursor:pointer;font-size:10px;font-family:'DM Sans',sans-serif;letter-spacing:0.06em;transition:color .15s;font-weight:500}
 .post-pin-btn:hover{color:#aaa}
 .post-pin-btn.pinned{color:#888}
-.comm-loading{text-align:center;padding:32px;font-size:10px;letter-spacing:0.18em;color:#333}
-.comm-empty{text-align:center;padding:48px 16px;font-size:11px;letter-spacing:0.16em;color:#333;line-height:2.4}
 .tab-bar{display:flex;border-top:1px solid #1a1a1a;margin-top:auto}
 .tab-btn{flex:1;padding:12px 2px;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:8.5px;letter-spacing:0.12em;color:#777;font-weight:600;transition:color .15s;white-space:nowrap;position:relative}
 .tab-btn.ta{color:#fff;border-top:1px solid #fff;margin-top:-1px}
 .tab-btn:hover:not(.ta){color:#bbb}
 .tab-dot{position:absolute;top:8px;right:calc(50% - 14px);width:7px;height:7px;background:#e06040;border-radius:50%;border:1px solid #080808}
-/* Reply styles */
 .post-reply-btn{background:none;border:none;color:#444;cursor:pointer;font-size:10px;font-family:'DM Sans',sans-serif;letter-spacing:0.06em;transition:color .15s;font-weight:500}
 .post-reply-btn:hover{color:#aaa}
 .reply-compose{background:#111;border:1px solid #1e1e1e;border-radius:6px;padding:10px;margin-top:8px}
@@ -174,7 +170,6 @@ html,body{background:#080808;min-height:100vh}
 .reply-author{font-size:10px;color:#666;font-weight:600;letter-spacing:0.06em;margin-bottom:3px}
 .reply-author span{color:#1d9bf0}
 .reply-content{font-size:12px;color:#bbb;line-height:1.6;font-weight:300}
-/* Tag styles */
 .tag-highlight{color:#1d9bf0;font-weight:500}
 .tag-dropdown{position:absolute;bottom:100%;left:0;right:0;background:#111;border:1px solid #2a2a2a;border-radius:6px;max-height:160px;overflow-y:auto;z-index:50;margin-bottom:4px}
 .tag-option{padding:8px 12px;font-size:12px;color:#ccc;cursor:pointer;transition:background .1s}
@@ -246,7 +241,6 @@ html,body{background:#080808;min-height:100vh}
 .loading-bar{width:120px;height:1px;background:#1a1a1a;border-radius:1px;overflow:hidden}
 .loading-fill{height:100%;background:#fff;border-radius:1px;animation:ld 1.5s ease-in-out infinite}
 @keyframes ld{0%{width:0}50%{width:100%}100%{width:0}}
-/* Admin */
 .adm-wrap{padding:16px;flex:1;overflow-y:auto}
 .adm-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.15em;color:#fff;margin-bottom:16px}
 .adm-seg{display:flex;gap:6px;margin-bottom:16px}
@@ -282,7 +276,6 @@ html,body{background:#080808;min-height:100vh}
 .adm-stat{flex:1;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:7px;padding:12px;text-align:center}
 .adm-stat-num{font-family:'Bebas Neue',sans-serif;font-size:32px;color:#fff;line-height:1}
 .adm-stat-lbl{font-size:9px;letter-spacing:0.16em;color:#666;font-weight:600;margin-top:3px}
-/* Member cards - tappable */
 .adm-member-card{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:8px;padding:14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
 .adm-member-card:hover{border-color:#333}
 .adm-mc-top{display:flex;align-items:center;justify-content:space-between}
@@ -290,7 +283,6 @@ html,body{background:#080808;min-height:100vh}
 .adm-mc-chev{font-size:14px;color:#444}
 .adm-mc-detail{font-size:10px;letter-spacing:0.08em;color:#777;font-weight:500;margin-top:3px}
 .adm-mc-detail span{color:#aaa}
-/* Member profile overlay */
 .member-profile-overlay{position:fixed;inset:0;background:#080808;z-index:60;display:flex;flex-direction:column;max-width:480px;margin:0 auto;overflow-y:auto;animation:su .2s ease}
 @keyframes su{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
 .mp-hdr{display:flex;align-items:center;justify-content:space-between;padding:20px 20px 0;flex-shrink:0}
@@ -318,22 +310,16 @@ html,body{background:#080808;min-height:100vh}
 .parq-flag.yes{background:#1a0808;color:#e06040}
 .parq-flag.no{background:#081a08;color:#4aaa66}
 .sig-preview{width:100%;max-height:80px;object-fit:contain;border:1px solid #1a1a1a;border-radius:4px;background:#0a0a0a}
-/* Profile tabs */
 .prof-tab-bar{display:flex;border-bottom:1px solid #1a1a1a;flex-shrink:0;margin:0}
 .prof-tab-btn{flex:1;padding:13px 4px;background:none;border:none;border-bottom:2px solid transparent;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.16em;color:#666;font-weight:600;cursor:pointer;transition:all .15s;margin-bottom:-1px}
 .prof-tab-btn.pta{color:#fff;border-bottom-color:#fff}
-/* Strength as standalone main tab */
 .sp-main-wrap{flex:1;overflow-y:auto;padding-bottom:8px}
-/* Monthly totals */
 .sp-totals-row{display:flex;gap:8px;margin-bottom:16px}
 .sp-total-card{flex:1;background:#0e0e0e;border:1px solid #1a1a1a;border-radius:6px;padding:10px 8px;text-align:center}
 .sp-total-num{font-family:'Bebas Neue',sans-serif;font-size:26px;color:#fff;line-height:1}
 .sp-total-lbl{font-size:8px;letter-spacing:0.13em;color:#555;font-weight:600;margin-top:3px}
-/* Locked workout */
 .sp-locked{text-align:center;padding:40px 20px;font-size:10px;letter-spacing:0.18em;color:#333;line-height:2.4}
-/* Week pill — locked future week */
 .sp-wk.spwl{color:#1e1e1e;border-color:#111;cursor:default;pointer-events:none}
-/* Profile header redesign */
 .prof-hdr-new{display:flex;flex-direction:column;align-items:center;padding:36px 20px 0;flex-shrink:0;position:relative}
 .prof-close-abs{position:absolute;top:20px;right:20px;background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:4px;line-height:1;transition:color .15s}
 .prof-close-abs:hover{color:#fff}
@@ -347,7 +333,6 @@ html,body{background:#080808;min-height:100vh}
 .prof-hdr-site:hover{text-decoration:underline}
 .prof-hdr-divider{width:100%;border:none;border-top:1px solid #1a1a1a;margin:16px 0 0}
 .prof-tab-btn:hover:not(.pta){color:#aaa}
-/* Strength program */
 .sp-wrap{padding:20px 20px 48px}
 .sp-toggle{display:flex;gap:6px;margin-bottom:16px}
 .sp-toggle-btn{flex:1;padding:10px;background:#0e0e0e;border:1px solid #2a2a2a;border-radius:5px;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.14em;color:#666;cursor:pointer;transition:all .15s}
@@ -397,7 +382,6 @@ html,body{background:#080808;min-height:100vh}
 .sp-month-arrow:hover:not(:disabled){color:#fff}
 .sp-month-arrow:disabled{color:#252525;cursor:default}
 .sp-month-lbl{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.14em;color:#fff}
-/* Forgot password inline */
 .fp-section{margin-top:16px;padding:14px;background:#0a0a0a;border:1px solid #1e1e1e;border-radius:6px}
 .fp-title{font-size:10px;letter-spacing:0.16em;color:#aaa;font-weight:600;margin-bottom:12px}
 .fp-msg{font-size:11px;color:#4aaa66;letter-spacing:0.04em;margin-top:10px;line-height:1.6}
@@ -550,7 +534,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
   }
 
   async function toggleAdmin(){
-    if(member.email===ADMIN_EMAIL)return; // can't remove primary admin
+    if(member.email===ADMIN_EMAIL)return;
     setTogglingAdmin(true);
     const newVal=!memberIsAdmin;
     await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,{is_admin:newVal});
@@ -571,7 +555,6 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
       React.createElement("button",{className:"mp-close",onClick:onClose},"\u2715")
     ),
     React.createElement("div",{className:"mp-body"},
-      // Top
       React.createElement("div",{className:"mp-top"},
         member.photo
           ?React.createElement("img",{src:member.photo,className:"mp-avatar",alt:""})
@@ -582,8 +565,6 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
           memberIsAdmin&&React.createElement("div",{className:"mp-meta",style:{color:"#4aaa66",marginTop:2}},"ADMIN")
         )
       ),
-
-      // Stats row
       React.createElement("div",{className:"adm-stats-row",style:{marginBottom:20}},
         React.createElement("div",{className:"adm-stat"},
           React.createElement("div",{className:"adm-stat-num"},attendedBks),
@@ -598,16 +579,12 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
           React.createElement("div",{className:"adm-stat-lbl"},"TOTAL")
         )
       ),
-
-      // Contact
       React.createElement("div",{className:"mp-section"},"CONTACT DETAILS"),
       React.createElement(Row,{label:"Email",value:member.email}),
       React.createElement(Row,{label:"Phone",value:member.phone}),
       React.createElement(Row,{label:"Date of Birth",value:member.dob}),
       React.createElement(Row,{label:"Membership",value:member.membership_type}),
       React.createElement(Row,{label:"Registered",value:member.registration_date}),
-
-      // Emergency - editable
       React.createElement("div",{className:"mp-section",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
         React.createElement("span",null,"EMERGENCY CONTACT"),
         currentUserIsAdmin&&React.createElement("button",{
@@ -641,8 +618,6 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
           React.createElement(Row,{label:"Name",value:member.emergency_name}),
           React.createElement(Row,{label:"Phone",value:member.emergency_phone})
         ),
-
-      // PAR-Q with edit
       React.createElement("div",{className:"mp-section",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
         React.createElement("span",null,
           "HEALTH SCREENING",
@@ -660,7 +635,6 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
           style:{background:"none",border:"1px solid #333",color:"#888",fontSize:9,letterSpacing:"0.12em",padding:"3px 8px",borderRadius:3,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600}
         },editingParq?"CANCEL":"EDIT")
       ),
-
       editingParq
         ?React.createElement(React.Fragment,null,
           ...PARQ_KEYS.map((k,i)=>React.createElement("div",{key:k,style:{padding:"10px 0",borderBottom:"1px solid #0f0f0f"}},
@@ -690,8 +664,6 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
             React.createElement("span",{className:`parq-flag ${(member[k]||"No").toLowerCase()}`},member[k]||"No")
           ))
         ),
-
-      // Medical, Fitness & Declarations - all editable together
       React.createElement("div",{className:"mp-section",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
         React.createElement("span",null,"MEDICAL & DECLARATIONS"),
         currentUserIsAdmin&&React.createElement("button",{
@@ -699,24 +671,15 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
           style:{background:"none",border:"1px solid #333",color:"#888",fontSize:9,letterSpacing:"0.12em",padding:"3px 8px",borderRadius:3,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600}
         },editingExtra?"CANCEL":"EDIT")
       ),
-
       editingExtra
         ?React.createElement(React.Fragment,null,
           React.createElement("div",{style:{marginBottom:8}},
             React.createElement("div",{style:{fontSize:9,color:"#666",letterSpacing:"0.1em",marginBottom:4}},"INJURIES OR CONDITIONS"),
-            React.createElement("textarea",{
-              value:extraEdits.medical_conditions,
-              onChange:e=>setExtraEdits(p=>({...p,medical_conditions:e.target.value})),
-              style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:300,padding:"10px 12px",borderRadius:3,outline:"none",resize:"none",minHeight:60,lineHeight:1.6}
-            })
+            React.createElement("textarea",{value:extraEdits.medical_conditions,onChange:e=>setExtraEdits(p=>({...p,medical_conditions:e.target.value})),style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:300,padding:"10px 12px",borderRadius:3,outline:"none",resize:"none",minHeight:60,lineHeight:1.6}})
           ),
           React.createElement("div",{style:{marginBottom:8}},
             React.createElement("div",{style:{fontSize:9,color:"#666",letterSpacing:"0.1em",marginBottom:4}},"CURRENT MEDICATIONS"),
-            React.createElement("textarea",{
-              value:extraEdits.medications,
-              onChange:e=>setExtraEdits(p=>({...p,medications:e.target.value})),
-              style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:300,padding:"10px 12px",borderRadius:3,outline:"none",resize:"none",minHeight:60,lineHeight:1.6}
-            })
+            React.createElement("textarea",{value:extraEdits.medications,onChange:e=>setExtraEdits(p=>({...p,medications:e.target.value})),style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:300,padding:"10px 12px",borderRadius:3,outline:"none",resize:"none",minHeight:60,lineHeight:1.6}})
           ),
           React.createElement("div",{style:{marginBottom:8}},
             React.createElement("div",{style:{fontSize:9,color:"#666",letterSpacing:"0.1em",marginBottom:6}},"FITNESS LEVEL"),
@@ -724,13 +687,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
               React.createElement("button",{
                 key:opt,
                 onClick:()=>setExtraEdits(p=>({...p,fitness_level:opt})),
-                style:{
-                  display:"block",width:"100%",textAlign:"left",padding:"10px 12px",marginBottom:4,
-                  background:extraEdits.fitness_level===opt?"#111":"#0a0a0a",
-                  border:`1px solid ${extraEdits.fitness_level===opt?"#fff":"#1e1e1e"}`,
-                  color:extraEdits.fitness_level===opt?"#fff":"#666",
-                  borderRadius:3,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:12
-                }
+                style:{display:"block",width:"100%",textAlign:"left",padding:"10px 12px",marginBottom:4,background:extraEdits.fitness_level===opt?"#111":"#0a0a0a",border:`1px solid ${extraEdits.fitness_level===opt?"#fff":"#1e1e1e"}`,color:extraEdits.fitness_level===opt?"#fff":"#666",borderRadius:3,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:12}
               },opt)
             )
           ),
@@ -739,13 +696,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
             ["Yes","No"].map(val=>React.createElement("button",{
               key:val,
               onClick:()=>setExtraEdits(p=>({...p,health_declaration:val})),
-              style:{
-                marginRight:8,padding:"8px 20px",
-                background:extraEdits.health_declaration===val?(val==="Yes"?"#081a08":"#1a0808"):"#111",
-                border:`1px solid ${extraEdits.health_declaration===val?(val==="Yes"?"#2a4a2a":"#4a2a2a"):"#222"}`,
-                color:extraEdits.health_declaration===val?(val==="Yes"?"#4aaa66":"#e06040"):"#555",
-                borderRadius:3,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.1em",cursor:"pointer"
-              }
+              style:{marginRight:8,padding:"8px 20px",background:extraEdits.health_declaration===val?(val==="Yes"?"#081a08":"#1a0808"):"#111",border:`1px solid ${extraEdits.health_declaration===val?(val==="Yes"?"#2a4a2a":"#4a2a2a"):"#222"}`,color:extraEdits.health_declaration===val?(val==="Yes"?"#4aaa66":"#e06040"):"#555",borderRadius:3,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.1em",cursor:"pointer"}
             },val))
           ),
           React.createElement("div",{style:{marginBottom:12}},
@@ -753,19 +704,10 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
             ["Yes","No"].map(val=>React.createElement("button",{
               key:val,
               onClick:()=>setExtraEdits(p=>({...p,media_consent:val})),
-              style:{
-                marginRight:8,padding:"8px 20px",
-                background:extraEdits.media_consent===val?(val==="Yes"?"#081a08":"#1a0808"):"#111",
-                border:`1px solid ${extraEdits.media_consent===val?(val==="Yes"?"#2a4a2a":"#4a2a2a"):"#222"}`,
-                color:extraEdits.media_consent===val?(val==="Yes"?"#4aaa66":"#e06040"):"#555",
-                borderRadius:3,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.1em",cursor:"pointer"
-              }
+              style:{marginRight:8,padding:"8px 20px",background:extraEdits.media_consent===val?(val==="Yes"?"#081a08":"#1a0808"):"#111",border:`1px solid ${extraEdits.media_consent===val?(val==="Yes"?"#2a4a2a":"#4a2a2a"):"#222"}`,color:extraEdits.media_consent===val?(val==="Yes"?"#4aaa66":"#e06040"):"#555",borderRadius:3,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.1em",cursor:"pointer"}
             },val))
           ),
-          React.createElement("button",{
-            onClick:saveExtra,disabled:savingExtra,
-            style:{width:"100%",background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.15em",padding:"14px",borderRadius:3,cursor:"pointer"}
-          },savingExtra?"SAVING...":"SAVE CHANGES"),
+          React.createElement("button",{onClick:saveExtra,disabled:savingExtra,style:{width:"100%",background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.15em",padding:"14px",borderRadius:3,cursor:"pointer"}},savingExtra?"SAVING...":"SAVE CHANGES"),
           extraOk&&React.createElement("div",{style:{fontSize:11,color:"#4aaa88",textAlign:"center",marginTop:8}},"Updated successfully")
         )
         :React.createElement(React.Fragment,null,
@@ -775,25 +717,15 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
           React.createElement("div",{className:"mp-row"},React.createElement("div",{className:"mp-label"},"Health Declaration"),React.createElement("div",{className:`mp-value ${member.health_declaration==="Yes"?"yes":"no"}`},member.health_declaration||"\u2014")),
           React.createElement("div",{className:"mp-row"},React.createElement("div",{className:"mp-label"},"Media Consent"),React.createElement("div",{className:`mp-value ${member.media_consent==="Yes"?"yes":"no"}`},member.media_consent||"\u2014"))
         ),
-
-      // Signature
       member.signature&&React.createElement(React.Fragment,null,
         React.createElement("div",{className:"mp-section"},"SIGNATURE"),
         React.createElement("img",{src:member.signature,className:"sig-preview",alt:"signature"})
       ),
-
-      // Admin controls
       currentUserIsAdmin&&React.createElement(React.Fragment,null,
         React.createElement("div",{className:"mp-section"},"ADMIN CONTROLS"),
         React.createElement("button",{
           onClick:toggleAdmin,disabled:togglingAdmin,
-          style:{
-            width:"100%",background:"transparent",
-            border:`1px solid ${memberIsAdmin?"#4a2a2a":"#2a4a2a"}`,
-            color:memberIsAdmin?"#e06040":"#4aaa66",
-            fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.15em",
-            padding:"14px",borderRadius:3,cursor:"pointer",marginTop:4,marginBottom:8
-          }
+          style:{width:"100%",background:"transparent",border:`1px solid ${memberIsAdmin?"#4a2a2a":"#2a4a2a"}`,color:memberIsAdmin?"#e06040":"#4aaa66",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.15em",padding:"14px",borderRadius:3,cursor:"pointer",marginTop:4,marginBottom:8}
         },togglingAdmin?"...":(memberIsAdmin?"REMOVE ADMIN ACCESS":"GRANT ADMIN ACCESS")),
         React.createElement("button",{
           disabled:resettingPw,
@@ -807,12 +739,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
             try{await fetch(APPS_SCRIPT_URL+"?"+params.toString(),{method:"GET",mode:"no-cors"});}catch(e){}
             setResettingPw(false);setPwResetOk(`Password reset. Temp: ${tmpPw} — email sent to member.`);
           },
-          style:{
-            width:"100%",background:"transparent",
-            border:"1px solid #2a3a4a",color:"#4a8aaa",
-            fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.15em",
-            padding:"14px",borderRadius:3,cursor:"pointer",marginBottom:8
-          }
+          style:{width:"100%",background:"transparent",border:"1px solid #2a3a4a",color:"#4a8aaa",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.15em",padding:"14px",borderRadius:3,cursor:"pointer",marginBottom:8}
         },resettingPw?"SENDING...":"RESET PASSWORD"),
         pwResetOk&&React.createElement("div",{style:{fontSize:10,color:"#4aaa88",letterSpacing:"0.04em",marginBottom:8,lineHeight:1.6}},pwResetOk),
         member.email!==ADMIN_EMAIL&&React.createElement("button",{
@@ -823,12 +750,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
             await sbDelete("wellness_bookings",`email=eq.${encodeURIComponent(member.email)}`);
             onClose();
           },
-          style:{
-            width:"100%",background:"transparent",
-            border:"1px solid #3a1008",color:"#8a2515",
-            fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.15em",
-            padding:"14px",borderRadius:3,cursor:"pointer"
-          }
+          style:{width:"100%",background:"transparent",border:"1px solid #3a1008",color:"#8a2515",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.15em",padding:"14px",borderRadius:3,cursor:"pointer"}
         },"REMOVE MEMBER")
       )
     )
@@ -952,7 +874,6 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
   function handleTextChange(e,setter){
     const val=e.target.value;
     setter(val);
-    // Check for @ tag
     const atIdx=val.lastIndexOf("@");
     if(atIdx>=0&&atIdx===val.length-1){setTagQuery("");setShowTags(true);}
     else if(atIdx>=0&&val.slice(atIdx+1).match(/^\w+$/)){setTagQuery(val.slice(atIdx+1).toLowerCase());setShowTags(true);}
@@ -1061,8 +982,6 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
             React.createElement("div",{className:"post-time"},timeAgo(post.created_at))
           ),
           React.createElement("div",{className:"post-content",dangerouslySetInnerHTML:{__html:renderContent(post.content)}}),
-
-          // Replies
           replies.length>0&&React.createElement("div",{style:{marginTop:8}},
             replies.map((r,ri)=>{
               const canDeleteReply=isAdmin||(r.author_email===session.email);
@@ -1075,21 +994,15 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
               );
             })
           ),
-
-          // Actions
           React.createElement("div",{className:"post-actions",style:{marginTop:8}},
             React.createElement("button",{className:`post-like-btn${liked?" liked":""}`,onClick:()=>handleLike(post,i)},
               React.createElement("div",{className:"post-like-icon"},liked?"\u2665":"\u2661"),
               React.createElement("div",{className:"post-like-count"},likes.length>0?likes.length:"0")
             ),
-            React.createElement("button",{className:"post-reply-btn",onClick:()=>setReplyingTo(isReplying?null:post.id)},
-              isReplying?"Cancel":"Reply"
-            ),
+            React.createElement("button",{className:"post-reply-btn",onClick:()=>setReplyingTo(isReplying?null:post.id)},isReplying?"Cancel":"Reply"),
             isAdmin&&React.createElement("button",{className:`post-pin-btn${post.pinned?" pinned":""}`,onClick:()=>handlePin(post,i)},post.pinned?"Unpin":"Pin"),
             canDelete&&React.createElement("button",{className:"post-delete",onClick:()=>handleDelete(post.id)},"Delete")
           ),
-
-          // Reply compose
           isReplying&&React.createElement("div",{className:"reply-compose compose-wrap"},
             showTags&&filteredMembers.length>0&&React.createElement("div",{className:"tag-dropdown"},
               filteredMembers.map((n,idx2)=>React.createElement("div",{key:idx2,className:"tag-option",onClick:()=>insertTag(n,setReplyText,replyText)},n))
@@ -1164,8 +1077,6 @@ function AdminView({bookings,setBookings,showToast,isAdmin}){
       React.createElement("button",{className:`adm-seg-btn${admSeg==="classes"?" aas":""}`,onClick:()=>setAdmSeg("classes")},"CLASSES"),
       React.createElement("button",{className:`adm-seg-btn${admSeg==="wellness"?" aas":""}`,onClick:()=>setAdmSeg("wellness")},"WELLNESS")
     ),
-
-    // MEMBERS
     admSeg==="members"&&(!membersLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
     :React.createElement(React.Fragment,null,
       React.createElement("div",{className:"adm-stats-row"},
@@ -1177,9 +1088,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin}){
         const joinDate=fmtJoinDate(mb.joined_at);
         return React.createElement("div",{key:i,className:"adm-member-card",onClick:()=>openMemberProfile(mb)},
           React.createElement("div",{className:"adm-mc-top"},
-            React.createElement("div",null,
-              React.createElement("div",{className:"adm-mc-name"},(mb.name||"").toUpperCase())
-            ),
+            React.createElement("div",null,React.createElement("div",{className:"adm-mc-name"},(mb.name||"").toUpperCase())),
             mb.photo
               ?React.createElement("img",{src:mb.photo,style:{width:32,height:32,borderRadius:"50%",objectFit:"cover",border:"1px solid #333",flexShrink:0},alt:""})
               :React.createElement("div",{style:{width:32,height:32,borderRadius:"50%",background:"#1a1a1a",border:"1px solid #2a2a2a",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,color:"#666",flexShrink:0}},initials(mb.name||"?"))
@@ -1190,8 +1099,6 @@ function AdminView({bookings,setBookings,showToast,isAdmin}){
         );
       })
     )),
-
-    // CLASSES
     admSeg==="classes"&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"adm-day-nav"},
         React.createElement("button",{className:"adm-arrow",onClick:()=>changeDay(-1)},"\u2039"),
@@ -1225,8 +1132,6 @@ function AdminView({bookings,setBookings,showToast,isAdmin}){
         );
       })
     ),
-
-    // WELLNESS
     admSeg==="wellness"&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"adm-day-nav"},
         React.createElement("button",{className:"adm-arrow",onClick:()=>changeDay(-1)},"\u2039"),
@@ -1317,8 +1222,7 @@ function StrengthTab({session,isAdmin,showToast}){
     const initTicks={};
     (wts||[]).forEach(w=>{
       if(w.exercise.endsWith("_tick")){
-        // reconstruct tick key: "ExName_sN_tick" → tKey "ExName_N-1"
-        const base=w.exercise.slice(0,-5); // remove "_tick"
+        const base=w.exercise.slice(0,-5);
         const si=base.lastIndexOf("_s");
         if(si>-1){
           const exName=base.slice(0,si);
@@ -1393,17 +1297,15 @@ function StrengthTab({session,isAdmin,showToast}){
     setExpandedEx(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});
   }
 
-  // Month navigation helpers
   const [myY,myM]=monthYear.split("-").map(Number);
   const monthLabel=`${SP_MONTHS[myM-1]} ${myY}`;
   const atCurrent=!isAdmin&&monthYear===nowMY;
-  const atStart=myY===2026&&myM===5; // program started May 2026
+  const atStart=myY===2026&&myM===5;
   function shiftMonth(dir){
     const d=new Date(myY,myM-1+dir,1);
     setMonthYear(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);
   }
 
-  // Group by section — always Core → Main → Mobility
   const sections={};
   program.forEach(ex=>{if(!sections[ex.section])sections[ex.section]=[];sections[ex.section].push(ex);});
   const sectionOrder=["Core","Main","Mobility"];
@@ -1430,14 +1332,8 @@ function StrengthTab({session,isAdmin,showToast}){
             React.createElement("div",{className:"sp-edit-lbl"},"EXERCISE"),
             React.createElement("input",{className:"sp-edit-input",value:exEdit.exercise||"",onChange:e=>setExEdit(p=>({...p,exercise:e.target.value})),placeholder:"Exercise name"}),
             React.createElement("div",{className:"sp-edit-row"},
-              React.createElement("div",{style:{flex:1}},
-                React.createElement("div",{className:"sp-edit-lbl"},"SETS"),
-                React.createElement("input",{className:"sp-edit-input",value:exEdit.sets||"",onChange:e=>setExEdit(p=>({...p,sets:e.target.value})),placeholder:"e.g. 3"})
-              ),
-              React.createElement("div",{style:{flex:1}},
-                React.createElement("div",{className:"sp-edit-lbl"},"REPS"),
-                React.createElement("input",{className:"sp-edit-input",value:exEdit.reps||"",onChange:e=>setExEdit(p=>({...p,reps:e.target.value})),placeholder:"e.g. 10"})
-              )
+              React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-edit-lbl"},"SETS"),React.createElement("input",{className:"sp-edit-input",value:exEdit.sets||"",onChange:e=>setExEdit(p=>({...p,sets:e.target.value})),placeholder:"e.g. 3"})),
+              React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-edit-lbl"},"REPS"),React.createElement("input",{className:"sp-edit-input",value:exEdit.reps||"",onChange:e=>setExEdit(p=>({...p,reps:e.target.value})),placeholder:"e.g. 10"}))
             ),
             React.createElement("div",{className:"sp-edit-lbl"},"DURATION (optional)"),
             React.createElement("input",{className:"sp-edit-input",value:exEdit.duration||"",onChange:e=>setExEdit(p=>({...p,duration:e.target.value})),placeholder:"e.g. 45 sec"}),
@@ -1447,38 +1343,25 @@ function StrengthTab({session,isAdmin,showToast}){
             )
           );
         }
-        // Core + Mobility: flat row with inline ticks, no expand/collapse
         if(isCore||isMobility){
           return React.createElement("div",{key:ex.id,className:"sp-ex"},
             React.createElement("div",{className:"sp-ex-top",style:{cursor:"default"}},
-              React.createElement("div",{style:{flex:1}},
-                React.createElement("div",{className:"sp-ex-name"},ex.exercise),
-                meta&&React.createElement("div",{className:"sp-ex-meta"},meta)
-              ),
+              React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-ex-name"},ex.exercise),meta&&React.createElement("div",{className:"sp-ex-meta"},meta)),
               React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
                 isAdmin&&React.createElement("button",{className:"sp-ex-edit",onClick:e=>{e.stopPropagation();setEditingId(ex.id);setExEdit({id:ex.id,exercise:ex.exercise,sets:ex.sets||"",reps:ex.reps||"",duration:ex.duration||""});}},"Edit"),
                 session&&Array.from({length:setCount}).map((_,idx)=>{
                   const tKey=`${ex.exercise}_${idx}`;
                   const done=!!ticks[tKey];
-                  return React.createElement("button",{
-                    key:idx,
-                    className:`sp-tick${done?" sptd":""}`,
-                    style:{width:30,height:30,fontSize:13},
-                    onClick:e=>{e.stopPropagation();toggleTick(ex.exercise,idx,!done);}
-                  },isMobility?"✓":(done?"✓":`${idx+1}`));
+                  return React.createElement("button",{key:idx,className:`sp-tick${done?" sptd":""}`,style:{width:30,height:30,fontSize:13},onClick:e=>{e.stopPropagation();toggleTick(ex.exercise,idx,!done);}},isMobility?"✓":(done?"✓":`${idx+1}`));
                 })
               )
             )
           );
         }
-        // Main: expand/collapse for per-set weight inputs
         const isExpanded=expandedEx.has(ex.id);
         return React.createElement("div",{key:ex.id,className:"sp-ex"},
           React.createElement("div",{className:"sp-ex-top",style:{cursor:"pointer"},onClick:()=>toggleEx(ex.id)},
-            React.createElement("div",null,
-              React.createElement("div",{className:"sp-ex-name"},ex.exercise),
-              meta&&React.createElement("div",{className:"sp-ex-meta"},meta)
-            ),
+            React.createElement("div",null,React.createElement("div",{className:"sp-ex-name"},ex.exercise),meta&&React.createElement("div",{className:"sp-ex-meta"},meta)),
             React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
               isAdmin&&React.createElement("button",{className:"sp-ex-edit",onClick:e=>{e.stopPropagation();setEditingId(ex.id);setExEdit({id:ex.id,exercise:ex.exercise,sets:ex.sets||"",reps:ex.reps||"",duration:ex.duration||""});}},"Edit"),
               React.createElement("div",{style:{color:"#444",fontSize:13,transition:"transform .2s",transform:isExpanded?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
@@ -1491,15 +1374,7 @@ function StrengthTab({session,isAdmin,showToast}){
               const repTarget=repsList.length>1?(repsList[idx]||repsList[repsList.length-1]):null;
               return React.createElement("div",{key:`${ex.id}_s${idx}`,className:"sp-set-row"},
                 React.createElement("span",{className:"sp-set-lbl"},`S${idx+1}`),
-                React.createElement("input",{
-                  className:"sp-set-input",
-                  type:"text",
-                  inputMode:"numeric",
-                  pattern:"[0-9]*",
-                  defaultValue:savedVal,
-                  placeholder:"—",
-                  onBlur:e=>saveSetWeight(ex.exercise,idx+1,e.target.value)
-                }),
+                React.createElement("input",{className:"sp-set-input",type:"text",inputMode:"numeric",pattern:"[0-9]*",defaultValue:savedVal,placeholder:"—",onBlur:e=>saveSetWeight(ex.exercise,idx+1,e.target.value)}),
                 React.createElement("span",{className:"sp-set-kg"},"kg"),
                 repTarget&&React.createElement("span",{className:"sp-set-reps"},`· ${repTarget} reps`)
               );
@@ -1517,38 +1392,23 @@ function StrengthTab({session,isAdmin,showToast}){
       React.createElement("div",{className:"well-title"},"STRENGTH"),
       React.createElement("div",{className:"well-sub"},"LOWER · UPPER BODY")
     ),
-    // Month navigator
     React.createElement("div",{className:"sp-month-nav"},
       React.createElement("button",{className:"sp-month-arrow",disabled:atStart,onClick:()=>shiftMonth(-1)},"‹"),
       React.createElement("div",{className:"sp-month-lbl"},monthLabel),
       React.createElement("button",{className:"sp-month-arrow",disabled:atCurrent,onClick:()=>shiftMonth(1)},"›")
     ),
-    // Session toggle
     React.createElement("div",{className:"sp-toggle"},
       React.createElement("button",{className:`sp-toggle-btn${sessType==="Lower"?" spta":""}`,onClick:()=>setSessType("Lower")},"STRENGTH LOWER"),
       React.createElement("button",{className:`sp-toggle-btn${sessType==="Upper"?" spta":""}`,onClick:()=>setSessType("Upper")},"STRENGTH UPPER")
     ),
-    // Week pills — members can't tap future weeks
     React.createElement("div",{className:"sp-weeks"},
       [1,2,3,4].map(w=>{
         const locked=!isAdmin&&!isWorkoutReleased(monthYear,w,false);
-        return React.createElement("button",{
-          key:w,
-          className:`sp-wk${weekNum===w?" spwa":""}${w===currentWeek&&weekNum!==w&&monthYear===nowMY?" spwc":""}${locked?" spwl":""}`,
-          onClick:()=>!locked&&setWeekNum(w)
-        },`W${w}`);
+        return React.createElement("button",{key:w,className:`sp-wk${weekNum===w?" spwa":""}${w===currentWeek&&weekNum!==w&&monthYear===nowMY?" spwc":""}${locked?" spwl":""}`,onClick:()=>!locked&&setWeekNum(w)},`W${w}`);
       })
     ),
-    // Current week indicator
-    React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.14em",marginBottom:16,fontWeight:600}},
-      `${sessType.toUpperCase()} · WEEK ${weekNum}${weekNum===currentWeek&&monthYear===nowMY?" · CURRENT WEEK":""}`
-    ),
-    // Locked workout message for members
-    !released?React.createElement("div",{className:"sp-locked"},
-      "🔒",React.createElement("br",null),
-      "THIS WORKOUT UNLOCKS",React.createElement("br",null),
-      "AT 9PM THE NIGHT BEFORE"
-    )
+    React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.14em",marginBottom:16,fontWeight:600}},`${sessType.toUpperCase()} · WEEK ${weekNum}${weekNum===currentWeek&&monthYear===nowMY?" · CURRENT WEEK":""}`),
+    !released?React.createElement("div",{className:"sp-locked"},"🔒",React.createElement("br",null),"THIS WORKOUT UNLOCKS",React.createElement("br",null),"AT 9PM THE NIGHT BEFORE")
     :loading?React.createElement("div",{className:"sp-loading"},"LOADING...")
     :React.createElement(React.Fragment,null,
       program.length===0&&React.createElement("div",{className:"sp-loading"},"NO PROGRAM DATA"),
@@ -1566,34 +1426,21 @@ function StrengthTab({session,isAdmin,showToast}){
               React.createElement("option",{value:"Mobility"},"Mobility")
             ),
             React.createElement("div",{className:"sp-edit-row"},
-              React.createElement("div",{style:{flex:1}},
-                React.createElement("div",{className:"sp-edit-lbl"},"SETS"),
-                React.createElement("input",{className:"sp-edit-input",value:newEx.sets,onChange:e=>setNewEx(p=>({...p,sets:e.target.value})),placeholder:"e.g. 3"})
-              ),
-              React.createElement("div",{style:{flex:1}},
-                React.createElement("div",{className:"sp-edit-lbl"},"REPS"),
-                React.createElement("input",{className:"sp-edit-input",value:newEx.reps,onChange:e=>setNewEx(p=>({...p,reps:e.target.value})),placeholder:"e.g. 10"})
-              )
+              React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-edit-lbl"},"SETS"),React.createElement("input",{className:"sp-edit-input",value:newEx.sets,onChange:e=>setNewEx(p=>({...p,sets:e.target.value})),placeholder:"e.g. 3"})),
+              React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-edit-lbl"},"REPS"),React.createElement("input",{className:"sp-edit-input",value:newEx.reps,onChange:e=>setNewEx(p=>({...p,reps:e.target.value})),placeholder:"e.g. 10"}))
             ),
             React.createElement("div",{className:"sp-edit-lbl"},"DURATION (optional)"),
             React.createElement("input",{className:"sp-edit-input",value:newEx.duration,onChange:e=>setNewEx(p=>({...p,duration:e.target.value})),placeholder:"e.g. 45 sec"}),
             React.createElement("div",{className:"sp-edit-lbl"},"APPLY TO WEEKS"),
             React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}},
-              [1,2,3,4].map(w=>React.createElement("button",{
-                key:w,
-                onClick:()=>setNewEx(p=>({...p,weeks:p.weeks.includes(w)?p.weeks.filter(x=>x!==w):[...p.weeks,w]})),
-                style:{flex:1,padding:"6px 0",borderRadius:6,border:"1px solid",borderColor:newEx.weeks.includes(w)?"#4ade80":"#333",background:newEx.weeks.includes(w)?"rgba(74,222,128,0.15)":"transparent",color:newEx.weeks.includes(w)?"#4ade80":"#555",fontSize:12,fontWeight:600,letterSpacing:"0.1em",cursor:"pointer"}
-              },`W${w}`))
+              [1,2,3,4].map(w=>React.createElement("button",{key:w,onClick:()=>setNewEx(p=>({...p,weeks:p.weeks.includes(w)?p.weeks.filter(x=>x!==w):[...p.weeks,w]})),style:{flex:1,padding:"6px 0",borderRadius:6,border:"1px solid",borderColor:newEx.weeks.includes(w)?"#4ade80":"#333",background:newEx.weeks.includes(w)?"rgba(74,222,128,0.15)":"transparent",color:newEx.weeks.includes(w)?"#4ade80":"#555",fontSize:12,fontWeight:600,letterSpacing:"0.1em",cursor:"pointer"}},`W${w}`))
             ),
             React.createElement("div",{className:"sp-edit-actions"},
               React.createElement("button",{className:"sp-edit-cancel",onClick:()=>setAddingEx(false)},"Cancel"),
               React.createElement("button",{className:"sp-edit-save",onClick:addExercise,disabled:savingNew||!newEx.exercise.trim()||!newEx.weeks.length},savingNew?"SAVING...":"ADD EXERCISE")
             )
           )
-        :React.createElement("button",{
-            onClick:()=>setAddingEx(true),
-            style:{display:"block",width:"100%",marginTop:20,padding:"12px",background:"transparent",border:"1px dashed #333",borderRadius:8,color:"#555",fontSize:11,letterSpacing:"0.15em",fontWeight:600,cursor:"pointer"}
-          },"+ ADD EXERCISE")
+        :React.createElement("button",{onClick:()=>setAddingEx(true),style:{display:"block",width:"100%",marginTop:20,padding:"12px",background:"transparent",border:"1px dashed #333",borderRadius:8,color:"#555",fontSize:11,letterSpacing:"0.15em",fontWeight:600,cursor:"pointer"}},"+ ADD EXERCISE")
       )
     )
   );
@@ -1623,7 +1470,8 @@ function App(){
   const [profTab,setProfTab]=useState("details");
   const [cropSrc,setCropSrc]=useState(null);
   const [myWellness,setMyWellness]=useState([]);
-  const [wellnessPast,setWellnessPast]=useState([]);
+  // FIX 1: Replaced wellnessPast with statCounts - counts are fetched on-demand per month
+  const [statCounts,setStatCounts]=useState({classes:0,wellness:0});
   const nowMY2=(()=>{const n=new Date();return`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`;})();
   const [statMonth,setStatMonth]=useState(nowMY2);
   const [showForgotPw,setShowForgotPw]=useState(false);
@@ -1640,16 +1488,18 @@ function App(){
 
   useEffect(()=>{
     (async()=>{
+      // FIX 2: Track join date to use as fallback for notice board unread baseline
+      let joinedAt=0;
       const s=lsGet("t365-session",null);
       if(s){
         setSession(s);
         const mb=await sbGet("members",`email=eq.${encodeURIComponent(s.email)}`);
-        if(mb.length)setMemberData(mb[0]);
+        if(mb.length){setMemberData(mb[0]);joinedAt=mb[0].joined_at||0;}
       }
       await refreshBookings();
-      // Check for unread posts
-      const lastRead = lsGet("t365-last-read", 0);
-      const recentPosts = await sbGet("posts",`created_at=gt.${lastRead}&select=id`);
+      // FIX 3: Use join date as fallback so existing posts don't flag as new on first login
+      const lastRead=lsGet("t365-last-read",0)||joinedAt;
+      const recentPosts=await sbGet("posts",`created_at=gt.${lastRead}&select=id`);
       setUnreadPosts((recentPosts||[]).length);
       const allMembers=await sbGet("members","select=email,photo,name");
       const photoMap={};const nameList=[];
@@ -1661,29 +1511,39 @@ function App(){
 
   useEffect(()=>{const id=setInterval(refreshBookings,30000);return()=>clearInterval(id);},[]);
 
+  // FIX 4: Load attendance counts on-demand for the selected month only
+  async function loadStatCounts(month){
+    if(!session)return;
+    const[y,m]=month.split("-").map(Number);
+    const nextM=m===12?`${y+1}-01`:`${y}-${String(m+1).padStart(2,"0")}`;
+    const today=toDS(new Date());
+    const[cls,well]=await Promise.all([
+      sbGet("bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=gte.${month}-01&date_key=lt.${nextM}&date_key=lt.${today}&select=date_key`),
+      sbGet("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=gte.${month}-01&date_key=lt.${nextM}&date_key=lt.${today}&select=date_key`)
+    ]);
+    setStatCounts({classes:(cls||[]).length,wellness:(well||[]).length});
+  }
+  useEffect(()=>{if(session&&tab==="my")loadStatCounts(statMonth);},[statMonth,session,tab]);
+
   useEffect(()=>{
     if(!session)return;
     const keys=[];const now=new Date();now.setHours(0,0,0,0);
     for(let i=0;i<28;i++){const d=addDays(now,i);if(d.getDay()!==0)keys.push(toDS(d));}
+    // FIX 5: Only fetch upcoming wellness for My Bookings display (not all history)
     sbGet("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=in.(${keys.join(",")})&select=email,name,date_key,time`).then(data=>setMyWellness(data||[]));
-    // Fetch past wellness sessions so we can filter by month
-    sbGet("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=lt.${toDS(now)}&select=date_key`).then(data=>setWellnessPast(data||[]));
   },[session]);
 
+  // FIX 6: Restored to upcoming-only — no more 90-day historical lookback on every load
   async function refreshBookings(){
     const keys=[];const now=new Date();now.setHours(0,0,0,0);
-    // Load past 90 days + next 28 days for attended count
-    for(let i=-90;i<28;i++){const d=addDays(now,i);if(d.getDay()!==0)keys.push(toDS(d));}
+    for(let i=0;i<28;i++){const d=addDays(now,i);if(d.getDay()!==0)keys.push(toDS(d));}
     if(!keys.length)return;
     const data=await sbGet("bookings",`date_key=in.(${keys.join(",")})&select=email,name,date_key,time`);
     setBookings(data||[]);
   }
 
   const TAB_ORDER=["book","wellness","my","strength","community",...(isAdmin?["admin"]:[])];
-  function handleTouchStart(e){
-    touchStartX.current=e.touches[0].clientX;
-    touchStartY.current=e.touches[0].clientY;
-  }
+  function handleTouchStart(e){touchStartX.current=e.touches[0].clientX;touchStartY.current=e.touches[0].clientY;}
   function handleTouchEnd(e){
     if(touchStartX.current===null)return;
     const dx=e.changedTouches[0].clientX-touchStartX.current;
@@ -1740,14 +1600,10 @@ function App(){
     const rows=await sbGet("members",`email=eq.${encodeURIComponent(em)}&select=name`);
     if(!rows.length){setFpBusy(false);setFpErr("No account found with that email.");return;}
     const firstName=rows[0].name?rows[0].name.split(" ")[0]:"there";
-    // Generate token
     const token=Math.random().toString(36).slice(2)+Date.now().toString(36)+Math.random().toString(36).slice(2);
-    const expiresAt=Date.now()+86400000; // 24 hours
-    // Delete any existing tokens for this email first
+    const expiresAt=Date.now()+86400000;
     await sbDelete("password_resets",`email=eq.${encodeURIComponent(em)}`);
-    // Insert new token
     await sbPost("password_resets",{email:em,token,expires_at:expiresAt});
-    // Email reset link
     const params=new URLSearchParams({action:"passwordReset",to:em,firstName,token});
     try{await fetch(APPS_SCRIPT_URL+"?"+params.toString(),{method:"GET",mode:"no-cors"});}catch(e){}
     setFpBusy(false);setFpMsg("Reset link sent! Check your email. The link expires in 24 hours.");
@@ -1786,11 +1642,8 @@ function App(){
     window.history.pushState({overlay:"profile"},"");
   }
 
-  // Handle back button for all overlays
   useEffect(()=>{
-    const handlePop=()=>{
-      if(showProf){setShowProf(false);return;}
-    };
+    const handlePop=()=>{if(showProf){setShowProf(false);return;}};
     window.addEventListener("popstate",handlePop);
     return()=>window.removeEventListener("popstate",handlePop);
   },[showProf]);
@@ -1851,14 +1704,9 @@ function App(){
           ?React.createElement(React.Fragment,null,"New member? ",React.createElement("button",{onClick:()=>{setAuthMode("signup");setAuthErr("");setShowForgotPw(false);}},"Create an account"))
           :React.createElement(React.Fragment,null,"Already a member? ",React.createElement("button",{onClick:()=>{setAuthMode("login");setAuthErr("");}},"Log in"))
       ),
-      React.createElement("div",{className:"auth-reg"},
-        React.createElement("a",{href:"/register.html"},"Complete registration & PAR-Q form")
-      ),
+      React.createElement("div",{className:"auth-reg"},React.createElement("a",{href:"/register.html"},"Complete registration & PAR-Q form")),
       React.createElement("div",{className:"auth-guest-divider"},React.createElement("span",null,"OR")),
-      React.createElement("div",{className:"auth-guest"},
-        "Not a member? ",
-        React.createElement("a",{href:"/WIDGET.HTML",target:"_blank"},"Book as a guest")
-      )
+      React.createElement("div",{className:"auth-guest"},"Not a member? ",React.createElement("a",{href:"/WIDGET.HTML",target:"_blank"},"Book as a guest"))
     ),
     React.createElement("div",{className:"foot",style:{marginTop:48,fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION.")
   );
@@ -1980,13 +1828,14 @@ function App(){
             style:{background:"none",border:"none",color:statMonth>=nowMY2?"#2a2a2a":"#555",fontSize:20,cursor:statMonth>=nowMY2?"default":"pointer",padding:"0 14px",lineHeight:1}
           },"›")
         ),
+        // FIX 7: Stats now use on-demand counts instead of filtering the full bookings array
         React.createElement("div",{className:"adm-stats-row"},
           React.createElement("div",{className:"adm-stat"},
-            React.createElement("div",{className:"adm-stat-num"},bookings.filter(b=>b.email===session.email&&b.date_key.startsWith(statMonth)&&b.date_key<toDS(new Date())).length),
+            React.createElement("div",{className:"adm-stat-num"},statCounts.classes),
             React.createElement("div",{className:"adm-stat-lbl"},"CLASSES ATTENDED")
           ),
           React.createElement("div",{className:"adm-stat"},
-            React.createElement("div",{className:"adm-stat-num"},wellnessPast.filter(b=>b.date_key.startsWith(statMonth)).length),
+            React.createElement("div",{className:"adm-stat-num"},statCounts.wellness),
             React.createElement("div",{className:"adm-stat-lbl"},"WELLNESS SESSIONS")
           ),
           React.createElement("div",{className:"adm-stat"},
