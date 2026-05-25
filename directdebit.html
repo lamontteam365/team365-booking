@@ -38,6 +38,8 @@ body{font-family:'DM Sans',sans-serif;color:#fff;padding:0}
 .plan-card.sel .plan-name{color:#fff}
 .plan-desc{font-size:10px;color:#555;letter-spacing:0.06em;margin-bottom:10px}
 .plan-card.sel .plan-desc{color:#888}
+.plan-sub{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.08em;color:#555}
+.plan-card.sel .plan-sub{color:#aaa}
 .plan-prices{display:flex;gap:6px}
 .price-opt{flex:1;padding:8px 6px;background:#080808;border:1px solid #1a1a1a;border-radius:4px;text-align:center;cursor:pointer;transition:all .15s}
 .price-opt:hover{border-color:#333}
@@ -114,12 +116,11 @@ function addMonths(date, months) {
 }
 
 const PLANS = [
-  {id:"foundation",  name:"FOUNDATION",  desc:"2 HIIT · 1 Strength",                      prices:{3:44,6:41.5,12:39}},
-  {id:"collective",  name:"COLLECTIVE",  desc:"Student / Youth / Surf Life Saving",         prices:{3:50,6:47.5,12:45}},
-  {id:"momentum",    name:"MOMENTUM",    desc:"3 HIIT · 1 Strength · 1 Wellness",           prices:{3:54,6:51.5,12:49}},
-  {id:"performance", name:"PERFORMANCE", desc:"4 HIIT · 1 Strength · 2 Wellness",           prices:{3:64,6:61.5,12:59}},
-  {id:"signature",   name:"SIGNATURE",   desc:"Unlimited HIIT · 2 Strength · 3 Wellness",   prices:{3:74,6:71.5,12:69}},
-  {id:"duo",         name:"DUO",         desc:"2 Adults · Signature Access",                 prices:{3:114,6:111.5,12:109}},
+  {id:"foundation",  name:"FOUNDATION",  sub:"",                                    desc:"2 HIIT · 1 Strength · 50% Off Wellness Sessions",       prices:{3:45,6:42,12:39}},
+  {id:"collective",  name:"COLLECTIVE",  sub:"Student · Youth · Surf Life Saving",  desc:"3 HIIT · 1 Strength · 50% Off Wellness Sessions",       prices:{3:45,6:42,12:39}},
+  {id:"momentum",    name:"MOMENTUM",    sub:"",                                    desc:"3 HIIT · 1 Strength · 1 Wellness",                      prices:{3:55,6:52,12:49}},
+  {id:"signature",   name:"SIGNATURE",   sub:"",                                    desc:"Unlimited HIIT · Unlimited Strength · 2 Wellness",      prices:{3:65,6:62,12:59}},
+  {id:"duo",         name:"DUO",         sub:"2 Adults",                            desc:"Unlimited HIIT · Unlimited Strength · 2 Wellness (Each)",prices:{3:105,6:102,12:99}},
 ];
 
 let selectedPlan = null;
@@ -183,7 +184,7 @@ function renderForm() {
           <div class="plan-card" id="plan-${p.id}" onclick="selectPlan('${p.id}')">
             <div class="plan-top">
               <div>
-                <div class="plan-name">${p.name}</div>
+                <div class="plan-name">${p.name}${p.sub?`<span class="plan-sub"> · ${p.sub}</span>`:""}</div>
                 <div class="plan-desc">${p.desc}</div>
               </div>
               <div class="radio-dot"><div class="radio-inner"></div></div>
