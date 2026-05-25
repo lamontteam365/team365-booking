@@ -13,33 +13,26 @@ html,body{background:#080808;min-height:100vh}
 body{font-family:'DM Sans',sans-serif;color:#fff}
 #root{min-height:100vh}
 .widget{background:#080808;min-height:100vh;max-width:480px;margin:0 auto;display:flex;flex-direction:column;padding:28px 16px 48px}
-/* Logo */
 .w-logo-area{text-align:center;margin-bottom:28px}
 .w-logo-sub{font-size:9px;letter-spacing:0.22em;color:#777;font-weight:500}
 .w-logo{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:0.15em;color:#fff}
 .w-logo-tag{font-size:7px;letter-spacing:0.2em;color:#444;margin-top:1px}
-/* Step heading */
 .w-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.12em;color:#fff;margin-bottom:5px}
 .w-sub{font-size:10px;letter-spacing:0.14em;color:#555;font-weight:600;margin-bottom:22px}
-/* Progress dots */
 .w-dots{display:flex;gap:6px;justify-content:center;margin-bottom:28px}
 .w-dot{width:6px;height:6px;border-radius:50%;background:#1a1a1a;transition:all .2s}
 .w-dot.active{background:#fff;width:18px;border-radius:3px}
 .w-dot.done{background:#444}
-/* Type cards */
 .type-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
 .type-card{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:10px;padding:20px 16px 22px 18px;cursor:pointer;transition:all .2s;text-align:left}
 .type-card:hover{border-color:#333;background:#111}
-.type-icon{font-size:40px;position:absolute;bottom:10px;right:14px}
 .type-label{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:0.1em;color:#fff}
 .type-desc{font-size:9px;letter-spacing:0.1em;color:#555;margin-top:5px;line-height:1.6}
-/* Week nav */
 .week-nav{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .wk-arrow{background:none;border:none;color:#888;cursor:pointer;font-size:22px;padding:4px 10px;line-height:1;transition:color .15s}
 .wk-arrow:hover:not(:disabled){color:#fff}
 .wk-arrow:disabled{color:#222;cursor:default}
 .wk-label{flex:1;text-align:center;font-size:10px;letter-spacing:0.16em;color:#fff;font-weight:600}
-/* Day strip */
 .day-strip{display:flex;gap:5px;margin-bottom:16px}
 .day-btn{flex:1;min-width:44px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;background:#0e0e0e;border:1px solid #222;border-radius:6px;cursor:pointer;transition:all .15s}
 .day-btn:hover:not(.da){border-color:#444}
@@ -50,9 +43,7 @@ body{font-family:'DM Sans',sans-serif;color:#fff}
 .day-btn.dt .d-num{color:#fff}
 .day-btn.dt .d-name{color:#ccc}
 .day-btn.da .d-name,.day-btn.da .d-num{color:#000}
-/* Session label */
 .sess-lbl{font-size:9px;letter-spacing:0.2em;color:#555;font-weight:600;margin-bottom:12px}
-/* Slots */
 .slot-list{display:flex;flex-direction:column;gap:7px;margin-bottom:20px}
 .slot-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:7px;cursor:pointer;transition:all .15s}
 .slot-row:hover:not(.full):not(.past){border-color:#333}
@@ -72,36 +63,32 @@ body{font-family:'DM Sans',sans-serif;color:#fff}
 .slot-radio{width:18px;height:18px;border-radius:50%;border:1.5px solid #2a2a2a;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
 .slot-row.sel .slot-radio{border-color:#fff;background:#fff}
 .slot-radio-dot{width:8px;height:8px;border-radius:50%;background:#000}
-/* Form */
 .form-group{margin-bottom:14px}
 .fl{display:block;font-size:10px;letter-spacing:0.18em;color:#bbb;font-weight:600;margin-bottom:7px}
 .fi{width:100%;background:#0e0e0e;border:1px solid #2a2a2a;color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:300;padding:14px 15px;outline:none;border-radius:3px;transition:border-color .2s;-webkit-appearance:none}
 .fi:focus{border-color:#555}
 .fi::placeholder{color:#333}
-/* Summary card */
 .summ{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:8px;padding:16px;margin-bottom:20px}
 .summ-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #111}
 .summ-row:last-child{border-bottom:none}
 .summ-lbl{font-size:10px;letter-spacing:0.12em;color:#555;font-weight:500}
 .summ-val{font-size:10px;letter-spacing:0.08em;color:#ccc;font-weight:500;text-align:right}
-/* Payment */
 .pay-lbl{font-size:10px;letter-spacing:0.18em;color:#bbb;font-weight:600;margin-bottom:10px}
 .pay-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px}
 .pay-opt{padding:14px 10px;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:7px;text-align:center;transition:all .15s}
 .pay-opt.clickable{cursor:pointer}
 .pay-opt.clickable:hover{border-color:#333}
 .pay-opt.sel{border-color:#fff}
-.pay-opt.dim{opacity:0.3;cursor:default}
 .pay-icon{font-size:20px;margin-bottom:7px}
 .pay-name{font-size:11px;letter-spacing:0.1em;color:#ccc;font-weight:600}
 .pay-hint{font-size:9px;letter-spacing:0.06em;color:#444;margin-top:3px}
-/* Buttons */
 .btn-p{width:100%;background:#fff;color:#000;border:none;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:0.18em;padding:17px;cursor:pointer;border-radius:3px;transition:background .15s;margin-bottom:10px}
 .btn-p:hover:not(:disabled){background:#ddd}
 .btn-p:disabled{background:#111;color:#333;cursor:not-allowed}
+.btn-p.shopify{background:#4aaa66;color:#fff}
+.btn-p.shopify:hover:not(:disabled){background:#3d9457}
 .btn-g{width:100%;background:transparent;color:#555;border:1px solid #1e1e1e;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:0.16em;padding:14px;cursor:pointer;border-radius:3px;transition:all .15s}
 .btn-g:hover{border-color:#333;color:#aaa}
-/* Confirmation */
 .conf{text-align:center;padding:10px 0}
 .conf-icon{font-size:54px;margin-bottom:16px}
 .conf-title{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:0.12em;margin-bottom:6px}
@@ -109,18 +96,16 @@ body{font-family:'DM Sans',sans-serif;color:#fff}
 .ref-box{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:7px;padding:16px;text-align:center;margin-bottom:20px}
 .ref-lbl{font-size:9px;letter-spacing:0.2em;color:#555;margin-bottom:5px}
 .ref-code{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:0.14em;color:#fff}
-/* Error */
+.pay-notice{background:#0a1a0f;border:1px solid #1a3a22;border-radius:7px;padding:14px 16px;margin-bottom:16px;font-size:11px;color:#4aaa66;letter-spacing:0.04em;line-height:1.7;text-align:left}
+.pay-notice strong{color:#6acc88}
 .err-msg{font-size:12px;color:#e06040;letter-spacing:0.04em;margin-bottom:12px;line-height:1.5}
-/* Loading */
 .loading{text-align:center;padding:40px 0;font-size:10px;letter-spacing:0.22em;color:#333}
 .load-bar{width:80px;height:1px;background:#1a1a1a;border-radius:1px;overflow:hidden;margin:12px auto 0}
 .load-fill{height:100%;background:#fff;animation:ld 1.5s ease-in-out infinite}
 @keyframes ld{0%{width:0}50%{width:100%}100%{width:0}}
-/* Guest notice */
 .guest-notice{background:#0a0a0a;border:1px solid #1a1a1a;border-radius:6px;padding:12px 14px;margin-bottom:16px;font-size:10px;letter-spacing:0.06em;color:#555;line-height:1.7}
 .guest-notice a{color:#888;text-decoration:underline;text-underline-offset:3px}
 .guest-notice a:hover{color:#fff}
-/* Footer */
 .w-foot{text-align:center;font-size:7px;letter-spacing:0.18em;color:#2a2a2a;margin-top:auto;padding-top:28px}
 </style>
 </head>
@@ -145,6 +130,12 @@ const DAY_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const DAY_SESS=["Rise Up","Strength Lower","Ascend","Strength Upper","Elevate","Summit"];
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
+// FIX: Shopify product URLs for online payment
+const SHOPIFY_URLS={
+  class:"https://www.lamontcollective.com/products/casual-gym-session",
+  wellness:"https://www.lamontcollective.com/products/sauna-cold-plunge"
+};
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const mondayOf=d=>{const x=new Date(d);x.setHours(0,0,0,0);const day=x.getDay();x.setDate(x.getDate()-(day===0?6:day-1));return x;};
 const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
@@ -165,14 +156,13 @@ function isPastSlot(date,time){
 async function sbGet(t,q=""){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
 async function sbPost(t,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
 
-// ── Notify admin ───────────────────────────────────────────────────────────────
+// ── Notifications ──────────────────────────────────────────────────────────────
 async function notifyAdmin(data){
   try{
     const p=new URLSearchParams({action:"guestBooking",...data});
     await fetch(APPS_URL+"?"+p.toString(),{method:"GET",mode:"no-cors"});
   }catch(e){console.log("notify:",e);}
 }
-// ── Guest confirmation email ────────────────────────────────────────────────────
 async function notifyGuest(data){
   try{
     const p=new URLSearchParams({action:"guestConfirm",...data});
@@ -182,8 +172,8 @@ async function notifyGuest(data){
 
 // ── Widget ─────────────────────────────────────────────────────────────────────
 function BookingWidget(){
-  const[step,setStep]=useState(0);           // 0=type 1=datetime 2=details 3=confirm
-  const[bookType,setBookType]=useState(null); // 'class' | 'wellness'
+  const[step,setStep]=useState(0);
+  const[bookType,setBookType]=useState(null);
   const[weekStart,setWeekStart]=useState(getWeekStart);
   const[selDay,setSelDay]=useState(()=>{const d=new Date().getDay();return d===0?0:Math.min(d-1,5);});
   const[selTime,setSelTime]=useState(null);
@@ -201,7 +191,6 @@ function BookingWidget(){
   const selDate=weekDates[selDay];
   const selDK=toDS(selDate);
 
-  // Load availability when type or week changes
   useEffect(()=>{
     if(!bookType)return;
     setLoading(true);setSelTime(null);
@@ -215,7 +204,6 @@ function BookingWidget(){
 
   useEffect(()=>{setSelTime(null);},[selDay]);
 
-  // Availability calcs
   const classSlots=t=>{const taken=bookings.filter(b=>b.date_key===selDK&&b.time===t).length;return{taken,left:MAX_SPOTS-taken};};
   const wellSlotTaken=t=>wellBks.some(b=>b.date_key===selDK&&b.time===t);
 
@@ -225,17 +213,36 @@ function BookingWidget(){
     if(!em||!em.includes("@")||!em.includes(".")){setErr("Please enter a valid email address.");return;}
     setErr("");setBusy(true);
     const ref=genRef();
-    const row={email:em,name:nm,date_key:selDK,time:selTime,is_guest:true,booking_ref:ref,phone:ph,created_at:Date.now()};
+
+    // FIX: Insert all fields — columns now exist in Supabase
+    const row={
+      email:em,
+      name:nm,
+      date_key:selDK,
+      time:selTime,
+      is_guest:true,
+      booking_ref:ref,
+      phone:ph||null,
+      created_at:Date.now()
+    };
+
     const ok=await sbPost(bookType==="class"?"bookings":"wellness_bookings",row);
     if(!ok){setErr("Booking failed — please try again.");setBusy(false);return;}
+
     const dateLabel=`${DAY_LONG[selDay]} ${selDate.getDate()} ${MONTHS[selDate.getMonth()]}`;
     const timeLabel=fmt12(selTime);
     const sessName=bookType==="class"?DAY_SESS[selDay]:null;
-    // Notify admin + send guest confirmation
-    const bookingData={guestName:nm,guestEmail:em,guestPhone:ph||"N/A",bookingType:bookType==="class"?`Class – ${sessName}`:"Sauna + Cold Plunge",dateLabel,timeLabel,bookingRef:ref,payment:payment==="gym"?"Pay at gym":"Online"};
+
+    const bookingData={
+      guestName:nm,guestEmail:em,guestPhone:ph||"N/A",
+      bookingType:bookType==="class"?`Class – ${sessName}`:"Sauna + Cold Plunge",
+      dateLabel,timeLabel,bookingRef:ref,
+      payment:payment==="gym"?"Pay at gym":"Online – Shopify"
+    };
     notifyAdmin(bookingData);
     notifyGuest(bookingData);
-    setConf({ref,nm,em,type:bookType,dateLabel,timeLabel,sessName});
+
+    setConf({ref,nm,em,type:bookType,dateLabel,timeLabel,sessName,payment});
     setStep(3);setBusy(false);
   }
 
@@ -253,19 +260,19 @@ function BookingWidget(){
 
   return React.createElement("div",{className:"widget"},
 
-    // ── Logo ────────────────────────────────────────────────────────────────────
+    // Logo
     React.createElement("div",{className:"w-logo-area"},
       React.createElement("div",{className:"w-logo-sub"},"LAMONT"),
       React.createElement("div",{className:"w-logo"},"TEAM 365"),
       React.createElement("div",{className:"w-logo-tag"},"EVERYDAY. ALL YEAR ROUND.")
     ),
 
-    // ── Progress dots (steps 1–2) ───────────────────────────────────────────────
+    // Progress dots
     step>0&&step<3&&React.createElement("div",{className:"w-dots"},
       [0,1,2].map(i=>React.createElement("div",{key:i,className:`w-dot${step-1===i?" active":step-1>i?" done":""}`}))
     ),
 
-    // ── STEP 0: Choose type ─────────────────────────────────────────────────────
+    // STEP 0: Choose type
     step===0&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"w-title"},"BOOK A SESSION"),
       React.createElement("div",{className:"w-sub"},"WHAT WOULD YOU LIKE TO BOOK?"),
@@ -288,12 +295,11 @@ function BookingWidget(){
       )
     ),
 
-    // ── STEP 1: Day + Time ──────────────────────────────────────────────────────
+    // STEP 1: Day + Time
     step===1&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"w-title"},bookType==="class"?"PICK A CLASS":"PICK A SESSION"),
       React.createElement("div",{className:"w-sub"},bookType==="class"?"SELECT DAY AND TIME":"SELECT YOUR PREFERRED SLOT"),
 
-      // Week nav
       React.createElement("div",{className:"week-nav"},
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"‹"),
         React.createElement("div",{className:"wk-label"},
@@ -302,7 +308,6 @@ function BookingWidget(){
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,7))},"›")
       ),
 
-      // Day strip
       React.createElement("div",{className:"day-strip"},
         weekDates.map((d,i)=>React.createElement("button",{key:i,className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}`,onClick:()=>setSelDay(i)},
           React.createElement("div",{className:"d-name"},DAY_SHORT[i]),
@@ -310,7 +315,6 @@ function BookingWidget(){
         ))
       ),
 
-      // Session label (classes only)
       bookType==="class"&&React.createElement("div",{className:"sess-lbl"},
         `${DAY_LONG[selDay].toUpperCase()} · ${DAY_SESS[selDay].toUpperCase()} · ${curTimes.length} CLASSES`
       ),
@@ -318,7 +322,6 @@ function BookingWidget(){
         `${DAY_LONG[selDay].toUpperCase()} · SAUNA + COLD PLUNGE`
       ),
 
-      // Slots
       loading
         ?React.createElement("div",{className:"loading"},"CHECKING AVAILABILITY…",React.createElement("div",{className:"load-bar"},React.createElement("div",{className:"load-fill"})))
         :React.createElement("div",{className:"slot-list"},
@@ -367,12 +370,11 @@ function BookingWidget(){
       React.createElement("button",{className:"btn-g",onClick:goBack},"BACK")
     ),
 
-    // ── STEP 2: Guest details ───────────────────────────────────────────────────
+    // STEP 2: Guest details + payment
     step===2&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"w-title"},"YOUR DETAILS"),
       React.createElement("div",{className:"w-sub"},"ALMOST THERE — JUST A FEW MORE DETAILS"),
 
-      // Booking summary
       React.createElement("div",{className:"summ"},
         React.createElement("div",{className:"summ-row"},
           React.createElement("div",{className:"summ-lbl"},"SESSION"),
@@ -385,10 +387,13 @@ function BookingWidget(){
         React.createElement("div",{className:"summ-row"},
           React.createElement("div",{className:"summ-lbl"},"TIME"),
           React.createElement("div",{className:"summ-val"},fmt12(selTime))
+        ),
+        React.createElement("div",{className:"summ-row"},
+          React.createElement("div",{className:"summ-lbl"},"PRICE"),
+          React.createElement("div",{className:"summ-val"},bookType==="class"?"$19.00 NZD":"$79.00 NZD")
         )
       ),
 
-      // Form
       React.createElement("div",{className:"form-group"},
         React.createElement("label",{className:"fl"},"FULL NAME · REQUIRED"),
         React.createElement("input",{className:"fi",placeholder:"Your full name",value:form.name,autoComplete:"name",onChange:e=>setForm(f=>({...f,name:e.target.value}))})
@@ -402,7 +407,7 @@ function BookingWidget(){
         React.createElement("input",{className:"fi",type:"tel",placeholder:"Mobile number",value:form.phone,autoComplete:"tel",onChange:e=>setForm(f=>({...f,phone:e.target.value}))})
       ),
 
-      // Payment method
+      // FIX: Pay online now live and clickable
       React.createElement("div",{className:"pay-lbl"},"PAYMENT METHOD"),
       React.createElement("div",{className:"pay-opts"},
         React.createElement("div",{className:`pay-opt clickable${payment==="gym"?" sel":""}`,onClick:()=>setPayment("gym")},
@@ -410,48 +415,72 @@ function BookingWidget(){
           React.createElement("div",{className:"pay-name"},"PAY AT GYM"),
           React.createElement("div",{className:"pay-hint"},"Pay when you arrive")
         ),
-        React.createElement("div",{className:"pay-opt dim"},
+        React.createElement("div",{className:`pay-opt clickable${payment==="online"?" sel":""}`,onClick:()=>setPayment("online")},
           React.createElement("div",{className:"pay-icon"},"💳"),
           React.createElement("div",{className:"pay-name"},"PAY ONLINE"),
-          React.createElement("div",{className:"pay-hint"},"Coming soon")
+          React.createElement("div",{className:"pay-hint"},bookType==="class"?"$19.00 via Shopify":"$79.00 via Shopify")
         )
       ),
 
       err&&React.createElement("div",{className:"err-msg"},err),
-      React.createElement("button",{className:"btn-p",onClick:handleBook,disabled:busy||!form.name.trim()||!form.email.trim()},busy?"CONFIRMING…":"CONFIRM BOOKING"),
+      React.createElement("button",{
+        className:"btn-p",
+        onClick:handleBook,
+        disabled:busy||!form.name.trim()||!form.email.trim()
+      },busy?"CONFIRMING…":"CONFIRM BOOKING"),
       React.createElement("button",{className:"btn-g",onClick:goBack},"BACK")
     ),
 
-    // ── STEP 3: Confirmation ────────────────────────────────────────────────────
+    // STEP 3: Confirmation
     step===3&&conf&&React.createElement("div",{className:"conf"},
       React.createElement("div",{className:"conf-icon"},"✅"),
-      React.createElement("div",{className:"conf-title"},"BOOKING CONFIRMED"),
+      React.createElement("div",{className:"conf-title"},"SPOT RESERVED"),
       React.createElement("div",{className:"conf-msg"},
-        `You’re booked in for ${conf.timeLabel} on ${conf.dateLabel}${conf.sessName?` — ${conf.sessName}`:""}.\nWe’ve sent a confirmation to ${conf.em}.`
+        `You're booked in for ${conf.timeLabel} on ${conf.dateLabel}${conf.sessName?` — ${conf.sessName}`:""}.\nA confirmation has been sent to ${conf.em}.`
       ),
       React.createElement("div",{className:"ref-box"},
         React.createElement("div",{className:"ref-lbl"},"YOUR BOOKING REFERENCE"),
         React.createElement("div",{className:"ref-code"},conf.ref)
       ),
+
+      // FIX: Show pay now button if online payment selected
+      conf.payment==="online"&&React.createElement("div",{className:"pay-notice"},
+        React.createElement("strong",null,"Your spot is held."),
+        " Complete payment below to confirm your booking. Please use reference ",
+        React.createElement("strong",null,conf.ref),
+        " in the order notes."
+      ),
+      conf.payment==="online"&&React.createElement("a",{
+        href:SHOPIFY_URLS[conf.type],
+        target:"_blank",
+        rel:"noopener",
+        className:"btn-p shopify",
+        style:{display:"block",textAlign:"center",textDecoration:"none",marginBottom:10}
+      },"PAY NOW — "+(conf.type==="class"?"$19.00":"$79.00")+" NZD →"),
+
       React.createElement("div",{className:"summ"},
         React.createElement("div",{className:"summ-row"},
-          React.createElement("div",{className:"summ-lbl"},"NAME"),React.createElement("div",{className:"summ-val"},conf.nm)
+          React.createElement("div",{className:"summ-lbl"},"NAME"),
+          React.createElement("div",{className:"summ-val"},conf.nm)
         ),
         React.createElement("div",{className:"summ-row"},
           React.createElement("div",{className:"summ-lbl"},"SESSION"),
           React.createElement("div",{className:"summ-val"},conf.type==="class"?conf.sessName:"SAUNA + COLD PLUNGE")
         ),
         React.createElement("div",{className:"summ-row"},
-          React.createElement("div",{className:"summ-lbl"},"DATE"),React.createElement("div",{className:"summ-val"},conf.dateLabel.toUpperCase())
+          React.createElement("div",{className:"summ-lbl"},"DATE"),
+          React.createElement("div",{className:"summ-val"},conf.dateLabel.toUpperCase())
         ),
         React.createElement("div",{className:"summ-row"},
-          React.createElement("div",{className:"summ-lbl"},"TIME"),React.createElement("div",{className:"summ-val"},conf.timeLabel)
+          React.createElement("div",{className:"summ-lbl"},"TIME"),
+          React.createElement("div",{className:"summ-val"},conf.timeLabel)
         ),
         React.createElement("div",{className:"summ-row"},
-          React.createElement("div",{className:"summ-lbl"},"PAYMENT"),React.createElement("div",{className:"summ-val"},"PAY AT THE GYM")
+          React.createElement("div",{className:"summ-lbl"},"PAYMENT"),
+          React.createElement("div",{className:"summ-val"},conf.payment==="online"?"PAY ONLINE (SHOPIFY)":"PAY AT THE GYM")
         )
       ),
-      React.createElement("button",{className:"btn-p",onClick:reset},"BOOK ANOTHER SESSION")
+      React.createElement("button",{className:"btn-g",onClick:reset,style:{marginTop:8}},"BOOK ANOTHER SESSION")
     ),
 
     React.createElement("div",{className:"w-foot"},"COMMITMENT. CONSISTENCY. DETERMINATION.")
