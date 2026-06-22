@@ -433,7 +433,7 @@ async function sbDelete(t,q){
   }catch{return false;}
 }
 
-const MAX_SPOTS=10;
+const MAX_SPOTS=16;
 const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
 const SAT_TIMES=["06:30","07:30","08:30","09:30"];
 const WELL_TIMES=["06:00","08:00","10:00","12:00","14:00","16:00","18:00"];
@@ -1020,7 +1020,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
 }
 
 // ── Admin View ────────────────────────────────────────────────────────────────
-function AdminView({bookings,setBookings,showToast,isAdmin}){
+function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit}){
   const [admSeg,setAdmSeg]=useState("members");
   const [admDate,setAdmDate]=useState(new Date());
   const [expanded,setExpanded]=useState({});
@@ -1029,6 +1029,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin}){
   const [wellAdmBks,setWellAdmBks]=useState([]);
   const [wellAdmLoaded,setWellAdmLoaded]=useState(false);
   const [selectedMember,setSelectedMember]=useState(null);
+  const [editingLimit,setEditingLimit]=useState(null);
+  const [limitInput,setLimitInput]=useState("");
 
   function openMemberProfile(mb){
     setSelectedMember(mb);
@@ -1054,10 +1056,10 @@ function AdminView({bookings,setBookings,showToast,isAdmin}){
     }
   },[admSeg]);
 
-  const admDK=toDS(admDate);const admDOW=admDate.getDay();
-  const admTimes=admDOW===0?[]:admDOW===6?SAT_TIMES:WD_TIMES;
+  const admDK=toDS(admDate);const admDOW=admDate.getDay();const admIsSat=admDOW===6;
+  const admTimes=admDOW===0?[]:admIsSat?SAT_TIMES:WD_TIMES;
   const dayBks=bookings.filter(b=>b.date_key===admDK);
-  const totalBooked=dayBks.length;const totalSpots=admTimes.length*MAX_SPOTS;
+  const totalBooked=dayBks.length;const totalSpots=admTimes.reduce((s,t)=>s+(getMaxSpots?getMaxSpots(t,admIsSat):MAX_SPOTS),0);
 
   function changeDay(n){let d=new Date(admDate);d.setDate(d.getDate()+n);if(d.getDay()===0)d.setDate(d.getDate()+n);setAdmDate(d);setExpanded({});}
 
@@ -1113,16 +1115,41 @@ function AdminView({bookings,setBookings,showToast,isAdmin}){
       admTimes.length===0?React.createElement("div",{className:"adm-no-classes"},"No classes on Sunday")
       :admTimes.map(time=>{
         const slotBks=dayBks.filter(b=>b.time===time);const taken=slotBks.length;const isOpen=!!expanded[time];
+        const slotMax=getMaxSpots?getMaxSpots(time,admIsSat):MAX_SPOTS;
+        const isEditingThis=editingLimit===time;
         return React.createElement("div",{key:time,className:"adm-class-card"},
-          React.createElement("div",{className:"adm-class-hdr",onClick:()=>setExpanded(p=>({...p,[time]:!p[time]}))},
+          React.createElement("div",{className:"adm-class-hdr",onClick:()=>!isEditingThis&&setExpanded(p=>({...p,[time]:!p[time]}))},
             React.createElement("div",{className:"adm-class-time"},fmt12(time)),
             React.createElement("div",{className:"adm-class-mid"},
-              React.createElement("div",{className:`adm-class-count${taken>=MAX_SPOTS?" full":taken>0?" has-bk":""}`},`${taken} / ${MAX_SPOTS}${taken>=MAX_SPOTS?" \u00B7 FULL":""}`),
-              React.createElement("div",{className:"adm-class-bars"},Array.from({length:MAX_SPOTS}).map((_,i)=>React.createElement("div",{key:i,className:`adm-bar${i<taken?" at":""}`})))
+              React.createElement("div",{className:`adm-class-count${taken>=slotMax?" full":taken>0?" has-bk":""}`},`${taken} / ${slotMax}${taken>=slotMax?" \u00B7 FULL":""}`),
+              React.createElement("div",{className:"adm-class-bars"},Array.from({length:Math.min(slotMax,20)}).map((_,i)=>React.createElement("div",{key:i,className:`adm-bar${i<taken?" at":""}`})))
             ),
-            React.createElement("div",{className:`adm-chev${isOpen?" open":""}`},"\u25BE")
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+              React.createElement("button",{
+                className:"sp-ex-edit",
+                style:{fontSize:9,flexShrink:0},
+                onClick:e=>{e.stopPropagation();if(isEditingThis){setEditingLimit(null);}else{setEditingLimit(time);setLimitInput(String(slotMax));}}
+              },isEditingThis?"\u2715":"Edit Spots"),
+              !isEditingThis&&React.createElement("div",{className:`adm-chev${isOpen?" open":""}`},"\u25BE")
+            )
           ),
-          isOpen&&React.createElement("div",{className:"adm-members-list"},
+          isEditingThis&&React.createElement("div",{style:{padding:"12px 14px",borderTop:"1px solid #141414",display:"flex",alignItems:"center",gap:8}},
+            React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.12em",fontWeight:600,flexShrink:0}},"MAX SPOTS"),
+            React.createElement("input",{
+              type:"number",min:1,max:99,value:limitInput,
+              onChange:e=>setLimitInput(e.target.value),
+              style:{width:60,background:"#0e0e0e",border:"1px solid #333",borderRadius:4,padding:"7px 8px",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:16,textAlign:"center",outline:"none"}
+            }),
+            React.createElement("button",{
+              onClick:async()=>{if(saveClassLimit){await saveClassLimit(time,admIsSat,limitInput);}setEditingLimit(null);showToast("Capacity updated \u2713");},
+              style:{background:"#fff",color:"#000",border:"none",borderRadius:3,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",padding:"8px 14px",cursor:"pointer",flexShrink:0}
+            },"SAVE"),
+            React.createElement("button",{
+              onClick:()=>setEditingLimit(null),
+              style:{background:"none",border:"1px solid #333",color:"#666",borderRadius:3,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.1em",padding:"8px 10px",cursor:"pointer",flexShrink:0}
+            },"CANCEL")
+          ),
+          isOpen&&!isEditingThis&&React.createElement("div",{className:"adm-members-list"},
             slotBks.length===0?React.createElement("div",{className:"adm-empty"},"NO BOOKINGS")
             :slotBks.map((bk,i)=>React.createElement("div",{key:i,className:"adm-member-row"},
               React.createElement("div",null,React.createElement("div",{className:"adm-member-name"},bk.name),React.createElement("div",{className:"adm-member-email"},bk.email)),
@@ -1481,6 +1508,7 @@ function App(){
   const [fpErr,setFpErr]=useState("");
   const [unreadPosts,setUnreadPosts]=useState(0);
   const [allMemberNames,setAllMemberNames]=useState([]);
+  const [classLimits,setClassLimits]=useState({});
   const photoRef=useRef(null);
   const touchStartX=useRef(null);
   const touchStartY=useRef(null);
@@ -1505,6 +1533,8 @@ function App(){
       const photoMap={};const nameList=[];
       (allMembers||[]).forEach(m=>{if(m.photo)photoMap[m.email]=m.photo;if(m.name)nameList.push(m.name);});
       setMemberPhotos(photoMap);setAllMemberNames(nameList);
+      const limitsData=await sbGet("class_limits","select=time_slot,day_type,max_spots");
+      const lm={};(limitsData||[]).forEach(r=>{lm[`${r.day_type}:${r.time_slot}`]=r.max_spots;});setClassLimits(lm);
       setReady(true);
     })();
   },[]);
@@ -1612,8 +1642,8 @@ function App(){
   async function handleBook(time){
     if(!session)return;
     const lk=`${selDK}-${time}`;setBkBusy(p=>({...p,[lk]:true}));
-    const list=getBksFor(selDK,time);
-    if(list.length>=MAX_SPOTS){showToast("Class is full");setBkBusy(p=>({...p,[lk]:false}));return;}
+    const list=getBksFor(selDK,time);const maxSp=getMaxSpots(time,selDate.getDay()===6);
+    if(list.length>=maxSp){showToast("Class is full");setBkBusy(p=>({...p,[lk]:false}));return;}
     if(list.some(b=>b.email===session.email)){showToast("Already booked");setBkBusy(p=>({...p,[lk]:false}));return;}
     const newBk={email:session.email,name:session.name,date_key:selDK,time};
     setBookings(prev=>[...prev,newBk]);
@@ -1630,6 +1660,14 @@ function App(){
     showToast("Booking cancelled");
   }
 
+  function getMaxSpots(time,isSat){const k=`${isSat?"saturday":"weekday"}:${time}`;return classLimits[k]||MAX_SPOTS;}
+  async function saveClassLimit(time,isSat,spots){
+    const dayType=isSat?"saturday":"weekday";const n=parseInt(spots);if(isNaN(n)||n<1)return;
+    const existing=await sbGet("class_limits",`time_slot=eq.${encodeURIComponent(time)}&day_type=eq.${dayType}&select=id`);
+    if(existing.length){await sbPatch("class_limits",`time_slot=eq.${encodeURIComponent(time)}&day_type=eq.${dayType}`,{max_spots:n});}
+    else{await sbPost("class_limits",{time_slot:time,day_type:dayType,max_spots:n});}
+    setClassLimits(p=>({...p,[`${dayType}:${time}`]:n}));
+  }
   function isPastClass(time){
     if(isPastD(selDate))return true;if(!isToday(selDate))return false;
     const now=new Date();const[h,m]=time.split(":").map(Number);
@@ -1758,7 +1796,7 @@ function App(){
       React.createElement("div",{className:"cls-wrap"},
         React.createElement("div",{className:"day-hdr",style:{textAlign:"center"}},React.createElement("span",null,DAY_LONG[selDay].toUpperCase()),React.createElement("em",null,` \u00B7 ${DAY_SESS[selDay].toUpperCase()} \u00B7 ${times.length} CLASSES`)),
         times.map(time=>{
-          const list=getBksFor(selDK,time);const taken=list.length;const left=MAX_SPOTS-taken;
+          const list=getBksFor(selDK,time);const taken=list.length;const maxSp=getMaxSpots(time,selDate.getDay()===6);const left=maxSp-taken;
           const userBkd=userBooked(selDK,time);const full=left===0&&!userBkd;
           const past=isPastClass(time);const lk=`${selDK}-${time}`;const busy=!!bkBusy[lk];
           const subText=userBkd?"Booked \u2713":full?"Full":`${left} ${left===1?"Spot":"Spots"} Available`;
@@ -1766,7 +1804,7 @@ function App(){
           return React.createElement("div",{key:time,className:`c-row${userBkd?" cb":""}${past?" cp":""}`},
             React.createElement("div",{className:"c-time"},fmt12(time)),
             React.createElement("div",{className:"c-mid"},
-              React.createElement("div",{className:"c-bars"},Array.from({length:MAX_SPOTS}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}`}))),
+              React.createElement("div",{className:"c-bars"},Array.from({length:maxSp}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}`}))),
               React.createElement("div",{className:`c-sub ${subCls}`},subText)
             ),
             !past&&(userBkd
@@ -1849,7 +1887,7 @@ function App(){
     tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
     tab==="wellness"&&React.createElement(WellnessView,{session,showToast}),
     tab==="strength"&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast})),
-    tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin}),
+    tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit}),
 
     React.createElement("div",{className:"tab-bar"},
       React.createElement("button",{className:`tab-btn${tab==="book"?" ta":""}`,onClick:()=>setTab("book")},"Classes"),
