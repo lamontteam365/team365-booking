@@ -1401,8 +1401,13 @@ function StepListEditor({storageKey,defaultSteps,toastMsg,showToast}){
 // Thin wrappers so each panel has its own isolated state (avoids re-render focus bug)
 function ProcessNoteEditor({showToast}){
   const DEFAULTS=[
-    {title:"SEND REGISTRATION FORM",body:""},
-    {title:"REVIEW SUBMISSION",body:""},
+    {title:"SEND REGISTRATION FORM",body:"Go to Onboarding → Send Registration Form, enter the new member's email and tap Send. They receive a branded email with a link to complete their registration."},
+    {title:"REVIEW SUBMISSION",body:"Once the member submits the form, open their profile in the admin panel and confirm their membership tier, term, expiry date, and payment details came through correctly."},
+    {title:"AUTOMATIC EMAILS FIRE ON SUBMISSION",body:"Two emails send automatically the moment they submit: a welcome email with their temporary app password and login link, and a direct debit agreement PDF for their records."},
+    {title:"SUCCESS SCREEN SHOWS APP INSTALL INSTRUCTIONS",body:"After submitting, the member sees a success screen with device-specific instructions to add Team 365 to their home screen — iPhone (Share → Add to Home Screen) or Android (Menu → Install App)."},
+    {title:"MEMBER LOGS INTO THE APP",body:"Using the temporary password from the welcome email, the member opens the app and logs in for the first time."},
+    {title:"MEMBER SETS UP DIRECT DEBIT",body:"Ensure the direct debit is set up correctly with their selected term and frequency. Follow up manually if payment confirmation is needed."},
+    {title:"MEMBER IS ACTIVE",body:"The member can now book HIIT, Strength, and Wellness sessions according to their tier. Automatic expiry reminders fire at 14 days and 7 days before their membership ends."},
   ];
   return React.createElement(StepListEditor,{storageKey:"__ONBOARDING_PROCESS__",defaultSteps:DEFAULTS,toastMsg:"Onboarding process saved ✓",showToast});
 }
