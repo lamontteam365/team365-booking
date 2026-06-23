@@ -1565,18 +1565,28 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
 
   const released=isWorkoutReleased(monthYear,weekNum,isAdmin);
 
-  // Determine which strength sessions member has booked for the VIEWED month+week
+  // Determine which strength sessions member has booked for the VIEWED month+week.
+  // For the current program week we use the full calendar Mon–Sun window so that
+  // a Tuesday (e.g. day 23, prog-week 3) and the following Thursday (day 26,
+  // prog-week 4) both count — they're the same calendar week even though the
+  // day-of-month boundary puts them in different program weeks.
   const strengthUnlock=(()=>{
     if(isAdmin)return{Lower:true,Upper:true};
     if(!session||!bookings)return{Lower:false,Upper:false};
     const [yr,mo]=monthYear.split("-").map(Number);
     const startDay=weekNum===1?1:weekNum===2?8:weekNum===3?15:25;
     const endDay=weekNum===1?7:weekNum===2?14:weekNum===3?24:new Date(yr,mo,0).getDate();
-    const wkStart=`${monthYear}-${String(startDay).padStart(2,"0")}`;
-    const wkEnd=`${monthYear}-${String(endDay).padStart(2,"0")}`;
+    let checkStart=`${monthYear}-${String(startDay).padStart(2,"0")}`;
+    let checkEnd=`${monthYear}-${String(endDay).padStart(2,"0")}`;
+    // Widen to full calendar week for the current program week
+    if(monthYear===nowMY&&weekNum===currentWeek){
+      const nz=getNZDate();
+      checkStart=toDS(mondayOf(nz));
+      checkEnd=toDS(addDays(mondayOf(nz),6));
+    }
     const wkStrength=bookings.filter(b=>
       b.email===session.email&&
-      b.date_key>=wkStart&&b.date_key<=wkEnd&&
+      b.date_key>=checkStart&&b.date_key<=checkEnd&&
       (b.session_type==="Strength"||isStrengthDay(b.date_key))
     );
     const hasLower=wkStrength.some(b=>{const d=new Date(b.date_key+"T00:00:00");return d.getDay()===2;}); // Tuesday
