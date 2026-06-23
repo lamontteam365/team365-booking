@@ -810,7 +810,6 @@ function WellnessView({session,showToast}){
   return React.createElement("div",{className:"well-wrap"},
     React.createElement("div",{className:"well-hdr"},
       React.createElement("div",{className:"well-title"},"WELLNESS"),
-      React.createElement("div",{className:"well-sub"},"SAUNA \u00B7 COLD PLUNGE"),
       React.createElement("div",{className:"week-nav",style:{padding:"0 0 10px"}},
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"\u2039"),
         React.createElement("div",{className:"wk-label"},`${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} \u2013 ${MONTHS[weekDates[5].getMonth()]} ${weekDates[5].getDate()}  ${weekDates[0].getFullYear()}`),
@@ -1778,8 +1777,7 @@ function App(){
 
     tab==="book"&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"well-hdr"},
-        React.createElement("div",{className:"well-title"},"CLASSES"),
-        React.createElement("div",{className:"well-sub"},"HIIT · STRENGTH · CONDITIONING")
+        React.createElement("div",{className:"well-title"},"CLASSES")
       ),
       React.createElement("div",{className:"week-nav",style:{paddingTop:0}},
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"\u2039"),
@@ -1794,7 +1792,7 @@ function App(){
         ))
       ),
       React.createElement("div",{className:"cls-wrap"},
-        React.createElement("div",{className:"day-hdr",style:{textAlign:"center"}},React.createElement("span",null,DAY_LONG[selDay].toUpperCase()),React.createElement("em",null,` \u00B7 ${DAY_SESS[selDay].toUpperCase()} \u00B7 ${times.length} CLASSES`)),
+        React.createElement("div",{className:"day-hdr",style:{textAlign:"center"}},React.createElement("span",null,DAY_LONG[selDay].toUpperCase()),React.createElement("em",null,` \u00B7 ${times.length} CLASSES`)),
         times.map(time=>{
           const list=getBksFor(selDK,time);const taken=list.length;const maxSp=getMaxSpots(time,selDate.getDay()===6);const left=maxSp-taken;
           const userBkd=userBooked(selDK,time);const full=left===0&&!userBkd;
