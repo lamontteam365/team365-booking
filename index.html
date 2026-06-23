@@ -1762,7 +1762,7 @@ function App(){
     setBookings(data||[]);
   }
 
-  const TAB_ORDER=["book",...(wellnessEnabled?["wellness"]:[]),"my","strength","community",...(isAdmin?["admin"]:[])];
+  const TAB_ORDER=["community","my","book","strength",...(wellnessEnabled?["wellness"]:[]),...(isAdmin?["admin"]:[])];
   function handleTouchStart(e){touchStartX.current=e.touches[0].clientX;touchStartY.current=e.touches[0].clientY;}
   function handleTouchEnd(e){
     if(touchStartX.current===null)return;
