@@ -1318,7 +1318,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
           })
       )
     ),
-  admSeg==="onboarding"&&React.createElement(OnboardingView,{expandedTier,setExpandedTier,showToast}),
+  admSeg==="onboarding"&&React.createElement(OnboardingView,{showToast}),
   admSeg==="coaching"&&React.createElement(CoachingView,{showToast})
   );
 }
@@ -1389,6 +1389,101 @@ function InviteForm(){
   );
 }
 
+function TierEditor({showToast}){
+  const [tiers,setTiers]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [expanded,setExpanded]=useState(null);
+  const [editing,setEditing]=useState(null);
+  const [draft,setDraft]=useState({});
+  const [saving,setSaving]=useState(false);
+
+  useEffect(()=>{load();},[]);
+
+  async function load(){
+    setLoading(true);
+    const data=await sbGet("membership_tiers","select=*&order=sort_order.asc");
+    setTiers(data||[]);
+    setLoading(false);
+  }
+
+  function startEdit(tier){
+    setDraft({name:tier.name,desc_text:tier.desc_text,note:tier.note||"",price_3:tier.price_3,price_6:tier.price_6,price_12:tier.price_12});
+    setEditing(tier.id);
+  }
+
+  async function save(id){
+    setSaving(true);
+    await sbPatch("membership_tiers",`id=eq.${encodeURIComponent(id)}`,{
+      name:draft.name,desc_text:draft.desc_text,note:draft.note,
+      price_3:parseFloat(draft.price_3)||0,
+      price_6:parseFloat(draft.price_6)||0,
+      price_12:parseFloat(draft.price_12)||0
+    });
+    setTiers(ts=>ts.map(t=>t.id===id?{...t,...draft,price_3:parseFloat(draft.price_3)||0,price_6:parseFloat(draft.price_6)||0,price_12:parseFloat(draft.price_12)||0}:t));
+    setSaving(false);setEditing(null);
+    showToast("Tier saved ✓");
+  }
+
+  const inp=(field,placeholder,type="text")=>React.createElement("input",{
+    type,value:draft[field]??"",
+    onChange:e=>setDraft(d=>({...d,[field]:e.target.value})),
+    placeholder,
+    style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:4,color:"#ccc",fontSize:13,padding:"8px 10px",fontFamily:"'DM Sans',sans-serif",boxSizing:"border-box",marginBottom:8,outline:"none"}
+  });
+
+  if(loading)return React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"10px 0"}},"LOADING...");
+
+  return React.createElement("div",null,
+    tiers.map(tier=>{
+      const isOpen=expanded===tier.id;
+      const isEditing=editing===tier.id;
+      return React.createElement("div",{key:tier.id,style:{background:"#1a1a1a",border:"1px solid #2e2e2e",borderRadius:6,marginBottom:6,overflow:"hidden"}},
+        React.createElement("button",{onClick:()=>{setExpanded(isOpen?null:tier.id);setEditing(null);},style:{width:"100%",background:"none",border:"none",padding:"12px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",textAlign:"left"}},
+          React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.08em",color:"#ccc"}},tier.name),
+          React.createElement("div",{style:{color:"#444",fontSize:12,transition:"transform .2s",transform:isOpen?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
+        ),
+        isOpen&&React.createElement("div",{style:{padding:"0 12px 14px"}},
+          !isEditing
+            ?React.createElement("div",null,
+                React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:10}},
+                  React.createElement("button",{onClick:()=>startEdit(tier),style:{background:"none",border:"1px solid #333",borderRadius:4,padding:"4px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT")
+                ),
+                React.createElement("div",{style:{fontSize:11,color:"#888",letterSpacing:"0.06em",marginBottom:6,fontWeight:400}},tier.desc_text),
+                tier.note&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.06em",marginBottom:10}},tier.note),
+                React.createElement("div",{style:{display:"flex",gap:6}},
+                  [[12,"12 MO","price_12"],[6,"6 MO","price_6"],[3,"3 MO","price_3"]].map(([t,lbl,k])=>React.createElement("div",{key:t,style:{flex:1,background:"#141414",border:"1px solid #222",borderRadius:4,padding:"7px 4px",textAlign:"center"}},
+                    React.createElement("div",{style:{fontSize:8,letterSpacing:"0.1em",color:"#555",fontWeight:600,marginBottom:2}},lbl),
+                    React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#aaa"}},"$"+parseFloat(tier[k]).toFixed(2)),
+                    React.createElement("div",{style:{fontSize:7,color:"#444",letterSpacing:"0.08em"}},"per week")
+                  ))
+                )
+              )
+            :React.createElement("div",null,
+                React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:10}},
+                  React.createElement("button",{onClick:()=>setEditing(null),style:{background:"none",border:"1px solid #333",borderRadius:4,padding:"4px 12px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
+                  React.createElement("button",{onClick:()=>save(tier.id),disabled:saving,style:{background:"#1d9bf0",border:"none",borderRadius:4,padding:"4px 14px",color:"#fff",fontSize:10,letterSpacing:"0.1em",cursor:"pointer",fontWeight:600}},saving?"SAVING...":"SAVE")
+                ),
+                React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,marginBottom:4}},"TIER NAME"),
+                inp("name","e.g. FOUNDATION MEMBER"),
+                React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,marginBottom:4}},"SESSIONS INCLUDED"),
+                inp("desc_text","e.g. 3 HIIT · 1 Strength · 1 Wellness"),
+                React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,marginBottom:4}},"NOTE (optional)"),
+                inp("note","e.g. Price reserved for founding members"),
+                React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,marginBottom:8}},"WEEKLY PRICING"),
+                React.createElement("div",{style:{display:"flex",gap:8}},
+                  [["price_12","12 MO"],["price_6","6 MO"],["price_3","3 MO"]].map(([k,lbl])=>React.createElement("div",{key:k,style:{flex:1}},
+                    React.createElement("div",{style:{fontSize:8,color:"#555",letterSpacing:"0.1em",fontWeight:600,marginBottom:4,textAlign:"center"}},lbl),
+                    React.createElement("input",{type:"number",value:draft[k]??"",onChange:e=>setDraft(d=>({...d,[k]:e.target.value})),
+                      style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:4,color:"#ccc",fontSize:14,padding:"8px 6px",fontFamily:"'DM Sans',sans-serif",boxSizing:"border-box",textAlign:"center",outline:"none"}})
+                  ))
+                )
+              )
+        )
+      );
+    })
+  );
+}
+
 function OnboardingPanel({id,title,children,openPanel,setOpenPanel}){
   const open=openPanel===id;
   return React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:8,marginBottom:8,overflow:"hidden"}},
@@ -1400,17 +1495,7 @@ function OnboardingPanel({id,title,children,openPanel,setOpenPanel}){
   );
 }
 
-function OnboardingView({expandedTier,setExpandedTier,showToast}){
-  const TIERS=[
-    {name:"FOUNDATION MEMBER",desc:"3 HIIT · 1 Strength · 1 Wellness",prices:{3:45,6:42,12:39},note:"Same as Essential Member · Price reserved for founding members"},
-    {name:"ACTIVE MEMBER",desc:"2 HIIT · 1 Strength · 50% Off Wellness Sessions",prices:{3:45,6:42,12:39},note:""},
-    {name:"COMMUNITY MEMBER",desc:"3 HIIT · 1 Strength · 50% Off Wellness Sessions",prices:{3:45,6:42,12:39},note:""},
-    {name:"ESSENTIAL MEMBER",desc:"3 HIIT · 1 Strength · 1 Wellness",prices:{3:55,6:52,12:49},note:""},
-    {name:"SIGNATURE MEMBER",desc:"Unlimited HIIT · Unlimited Strength · 2 Wellness",prices:{3:65,6:62,12:59},note:""},
-    {name:"DUO MEMBER",desc:"Unlimited HIIT · Unlimited Strength · 2 Wellness (Each)",prices:{3:105,6:102,12:99},note:""},
-  ];
-
-  // Which outer panel is open
+function OnboardingView({showToast}){
   const [openPanel,setOpenPanel]=useState(null);
 
   return React.createElement("div",{style:{marginTop:16}},
@@ -1439,26 +1524,7 @@ function OnboardingView({expandedTier,setExpandedTier,showToast}){
 
     // ── Membership Tiers ──
     React.createElement(OnboardingPanel,{id:"tiers",title:"MEMBERSHIP TIERS",openPanel,setOpenPanel},
-      TIERS.map((p,i)=>{
-        const open=expandedTier===i;
-        return React.createElement("div",{key:i,style:{background:"#1a1a1a",border:"1px solid #2e2e2e",borderRadius:6,marginBottom:6,overflow:"hidden"}},
-          React.createElement("button",{onClick:()=>setExpandedTier(open?null:i),style:{width:"100%",background:"none",border:"none",padding:"12px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",textAlign:"left"}},
-            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.08em",color:"#ccc"}},p.name),
-            React.createElement("div",{style:{color:"#444",fontSize:12,transition:"transform .2s",transform:open?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
-          ),
-          open&&React.createElement("div",{style:{padding:"0 12px 12px"}},
-            React.createElement("div",{style:{fontSize:11,color:"#888",letterSpacing:"0.06em",marginBottom:8,fontWeight:400}},p.desc),
-            p.note&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.06em",marginBottom:12}},p.note),
-            React.createElement("div",{style:{display:"flex",gap:6}},
-              [[12,"12 MO"],[6,"6 MO"],[3,"3 MO"]].map(([t,lbl])=>React.createElement("div",{key:t,style:{flex:1,background:"#141414",border:"1px solid #222",borderRadius:4,padding:"7px 4px",textAlign:"center"}},
-                React.createElement("div",{style:{fontSize:8,letterSpacing:"0.1em",color:"#555",fontWeight:600,marginBottom:2}},lbl),
-                React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#aaa"}},`$${p.prices[t].toFixed(2)}`),
-                React.createElement("div",{style:{fontSize:7,color:"#444",letterSpacing:"0.08em"}},"per week")
-              ))
-            )
-          )
-        );
-      })
+      React.createElement(TierEditor,{showToast})
     ),
 
     // ── Onboarding Process ──
