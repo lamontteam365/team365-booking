@@ -67,7 +67,7 @@ html,body{background:#080808;min-height:100vh}
 .c-mid{flex:1;display:flex;flex-direction:column;gap:5px}
 .c-bars{display:flex;gap:2px}
 .c-bar{flex:1;height:2px;border-radius:1px;background:#2a2a2a;transition:background .3s}
-.c-bar.ct{background:#4aaa66}
+.c-bar.ct{background:#fff}.cb-mine .c-bar.ct{background:#4aaa66}
 .c-sub{font-size:10px;letter-spacing:0.1em;color:#999;font-weight:500}
 .c-sub.cl{color:#e06040}
 .c-sub.co{color:#aaa}
@@ -258,10 +258,10 @@ html,body{background:#080808;min-height:100vh}
 .adm-class-mid{flex:1}
 .adm-class-count{font-size:10px;letter-spacing:0.1em;color:#999;font-weight:500}
 .adm-class-count.full{color:#e06040}
-.adm-class-count.has-bk{color:#4aaa66}
+.adm-class-count.has-bk{color:#1d9bf0}
 .adm-class-bars{display:flex;gap:2px;margin-top:5px}
 .adm-bar{flex:1;height:2px;border-radius:1px;background:#2a2a2a}
-.adm-bar.at{background:#4aaa66}
+.adm-bar.at{background:#1d9bf0}
 .adm-chev{font-size:14px;color:#555;transition:transform .2s}
 .adm-chev.open{transform:rotate(180deg)}
 .adm-members-list{border-top:1px solid #141414}
@@ -1303,8 +1303,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
               React.createElement("div",{className:"adm-class-hdr",style:{cursor:"default"}},
                 React.createElement("div",{className:"adm-class-time"},fmt12(time)),
                 React.createElement("div",{className:"adm-class-mid"},
-                  React.createElement("div",{className:"adm-class-count",style:{color:"#4aaa66"}},"Booked \u2713"),
-                  React.createElement("div",{className:"adm-member-email",style:{marginTop:4,color:"#4aaa66"}},bk.name+" \u00B7 "+bk.email)
+                  React.createElement("div",{className:"adm-class-count",style:{color:"#1d9bf0"}},"Booked \u2713"),
+                  React.createElement("div",{className:"adm-member-email",style:{marginTop:4,color:"#1d9bf0"}},bk.name+" \u00B7 "+bk.email)
                 ),
                 React.createElement("button",{className:"adm-remove-btn",style:{fontSize:11},onClick:async()=>{
                   setWellAdmBks(prev=>prev.filter(b=>!(b.date_key===admDK&&b.time===time)));
@@ -2029,7 +2029,7 @@ function App(){
             React.createElement("div",{className:`c-row${userBkd?" cb":""}${past?" cp":""}`,style:{cursor:isAdmin?"pointer":"default"},onClick:isAdmin?()=>setExpandedClass(isExpanded?null:time):undefined},
               React.createElement("div",{className:"c-time"},fmt12(time)),
               React.createElement("div",{className:"c-mid"},
-                React.createElement("div",{className:"c-bars"},Array.from({length:maxSp}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}`}))),
+                React.createElement("div",{className:`c-bars${userBkd?" cb-mine":""}`},Array.from({length:maxSp}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}`}))),
                 React.createElement("div",{className:`c-sub ${subCls}`},subText)
               ),
               isAdmin&&React.createElement("div",{style:{fontSize:10,color:"#555",marginRight:4,flexShrink:0}},isExpanded?"▴":"▾"),
