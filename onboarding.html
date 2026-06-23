@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#080808"/>
+<title>Team 365 · Member Registration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#080808;min-height:100vh}
+body{font-family:'DM Sans',sans-serif;color:#fff;padding:0}
+.wrap{max-width:480px;margin:0 auto;padding:32px 20px 60px}
+.logo-area{text-align:center;margin-bottom:36px}
+.logo-sub{font-size:9px;letter-spacing:0.22em;color:#777;font-weight:500;margin-bottom:4px}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:0.18em;color:#fff}
+.logo-tag{font-size:8px;letter-spacing:0.2em;color:#444;margin-top:3px}
+.form-title{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:0.12em;color:#fff;margin-bottom:6px}
+.form-sub{font-size:11px;letter-spacing:0.1em;color:#777;font-weight:500;margin-bottom:32px}
+.part-header{margin:36px 0 24px}
+.part-num{font-size:9px;letter-spacing:0.22em;color:#555;font-weight:600;margin-bottom:6px}
+.part-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.12em;color:#fff;margin-bottom:4px}
+.part-sub{font-size:10px;letter-spacing:0.12em;color:#555;font-weight:500}
+.part-divider{border:none;border-top:2px solid #1a1a1a;margin:40px 0 0}
+.section{margin-bottom:28px}
+.section-label{font-size:9px;letter-spacing:0.22em;color:#666;font-weight:600;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #141414}
+.fl{display:block;font-size:10px;letter-spacing:0.16em;color:#bbb;font-weight:600;margin-bottom:7px;margin-top:14px}
+.fl:first-of-type{margin-top:0}
+.fi{width:100%;background:#0e0e0e;border:1px solid #2a2a2a;color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:300;padding:13px 15px;outline:none;border-radius:3px;transition:border-color .2s;-webkit-appearance:none}
+.fi:focus{border-color:#555}
+.fi::placeholder{color:#333}
+textarea.fi{resize:none;min-height:80px;line-height:1.6}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* PAR-Q */
+.parq-item{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:6px;padding:14px;margin-bottom:8px}
+.parq-q{font-size:12px;color:#ccc;line-height:1.6;font-weight:300;margin-bottom:12px}
+.parq-opts{display:flex;gap:8px}
+.parq-btn{flex:1;padding:10px;background:#111;border:1px solid #222;border-radius:3px;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:0.12em;color:#555;cursor:pointer;transition:all .15s;text-align:center}
+.parq-btn:hover{border-color:#444;color:#aaa}
+.parq-btn.sel-no{background:#0e1a0e;border-color:#2a4a2a;color:#4aaa66}
+.parq-btn.sel-yes{background:#1a0e0e;border-color:#4a2a2a;color:#e06040}
+/* Consent */
+.consent-item{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:6px;padding:14px;margin-bottom:8px}
+.consent-text{font-size:11px;color:#888;line-height:1.7;font-weight:300;margin-bottom:12px}
+.consent-bold{font-size:11px;color:#bbb;font-weight:600;margin-bottom:8px}
+.consent-opts{display:flex;gap:8px}
+.consent-btn{flex:1;padding:10px;background:#111;border:1px solid #222;border-radius:3px;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:0.12em;color:#555;cursor:pointer;transition:all .15s;text-align:center}
+.consent-btn:hover{border-color:#444;color:#aaa}
+.consent-btn.sel-yes{background:#0e1a0e;border-color:#2a4a2a;color:#4aaa66}
+.consent-btn.sel-no{background:#111;border-color:#333;color:#666}
+/* Fitness */
+.fitness-opts{display:flex;flex-direction:column;gap:8px}
+.fitness-btn{padding:13px 15px;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:6px;text-align:left;cursor:pointer;transition:all .15s}
+.fitness-btn:hover{border-color:#333}
+.fitness-btn.sel{border-color:#fff;background:#111}
+.fitness-num{font-family:'Bebas Neue',sans-serif;font-size:18px;color:#555;letter-spacing:0.1em;margin-bottom:2px}
+.fitness-btn.sel .fitness-num{color:#fff}
+.fitness-desc{font-size:11px;color:#666;font-weight:400}
+.fitness-btn.sel .fitness-desc{color:#aaa}
+/* Plan cards */
+.plan-card{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:8px;padding:14px;margin-bottom:8px;cursor:pointer;transition:all .15s}
+.plan-card:hover{border-color:#333}
+.plan-card.sel{border-color:#fff;background:#111}
+.plan-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.plan-name{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.08em;color:#fff}
+.plan-sub{font-size:14px;letter-spacing:0.06em;color:#555}
+.plan-card.sel .plan-sub{color:#aaa}
+.plan-prices{display:flex;gap:6px}
+.price-opt{flex:1;padding:8px 6px;background:#080808;border:1px solid #1a1a1a;border-radius:4px;text-align:center;cursor:pointer;transition:all .15s}
+.price-opt:hover{border-color:#333}
+.price-opt.psel{background:#fff;border-color:#fff}
+.price-term{font-size:8px;letter-spacing:0.12em;color:#555;font-weight:600;margin-bottom:3px}
+.price-amt{font-family:'Bebas Neue',sans-serif;font-size:16px;color:#777;letter-spacing:0.04em}
+.price-opt.psel .price-term{color:#333}
+.price-opt.psel .price-amt{color:#000}
+.price-week{font-size:7px;color:#444;letter-spacing:0.08em}
+.price-opt.psel .price-week{color:#555}
+.radio-dot{width:16px;height:16px;border-radius:50%;border:1px solid #333;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.plan-card.sel .radio-dot{border-color:#fff}
+.radio-inner{width:8px;height:8px;border-radius:50%;background:transparent}
+.plan-card.sel .radio-inner{background:#fff}
+/* Frequency */
+.freq-opts{display:flex;gap:8px}
+.freq-btn{flex:1;padding:12px;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:6px;text-align:center;cursor:pointer;transition:all .15s;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.1em;color:#555}
+.freq-btn:hover{border-color:#333;color:#aaa}
+.freq-btn.fsel{background:#fff;border-color:#fff;color:#000}
+/* Bank */
+.bank-row{display:grid;grid-template-columns:2fr 2fr 3fr 1fr;gap:8px}
+.bank-lbl{font-size:8px;letter-spacing:0.12em;color:#555;text-align:center;margin-top:4px;font-weight:600}
+/* Summary */
+.summary-box{background:#111;border:1px solid #222;border-radius:8px;padding:16px;margin-bottom:20px}
+.summary-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #1a1a1a}
+.summary-row:last-child{border-bottom:none;padding-top:10px}
+.summary-lbl{font-size:10px;letter-spacing:0.1em;color:#666;font-weight:500}
+.summary-val{font-size:11px;color:#ccc;font-weight:500;text-align:right}
+.summary-total{font-family:'Bebas Neue',sans-serif;font-size:22px;color:#fff;letter-spacing:0.06em}
+.summary-total-lbl{font-size:10px;letter-spacing:0.12em;color:#888;font-weight:600}
+/* Declaration */
+.decl-box{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:6px;padding:14px;margin-bottom:12px}
+.decl-text{font-size:11px;color:#777;line-height:1.8;font-weight:300}
+.decl-text strong{color:#aaa;font-weight:600}
+/* Signature */
+.sig-wrap{background:#0e0e0e;border:1px solid #2a2a2a;border-radius:6px;overflow:hidden;position:relative}
+.sig-canvas{display:block;width:100%;height:160px;cursor:crosshair;touch-action:none}
+.sig-clear{position:absolute;top:8px;right:10px;background:none;border:none;color:#444;font-size:10px;letter-spacing:0.12em;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;transition:color .15s}
+.sig-clear:hover{color:#aaa}
+.sig-hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:9px;letter-spacing:0.14em;color:#2a2a2a;font-weight:500;white-space:nowrap;pointer-events:none}
+.sig-note{font-size:10px;color:#444;letter-spacing:0.06em;line-height:1.6;margin-bottom:10px}
+/* Submit */
+.submit-btn{width:100%;background:#fff;color:#000;border:none;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.18em;padding:20px;cursor:pointer;border-radius:3px;margin-top:24px;transition:background .15s}
+.submit-btn:hover:not(:disabled){background:#ddd}
+.submit-btn:disabled{background:#111;color:#333;cursor:not-allowed}
+.err-msg{font-size:12px;color:#e06040;letter-spacing:0.04em;margin-top:14px;line-height:1.6}
+.success-page{text-align:center;padding:60px 20px;max-width:480px;margin:0 auto}
+.success-icon{font-family:'Bebas Neue',sans-serif;font-size:72px;color:#fff;margin-bottom:8px}
+.success-title{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:0.12em;color:#fff;margin-bottom:16px}
+.success-body{font-size:14px;color:#777;line-height:1.8;font-weight:300;margin-bottom:32px}
+.success-link{display:block;width:100%;background:#fff;color:#000;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:0.18em;padding:18px;border-radius:3px;text-decoration:none;text-align:center}
+select.fi{cursor:pointer}
+select.fi option{background:#0e0e0e;color:#fff}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const SB_URL="https://xczwmexavysvljmobbgv.supabase.co";
+const SB_KEY="sb_publishable_tujGGhPRUimflq1-IFzuvA_Crw6knMO";
+const SB_HDR={"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return=minimal"};
+const APPS_SCRIPT_URL="https://script.google.com/macros/s/AKfycbz5cruljVDUVScwm14Sj1z5_6cRrNK9cgOaq7Tx8P9LfPAEI7p_kx8ZJnaghF_SmU46Fw/exec";
+
+async function sbGet(t,q=""){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
+async function sbPost(t,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
+async function sbPatch(t,q,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{method:"PATCH",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
+
+const hashPw=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)^s.charCodeAt(i);return(h>>>0).toString(36);};
+const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const today=()=>{const d=new Date();return`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;};
+function addMonths(date,months){const d=new Date(date);d.setMonth(d.getMonth()+months);return d;}
+
+const PLANS=[
+  {id:"foundationmember",name:"FOUNDATION MEMBER",sub:"",                                   desc:"3 HIIT · 1 Strength · 1 Wellness",                        prices:{3:45,6:42,12:39}},
+  {id:"foundation",      name:"ACTIVE",           sub:"",                                   desc:"2 HIIT · 1 Strength · 50% Off Wellness Sessions",         prices:{3:45,6:42,12:39}},
+  {id:"collective",      name:"COMMUNITY",         sub:"Student · Youth · Surf Life Saving", desc:"3 HIIT · 1 Strength · 50% Off Wellness Sessions",         prices:{3:45,6:42,12:39}},
+  {id:"momentum",        name:"ESSENTIAL",         sub:"",                                   desc:"3 HIIT · 1 Strength · 1 Wellness",                        prices:{3:55,6:52,12:49}},
+  {id:"signature",       name:"SIGNATURE",         sub:"",                                   desc:"Unlimited HIIT · Unlimited Strength · 2 Wellness",        prices:{3:65,6:62,12:59}},
+  {id:"duo",             name:"DUO",               sub:"2 Adults",                           desc:"Unlimited HIIT · Unlimited Strength · 2 Wellness (Each)", prices:{3:105,6:102,12:99}},
+];
+
+const PARQ=[
+  "Has your doctor ever said that you have a heart condition and that you should only do physical activity recommended by a doctor?",
+  "Do you feel pain in your chest when you do physical activity?",
+  "In the past month, have you had chest pain when you were not doing physical activity?",
+  "Do you lose your balance because of dizziness or do you ever lose consciousness?",
+  "Do you have a bone or joint problem that could be made worse by a change in your physical activity? (e.g. back, knee, hip)",
+  "Is your doctor currently prescribing drugs for your blood pressure or heart condition?",
+  "Do you know of any other reason why you should not do physical activity? (e.g. pregnancy, recent surgery, diabetes)"
+];
+
+// State
+let parqAnswers={};
+let fitnessLevel="";
+let healthDeclaration="";
+let mediaConsent="";
+let selectedPlan=null;
+let selectedTerm=null;
+let selectedFreq=null;
+let sigCanvas,sigCtx,drawing=false,hasSig=false;
+
+function renderForm(){
+  document.getElementById("root").innerHTML=`
+  <div class="wrap">
+    <div class="logo-area">
+      <div class="logo-sub">LAMONT</div>
+      <div class="logo">TEAM 365</div>
+      <div class="logo-tag">EVERYDAY. ALL YEAR ROUND.</div>
+    </div>
+    <div class="form-title">Member Registration</div>
+    <div class="form-sub">COMPLETE BOTH SECTIONS TO JOIN</div>
+
+    <!-- ══════════════════════════════ -->
+    <!-- PART 1: HEALTH SCREENING      -->
+    <!-- ══════════════════════════════ -->
+    <div class="part-header">
+      <div class="part-num">SECTION 01</div>
+      <div class="part-title">Health Screening</div>
+      <div class="part-sub">COMPLETE BEFORE YOUR FIRST SESSION</div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">PERSONAL DETAILS</div>
+      <div class="row2">
+        <div>
+          <label class="fl" for="fname">FIRST NAME</label>
+          <input class="fi" id="fname" placeholder="First name" autocomplete="given-name"/>
+        </div>
+        <div>
+          <label class="fl" for="lname">LAST NAME</label>
+          <input class="fi" id="lname" placeholder="Last name" autocomplete="family-name"/>
+        </div>
+      </div>
+      <label class="fl" for="dob">DATE OF BIRTH</label>
+      <input class="fi" id="dob" type="date"/>
+      <label class="fl" for="phone">PHONE NUMBER</label>
+      <input class="fi" id="phone" type="tel" placeholder="+64 21 000 0000" autocomplete="tel"/>
+      <label class="fl" for="email">EMAIL ADDRESS</label>
+      <input class="fi" id="email" type="email" placeholder="your@email.com" autocomplete="email"/>
+    </div>
+
+    <div class="section">
+      <div class="section-label">EMERGENCY CONTACT</div>
+      <div class="row2">
+        <div>
+          <label class="fl" for="ename">CONTACT NAME</label>
+          <input class="fi" id="ename" placeholder="Full name"/>
+        </div>
+        <div>
+          <label class="fl" for="ephone">PHONE NUMBER</label>
+          <input class="fi" id="ephone" type="tel" placeholder="+64 21 000 0000"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">HEALTH SCREENING · PAR-Q</div>
+      ${PARQ.map((q,i)=>`
+        <div class="parq-item parq-${i}">
+          <div class="parq-q">${q}</div>
+          <div class="parq-opts">
+            <button class="parq-btn" data-val="Yes" onclick="selectParq(${i},'Yes')">YES</button>
+            <button class="parq-btn" data-val="No" onclick="selectParq(${i},'No')">NO</button>
+          </div>
+        </div>`).join("")}
+    </div>
+
+    <div class="section">
+      <div class="section-label">MEDICAL INFORMATION</div>
+      <label class="fl" for="med-cond">INJURIES OR CONDITIONS WE SHOULD KNOW ABOUT</label>
+      <textarea class="fi" id="med-cond" placeholder="List any injuries or conditions, or write 'None'"></textarea>
+      <label class="fl" for="meds">CURRENT MEDICATIONS</label>
+      <textarea class="fi" id="meds" placeholder="List any current medications, or write 'None'"></textarea>
+    </div>
+
+    <div class="section">
+      <div class="section-label">STARTING LEVEL</div>
+      <div class="fitness-opts">
+        <button class="fitness-btn" data-val="1. New to fitness or returning after a break." onclick="selectFitness(this.dataset.val)">
+          <div class="fitness-num">1</div>
+          <div class="fitness-desc">New to fitness or returning after a break</div>
+        </button>
+        <button class="fitness-btn" data-val="2. Active and training regularly." onclick="selectFitness(this.dataset.val)">
+          <div class="fitness-num">2</div>
+          <div class="fitness-desc">Active and training regularly</div>
+        </button>
+        <button class="fitness-btn" data-val="3. High performance, pushing the limits." onclick="selectFitness(this.dataset.val)">
+          <div class="fitness-num">3</div>
+          <div class="fitness-desc">High performance, pushing the limits</div>
+        </button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">DECLARATIONS</div>
+      <div class="consent-item consent-health">
+        <div class="consent-bold">HEALTH & MEDICAL DECLARATION</div>
+        <div class="consent-text">I confirm that the information provided is accurate to the best of my knowledge. I agree to inform Team 365 of any changes to my health or medical status. I acknowledge that physical activity carries inherent risks, and I participate at my own risk.</div>
+        <div class="consent-opts">
+          <button class="consent-btn" data-val="Yes" onclick="selectConsent('health','Yes')">I AGREE</button>
+          <button class="consent-btn" data-val="No" onclick="selectConsent('health','No')">I DO NOT AGREE</button>
+        </div>
+      </div>
+      <div class="consent-item consent-media">
+        <div class="consent-bold">MEDIA & PROMOTIONAL USE</div>
+        <div class="consent-text">I grant permission for Team 365 to capture and use photographs and video footage of me during training sessions for promotional, marketing, and social media purposes.</div>
+        <div class="consent-opts">
+          <button class="consent-btn" data-val="Yes" onclick="selectConsent('media','Yes')">I AGREE</button>
+          <button class="consent-btn" data-val="No" onclick="selectConsent('media','No')">I DO NOT AGREE</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════ -->
+    <!-- PART 2: MEMBERSHIP + DIRECT DEBIT -->
+    <!-- ══════════════════════════════════ -->
+    <hr class="part-divider"/>
+    <div class="part-header">
+      <div class="part-num">SECTION 02</div>
+      <div class="part-title">Membership & Direct Debit</div>
+      <div class="part-sub">SELECT YOUR PLAN AND SET UP PAYMENT</div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">SELECT YOUR MEMBERSHIP</div>
+      ${PLANS.map(p=>`
+        <div class="plan-card" id="plan-${p.id}" onclick="selectPlan('${p.id}')">
+          <div class="plan-top">
+            <div class="plan-name">${p.name}${p.sub?'<span class="plan-sub"> · '+p.sub+'</span>':''}</div>
+            <div class="radio-dot"><div class="radio-inner"></div></div>
+          </div>
+          <div class="plan-prices">
+            ${[12,6,3].map(t=>`
+              <div class="price-opt" id="price-${p.id}-${t}" onclick="event.stopPropagation();selectPlanTerm('${p.id}',${t})">
+                <div class="price-term">${t} MONTHS</div>
+                <div class="price-amt">$${p.prices[t].toFixed(2)}</div>
+                <div class="price-week">per week</div>
+              </div>`).join("")}
+          </div>
+        </div>`).join("")}
+    </div>
+
+    <div class="section">
+      <div class="section-label">PAYMENT FREQUENCY</div>
+      <div class="freq-opts">
+        <button class="freq-btn" id="freq-weekly" onclick="selectFreq('weekly')">WEEKLY</button>
+        <button class="freq-btn" id="freq-fortnightly" onclick="selectFreq('fortnightly')">FORTNIGHTLY</button>
+        <button class="freq-btn" id="freq-monthly" onclick="selectFreq('monthly')">MONTHLY</button>
+      </div>
+    </div>
+
+    <div id="summary-section" style="display:none">
+      <div class="section-label" style="border-bottom:none;margin-bottom:12px;">PAYMENT SUMMARY</div>
+      <div class="summary-box" id="summary-box"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">BANK ACCOUNT DETAILS</div>
+      <label class="fl">ACCOUNT NUMBER</label>
+      <div class="bank-row">
+        <div>
+          <input class="fi" id="bank-bank" placeholder="00" maxlength="2" inputmode="numeric"/>
+          <div class="bank-lbl">BANK</div>
+        </div>
+        <div>
+          <input class="fi" id="bank-branch" placeholder="0000" maxlength="4" inputmode="numeric"/>
+          <div class="bank-lbl">BRANCH</div>
+        </div>
+        <div>
+          <input class="fi" id="bank-account" placeholder="0000000" maxlength="7" inputmode="numeric"/>
+          <div class="bank-lbl">ACCOUNT</div>
+        </div>
+        <div>
+          <input class="fi" id="bank-suffix" placeholder="00" maxlength="3" inputmode="numeric"/>
+          <div class="bank-lbl">SUFFIX</div>
+        </div>
+      </div>
+      <label class="fl" for="bank-name">ACCOUNT NAME (as it appears at bank)</label>
+      <input class="fi" id="bank-name" placeholder="Account holder name"/>
+    </div>
+
+    <div class="section">
+      <div class="section-label">DIRECT DEBIT AUTHORITY</div>
+      <div class="decl-box">
+        <div class="decl-text">
+          I authorise <strong>Lamont Team 365</strong> (the Initiator) to debit my account with all amounts the Initiator reasonably considers I owe from time to time, and I authorise the bank to accept and act on those instructions.<br><br>
+          I acknowledge that:<br>
+          · This membership is <strong>locked in for the full term selected</strong> and is non-cancellable during that period.<br>
+          · The weekly fee shown will be debited at the frequency selected above.<br>
+          · I will be notified 5 days before membership renewal is due.<br>
+          · This authority will remain in force until cancelled in writing after the membership term ends.
+        </div>
+      </div>
+      <div style="background:#0e0e0e;border:1px solid #1e1e1e;border-radius:6px;padding:14px;">
+        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;">
+          <input type="checkbox" id="auth-check" style="width:18px;height:18px;margin-top:2px;accent-color:#fff;flex-shrink:0;cursor:pointer;"/>
+          <label for="auth-check" style="font-size:11px;color:#aaa;line-height:1.7;font-weight:400;cursor:pointer;">
+            I confirm I have read and agree to the direct debit authority above. I authorise Lamont Team 365 to debit my account as stated.
+          </label>
+        </div>
+        <label class="fl" for="print-name" style="margin-top:0;">PRINT FULL NAME</label>
+        <input class="fi" id="print-name" placeholder="Print your full name here" autocomplete="name"/>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">SIGNATURE</div>
+      <div class="sig-note">This signature applies to both the health screening declaration and the direct debit authority above.</div>
+      <div class="sig-wrap">
+        <canvas id="sig-canvas" class="sig-canvas"></canvas>
+        <button class="sig-clear" onclick="clearSig()">CLEAR</button>
+        <div class="sig-hint">Sign here with your finger</div>
+      </div>
+      <label class="fl" for="sig-date">DATE</label>
+      <input class="fi" id="sig-date" value="${today()}" readonly style="color:#777"/>
+    </div>
+
+    <div id="err-msg" class="err-msg"></div>
+    <button id="submit-btn" class="submit-btn" onclick="handleSubmit()">COMPLETE REGISTRATION</button>
+  </div>`;
+  setTimeout(initCanvas,100);
+}
+
+function selectPlan(planId){
+  selectedPlan=planId;selectedTerm=null;
+  document.querySelectorAll(".plan-card").forEach(c=>c.classList.remove("sel"));
+  document.querySelectorAll(".price-opt").forEach(c=>c.classList.remove("psel"));
+  document.getElementById("plan-"+planId).classList.add("sel");
+  updateSummary();
+}
+function selectPlanTerm(planId,term){
+  selectedPlan=planId;selectedTerm=term;
+  document.querySelectorAll(".plan-card").forEach(c=>c.classList.remove("sel"));
+  document.querySelectorAll(".price-opt").forEach(c=>c.classList.remove("psel"));
+  document.getElementById("plan-"+planId).classList.add("sel");
+  document.getElementById(`price-${planId}-${term}`).classList.add("psel");
+  updateSummary();
+}
+function selectFreq(freq){
+  selectedFreq=freq;
+  document.querySelectorAll(".freq-btn").forEach(b=>b.classList.remove("fsel"));
+  document.getElementById("freq-"+freq).classList.add("fsel");
+  updateSummary();
+}
+function updateSummary(){
+  if(!selectedPlan||!selectedTerm||!selectedFreq){document.getElementById("summary-section").style.display="none";return;}
+  const plan=PLANS.find(p=>p.id===selectedPlan);
+  const w=plan.prices[selectedTerm];
+  let fa,fl;
+  if(selectedFreq==="weekly")      {fa=w;          fl="Weekly";}
+  if(selectedFreq==="fortnightly") {fa=w*2;         fl="Fortnightly";}
+  if(selectedFreq==="monthly")     {fa=w*4.33;      fl="Monthly (approx)";}
+  const ed=addMonths(new Date(),selectedTerm);
+  const edStr=`${ed.getDate()} ${MONTHS[ed.getMonth()]} ${ed.getFullYear()}`;
+  document.getElementById("summary-section").style.display="block";
+  document.getElementById("summary-box").innerHTML=`
+    <div class="summary-row"><div class="summary-lbl">MEMBERSHIP</div><div class="summary-val">${plan.name}</div></div>
+    <div class="summary-row"><div class="summary-lbl">TERM</div><div class="summary-val">${selectedTerm} Months (locked in)</div></div>
+    <div class="summary-row"><div class="summary-lbl">WEEKLY RATE</div><div class="summary-val">$${w.toFixed(2)} / week</div></div>
+    <div class="summary-row"><div class="summary-lbl">PAYMENT</div><div class="summary-val">${fl} — $${fa.toFixed(2)}</div></div>
+    <div class="summary-row"><div class="summary-lbl">START DATE</div><div class="summary-val">${today()}</div></div>
+    <div class="summary-row"><div class="summary-lbl">END DATE</div><div class="summary-val">${edStr}</div></div>
+    <div class="summary-row"><div class="summary-total-lbl">AMOUNT PER PAYMENT</div><div class="summary-total">$${fa.toFixed(2)}</div></div>`;
+}
+
+function selectParq(idx,val){
+  parqAnswers[idx]=val;
+  document.querySelectorAll(`.parq-${idx} .parq-btn`).forEach(b=>{
+    b.classList.remove("sel-yes","sel-no");
+    if(b.dataset.val===val)b.classList.add(val==="Yes"?"sel-yes":"sel-no");
+  });
+}
+function selectFitness(val){
+  fitnessLevel=val;
+  document.querySelectorAll(".fitness-btn").forEach(b=>b.classList.toggle("sel",b.dataset.val===val));
+}
+function selectConsent(field,val){
+  if(field==="health")healthDeclaration=val;else mediaConsent=val;
+  document.querySelectorAll(`.consent-${field} .consent-btn`).forEach(b=>{
+    b.classList.remove("sel-yes","sel-no");
+    if(b.dataset.val===val)b.classList.add(val==="Yes"?"sel-yes":"sel-no");
+  });
+}
+
+function initCanvas(){
+  sigCanvas=document.getElementById("sig-canvas");
+  if(!sigCanvas)return;
+  sigCtx=sigCanvas.getContext("2d");
+  sigCanvas.width=sigCanvas.offsetWidth*window.devicePixelRatio;
+  sigCanvas.height=sigCanvas.offsetHeight*window.devicePixelRatio;
+  sigCtx.scale(window.devicePixelRatio,window.devicePixelRatio);
+  sigCtx.strokeStyle="#ffffff";sigCtx.lineWidth=2;sigCtx.lineCap="round";sigCtx.lineJoin="round";
+  function gp(e){const r=sigCanvas.getBoundingClientRect();const s=e.touches?e.touches[0]:e;return{x:s.clientX-r.left,y:s.clientY-r.top};}
+  sigCanvas.addEventListener("mousedown",e=>{drawing=true;const p=gp(e);sigCtx.beginPath();sigCtx.moveTo(p.x,p.y);hasSig=true;document.querySelector(".sig-hint").style.display="none";});
+  sigCanvas.addEventListener("mousemove",e=>{if(!drawing)return;const p=gp(e);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();sigCtx.beginPath();sigCtx.moveTo(p.x,p.y);});
+  sigCanvas.addEventListener("mouseup",()=>{drawing=false;});
+  sigCanvas.addEventListener("mouseleave",()=>{drawing=false;});
+  sigCanvas.addEventListener("touchstart",e=>{e.preventDefault();drawing=true;const p=gp(e);sigCtx.beginPath();sigCtx.moveTo(p.x,p.y);hasSig=true;document.querySelector(".sig-hint").style.display="none";},{passive:false});
+  sigCanvas.addEventListener("touchmove",e=>{e.preventDefault();if(!drawing)return;const p=gp(e);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();sigCtx.beginPath();sigCtx.moveTo(p.x,p.y);},{passive:false});
+  sigCanvas.addEventListener("touchend",()=>{drawing=false;});
+}
+function clearSig(){
+  if(sigCtx)sigCtx.clearRect(0,0,sigCanvas.offsetWidth*2,sigCanvas.offsetHeight*2);
+  hasSig=false;document.querySelector(".sig-hint").style.display="block";
+}
+
+function getSigData(){
+  const off=document.createElement("canvas");
+  off.width=sigCanvas.width;off.height=sigCanvas.height;
+  const oc=off.getContext("2d");
+  oc.fillStyle="#ffffff";oc.fillRect(0,0,off.width,off.height);
+  const orig=sigCanvas.getContext("2d").getImageData(0,0,sigCanvas.width,sigCanvas.height);
+  const out=oc.getImageData(0,0,off.width,off.height);
+  for(let i=0;i<orig.data.length;i+=4){
+    if(orig.data[i+3]>10&&(orig.data[i]>50||orig.data[i+1]>50||orig.data[i+2]>50)){
+      out.data[i]=0;out.data[i+1]=0;out.data[i+2]=0;out.data[i+3]=255;
+    }
+  }
+  oc.putImageData(out,0,0);
+  return off.toDataURL("image/png",0.9);
+}
+
+function generatePDF(d){
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+  const W=210,pad=20;let y=20;
+  doc.setTextColor(0,0,0);doc.setFontSize(20);doc.setFont("helvetica","bold");
+  doc.text("TEAM 365",pad,y);y+=8;
+  doc.setFontSize(9);doc.setFont("helvetica","normal");doc.setTextColor(100,100,100);
+  doc.text("Lamont Collective · New Brighton · Christchurch",pad,y);y+=10;
+  doc.setFontSize(15);doc.setFont("helvetica","bold");doc.setTextColor(0,0,0);
+  doc.text("MEMBER REGISTRATION",pad,y);y+=7;
+  doc.setFontSize(8);doc.setFont("helvetica","normal");doc.setTextColor(120,120,120);
+  doc.text(`Date: ${d.date}`,pad,y);y+=10;
+  function sec(title,rows){
+    if(y>250){doc.addPage();y=20;}
+    doc.setFillColor(235,235,235);doc.rect(pad,y,W-pad*2,6,"F");
+    doc.setTextColor(0,0,0);doc.setFontSize(8);doc.setFont("helvetica","bold");
+    doc.text(title,pad+2,y+4);y+=10;
+    rows.forEach(([lbl,val])=>{
+      if(y>270){doc.addPage();y=20;}
+      doc.setFont("helvetica","normal");doc.setTextColor(100,100,100);doc.setFontSize(7);
+      doc.text(lbl,pad+2,y);
+      doc.setTextColor(0,0,0);doc.setFontSize(8);
+      doc.text(String(val||"-"),pad+68,y);y+=6;
+    });
+    y+=4;
+  }
+  sec("MEMBER DETAILS",[["Full Name",d.name],["Date of Birth",d.dob],["Email",d.email],["Phone",d.phone]]);
+  sec("EMERGENCY CONTACT",[["Name",d.emergencyName],["Phone",d.emergencyPhone]]);
+  sec("HEALTH SCREENING (PAR-Q)",[
+    ["Heart condition",d.parq_heart],["Chest pain (activity)",d.parq_chest_activity],
+    ["Chest pain (rest)",d.parq_chest_rest],["Dizziness / loss of consciousness",d.parq_dizziness],
+    ["Bone or joint problem",d.parq_joint],["Blood pressure medication",d.parq_blood_pressure],
+    ["Other reason",d.parq_other],["Medical conditions",d.medicalConditions||"None"],
+    ["Medications",d.medications||"None"],["Fitness level",d.fitnessLevel],
+    ["Health declaration",d.healthDeclaration],["Media consent",d.mediaConsent],
+  ]);
+  sec("MEMBERSHIP & DIRECT DEBIT",[
+    ["Plan",d.planName],["Term",`${d.term} Months (locked in)`],
+    ["Weekly Rate",`$${d.weeklyAmt} per week`],["Payment Frequency",d.frequency],
+    ["Amount Per Payment",`$${d.freqAmt}`],
+    ["Bank Account",`${d.bankBank}-${d.bankBranch}-${d.bankAccount}-${d.bankSuffix}`],
+    ["Account Name",d.bankName],["Start Date",d.date],["End Date",d.endDate],
+  ]);
+  // Declaration text
+  if(y>230){doc.addPage();y=20;}
+  doc.setFillColor(235,235,235);doc.rect(pad,y,W-pad*2,6,"F");
+  doc.setTextColor(0,0,0);doc.setFontSize(8);doc.setFont("helvetica","bold");
+  doc.text("DIRECT DEBIT AUTHORITY",pad+2,y+4);y+=10;
+  doc.setFont("helvetica","normal");doc.setFontSize(7);doc.setTextColor(60,60,60);
+  const decl=`I authorise Lamont Team 365 to debit my account with all amounts owed. This membership is locked in for ${d.term} months and is non-cancellable during that period. The amount of $${d.freqAmt} will be debited ${d.frequency.toLowerCase()}. I will be notified 5 days before membership renewal.`;
+  const lines=doc.splitTextToSize(decl,W-pad*2-4);
+  doc.text(lines,pad+2,y);y+=lines.length*4+8;
+  // Signature
+  if(y>220){doc.addPage();y=20;}
+  doc.setFillColor(235,235,235);doc.rect(pad,y,W-pad*2,6,"F");
+  doc.setTextColor(0,0,0);doc.setFontSize(8);doc.setFont("helvetica","bold");
+  doc.text("SIGNATURE",pad+2,y+4);y+=10;
+  if(d.signature){doc.addImage(d.signature,"PNG",pad,y,80,25);y+=28;}
+  doc.setFontSize(7);doc.setFont("helvetica","normal");doc.setTextColor(100,100,100);
+  doc.text(`Signed: ${d.name}`,pad,y);y+=5;
+  doc.text(`Printed name: ${d.printName}`,pad,y);y+=5;
+  doc.text(`Date: ${d.date}`,pad,y);
+  doc.setFontSize(6);doc.setTextColor(150,150,150);
+  doc.text("Lamont Team 365 · New Brighton · Christchurch 8061",W/2,285,{align:"center"});
+  return doc.output("datauristring");
+}
+
+async function sendWelcomeEmail(to,firstName,tempPw){
+  try{const p=new URLSearchParams({action:"welcome",to,firstName,tempPassword:tempPw});await fetch(APPS_SCRIPT_URL+"?"+p.toString(),{method:"GET",mode:"no-cors"});}catch(e){}
+}
+async function sendDDEmail(to,name,pdfData,d){
+  try{
+    await fetch(APPS_SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},
+      body:JSON.stringify({action:"directDebit",to,name,planName:d.planName,term:d.term,
+        freqAmt:d.freqAmt,frequency:d.frequency,endDate:d.endDate,startDate:d.date,
+        weeklyAmt:d.weeklyAmt,bankAccount:`${d.bankBank}-${d.bankBranch}-${d.bankAccount}-${d.bankSuffix}`,
+        bankName:d.bankName,phone:d.phone,pdfBase64:pdfData.split(",")[1]})});
+  }catch(e){}
+}
+async function logHealthToSheets(data){
+  try{const p=new URLSearchParams({action:"logHealth",...data});await fetch(APPS_SCRIPT_URL+"?"+p.toString(),{method:"GET",mode:"no-cors"});}catch(e){}
+}
+
+async function handleSubmit(){
+  const errEl=document.getElementById("err-msg");
+  errEl.textContent="";
+  const firstName=document.getElementById("fname").value.trim();
+  const lastName=document.getElementById("lname").value.trim();
+  const dob=document.getElementById("dob").value.trim();
+  const phone=document.getElementById("phone").value.trim();
+  const email=document.getElementById("email").value.toLowerCase().trim();
+  const eName=document.getElementById("ename").value.trim();
+  const ePhone=document.getElementById("ephone").value.trim();
+  const medCond=document.getElementById("med-cond").value.trim();
+  const meds=document.getElementById("meds").value.trim();
+  const bankBank=document.getElementById("bank-bank").value.trim();
+  const bankBranch=document.getElementById("bank-branch").value.trim();
+  const bankAccount=document.getElementById("bank-account").value.trim();
+  const bankSuffix=document.getElementById("bank-suffix").value.trim();
+  const bankName=document.getElementById("bank-name").value.trim();
+  const printName=document.getElementById("print-name").value.trim();
+  const authCheck=document.getElementById("auth-check");
+  // Section 1 validation
+  if(!firstName||!lastName){errEl.textContent="Please enter your full name.";return;}
+  if(!dob){errEl.textContent="Please enter your date of birth.";return;}
+  if(!phone){errEl.textContent="Please enter your phone number.";return;}
+  if(!email||!/\S+@\S+\.\S+/.test(email)){errEl.textContent="Please enter a valid email address.";return;}
+  if(!eName){errEl.textContent="Please enter an emergency contact name.";return;}
+  if(!ePhone){errEl.textContent="Please enter an emergency contact phone number.";return;}
+  if(Object.keys(parqAnswers).length<7){errEl.textContent="Please answer all 7 health screening questions.";return;}
+  if(!fitnessLevel){errEl.textContent="Please select your fitness level.";return;}
+  if(!healthDeclaration){errEl.textContent="Please confirm the health declaration.";return;}
+  if(!mediaConsent){errEl.textContent="Please confirm your media consent preference.";return;}
+  // Section 2 validation
+  if(!selectedPlan||!selectedTerm){errEl.textContent="Please select a membership plan and term.";return;}
+  if(!selectedFreq){errEl.textContent="Please select a payment frequency.";return;}
+  if(!bankBank||!bankBranch||!bankAccount||!bankSuffix){errEl.textContent="Please enter your full bank account number.";return;}
+  if(!bankName){errEl.textContent="Please enter the account name.";return;}
+  if(!authCheck.checked){errEl.textContent="Please tick the direct debit authorisation checkbox.";return;}
+  if(!printName){errEl.textContent="Please print your full name to confirm the authority.";return;}
+  if(!hasSig){errEl.textContent="Please sign the form.";return;}
+
+  const btn=document.getElementById("submit-btn");
+  btn.disabled=true;btn.textContent="SUBMITTING...";
+
+  const plan=PLANS.find(p=>p.id===selectedPlan);
+  const weeklyAmt=plan.prices[selectedTerm].toFixed(2);
+  let freqAmt;
+  if(selectedFreq==="weekly")      freqAmt=(plan.prices[selectedTerm]).toFixed(2);
+  if(selectedFreq==="fortnightly") freqAmt=(plan.prices[selectedTerm]*2).toFixed(2);
+  if(selectedFreq==="monthly")     freqAmt=(plan.prices[selectedTerm]*4.33).toFixed(2);
+  const ed=addMonths(new Date(),selectedTerm);
+  const endStr=`${ed.getDate()} ${MONTHS[ed.getMonth()]} ${ed.getFullYear()}`;
+  const name=`${firstName} ${lastName}`;
+  const membershipType=`${plan.name} - ${selectedTerm} months`;
+  const sigData=getSigData();
+
+  const regData={
+    name,phone,dob,
+    emergency_name:eName,emergency_phone:ePhone,
+    parq_heart:parqAnswers[0]||"",parq_chest_activity:parqAnswers[1]||"",
+    parq_chest_rest:parqAnswers[2]||"",parq_dizziness:parqAnswers[3]||"",
+    parq_joint:parqAnswers[4]||"",parq_blood_pressure:parqAnswers[5]||"",
+    parq_other:parqAnswers[6]||"",
+    medical_conditions:medCond,medications:meds,
+    fitness_level:fitnessLevel,health_declaration:healthDeclaration,
+    media_consent:mediaConsent,signature:sigData,
+    membership_type:membershipType,registration_date:today()
+  };
+
+  const existing=await sbGet("members",`email=eq.${encodeURIComponent(email)}`);
+  const isExisting=existing.length>0;
+  let ok=false,tempPw="";
+
+  if(isExisting){
+    ok=await sbPatch("members",`email=eq.${encodeURIComponent(email)}`,regData);
+  } else {
+    tempPw=Math.random().toString(36).slice(2,10);
+    ok=await sbPost("members",{email,photo:"",password:hashPw(tempPw),joined_at:Date.now(),...regData});
+  }
+
+  if(!ok){errEl.textContent="Something went wrong. Please try again.";btn.disabled=false;btn.textContent="COMPLETE REGISTRATION";return;}
+
+  const ddData={
+    name,email,phone,dob,emergencyName:eName,emergencyPhone:ePhone,
+    parq_heart:parqAnswers[0]||"",parq_chest_activity:parqAnswers[1]||"",
+    parq_chest_rest:parqAnswers[2]||"",parq_dizziness:parqAnswers[3]||"",
+    parq_joint:parqAnswers[4]||"",parq_blood_pressure:parqAnswers[5]||"",
+    parq_other:parqAnswers[6]||"",
+    medicalConditions:medCond,medications:meds,
+    fitnessLevel,healthDeclaration,mediaConsent,
+    bankBank,bankBranch,bankAccount,bankSuffix,bankName,printName,
+    planName:plan.name,term:selectedTerm,weeklyAmt,freqAmt,
+    frequency:selectedFreq.charAt(0).toUpperCase()+selectedFreq.slice(1),
+    date:today(),endDate:endStr,signature:sigData
+  };
+
+  if(!isExisting) sendWelcomeEmail(email,firstName,tempPw);
+  logHealthToSheets({
+    name,email,phone,dob,membershipType,
+    emergencyName:eName,emergencyPhone:ePhone,
+    parqHeart:parqAnswers[0]||"",parqChestActivity:parqAnswers[1]||"",
+    parqChestRest:parqAnswers[2]||"",parqDizziness:parqAnswers[3]||"",
+    parqJoint:parqAnswers[4]||"",parqBloodPressure:parqAnswers[5]||"",
+    parqOther:parqAnswers[6]||"",medicalConditions:medCond,medications:meds,
+    fitnessLevel,healthDeclaration,mediaConsent,registrationDate:today()
+  });
+
+  btn.textContent="GENERATING PDF...";
+  const pdfUri=generatePDF(ddData);
+  await sendDDEmail(email,name,pdfUri,ddData);
+
+  document.getElementById("root").innerHTML=`
+    <div class="success-page">
+      <div class="success-icon">✓</div>
+      <div class="success-title">${isExisting?"Details Updated":"Welcome to the Team"}</div>
+      <div class="success-body">
+        ${isExisting
+          ?`Thanks ${firstName}. Your registration details have been updated successfully.`
+          :`Welcome ${firstName}! Your membership is confirmed.<br><br>
+            We've sent your app login details to <strong style="color:#fff">${email}</strong>.<br><br>
+            Your <strong style="color:#fff">${plan.name}</strong> membership starts today and runs for ${selectedTerm} months until <strong style="color:#fff">${endStr}</strong>.`
+        }
+      </div>
+      <a href="https://team365-booking.vercel.app" class="success-link">OPEN BOOKING APP</a>
+    </div>`;
+}
+
+renderForm();
+</script>
+</body>
+</html>
