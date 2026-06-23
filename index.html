@@ -1416,6 +1416,27 @@ function OnboardingView({expandedTier,setExpandedTier,showToast}){
   return React.createElement("div",{style:{marginTop:16}},
     React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},"ONBOARDING · ADMIN"),
 
+    // ── Member Journey ──
+    React.createElement(OnboardingPanel,{id:"journey",title:"MEMBER JOURNEY",openPanel,setOpenPanel},
+      React.createElement("div",null,
+        ...[
+          {n:"1",t:"SEND REGISTRATION INVITE",b:"Admin goes to Onboarding → Send Registration Form, enters the new member's email and taps Send. They receive a branded email with a COMPLETE REGISTRATION button linking to the form."},
+          {n:"2",t:"MEMBER COMPLETES REGISTRATION FORM",b:"Member fills out personal details, emergency contact, PAR-Q health screening, selects their membership plan and term, sets up direct debit, and signs the agreement."},
+          {n:"3",t:"AUTOMATIC EMAILS FIRE ON SUBMISSION",b:"Two emails send automatically the moment they submit: (1) a welcome email with their temporary app password and login link, and (2) a direct debit agreement PDF for their records."},
+          {n:"4",t:"SUCCESS SCREEN SHOWS HOME SCREEN INSTRUCTIONS",b:"After submitting, the member sees a success screen with device-specific instructions to add Team 365 to their home screen — iPhone users see the Share → Add to Home Screen steps, Android users see the Menu → Install App steps."},
+          {n:"5",t:"MEMBER LOGS INTO THE APP",b:"Using the temporary password from the welcome email, the member opens the app and logs in for the first time."},
+          {n:"6",t:"ADMIN VERIFIES PROFILE",b:"Admin opens the member's profile and confirms their membership tier, term, and expiry date came through correctly from the form."},
+          {n:"7",t:"MEMBER IS ACTIVE",b:"The member can now book HIIT, Strength, and Wellness sessions according to their tier. Automatic expiry reminders fire at 14 days and 7 days before their membership ends."},
+        ].map(({n,t,b},i)=>React.createElement("div",{key:i,style:{display:"flex",gap:12,marginBottom:16,paddingBottom:16,borderBottom:i<6?"1px solid #141414":"none"}},
+          React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#1d9bf0",lineHeight:1,minWidth:20,paddingTop:1}},n),
+          React.createElement("div",null,
+            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.1em",color:"#fff",marginBottom:5}},t),
+            React.createElement("div",{style:{fontSize:12,color:"#777",lineHeight:1.7,fontWeight:300}},b)
+          )
+        ))
+      )
+    ),
+
     // ── Membership Tiers ──
     React.createElement(OnboardingPanel,{id:"tiers",title:"MEMBERSHIP TIERS",openPanel,setOpenPanel},
       TIERS.map((p,i)=>{
@@ -1448,27 +1469,6 @@ function OnboardingView({expandedTier,setExpandedTier,showToast}){
     // ── Send Registration Form ──
     React.createElement(OnboardingPanel,{id:"invite",title:"SEND REGISTRATION FORM",openPanel,setOpenPanel},
       React.createElement(InviteForm,null)
-    ),
-
-    // ── Member Journey ──
-    React.createElement(OnboardingPanel,{id:"journey",title:"MEMBER JOURNEY",openPanel,setOpenPanel},
-      React.createElement("div",null,
-        ...[
-          {n:"1",t:"SEND REGISTRATION INVITE",b:"Admin goes to Onboarding → Send Registration Form, enters the new member's email and taps Send. They receive a branded email with a COMPLETE REGISTRATION button linking to the form."},
-          {n:"2",t:"MEMBER COMPLETES REGISTRATION FORM",b:"Member fills out personal details, emergency contact, PAR-Q health screening, selects their membership plan and term, sets up direct debit, and signs the agreement."},
-          {n:"3",t:"AUTOMATIC EMAILS FIRE ON SUBMISSION",b:"Two emails send automatically the moment they submit: (1) a welcome email with their temporary app password and login link, and (2) a direct debit agreement PDF for their records."},
-          {n:"4",t:"SUCCESS SCREEN SHOWS HOME SCREEN INSTRUCTIONS",b:"After submitting, the member sees a success screen with device-specific instructions to add Team 365 to their home screen — iPhone users see the Share → Add to Home Screen steps, Android users see the Menu → Install App steps."},
-          {n:"5",t:"MEMBER LOGS INTO THE APP",b:"Using the temporary password from the welcome email, the member opens the app and logs in for the first time."},
-          {n:"6",t:"ADMIN VERIFIES PROFILE",b:"Admin opens the member's profile and confirms their membership tier, term, and expiry date came through correctly from the form."},
-          {n:"7",t:"MEMBER IS ACTIVE",b:"The member can now book HIIT, Strength, and Wellness sessions according to their tier. Automatic expiry reminders fire at 14 days and 7 days before their membership ends."},
-        ].map(({n,t,b},i)=>React.createElement("div",{key:i,style:{display:"flex",gap:12,marginBottom:16,paddingBottom:16,borderBottom:i<6?"1px solid #141414":"none"}},
-          React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#1d9bf0",lineHeight:1,minWidth:20,paddingTop:1}},n),
-          React.createElement("div",null,
-            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.1em",color:"#fff",marginBottom:5}},t),
-            React.createElement("div",{style:{fontSize:12,color:"#777",lineHeight:1.7,fontWeight:300}},b)
-          )
-        ))
-      )
     )
   );
 }
