@@ -758,7 +758,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
 }
 
 // ── Wellness View ─────────────────────────────────────────────────────────────
-function WellnessView({session,showToast}){
+function WellnessView({session,showToast,bookings}){
   const [wellBks,setWellBks]=useState([]);
   const [weekStart,setWeekStart]=useState(getWeekStart);
   const [selDay,setSelDay]=useState(getInitDay);
@@ -779,7 +779,7 @@ function WellnessView({session,showToast}){
   const weekDates=Array.from({length:6},(_,i)=>addDays(weekStart,i));
   const isThisWeek=toDS(weekStart)===toDS(mondayOf(new Date()));
   const dayBks=wellBks.filter(b=>b.date_key===selDK);
-  const weekDots=weekDates.map(d=>session&&wellBks.some(b=>b.date_key===toDS(d)&&b.email===session.email));
+  const weekDots=weekDates.map(d=>session&&(wellBks.some(b=>b.date_key===toDS(d)&&b.email===session.email)||(bookings||[]).some(b=>b.date_key===toDS(d)&&b.email===session.email)));
 
   function isPastSlot(time){
     if(isPastD(selDate))return true;if(!isToday(selDate))return false;
@@ -828,7 +828,6 @@ function WellnessView({session,showToast}){
         React.createElement("span",null,DAY_LONG[selDay].toUpperCase()),
         React.createElement("em",null,` \u00B7 ${WELL_TIMES.length} SESSIONS`)
       ),
-      React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:7}},
       WELL_TIMES.map(time=>{
         const bk=dayBks.find(b=>b.time===time);
         const ismine=bk&&bk.email===session?.email;
@@ -848,7 +847,6 @@ function WellnessView({session,showToast}){
           )
         );
       })
-      )
     )
   );
 }
@@ -1885,7 +1883,7 @@ function App(){
     ),
 
     tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
-    tab==="wellness"&&React.createElement(WellnessView,{session,showToast}),
+    tab==="wellness"&&React.createElement(WellnessView,{session,showToast,bookings}),
     tab==="strength"&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast})),
     tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit}),
 
