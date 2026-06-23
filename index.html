@@ -1565,20 +1565,22 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
 
   const released=isWorkoutReleased(monthYear,weekNum,isAdmin);
 
-  // Determine which strength sessions member has booked this week
+  // Determine which strength sessions member has booked for the VIEWED month+week
   const strengthUnlock=(()=>{
     if(isAdmin)return{Lower:true,Upper:true};
     if(!session||!bookings)return{Lower:false,Upper:false};
-    const now=new Date();
-    const mon=toDS(mondayOf(now));
-    const sun=toDS(addDays(mondayOf(now),6));
-    const thisWeekStrength=bookings.filter(b=>
+    const [yr,mo]=monthYear.split("-").map(Number);
+    const startDay=weekNum===1?1:weekNum===2?8:weekNum===3?15:25;
+    const endDay=weekNum===1?7:weekNum===2?14:weekNum===3?24:new Date(yr,mo,0).getDate();
+    const wkStart=`${monthYear}-${String(startDay).padStart(2,"0")}`;
+    const wkEnd=`${monthYear}-${String(endDay).padStart(2,"0")}`;
+    const wkStrength=bookings.filter(b=>
       b.email===session.email&&
-      b.date_key>=mon&&b.date_key<=sun&&
+      b.date_key>=wkStart&&b.date_key<=wkEnd&&
       (b.session_type==="Strength"||isStrengthDay(b.date_key))
     );
-    const hasLower=thisWeekStrength.some(b=>{const d=new Date(b.date_key+"T00:00:00");return d.getDay()===2;}); // Tuesday
-    const hasUpper=thisWeekStrength.some(b=>{const d=new Date(b.date_key+"T00:00:00");return d.getDay()===4;}); // Thursday
+    const hasLower=wkStrength.some(b=>{const d=new Date(b.date_key+"T00:00:00");return d.getDay()===2;}); // Tuesday
+    const hasUpper=wkStrength.some(b=>{const d=new Date(b.date_key+"T00:00:00");return d.getDay()===4;}); // Thursday
     return{Lower:hasLower,Upper:hasUpper};
   })();
   const canViewCurrent=strengthUnlock[sessType];
