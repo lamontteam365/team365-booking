@@ -203,6 +203,7 @@ function ClassWidget(){
   const[conf,setConf]=useState(null);
   // Member state
   const[bkBusy,setBkBusy]=useState({});
+  const[classLimits,setClassLimits]=useState([]);
   const weekDates=Array.from({length:6},(_,i)=>addDays(weekStart,i));
   const isThisWeek=toDS(weekStart)===toDS(mondayOf(new Date()));
   const selDate=weekDates[selDay];
@@ -215,6 +216,15 @@ function ClassWidget(){
     sbGet("bookings",`date_key=in.(${keys.join(",")})&select=date_key,time,email,name`).then(d=>{setBookings(d||[]);setLoading(false);});
   },[weekStart]);
   useEffect(()=>{setSelTime(null);},[selDay]);
+  // Fetch dynamic class limits on mount
+  useEffect(()=>{
+    sbGet("class_limits","select=time_slot,day_type,max_spots").then(d=>setClassLimits(d||[]));
+  },[]);
+  function getMaxSpots(time,isSat){
+    const dt=isSat?"saturday":"weekday";
+    const cl=classLimits.find(l=>l.time_slot===time&&l.day_type===dt);
+    return cl?cl.max_spots:MAX_SPOTS;
+  }
   const getBksFor=(dk,t)=>bookings.filter(b=>b.date_key===dk&&b.time===t);
   const userBooked=(dk,t)=>session&&getBksFor(dk,t).some(b=>b.email===session.email);
   // Login
@@ -328,7 +338,7 @@ function ClassWidget(){
         ?React.createElement("div",{className:"loading"},"CHECKING AVAILABILITY…",React.createElement("div",{className:"load-bar"},React.createElement("div",{className:"load-fill"})))
         :React.createElement("div",{className:"slot-list"},
           curTimes.map(time=>{
-            const list=getBksFor(selDK,time);const taken=list.length;const left=MAX_SPOTS-taken;
+            const list=getBksFor(selDK,time);const taken=list.length;const maxSp=getMaxSpots(time,selDate.getDay()===6);const left=maxSp-taken;
             const booked=userBooked(selDK,time);const full=left===0&&!booked;
             const past=isPastSlot(selDate,time);const lk=`${selDK}-${time}`;const isBusy=!!bkBusy[lk];
             const subText=booked?"Booked ✓":full?"Full":`${left} ${left===1?"Spot":"Spots"} Available`;
@@ -336,7 +346,7 @@ function ClassWidget(){
             return React.createElement("div",{key:time,className:`c-row${booked?" cb":""}${past?" cp":""}`},
               React.createElement("div",{className:"c-time"},fmt12(time)),
               React.createElement("div",{className:"c-mid"},
-                React.createElement("div",{className:"c-bars"},Array.from({length:MAX_SPOTS}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}`}))),
+                React.createElement("div",{className:"c-bars"},Array.from({length:Math.min(maxSp,20)}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}`}))),
                 React.createElement("div",{className:`c-sub ${subCls}`},subText)
               ),
               !past&&(booked
@@ -372,14 +382,14 @@ function ClassWidget(){
           ?React.createElement("div",{className:"loading"},"CHECKING AVAILABILITY…",React.createElement("div",{className:"load-bar"},React.createElement("div",{className:"load-fill"})))
           :React.createElement("div",{className:"slot-list"},
             curTimes.map(time=>{
-              const{taken,left}=(s=>{const t=bookings.filter(b=>b.date_key===selDK&&b.time===time).length;return{taken:t,left:MAX_SPOTS-t};})(0);
+              const taken=bookings.filter(b=>b.date_key===selDK&&b.time===time).length;const maxSp=getMaxSpots(time,selDate.getDay()===6);const left=maxSp-taken;
               const full=left===0;const low=left<=3&&left>0;const past=isPastSlot(selDate,time);
               return React.createElement("div",{key:time,
                 className:`slot-row${selTime===time?" sel":""}${full?" full":""}${past?" past":""}`,
                 onClick:()=>{if(!full&&!past)setSelTime(time);}},
                 React.createElement("div",{className:"slot-time"},fmt12(time)),
                 React.createElement("div",{className:"slot-mid"},
-                  React.createElement("div",{className:"slot-bars"},Array.from({length:MAX_SPOTS}).map((_,i)=>React.createElement("div",{key:i,className:`slot-bar${i<taken?" t":""}`}))),
+                  React.createElement("div",{className:"slot-bars"},Array.from({length:Math.min(maxSp,20)}).map((_,i)=>React.createElement("div",{key:i,className:`slot-bar${i<taken?" t":""}`}))),
                   React.createElement("div",{className:`slot-info ${full?"fl":low?"lo":"av"}`},full?"Full":`${left} spot${left===1?"":"s"} available`)
                 ),
                 !full&&!past&&React.createElement("div",{className:"slot-radio"},selTime===time&&React.createElement("div",{className:"slot-radio-dot"}))
