@@ -1121,6 +1121,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
 // ── Admin View ────────────────────────────────────────────────────────────────
 function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,wellnessEnabled,saveWellnessSetting}){
   const [admSeg,setAdmSeg]=useState("members");
+  const [expandedTier,setExpandedTier]=useState(null);
   const [admDate,setAdmDate]=useState(new Date());
   const [expanded,setExpanded]=useState({});
   const [members,setMembers]=useState([]);
@@ -1177,7 +1178,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
       React.createElement("button",{className:`adm-seg-btn${admSeg==="members"?" aas":""}`,onClick:()=>setAdmSeg("members")},"MEMBERS"),
       React.createElement("button",{className:`adm-seg-btn${admSeg==="classes"?" aas":""}`,onClick:()=>setAdmSeg("classes")},"CLASSES"),
       React.createElement("button",{className:`adm-seg-btn${admSeg==="wellness"?" aas":""}`,onClick:()=>setAdmSeg("wellness")},"WELLNESS"),
-      React.createElement("button",{className:`adm-seg-btn${admSeg==="tiers"?" aas":""}`,onClick:()=>setAdmSeg("tiers")},"TIERS")
+      React.createElement("button",{className:`adm-seg-btn${admSeg==="tiers"?" aas":""}`,onClick:()=>setAdmSeg("tiers")},"TIERS"),
+      React.createElement("button",{className:`adm-seg-btn${admSeg==="coaching"?" aas":""}`,onClick:()=>setAdmSeg("coaching")},"COACHING")
     ),
     admSeg==="members"&&(!membersLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
     :React.createElement(React.Fragment,null,
@@ -1325,25 +1327,103 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
       {name:"ESSENTIAL MEMBER",sub:"",desc:"3 HIIT · 1 Strength · 1 Wellness",prices:{3:55,6:52,12:49},note:""},
       {name:"SIGNATURE MEMBER",sub:"",desc:"Unlimited HIIT · Unlimited Strength · 2 Wellness",prices:{3:65,6:62,12:59},note:""},
       {name:"DUO MEMBER",sub:"2 Adults",desc:"Unlimited HIIT · Unlimited Strength · 2 Wellness (Each)",prices:{3:105,6:102,12:99},note:""},
-    ].map((p,i)=>React.createElement("div",{key:i,style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:8,padding:"14px",marginBottom:10}},
-      React.createElement("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:8}},
-        React.createElement("div",null,
+    ].map((p,i)=>{
+      const open=expandedTier===i;
+      return React.createElement("div",{key:i,style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:8,marginBottom:8,overflow:"hidden"}},
+        React.createElement("button",{onClick:()=>setExpandedTier(open?null:i),style:{width:"100%",background:"none",border:"none",padding:"14px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",textAlign:"left"}},
           React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.08em",color:"#fff"}},
             p.name,p.sub?React.createElement("span",{style:{fontSize:13,color:"#555",letterSpacing:"0.06em"}}," · "+p.sub):null
           ),
-          React.createElement("div",{style:{fontSize:11,color:"#888",letterSpacing:"0.06em",marginTop:3,fontWeight:400}},p.desc)
+          React.createElement("div",{style:{color:"#444",fontSize:14,transition:"transform .2s",transform:open?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
+        ),
+        open&&React.createElement("div",{style:{padding:"0 14px 14px"}},
+          React.createElement("div",{style:{fontSize:11,color:"#888",letterSpacing:"0.06em",marginBottom:8,fontWeight:400}},p.desc),
+          p.note&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.06em",marginBottom:12}},p.note),
+          React.createElement("div",{style:{display:"flex",gap:6}},
+            [[12,"12 MO"],[6,"6 MO"],[3,"3 MO"]].map(([t,lbl])=>React.createElement("div",{key:t,style:{flex:1,background:"#141414",border:"1px solid #222",borderRadius:4,padding:"7px 4px",textAlign:"center"}},
+              React.createElement("div",{style:{fontSize:8,letterSpacing:"0.1em",color:"#555",fontWeight:600,marginBottom:2}},lbl),
+              React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#aaa"}},`$${p.prices[t].toFixed(2)}`),
+              React.createElement("div",{style:{fontSize:7,color:"#444",letterSpacing:"0.08em"}},"per week")
+            ))
+          )
         )
-      ),
-      p.note&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.06em",marginBottom:8}},p.note),
-      React.createElement("div",{style:{display:"flex",gap:6,marginTop:8}},
-        [[12,"12 MO"],[6,"6 MO"],[3,"3 MO"]].map(([t,lbl])=>React.createElement("div",{key:t,style:{flex:1,background:"#141414",border:"1px solid #222",borderRadius:4,padding:"7px 4px",textAlign:"center"}},
-          React.createElement("div",{style:{fontSize:8,letterSpacing:"0.1em",color:"#555",fontWeight:600,marginBottom:2}},lbl),
-          React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#aaa"}},`$${p.prices[t].toFixed(2)}`),
-          React.createElement("div",{style:{fontSize:7,color:"#444",letterSpacing:"0.08em"}},"per week")
-        ))
-      )
-    ))
-  )
+      );
+    })
+  ),
+  admSeg==="coaching"&&React.createElement(CoachingView,{showToast})
+  );
+}
+
+// ── Coaching Notes ────────────────────────────────────────────────────────────
+
+function CoachingView({showToast}){
+  const CLASS_NAMES=["RISE UP 1","RISE UP 2","RISE UP 3","RISE UP 4","RISE UP 5","RISE UP 6"];
+  const [notes,setNotes]=useState({});
+  const [expanded,setExpanded]=useState(null);
+  const [editing,setEditing]=useState(null);
+  const [draft,setDraft]=useState("");
+  const [saving,setSaving]=useState(false);
+  const [loading,setLoading]=useState(true);
+
+  useEffect(()=>{loadNotes();},[]);
+
+  async function loadNotes(){
+    setLoading(true);
+    const data=await sbGet("coaching_notes","select=class_name,content");
+    const map={};
+    (data||[]).forEach(r=>{map[r.class_name]=r.content;});
+    setNotes(map);
+    setLoading(false);
+  }
+
+  async function saveNote(className){
+    setSaving(true);
+    const existing=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(className)}&select=id`);
+    if(existing&&existing.length){
+      await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(className)}`,{content:draft,updated_at:Date.now()});
+    } else {
+      await sbPost("coaching_notes",{class_name:className,content:draft,updated_at:Date.now()});
+    }
+    setNotes(p=>({...p,[className]:draft}));
+    setSaving(false);setEditing(null);
+    showToast("Coaching notes saved ✓");
+  }
+
+  function startEdit(className){
+    setDraft(notes[className]||"");
+    setEditing(className);
+  }
+
+  if(loading)return React.createElement("div",{style:{padding:20,fontSize:10,letterSpacing:"0.18em",color:"#555"}},"LOADING...");
+
+  return React.createElement("div",{style:{marginTop:16}},
+    React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},"COACHING NOTES · ADMIN"),
+    CLASS_NAMES.map(cn=>{
+      const isOpen=expanded===cn;
+      const isEditing=editing===cn;
+      const content=notes[cn]||"";
+      return React.createElement("div",{key:cn,style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:8,marginBottom:8,overflow:"hidden"}},
+        React.createElement("button",{onClick:()=>{setExpanded(isOpen?null:cn);setEditing(null);},style:{width:"100%",background:"none",border:"none",padding:"14px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",textAlign:"left"}},
+          React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.08em",color:"#fff"}},cn),
+          React.createElement("div",{style:{color:"#444",fontSize:14,transition:"transform .2s",transform:isOpen?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
+        ),
+        isOpen&&React.createElement("div",{style:{padding:"0 14px 14px"}},
+          React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:8}},
+            !isEditing
+              ?React.createElement("button",{onClick:()=>startEdit(cn),style:{background:"none",border:"1px solid #333",borderRadius:4,padding:"5px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT")
+              :React.createElement("div",{style:{display:"flex",gap:8}},
+                React.createElement("button",{onClick:()=>setEditing(null),style:{background:"none",border:"1px solid #333",borderRadius:4,padding:"5px 12px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
+                React.createElement("button",{onClick:()=>saveNote(cn),disabled:saving,style:{background:"#1d9bf0",border:"none",borderRadius:4,padding:"5px 12px",color:"#fff",fontSize:10,letterSpacing:"0.1em",cursor:"pointer",fontWeight:600}},saving?"SAVING...":"SAVE")
+              )
+          ),
+          isEditing
+            ?React.createElement("textarea",{value:draft,onChange:e=>setDraft(e.target.value),style:{width:"100%",minHeight:320,background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#ccc",fontSize:13,lineHeight:1.7,padding:"10px 12px",fontFamily:"'DM Sans',sans-serif",fontWeight:300,letterSpacing:"0.02em",resize:"vertical",boxSizing:"border-box"}})
+            :content
+              ?React.createElement("div",{style:{fontSize:13,color:"#aaa",lineHeight:1.8,fontWeight:300,whiteSpace:"pre-wrap",letterSpacing:"0.02em"}},content)
+              :React.createElement("div",{style:{fontSize:10,color:"#333",letterSpacing:"0.1em",textAlign:"center",padding:"20px 0"}},"NO NOTES YET · TAP EDIT TO ADD")
+        )
+      );
+    })
   );
 }
 
