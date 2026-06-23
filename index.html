@@ -457,6 +457,16 @@ const getWeekStart=()=>{const now=new Date();const m=mondayOf(now);return now.ge
 const getInitDay=()=>{const d=new Date().getDay();return d===0?0:Math.min(d-1,5);};
 function timeAgo(ts){const s=Math.floor((Date.now()-ts)/1000);if(s<60)return"just now";if(s<3600)return`${Math.floor(s/60)}m ago`;if(s<86400)return`${Math.floor(s/3600)}h ago`;return`${Math.floor(s/86400)}d ago`;}
 const fmtJoinDate=ts=>{if(!ts)return"Unknown";const d=new Date(ts);return`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;};
+// ── Membership tier limits ────────────────────────────────────────────────────
+function getTierLimits(membershipType){
+  if(!membershipType)return{hiit:0,strength:0,wellness:0};
+  const mt=membershipType.toUpperCase();
+  if(mt.includes("SIGNATURE")||mt.includes("DUO"))return{hiit:null,strength:null,wellness:2};
+  if(mt.includes("ACTIVE"))return{hiit:2,strength:1,wellness:1};
+  return{hiit:3,strength:1,wellness:1}; // Foundation, Essential, Community
+}
+// Tuesday=2, Thursday=4 are Strength days
+const isStrengthDay=dk=>{const d=new Date(dk+"T00:00:00");return d.getDay()===2||d.getDay()===4;};;
 
 // ── Image Cropper ─────────────────────────────────────────────────────────────
 function ImageCropper({imageSrc,onSave,onCancel}){
@@ -519,10 +529,20 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
   const [savingExtra,setSavingExtra]=useState(false);
   const [extraOk,setExtraOk]=useState(false);
 
+  function calcExpiryDate(joinedAt,membershipType){
+    const m=membershipType.match(/(\d+)\s*months?/i);
+    if(!m)return null;
+    const months=parseInt(m[1]);
+    const base=new Date(joinedAt);
+    base.setMonth(base.getMonth()+months);
+    return base.toISOString().split("T")[0];
+  }
   async function saveMembership(){
     setSavingMembership(true);
-    await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,{membership_type:membershipEdit});
+    const expiry=calcExpiryDate(member.joined_at,membershipEdit);
+    await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,{membership_type:membershipEdit,expiry_date:expiry});
     member.membership_type=membershipEdit;
+    member.expiry_date=expiry;
     setSavingMembership(false);setEditingMembership(false);setMembershipOk(true);
     setTimeout(()=>setMembershipOk(false),2000);
   }
@@ -623,6 +643,23 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
           onClick:saveMembership,disabled:savingMembership,
           style:{width:"100%",background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.15em",padding:"12px",borderRadius:3,cursor:"pointer",marginBottom:4}
         },savingMembership?"SAVING...":membershipOk?"SAVED ✓":"SAVE MEMBERSHIP")
+      ),
+      member.expiry_date&&React.createElement(React.Fragment,null,
+        (()=>{
+          const today=new Date();today.setHours(0,0,0,0);
+          const exp=new Date(member.expiry_date);exp.setHours(0,0,0,0);
+          const daysLeft=Math.round((exp-today)/(1000*60*60*24));
+          const expFmt=new Date(member.expiry_date).toLocaleDateString("en-NZ",{day:"numeric",month:"short",year:"numeric"});
+          const warn=daysLeft<=14&&daysLeft>=0;
+          const expired=daysLeft<0;
+          return React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #0f0f0f"}},
+            React.createElement("div",{className:"mp-label"},"Expires"),
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+              React.createElement("div",{className:"mp-value",style:{color:expired?"#e06040":warn?"#f5a623":"#aaa"}},expFmt),
+              (warn||expired)&&React.createElement("div",{style:{fontSize:8,letterSpacing:"0.12em",fontWeight:700,padding:"2px 7px",borderRadius:10,background:expired?"#2a0a0a":"#2a1a00",color:expired?"#e06040":"#f5a623"}},expired?"EXPIRED":daysLeft===0?"TODAY":daysLeft===1?"1 DAY LEFT":`${daysLeft} DAYS LEFT`)
+            )
+          );
+        })()
       ),
       React.createElement(Row,{label:"Registered",value:member.registration_date}),
       React.createElement("div",{className:"mp-section",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
@@ -798,7 +835,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
 }
 
 // ── Wellness View ─────────────────────────────────────────────────────────────
-function WellnessView({session,showToast,bookings,isAdmin}){
+function WellnessView({session,showToast,bookings,isAdmin,memberData}){
   const [wellBks,setWellBks]=useState([]);
   const [weekStart,setWeekStart]=useState(getWeekStart);
   const [selDay,setSelDay]=useState(getInitDay);
@@ -875,6 +912,11 @@ function WellnessView({session,showToast,bookings,isAdmin}){
         const taken=!!bk&&!ismine;
         const past=isPastSlot(time);
         const lk=`${selDK}-${time}`;const isBusy=!!busy[lk];
+        const wellLimit=isAdmin?null:getTierLimits(memberData?.membership_type).wellness;
+        const weekMonday=toDS(mondayOf(new Date(selDK+"T00:00:00")));
+        const weekSunday=toDS(addDays(mondayOf(new Date(selDK+"T00:00:00")),6));
+        const weekWellUsed=!ismine&&session?wellBks.filter(b=>b.email===session.email&&b.date_key>=weekMonday&&b.date_key<=weekSunday).length:0;
+        const wellAtLimit=!ismine&&(wellLimit===0||(wellLimit!==null&&weekWellUsed>=wellLimit));
         const isExpanded=expandedWell===time;
         const slotBks=wellBks.filter(b=>b.date_key===selDK&&b.time===time);
         return React.createElement("div",{key:time,style:{borderRadius:7,overflow:"hidden"}},
@@ -888,6 +930,7 @@ function WellnessView({session,showToast,bookings,isAdmin}){
             !past&&(ismine
               ?React.createElement("button",{className:"well-btn wb-cancel",onClick:e=>{e.stopPropagation();handleCancel(time);}},"Cancel")
               :taken?React.createElement("button",{className:"well-btn wb-taken",disabled:true},"Booked")
+              :wellAtLimit?React.createElement("button",{className:"well-btn wb-taken",disabled:true},wellLimit===0?"No Plan":"Limit")
               :React.createElement("button",{className:"well-btn wb-book",onClick:e=>{e.stopPropagation();handleBook(time);},disabled:isBusy},isBusy?"...":"Book")
             )
           ),
@@ -1153,7 +1196,17 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
           ),
           React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.email)),
           mb.phone&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.phone)),
-          mb.membership_type&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",{style:{color:"#1d9bf0"}},mb.membership_type)),
+          mb.membership_type&&React.createElement("div",{className:"adm-mc-detail",style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}},
+            React.createElement("span",{style:{color:"#1d9bf0"}},mb.membership_type),
+            mb.expiry_date&&(()=>{
+              const today=new Date();today.setHours(0,0,0,0);
+              const exp=new Date(mb.expiry_date);exp.setHours(0,0,0,0);
+              const daysLeft=Math.round((exp-today)/(1000*60*60*24));
+              if(daysLeft<0)return React.createElement("span",{style:{fontSize:8,letterSpacing:"0.1em",fontWeight:700,padding:"2px 6px",borderRadius:10,background:"#2a0a0a",color:"#e06040"}},"EXPIRED");
+              if(daysLeft<=14)return React.createElement("span",{style:{fontSize:8,letterSpacing:"0.1em",fontWeight:700,padding:"2px 6px",borderRadius:10,background:"#2a1a00",color:"#f5a623"}},daysLeft===0?"EXPIRES TODAY":`${daysLeft}D LEFT`);
+              return null;
+            })()
+          ),
           React.createElement("div",{className:"adm-mc-detail"},`Joined ${joinDate} \u00B7 ${mbBks} upcoming booking${mbBks!==1?"s":""}`)
         );
       })
@@ -1315,7 +1368,7 @@ function isWorkoutReleased(monthYear,weekNum,isAdmin){
   if(wkStart>1&&nowDay===wkStart-1&&nowHour>=21)return true;
   return false;
 }
-function StrengthTab({session,isAdmin,showToast}){
+function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
   const SP_MONTHS=["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
   const nowMY=(()=>{const n=new Date();return`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`;})();
   const autoWeek=()=>{const d=getNZDate().getDate();return d<=7?1:d<=14?2:d<=24?3:4;};
@@ -1512,6 +1565,24 @@ function StrengthTab({session,isAdmin,showToast}){
 
   const released=isWorkoutReleased(monthYear,weekNum,isAdmin);
 
+  // Determine which strength sessions member has booked this week
+  const strengthUnlock=(()=>{
+    if(isAdmin)return{Lower:true,Upper:true};
+    if(!session||!bookings)return{Lower:false,Upper:false};
+    const now=new Date();
+    const mon=toDS(mondayOf(now));
+    const sun=toDS(addDays(mondayOf(now),6));
+    const thisWeekStrength=bookings.filter(b=>
+      b.email===session.email&&
+      b.date_key>=mon&&b.date_key<=sun&&
+      (b.session_type==="Strength"||isStrengthDay(b.date_key))
+    );
+    const hasLower=thisWeekStrength.some(b=>{const d=new Date(b.date_key+"T00:00:00");return d.getDay()===2;}); // Tuesday
+    const hasUpper=thisWeekStrength.some(b=>{const d=new Date(b.date_key+"T00:00:00");return d.getDay()===4;}); // Thursday
+    return{Lower:hasLower,Upper:hasUpper};
+  })();
+  const canViewCurrent=strengthUnlock[sessType];
+
   return React.createElement("div",{className:"sp-wrap"},
     React.createElement("div",{className:"well-hdr",style:{padding:"0 0 4px"}},
       React.createElement("div",{className:"well-title"},"STRENGTH"),
@@ -1533,7 +1604,12 @@ function StrengthTab({session,isAdmin,showToast}){
       })
     ),
     React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.14em",marginBottom:16,fontWeight:600}},`${sessType.toUpperCase()} · WEEK ${weekNum}${weekNum===currentWeek&&monthYear===nowMY?" · CURRENT WEEK":""}`),
-    !released?React.createElement("div",{className:"sp-locked"},"🔒",React.createElement("br",null),"THIS WORKOUT UNLOCKS",React.createElement("br",null),"AT 9PM THE NIGHT BEFORE")
+    !canViewCurrent?React.createElement("div",{className:"sp-locked"},
+      React.createElement("div",{style:{fontSize:20,marginBottom:8}},"🔒"),
+      React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:6}},`${sessType.toUpperCase()} LOCKED`),
+      React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",lineHeight:1.8}},"Book a "+(sessType==="Lower"?"Tuesday":"Thursday")+" class to unlock this week's "+sessType+" program")
+    )
+    :!released?React.createElement("div",{className:"sp-locked"},"🔒",React.createElement("br",null),"THIS WORKOUT UNLOCKS",React.createElement("br",null),"AT 9PM THE NIGHT BEFORE")
     :loading?React.createElement("div",{className:"sp-loading"},"LOADING...")
     :React.createElement(React.Fragment,null,
       program.length===0&&React.createElement("div",{className:"sp-loading"},"NO PROGRAM DATA"),
@@ -1669,7 +1745,7 @@ function App(){
     const keys=[];const now=new Date();now.setHours(0,0,0,0);
     for(let i=0;i<28;i++){const d=addDays(now,i);if(d.getDay()!==0)keys.push(toDS(d));}
     if(!keys.length)return;
-    const data=await sbGet("bookings",`date_key=in.(${keys.join(",")})&select=email,name,date_key,time`);
+    const data=await sbGet("bookings",`date_key=in.(${keys.join(",")})&select=email,name,date_key,time,session_type`);
     setBookings(data||[]);
   }
 
@@ -1741,13 +1817,35 @@ function App(){
     setFpBusy(false);setFpMsg("Reset link sent! Check your email. The link expires in 24 hours.");
   }
 
+  // Count how many HIIT or Strength bookings a member has in a given Mon-Sun week
+  function weeklyClassCount(email,type,refDateKey){
+    const refDate=new Date(refDateKey+"T00:00:00");
+    const mon=toDS(mondayOf(refDate));
+    const sun=toDS(addDays(mondayOf(refDate),6));
+    return bookings.filter(b=>{
+      if(b.email!==email)return false;
+      if(b.date_key<mon||b.date_key>sun)return false;
+      const bType=b.session_type||(isStrengthDay(b.date_key)?"Strength":"HIIT");
+      return bType===type;
+    }).length;
+  }
+
   async function handleBook(time){
     if(!session)return;
     const lk=`${selDK}-${time}`;setBkBusy(p=>({...p,[lk]:true}));
     const list=getBksFor(selDK,time);const maxSp=getMaxSpots(time,selDK);
     if(list.length>=maxSp){showToast("Class is full");setBkBusy(p=>({...p,[lk]:false}));return;}
     if(list.some(b=>b.email===session.email)){showToast("Already booked");setBkBusy(p=>({...p,[lk]:false}));return;}
-    const newBk={email:session.email,name:session.name,date_key:selDK,time};
+    const sessionType=isStrengthDay(selDK)?"Strength":"HIIT";
+    if(!isAdmin){
+      const limits=getTierLimits(memberData?.membership_type);
+      const typeLimit=sessionType==="Strength"?limits.strength:limits.hiit;
+      if(typeLimit===0){showToast("No membership \u2014 contact admin");setBkBusy(p=>({...p,[lk]:false}));return;}
+      if(typeLimit!==null&&weeklyClassCount(session.email,sessionType,selDK)>=typeLimit){
+        showToast(`Weekly ${sessionType} limit reached`);setBkBusy(p=>({...p,[lk]:false}));return;
+      }
+    }
+    const newBk={email:session.email,name:session.name,date_key:selDK,time,session_type:sessionType};
     setBookings(prev=>[...prev,newBk]);
     const ok=await sbPost("bookings",newBk);
     if(!ok){setBookings(prev=>prev.filter(b=>!(b.email===session.email&&b.date_key===selDK&&b.time===time)));showToast("Booking failed \u2014 try again");}
@@ -1906,8 +2004,13 @@ function App(){
           const list=getBksFor(selDK,time);const taken=list.length;const maxSp=getMaxSpots(time,selDK);const left=maxSp-taken;
           const userBkd=userBooked(selDK,time);const full=left===0&&!userBkd;
           const past=isPastClass(time);const lk=`${selDK}-${time}`;const busy=!!bkBusy[lk];
-          const subText=userBkd?"Booked \u2713":full?"Full":`${left} ${left===1?"Spot":"Spots"} Available`;
-          const subCls=userBkd?"cg":full?"cf":left<=3?"cl":"co";
+          const sessionType=isStrengthDay(selDK)?"Strength":"HIIT";
+          const tierLimits=getTierLimits(memberData?.membership_type);
+          const typeLimit=sessionType==="Strength"?tierLimits.strength:tierLimits.hiit;
+          const weekUsed=!userBkd&&session?weeklyClassCount(session.email,sessionType,selDK):0;
+          const atLimit=!userBkd&&!isAdmin&&(typeLimit===0||(typeLimit!==null&&weekUsed>=typeLimit));
+          const subText=userBkd?"Booked \u2713":full?"Full":atLimit?"Limit reached":`${left} ${left===1?"Spot":"Spots"} Available`;
+          const subCls=userBkd?"cg":full?"cf":atLimit?"cf":left<=3?"cl":"co";
           const isExpanded=expandedClass===time;
           return React.createElement("div",{key:time,style:{borderRadius:7,overflow:"hidden",marginBottom:0}},
             React.createElement("div",{className:`c-row${userBkd?" cb":""}${past?" cp":""}`,style:{cursor:isAdmin?"pointer":"default"},onClick:isAdmin?()=>setExpandedClass(isExpanded?null:time):undefined},
@@ -1920,6 +2023,7 @@ function App(){
               !past&&(userBkd
                 ?React.createElement("button",{className:"c-btn bc",onClick:e=>{e.stopPropagation();handleCancel(time,selDK);}},"Cancel")
                 :full?React.createElement("button",{className:"c-btn bf",disabled:true},"Full")
+                :atLimit?React.createElement("button",{className:"c-btn bf",disabled:true},typeLimit===0?"No Plan":"Limit")
                 :React.createElement("button",{className:"c-btn bb",onClick:e=>{e.stopPropagation();handleBook(time);},disabled:busy},busy?"...":"Book")
               )
             ),
@@ -2008,8 +2112,8 @@ function App(){
     ),
 
     tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
-    tab==="wellness"&&wellnessEnabled&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin}),
-    tab==="strength"&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast})),
+    tab==="wellness"&&wellnessEnabled&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin,memberData}),
+    tab==="strength"&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast,bookings,memberData})),
     tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,wellnessEnabled,saveWellnessSetting}),
 
     React.createElement("div",{className:"tab-bar"},
