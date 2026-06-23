@@ -67,12 +67,12 @@ html,body{background:#080808;min-height:100vh}
 .c-mid{flex:1;display:flex;flex-direction:column;gap:5px}
 .c-bars{display:flex;gap:2px}
 .c-bar{flex:1;height:2px;border-radius:1px;background:#2a2a2a;transition:background .3s}
-.c-bar.ct{background:#fff}
+.c-bar.ct{background:#4aaa66}
 .c-sub{font-size:10px;letter-spacing:0.1em;color:#999;font-weight:500}
 .c-sub.cl{color:#e06040}
 .c-sub.co{color:#aaa}
 .c-sub.ck{color:#777}
-.c-sub.cf{color:#555}.c-sub.cg{color:#1d9bf0}
+.c-sub.cf{color:#555}.c-sub.cg{color:#4aaa66}
 .c-btn{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:0.12em;padding:8px 12px;border-radius:3px;border:none;cursor:pointer;white-space:nowrap;transition:all .15s}
 .c-btn.bb{background:#fff;color:#000}
 .c-btn.bb:hover:not(:disabled){background:#ddd}
@@ -243,9 +243,10 @@ html,body{background:#080808;min-height:100vh}
 @keyframes ld{0%{width:0}50%{width:100%}100%{width:0}}
 .adm-wrap{padding:16px;flex:1;overflow-y:auto}
 .adm-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.15em;color:#fff;margin-bottom:16px}
-.adm-seg{display:flex;gap:6px;margin-bottom:16px}
-.adm-seg-btn{flex:1;padding:9px;background:#0e0e0e;border:1px solid #2a2a2a;border-radius:5px;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.14em;color:#888;font-weight:600;cursor:pointer;transition:all .15s}
-.adm-seg-btn.aas{background:#fff;color:#000;border-color:#fff}
+.adm-seg{display:flex;border-top:1px solid #444;border-bottom:1px solid #444;margin-bottom:16px}
+.adm-seg-btn{flex:1;padding:9px;background:none;border:none;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.14em;color:#666;font-weight:600;cursor:pointer;transition:color .15s}
+.adm-seg-btn.aas{color:#fff;border-top:1px solid #fff;border-bottom:1px solid #fff;margin-top:-1px;margin-bottom:-1px}
+.adm-seg-btn:hover:not(.aas){color:#bbb}
 .adm-day-nav{display:flex;align-items:center;gap:8px;margin-bottom:14px}
 .adm-day-lbl{flex:1;text-align:center;font-size:10px;letter-spacing:0.18em;color:#fff;font-weight:600}
 .adm-arrow{background:none;border:none;color:#888;cursor:pointer;font-size:22px;padding:4px 8px;line-height:1;transition:color .15s}
@@ -257,10 +258,10 @@ html,body{background:#080808;min-height:100vh}
 .adm-class-mid{flex:1}
 .adm-class-count{font-size:10px;letter-spacing:0.1em;color:#999;font-weight:500}
 .adm-class-count.full{color:#e06040}
-.adm-class-count.has-bk{color:#1d9bf0}
+.adm-class-count.has-bk{color:#4aaa66}
 .adm-class-bars{display:flex;gap:2px;margin-top:5px}
 .adm-bar{flex:1;height:2px;border-radius:1px;background:#2a2a2a}
-.adm-bar.at{background:#1d9bf0}
+.adm-bar.at{background:#4aaa66}
 .adm-chev{font-size:14px;color:#555;transition:transform .2s}
 .adm-chev.open{transform:rotate(180deg)}
 .adm-members-list{border-top:1px solid #141414}
@@ -1302,8 +1303,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
               React.createElement("div",{className:"adm-class-hdr",style:{cursor:"default"}},
                 React.createElement("div",{className:"adm-class-time"},fmt12(time)),
                 React.createElement("div",{className:"adm-class-mid"},
-                  React.createElement("div",{className:"adm-class-count",style:{color:"#1d9bf0"}},"Booked \u2713"),
-                  React.createElement("div",{className:"adm-member-email",style:{marginTop:4,color:"#1d9bf0"}},bk.name+" \u00B7 "+bk.email)
+                  React.createElement("div",{className:"adm-class-count",style:{color:"#4aaa66"}},"Booked \u2713"),
+                  React.createElement("div",{className:"adm-member-email",style:{marginTop:4,color:"#4aaa66"}},bk.name+" \u00B7 "+bk.email)
                 ),
                 React.createElement("button",{className:"adm-remove-btn",style:{fontSize:11},onClick:async()=>{
                   setWellAdmBks(prev=>prev.filter(b=>!(b.date_key===admDK&&b.time===time)));
