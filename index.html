@@ -1178,7 +1178,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
       React.createElement("button",{className:`adm-seg-btn${admSeg==="members"?" aas":""}`,onClick:()=>setAdmSeg("members")},"MEMBERS"),
       React.createElement("button",{className:`adm-seg-btn${admSeg==="classes"?" aas":""}`,onClick:()=>setAdmSeg("classes")},"CLASSES"),
       React.createElement("button",{className:`adm-seg-btn${admSeg==="wellness"?" aas":""}`,onClick:()=>setAdmSeg("wellness")},"WELLNESS"),
-      React.createElement("button",{className:`adm-seg-btn${admSeg==="tiers"?" aas":""}`,onClick:()=>setAdmSeg("tiers")},"TIERS"),
+      React.createElement("button",{className:`adm-seg-btn${admSeg==="onboarding"?" aas":""}`,onClick:()=>setAdmSeg("onboarding")},"ONBOARDING"),
       React.createElement("button",{className:`adm-seg-btn${admSeg==="coaching"?" aas":""}`,onClick:()=>setAdmSeg("coaching")},"COACHING")
     ),
     admSeg==="members"&&(!membersLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
@@ -1318,39 +1318,159 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
           })
       )
     ),
-  admSeg==="tiers"&&React.createElement("div",{style:{marginTop:16}},
-    React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},"MEMBERSHIP TIERS · ADMIN REFERENCE"),
-    [
-      {name:"FOUNDATION MEMBER",sub:"",desc:"3 HIIT · 1 Strength · 1 Wellness",prices:{3:45,6:42,12:39},note:"Same as Essential Member · Price reserved for founding members"},
-      {name:"ACTIVE MEMBER",sub:"",desc:"2 HIIT · 1 Strength · 50% Off Wellness Sessions",prices:{3:45,6:42,12:39},note:""},
-      {name:"COMMUNITY MEMBER",sub:"Student · Youth · Surf Life Saving",desc:"3 HIIT · 1 Strength · 50% Off Wellness Sessions",prices:{3:45,6:42,12:39},note:""},
-      {name:"ESSENTIAL MEMBER",sub:"",desc:"3 HIIT · 1 Strength · 1 Wellness",prices:{3:55,6:52,12:49},note:""},
-      {name:"SIGNATURE MEMBER",sub:"",desc:"Unlimited HIIT · Unlimited Strength · 2 Wellness",prices:{3:65,6:62,12:59},note:""},
-      {name:"DUO MEMBER",sub:"2 Adults",desc:"Unlimited HIIT · Unlimited Strength · 2 Wellness (Each)",prices:{3:105,6:102,12:99},note:""},
-    ].map((p,i)=>{
-      const open=expandedTier===i;
-      return React.createElement("div",{key:i,style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:8,marginBottom:8,overflow:"hidden"}},
-        React.createElement("button",{onClick:()=>setExpandedTier(open?null:i),style:{width:"100%",background:"none",border:"none",padding:"14px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",textAlign:"left"}},
-          React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.08em",color:"#fff"}},
-            p.name
-          ),
-          React.createElement("div",{style:{color:"#444",fontSize:14,transition:"transform .2s",transform:open?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
-        ),
-        open&&React.createElement("div",{style:{padding:"0 14px 14px"}},
-          React.createElement("div",{style:{fontSize:11,color:"#888",letterSpacing:"0.06em",marginBottom:8,fontWeight:400}},p.desc),
-          p.note&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.06em",marginBottom:12}},p.note),
-          React.createElement("div",{style:{display:"flex",gap:6}},
-            [[12,"12 MO"],[6,"6 MO"],[3,"3 MO"]].map(([t,lbl])=>React.createElement("div",{key:t,style:{flex:1,background:"#141414",border:"1px solid #222",borderRadius:4,padding:"7px 4px",textAlign:"center"}},
-              React.createElement("div",{style:{fontSize:8,letterSpacing:"0.1em",color:"#555",fontWeight:600,marginBottom:2}},lbl),
-              React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#aaa"}},`$${p.prices[t].toFixed(2)}`),
-              React.createElement("div",{style:{fontSize:7,color:"#444",letterSpacing:"0.08em"}},"per week")
-            ))
-          )
-        )
-      );
-    })
-  ),
+  admSeg==="onboarding"&&React.createElement(OnboardingView,{expandedTier,setExpandedTier,showToast}),
   admSeg==="coaching"&&React.createElement(CoachingView,{showToast})
+  );
+}
+
+// ── Onboarding View ──────────────────────────────────────────────────────────
+
+function OnboardingView({expandedTier,setExpandedTier,showToast}){
+  const TIERS=[
+    {name:"FOUNDATION MEMBER",desc:"3 HIIT · 1 Strength · 1 Wellness",prices:{3:45,6:42,12:39},note:"Same as Essential Member · Price reserved for founding members"},
+    {name:"ACTIVE MEMBER",desc:"2 HIIT · 1 Strength · 50% Off Wellness Sessions",prices:{3:45,6:42,12:39},note:""},
+    {name:"COMMUNITY MEMBER",desc:"3 HIIT · 1 Strength · 50% Off Wellness Sessions",prices:{3:45,6:42,12:39},note:""},
+    {name:"ESSENTIAL MEMBER",desc:"3 HIIT · 1 Strength · 1 Wellness",prices:{3:55,6:52,12:49},note:""},
+    {name:"SIGNATURE MEMBER",desc:"Unlimited HIIT · Unlimited Strength · 2 Wellness",prices:{3:65,6:62,12:59},note:""},
+    {name:"DUO MEMBER",desc:"Unlimited HIIT · Unlimited Strength · 2 Wellness (Each)",prices:{3:105,6:102,12:99},note:""},
+  ];
+
+  // Onboarding Process note (saved via coaching_notes table with special key)
+  const PROCESS_KEY="__ONBOARDING_PROCESS__";
+  const [processNote,setProcessNote]=useState("");
+  const [processEditing,setProcessEditing]=useState(false);
+  const [processDraft,setProcessDraft]=useState("");
+  const [processSaving,setProcessSaving]=useState(false);
+  const [processLoaded,setProcessLoaded]=useState(false);
+
+  // Send invite
+  const [inviteEmail,setInviteEmail]=useState("");
+  const [inviteSending,setInviteSending]=useState(false);
+  const [inviteMsg,setInviteMsg]=useState("");
+
+  // Which outer panel is open
+  const [openPanel,setOpenPanel]=useState(null);
+
+  useEffect(()=>{
+    sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(PROCESS_KEY)}&select=content`)
+      .then(d=>{
+        if(d&&d.length)setProcessNote(d[0].content||"");
+        setProcessLoaded(true);
+      });
+  },[]);
+
+  async function saveProcess(){
+    setProcessSaving(true);
+    const existing=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(PROCESS_KEY)}&select=id`);
+    if(existing&&existing.length){
+      await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(PROCESS_KEY)}`,{content:processDraft,updated_at:Date.now()});
+    } else {
+      await sbPost("coaching_notes",{class_name:PROCESS_KEY,content:processDraft,updated_at:Date.now()});
+    }
+    setProcessNote(processDraft);
+    setProcessSaving(false);
+    setProcessEditing(false);
+    showToast("Onboarding process saved ✓");
+  }
+
+  async function sendInvite(){
+    if(!inviteEmail.trim())return;
+    setInviteSending(true);
+    setInviteMsg("");
+    try{
+      const SUPABASE_URL="https://xczwmexavysvljmobbgv.supabase.co";
+      const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhjendtZXhhdnlzdmxqbW9iYmd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzOTI5NDIsImV4cCI6MjA5NTk2ODk0Mn0.xhB8SYiJ9CJZE5OC1cCIbS2xNPZ4f76pZaRoTsLb0Gs";
+      const res=await fetch(`${SUPABASE_URL}/functions/v1/send-onboarding-invite`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":`Bearer ${SUPABASE_ANON_KEY}`},
+        body:JSON.stringify({email:inviteEmail.trim()})
+      });
+      const json=await res.json();
+      if(json.ok){setInviteMsg("✓ Invite sent to "+inviteEmail.trim());setInviteEmail("");}
+      else{setInviteMsg("Error: "+(json.error||"Could not send"));}
+    }catch(e){setInviteMsg("Error: "+e.message);}
+    setInviteSending(false);
+  }
+
+  function Panel({id,title,children}){
+    const open=openPanel===id;
+    return React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:8,marginBottom:8,overflow:"hidden"}},
+      React.createElement("button",{onClick:()=>setOpenPanel(open?null:id),style:{width:"100%",background:"none",border:"none",padding:"14px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",textAlign:"left"}},
+        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.08em",color:"#fff"}},title),
+        React.createElement("div",{style:{color:"#444",fontSize:14,transition:"transform .2s",transform:open?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
+      ),
+      open&&React.createElement("div",{style:{padding:"0 14px 14px"}},children)
+    );
+  }
+
+  return React.createElement("div",{style:{marginTop:16}},
+    React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},"ONBOARDING · ADMIN"),
+
+    // ── Membership Tiers ──
+    React.createElement(Panel,{id:"tiers",title:"MEMBERSHIP TIERS"},
+      TIERS.map((p,i)=>{
+        const open=expandedTier===i;
+        return React.createElement("div",{key:i,style:{background:"#111",border:"1px solid #1e1e1e",borderRadius:6,marginBottom:6,overflow:"hidden"}},
+          React.createElement("button",{onClick:()=>setExpandedTier(open?null:i),style:{width:"100%",background:"none",border:"none",padding:"12px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",textAlign:"left"}},
+            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.08em",color:"#ccc"}},p.name),
+            React.createElement("div",{style:{color:"#444",fontSize:12,transition:"transform .2s",transform:open?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
+          ),
+          open&&React.createElement("div",{style:{padding:"0 12px 12px"}},
+            React.createElement("div",{style:{fontSize:11,color:"#888",letterSpacing:"0.06em",marginBottom:8,fontWeight:400}},p.desc),
+            p.note&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.06em",marginBottom:12}},p.note),
+            React.createElement("div",{style:{display:"flex",gap:6}},
+              [[12,"12 MO"],[6,"6 MO"],[3,"3 MO"]].map(([t,lbl])=>React.createElement("div",{key:t,style:{flex:1,background:"#141414",border:"1px solid #222",borderRadius:4,padding:"7px 4px",textAlign:"center"}},
+                React.createElement("div",{style:{fontSize:8,letterSpacing:"0.1em",color:"#555",fontWeight:600,marginBottom:2}},lbl),
+                React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#aaa"}},`$${p.prices[t].toFixed(2)}`),
+                React.createElement("div",{style:{fontSize:7,color:"#444",letterSpacing:"0.08em"}},"per week")
+              ))
+            )
+          )
+        );
+      })
+    ),
+
+    // ── Onboarding Process ──
+    React.createElement(Panel,{id:"process",title:"ONBOARDING PROCESS"},
+      !processLoaded
+        ?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"10px 0"}},"LOADING...")
+        :React.createElement("div",null,
+          React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:8}},
+            !processEditing
+              ?React.createElement("button",{onClick:()=>{setProcessDraft(processNote);setProcessEditing(true);},style:{background:"none",border:"1px solid #333",borderRadius:4,padding:"5px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT")
+              :React.createElement("div",{style:{display:"flex",gap:8}},
+                React.createElement("button",{onClick:()=>setProcessEditing(false),style:{background:"none",border:"1px solid #333",borderRadius:4,padding:"5px 12px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
+                React.createElement("button",{onClick:saveProcess,disabled:processSaving,style:{background:"#1d9bf0",border:"none",borderRadius:4,padding:"5px 12px",color:"#fff",fontSize:10,letterSpacing:"0.1em",cursor:"pointer",fontWeight:600}},processSaving?"SAVING...":"SAVE")
+              )
+          ),
+          processEditing
+            ?React.createElement("textarea",{value:processDraft,onChange:e=>setProcessDraft(e.target.value),style:{width:"100%",minHeight:240,background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#ccc",fontSize:13,lineHeight:1.7,padding:"10px 12px",fontFamily:"'DM Sans',sans-serif",fontWeight:300,letterSpacing:"0.02em",resize:"vertical",boxSizing:"border-box"}})
+            :processNote
+              ?React.createElement("div",{style:{fontSize:13,color:"#ccc",lineHeight:1.8,fontWeight:300,whiteSpace:"pre-wrap",letterSpacing:"0.02em"}},processNote)
+              :React.createElement("div",{style:{fontSize:10,color:"#333",letterSpacing:"0.1em",textAlign:"center",padding:"20px 0"}},"NO PROCESS NOTES YET · TAP EDIT TO ADD")
+        )
+    ),
+
+    // ── Send Registration Form ──
+    React.createElement(Panel,{id:"invite",title:"SEND REGISTRATION FORM"},
+      React.createElement("div",null,
+        React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.1em",marginBottom:12,lineHeight:1.7}},"Enter a new member's email address to send them the Team 365 registration form."),
+        React.createElement("input",{
+          type:"email",
+          placeholder:"member@email.com",
+          value:inviteEmail,
+          onChange:e=>setInviteEmail(e.target.value),
+          onKeyDown:e=>{if(e.key==="Enter")sendInvite();},
+          style:{width:"100%",background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#ccc",fontSize:13,padding:"10px 12px",fontFamily:"'DM Sans',sans-serif",letterSpacing:"0.02em",boxSizing:"border-box",marginBottom:10,outline:"none"}
+        }),
+        React.createElement("button",{
+          onClick:sendInvite,
+          disabled:inviteSending||!inviteEmail.trim(),
+          style:{width:"100%",background:inviteEmail.trim()?"#1d9bf0":"#1a1a1a",border:"none",borderRadius:4,padding:"11px",color:inviteEmail.trim()?"#fff":"#444",fontSize:10,letterSpacing:"0.14em",fontWeight:600,cursor:inviteEmail.trim()?"pointer":"default",fontFamily:"'DM Sans',sans-serif",transition:"all .15s"}
+        },inviteSending?"SENDING...":"SEND REGISTRATION FORM"),
+        inviteMsg&&React.createElement("div",{style:{marginTop:10,fontSize:10,letterSpacing:"0.1em",color:inviteMsg.startsWith("✓")?"#4aaa66":"#e05",textAlign:"center"}},inviteMsg)
+      )
+    )
   );
 }
 
@@ -1419,7 +1539,7 @@ function CoachingView({showToast}){
           isEditing
             ?React.createElement("textarea",{value:draft,onChange:e=>setDraft(e.target.value),style:{width:"100%",minHeight:320,background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#ccc",fontSize:13,lineHeight:1.7,padding:"10px 12px",fontFamily:"'DM Sans',sans-serif",fontWeight:300,letterSpacing:"0.02em",resize:"vertical",boxSizing:"border-box"}})
             :content
-              ?React.createElement("div",{style:{fontSize:13,color:"#aaa",lineHeight:1.8,fontWeight:300,whiteSpace:"pre-wrap",letterSpacing:"0.02em"}},content)
+              ?React.createElement("div",{style:{fontSize:13,color:"#ccc",lineHeight:1.8,fontWeight:300,whiteSpace:"pre-wrap",letterSpacing:"0.02em"}},content)
               :React.createElement("div",{style:{fontSize:10,color:"#333",letterSpacing:"0.1em",textAlign:"center",padding:"20px 0"}},"NO NOTES YET · TAP EDIT TO ADD")
         )
       );
