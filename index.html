@@ -1035,7 +1035,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
 }
 
 // ── Admin View ────────────────────────────────────────────────────────────────
-function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit}){
+function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,wellnessEnabled,saveWellnessSetting}){
   const [admSeg,setAdmSeg]=useState("members");
   const [admDate,setAdmDate]=useState(new Date());
   const [expanded,setExpanded]=useState({});
@@ -1092,7 +1092,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
     React.createElement("div",{className:"adm-seg"},
       React.createElement("button",{className:`adm-seg-btn${admSeg==="members"?" aas":""}`,onClick:()=>setAdmSeg("members")},"MEMBERS"),
       React.createElement("button",{className:`adm-seg-btn${admSeg==="classes"?" aas":""}`,onClick:()=>setAdmSeg("classes")},"CLASSES"),
-      React.createElement("button",{className:`adm-seg-btn${admSeg==="wellness"?" aas":""}`,onClick:()=>setAdmSeg("wellness")},"WELLNESS")
+      React.createElement("button",{className:`adm-seg-btn${admSeg==="wellness"?" aas":""}`,onClick:()=>setAdmSeg("wellness")},"WELLNESS"),
+      React.createElement("button",{className:`adm-seg-btn${admSeg==="settings"?" aas":""}`,onClick:()=>setAdmSeg("settings")},"SETTINGS")
     ),
     admSeg==="members"&&(!membersLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
     :React.createElement(React.Fragment,null,
@@ -1208,6 +1209,22 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
           })
       )
     )
+  ),
+  admSeg==="settings"&&React.createElement("div",{style:{marginTop:16}},
+    React.createElement("div",{style:{background:"#141414",border:"1px solid #222",borderRadius:8,padding:"16px"}},
+      React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},"BOOKING SECTIONS"),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid #1a1a1a"}},
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontSize:12,fontWeight:600,letterSpacing:"0.1em",color:"#fff"}},"SAUNA + COLD PLUNGE"),
+          React.createElement("div",{style:{fontSize:10,color:"#555",marginTop:3,letterSpacing:"0.06em"}},wellnessEnabled?"Visible to members":"Hidden from members")
+        ),
+        React.createElement("button",{
+          style:{background:wellnessEnabled?"#fff":"#222",color:wellnessEnabled?"#000":"#555",border:`1px solid ${wellnessEnabled?"#fff":"#333"}`,borderRadius:20,padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all .2s"},
+          onClick:async()=>{if(saveWellnessSetting)await saveWellnessSetting(!wellnessEnabled);}
+        },wellnessEnabled?"ON":"OFF")
+      )
+    )
+  )
   );
 }
 
@@ -1524,6 +1541,7 @@ function App(){
   const [unreadPosts,setUnreadPosts]=useState(0);
   const [allMemberNames,setAllMemberNames]=useState([]);
   const [classLimits,setClassLimits]=useState({});
+  const [wellnessEnabled,setWellnessEnabled]=useState(true);
   const photoRef=useRef(null);
   const touchStartX=useRef(null);
   const touchStartY=useRef(null);
@@ -1550,6 +1568,9 @@ function App(){
       setMemberPhotos(photoMap);setAllMemberNames(nameList);
       const limitsData=await sbGet("class_limits","select=time_slot,day_type,max_spots");
       const lm={};(limitsData||[]).forEach(r=>{lm[`${r.day_type}:${r.time_slot}`]=r.max_spots;});setClassLimits(lm);
+      const sData=await sbGet("app_settings","select=key,value");
+      const we=(sData||[]).find(r=>r.key==="wellness_enabled");
+      if(we)setWellnessEnabled(we.value!=="false");
       setReady(true);
     })();
   },[]);
@@ -1684,6 +1705,15 @@ function App(){
     else{await sbPost("class_limits",{time_slot:time,day_type:dayType,max_spots:n});}
     setClassLimits(p=>({...p,[`${dayType}:${time}`]:n}));
   }
+  async function saveWellnessSetting(enabled){
+    const val=enabled?"true":"false";
+    const existing=await sbGet("app_settings","key=eq.wellness_enabled&select=key");
+    if(existing.length){await sbPatch("app_settings","key=eq.wellness_enabled",{value:val});}
+    else{await sbPost("app_settings",{key:"wellness_enabled",value:val});}
+    setWellnessEnabled(enabled);
+    if(!enabled&&tab==="wellness")setTab("book");
+  }
+
   function isPastClass(time){
     if(isPastD(selDate))return true;if(!isToday(selDate))return false;
     const now=new Date();const[h,m]=time.split(":").map(Number);
@@ -1781,7 +1811,7 @@ function App(){
       ),
       React.createElement("div",{style:{display:"flex",marginTop:10,marginLeft:-20,marginRight:-20,width:"calc(100% + 40px)",borderTop:"1px solid #444",borderBottom:"1px solid #444",background:"#141414"},onClick:e=>e.stopPropagation()},
         React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="book"?"#222":"none",border:"none",borderTop:`2px solid ${tab==="book"?"#fff":"transparent"}`,marginTop:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="book"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("book")},"Classes"),
-        React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="wellness"?"#222":"none",border:"none",borderTop:`2px solid ${tab==="wellness"?"#fff":"transparent"}`,marginTop:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="wellness"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("wellness")},"Wellness"),
+        wellnessEnabled&&React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="wellness"?"#222":"none",border:"none",borderTop:`2px solid ${tab==="wellness"?"#fff":"transparent"}`,marginTop:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="wellness"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("wellness")},"Wellness"),
         React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="my"?"#222":"none",border:"none",borderTop:`2px solid ${tab==="my"?"#fff":"transparent"}`,marginTop:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="my"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("my")},"My Bookings"),
         React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="strength"?"#222":"none",border:"none",borderTop:`2px solid ${tab==="strength"?"#fff":"transparent"}`,marginTop:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="strength"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("strength")},"Strength"),
         React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="community"?"#222":"none",border:"none",borderTop:`2px solid ${tab==="community"?"#fff":"transparent"}`,marginTop:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="community"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap",position:"relative"},onClick:()=>{setTab("community");lsSet("t365-last-read",Date.now());}},
@@ -1914,13 +1944,13 @@ function App(){
     ),
 
     tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
-    tab==="wellness"&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin}),
+    tab==="wellness"&&wellnessEnabled&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin}),
     tab==="strength"&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast})),
-    tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit}),
+    tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,wellnessEnabled,saveWellnessSetting}),
 
     React.createElement("div",{className:"tab-bar"},
       React.createElement("button",{className:`tab-btn${tab==="book"?" ta":""}`,onClick:()=>setTab("book")},"Classes"),
-      React.createElement("button",{className:`tab-btn${tab==="wellness"?" ta":""}`,onClick:()=>setTab("wellness")},"Wellness"),
+      wellnessEnabled&&React.createElement("button",{className:`tab-btn${tab==="wellness"?" ta":""}`,onClick:()=>setTab("wellness")},"Wellness"),
       React.createElement("button",{className:`tab-btn${tab==="my"?" ta":""}`,onClick:()=>setTab("my")},"My Bookings"),
       React.createElement("button",{className:`tab-btn${tab==="strength"?" ta":""}`,onClick:()=>setTab("strength")},"Strength"),
       React.createElement("button",{className:`tab-btn${tab==="community"?" ta":""}`,onClick:()=>{setTab("community");lsSet("t365-last-read",Date.now());}},
