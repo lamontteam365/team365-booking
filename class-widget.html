@@ -216,13 +216,13 @@ function ClassWidget(){
     sbGet("bookings",`date_key=in.(${keys.join(",")})&select=date_key,time,email,name`).then(d=>{setBookings(d||[]);setLoading(false);});
   },[weekStart]);
   useEffect(()=>{setSelTime(null);},[selDay]);
-  // Fetch dynamic class limits on mount
+  // Fetch dynamic class limits when week changes
   useEffect(()=>{
-    sbGet("class_limits","select=time_slot,day_type,max_spots").then(d=>setClassLimits(d||[]));
-  },[]);
-  function getMaxSpots(time,isSat){
-    const dt=isSat?"saturday":"weekday";
-    const cl=classLimits.find(l=>l.time_slot===time&&l.day_type===dt);
+    const keys=weekDates.map(toDS);
+    sbGet("class_limits",`date_key=in.(${keys.join(",")})&select=time_slot,date_key,max_spots`).then(d=>setClassLimits(d||[]));
+  },[weekStart]);
+  function getMaxSpots(time,dateKey){
+    const cl=classLimits.find(l=>l.time_slot===time&&l.date_key===dateKey);
     return cl?cl.max_spots:MAX_SPOTS;
   }
   const getBksFor=(dk,t)=>bookings.filter(b=>b.date_key===dk&&b.time===t);
@@ -338,7 +338,7 @@ function ClassWidget(){
         ?React.createElement("div",{className:"loading"},"CHECKING AVAILABILITY…",React.createElement("div",{className:"load-bar"},React.createElement("div",{className:"load-fill"})))
         :React.createElement("div",{className:"slot-list"},
           curTimes.map(time=>{
-            const list=getBksFor(selDK,time);const taken=list.length;const maxSp=getMaxSpots(time,selDate.getDay()===6);const left=maxSp-taken;
+            const list=getBksFor(selDK,time);const taken=list.length;const maxSp=getMaxSpots(time,selDK);const left=maxSp-taken;
             const booked=userBooked(selDK,time);const full=left===0&&!booked;
             const past=isPastSlot(selDate,time);const lk=`${selDK}-${time}`;const isBusy=!!bkBusy[lk];
             const subText=booked?"Booked ✓":full?"Full":`${left} ${left===1?"Spot":"Spots"} Available`;
@@ -382,7 +382,7 @@ function ClassWidget(){
           ?React.createElement("div",{className:"loading"},"CHECKING AVAILABILITY…",React.createElement("div",{className:"load-bar"},React.createElement("div",{className:"load-fill"})))
           :React.createElement("div",{className:"slot-list"},
             curTimes.map(time=>{
-              const taken=bookings.filter(b=>b.date_key===selDK&&b.time===time).length;const maxSp=getMaxSpots(time,selDate.getDay()===6);const left=maxSp-taken;
+              const taken=bookings.filter(b=>b.date_key===selDK&&b.time===time).length;const maxSp=getMaxSpots(time,selDK);const left=maxSp-taken;
               const full=left===0;const low=left<=3&&left>0;const past=isPastSlot(selDate,time);
               return React.createElement("div",{key:time,
                 className:`slot-row${selTime===time?" sel":""}${full?" full":""}${past?" past":""}`,
