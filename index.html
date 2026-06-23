@@ -758,7 +758,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
 }
 
 // ── Wellness View ─────────────────────────────────────────────────────────────
-function WellnessView({session,showToast,bookings}){
+function WellnessView({session,showToast,bookings,isAdmin}){
   const [wellBks,setWellBks]=useState([]);
   const [weekStart,setWeekStart]=useState(getWeekStart);
   const [selDay,setSelDay]=useState(getInitDay);
@@ -779,7 +779,8 @@ function WellnessView({session,showToast,bookings}){
   const weekDates=Array.from({length:6},(_,i)=>addDays(weekStart,i));
   const isThisWeek=toDS(weekStart)===toDS(mondayOf(new Date()));
   const dayBks=wellBks.filter(b=>b.date_key===selDK);
-  const weekDots=weekDates.map(d=>session&&(wellBks.some(b=>b.date_key===toDS(d)&&b.email===session.email)||(bookings||[]).some(b=>b.date_key===toDS(d)&&b.email===session.email)));
+  const weekDots=weekDates.map(d=>isAdmin?(wellBks.some(b=>b.date_key===toDS(d))||(bookings||[]).some(b=>b.date_key===toDS(d))):session&&(wellBks.some(b=>b.date_key===toDS(d)&&b.email===session.email)||(bookings||[]).some(b=>b.date_key===toDS(d)&&b.email===session.email)));
+  const [expandedWell,setExpandedWell]=useState(null);
 
   function isPastSlot(time){
     if(isPastD(selDate))return true;if(!isToday(selDate))return false;
@@ -834,16 +835,31 @@ function WellnessView({session,showToast,bookings}){
         const taken=!!bk&&!ismine;
         const past=isPastSlot(time);
         const lk=`${selDK}-${time}`;const isBusy=!!busy[lk];
-        return React.createElement("div",{key:time,className:`well-slot${ismine?" ws-mine":""}${past?" ws-past":""}`},
-          React.createElement("div",{className:"well-slot-time"},fmt12(time)),
-          React.createElement("div",{className:"well-slot-mid"},
-            React.createElement("div",{className:"well-slot-name"},"SAUNA + COLD PLUNGE"),
-            React.createElement("div",{className:`well-slot-status${ismine?" wss-mine":taken?" wss-taken":""}`},ismine?"Your booking \u2713":taken?"Booked":"Available")
+        const isExpanded=expandedWell===time;
+        const slotBks=wellBks.filter(b=>b.date_key===selDK&&b.time===time);
+        return React.createElement("div",{key:time,style:{borderRadius:7,overflow:"hidden"}},
+          React.createElement("div",{className:`well-slot${ismine?" ws-mine":""}${past?" ws-past":""}`,style:{cursor:isAdmin?"pointer":"default"},onClick:isAdmin?()=>setExpandedWell(isExpanded?null:time):undefined},
+            React.createElement("div",{className:"well-slot-time"},fmt12(time)),
+            React.createElement("div",{className:"well-slot-mid"},
+              React.createElement("div",{className:"well-slot-name"},"SAUNA + COLD PLUNGE"),
+              React.createElement("div",{className:`well-slot-status${ismine?" wss-mine":taken?" wss-taken":""}`},ismine?"Your booking \u2713":taken?"Booked":"Available")
+            ),
+            isAdmin&&React.createElement("div",{style:{fontSize:10,color:"#555",marginRight:4,flexShrink:0}},isExpanded?"\u25b4":"\u25be"),
+            !past&&(ismine
+              ?React.createElement("button",{className:"well-btn wb-cancel",onClick:e=>{e.stopPropagation();handleCancel(time);}},"Cancel")
+              :taken?React.createElement("button",{className:"well-btn wb-taken",disabled:true},"Booked")
+              :React.createElement("button",{className:"well-btn wb-book",onClick:e=>{e.stopPropagation();handleBook(time);},disabled:isBusy},isBusy?"...":"Book")
+            )
           ),
-          !past&&(ismine
-            ?React.createElement("button",{className:"well-btn wb-cancel",onClick:()=>handleCancel(time)},"Cancel")
-            :taken?React.createElement("button",{className:"well-btn wb-taken",disabled:true},"Booked")
-            :React.createElement("button",{className:"well-btn wb-book",onClick:()=>handleBook(time),disabled:isBusy},isBusy?"...":"Book")
+          isAdmin&&isExpanded&&React.createElement("div",{className:"adm-members-list",style:{borderTop:"1px solid #222"}},
+            slotBks.length===0
+              ?React.createElement("div",{className:"adm-empty"},"NO BOOKINGS YET")
+              :slotBks.map((bk,i)=>React.createElement("div",{key:i,className:"adm-member-row"},
+                  React.createElement("div",null,
+                    React.createElement("div",{className:"adm-member-name"},bk.name),
+                    React.createElement("div",{className:"adm-member-email"},bk.email)
+                  )
+                ))
           )
         );
       })
@@ -1591,7 +1607,8 @@ function App(){
   const isThisWeek=toDS(weekStart)===toDS(mondayOf(new Date()));
   const getBksFor=(dk,t)=>bookings.filter(b=>b.date_key===dk&&b.time===t);
   const userBooked=(dk,t)=>session&&getBksFor(dk,t).some(b=>b.email===session.email);
-  const weekDots=weekDates.map(d=>session&&bookings.some(b=>b.date_key===toDS(d)&&b.email===session.email));
+  const weekDots=weekDates.map(d=>isAdmin?bookings.some(b=>b.date_key===toDS(d)):session&&bookings.some(b=>b.date_key===toDS(d)&&b.email===session.email));
+  const [expandedClass,setExpandedClass]=useState(null);
   const myUpcoming=session?bookings.filter(b=>b.email===session.email&&b.date_key>=toDS(new Date())).sort((a,b)=>a.date_key.localeCompare(b.date_key)||a.time.localeCompare(b.time)):[];
 
   function showToast(msg){setToast({msg,show:true});setTimeout(()=>setToast(t=>({...t,show:false})),2200);}
@@ -1799,16 +1816,30 @@ function App(){
           const past=isPastClass(time);const lk=`${selDK}-${time}`;const busy=!!bkBusy[lk];
           const subText=userBkd?"Booked \u2713":full?"Full":`${left} ${left===1?"Spot":"Spots"} Available`;
           const subCls=userBkd?"cg":full?"cf":left<=3?"cl":"co";
-          return React.createElement("div",{key:time,className:`c-row${userBkd?" cb":""}${past?" cp":""}`},
-            React.createElement("div",{className:"c-time"},fmt12(time)),
-            React.createElement("div",{className:"c-mid"},
-              React.createElement("div",{className:"c-bars"},Array.from({length:maxSp}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}`}))),
-              React.createElement("div",{className:`c-sub ${subCls}`},subText)
+          const isExpanded=expandedClass===time;
+          return React.createElement("div",{key:time,style:{borderRadius:7,overflow:"hidden",marginBottom:0}},
+            React.createElement("div",{className:`c-row${userBkd?" cb":""}${past?" cp":""}`,style:{cursor:isAdmin?"pointer":"default"},onClick:isAdmin?()=>setExpandedClass(isExpanded?null:time):undefined},
+              React.createElement("div",{className:"c-time"},fmt12(time)),
+              React.createElement("div",{className:"c-mid"},
+                React.createElement("div",{className:"c-bars"},Array.from({length:maxSp}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}`}))),
+                React.createElement("div",{className:`c-sub ${subCls}`},subText)
+              ),
+              isAdmin&&React.createElement("div",{style:{fontSize:10,color:"#555",marginRight:4,flexShrink:0}},isExpanded?"▴":"▾"),
+              !past&&(userBkd
+                ?React.createElement("button",{className:"c-btn bc",onClick:e=>{e.stopPropagation();handleCancel(time,selDK);}},"Cancel")
+                :full?React.createElement("button",{className:"c-btn bf",disabled:true},"Full")
+                :React.createElement("button",{className:"c-btn bb",onClick:e=>{e.stopPropagation();handleBook(time);},disabled:busy},busy?"...":"Book")
+              )
             ),
-            !past&&(userBkd
-              ?React.createElement("button",{className:"c-btn bc",onClick:()=>handleCancel(time,selDK)},"Cancel")
-              :full?React.createElement("button",{className:"c-btn bf",disabled:true},"Full")
-              :React.createElement("button",{className:"c-btn bb",onClick:()=>handleBook(time),disabled:busy},busy?"...":"Book")
+            isAdmin&&isExpanded&&React.createElement("div",{className:"adm-members-list",style:{borderTop:"1px solid #222"}},
+              list.length===0
+                ?React.createElement("div",{className:"adm-empty"},"NO BOOKINGS YET")
+                :list.map((bk,i)=>React.createElement("div",{key:i,className:"adm-member-row"},
+                    React.createElement("div",null,
+                      React.createElement("div",{className:"adm-member-name"},bk.name),
+                      React.createElement("div",{className:"adm-member-email"},bk.email)
+                    )
+                  ))
             )
           );
         })
@@ -1883,7 +1914,7 @@ function App(){
     ),
 
     tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
-    tab==="wellness"&&React.createElement(WellnessView,{session,showToast,bookings}),
+    tab==="wellness"&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin}),
     tab==="strength"&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast})),
     tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit}),
 
