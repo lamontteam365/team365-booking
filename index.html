@@ -1608,7 +1608,7 @@ function App(){
     setBookings(data||[]);
   }
 
-  const TAB_ORDER=["book","wellness","my","strength","community",...(isAdmin?["admin"]:[])];
+  const TAB_ORDER=["book",...(wellnessEnabled?["wellness"]:[]),"my","strength","community",...(isAdmin?["admin"]:[])];
   function handleTouchStart(e){touchStartX.current=e.touches[0].clientX;touchStartY.current=e.touches[0].clientY;}
   function handleTouchEnd(e){
     if(touchStartX.current===null)return;
@@ -1707,9 +1707,8 @@ function App(){
   }
   async function saveWellnessSetting(enabled){
     const val=enabled?"true":"false";
-    const existing=await sbGet("app_settings","key=eq.wellness_enabled&select=key");
-    if(existing.length){await sbPatch("app_settings","key=eq.wellness_enabled",{value:val});}
-    else{await sbPost("app_settings",{key:"wellness_enabled",value:val});}
+    const h={...SB_HDR,"Prefer":"resolution=merge-duplicates"};
+    try{await fetch(`${SB_URL}/rest/v1/app_settings`,{method:"POST",headers:h,body:JSON.stringify({key:"wellness_enabled",value:val})});}catch(e){console.log("settings save:",e);}
     setWellnessEnabled(enabled);
     if(!enabled&&tab==="wellness")setTab("book");
   }
