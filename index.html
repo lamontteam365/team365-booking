@@ -1441,7 +1441,7 @@ function OnboardingView({expandedTier,setExpandedTier,showToast}){
     React.createElement(OnboardingPanel,{id:"tiers",title:"MEMBERSHIP TIERS",openPanel,setOpenPanel},
       TIERS.map((p,i)=>{
         const open=expandedTier===i;
-        return React.createElement("div",{key:i,style:{background:"#111",border:"1px solid #1e1e1e",borderRadius:6,marginBottom:6,overflow:"hidden"}},
+        return React.createElement("div",{key:i,style:{background:"#1a1a1a",border:"1px solid #2e2e2e",borderRadius:6,marginBottom:6,overflow:"hidden"}},
           React.createElement("button",{onClick:()=>setExpandedTier(open?null:i),style:{width:"100%",background:"none",border:"none",padding:"12px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",textAlign:"left"}},
             React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.08em",color:"#ccc"}},p.name),
             React.createElement("div",{style:{color:"#444",fontSize:12,transition:"transform .2s",transform:open?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
