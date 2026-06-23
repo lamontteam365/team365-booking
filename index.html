@@ -1074,7 +1074,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
   const admDK=toDS(admDate);const admDOW=admDate.getDay();const admIsSat=admDOW===6;
   const admTimes=admDOW===0?[]:admIsSat?SAT_TIMES:WD_TIMES;
   const dayBks=bookings.filter(b=>b.date_key===admDK);
-  const totalBooked=dayBks.length;const totalSpots=admTimes.reduce((s,t)=>s+(getMaxSpots?getMaxSpots(t,admIsSat):MAX_SPOTS),0);
+  const totalBooked=dayBks.length;const totalSpots=admTimes.reduce((s,t)=>s+(getMaxSpots?getMaxSpots(t,admDK):MAX_SPOTS),0);
 
   function changeDay(n){let d=new Date(admDate);d.setDate(d.getDate()+n);if(d.getDay()===0)d.setDate(d.getDate()+n);setAdmDate(d);setExpanded({});}
 
@@ -1131,7 +1131,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
       admTimes.length===0?React.createElement("div",{className:"adm-no-classes"},"No classes on Sunday")
       :admTimes.map(time=>{
         const slotBks=dayBks.filter(b=>b.time===time);const taken=slotBks.length;const isOpen=!!expanded[time];
-        const slotMax=getMaxSpots?getMaxSpots(time,admIsSat):MAX_SPOTS;
+        const slotMax=getMaxSpots?getMaxSpots(time,admDK):MAX_SPOTS;
         const isEditingThis=editingLimit===time;
         return React.createElement("div",{key:time,className:"adm-class-card"},
           React.createElement("div",{className:"adm-class-hdr",onClick:()=>!isEditingThis&&setExpanded(p=>({...p,[time]:!p[time]}))},
@@ -1157,7 +1157,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
               style:{width:60,background:"#0e0e0e",border:"1px solid #333",borderRadius:4,padding:"7px 8px",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:16,textAlign:"center",outline:"none"}
             }),
             React.createElement("button",{
-              onClick:async()=>{if(saveClassLimit){await saveClassLimit(time,admIsSat,limitInput);}setEditingLimit(null);showToast("Capacity updated \u2713");},
+              onClick:async()=>{if(saveClassLimit){await saveClassLimit(time,admDK,limitInput);}setEditingLimit(null);showToast("Capacity updated \u2713");},
               style:{background:"#fff",color:"#000",border:"none",borderRadius:3,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",padding:"8px 14px",cursor:"pointer",flexShrink:0}
             },"SAVE"),
             React.createElement("button",{
@@ -1566,11 +1566,10 @@ function App(){
       const photoMap={};const nameList=[];
       (allMembers||[]).forEach(m=>{if(m.photo)photoMap[m.email]=m.photo;if(m.name)nameList.push(m.name);});
       setMemberPhotos(photoMap);setAllMemberNames(nameList);
-      const limitsData=await sbGet("class_limits","select=time_slot,day_type,max_spots");
-      const lm={};(limitsData||[]).forEach(r=>{lm[`${r.day_type}:${r.time_slot}`]=r.max_spots;});setClassLimits(lm);
-      const sData=await sbGet("app_settings","select=key,value");
-      const we=(sData||[]).find(r=>r.key==="wellness_enabled");
-      if(we)setWellnessEnabled(we.value!=="false");
+      const limitsData=await sbGet("class_limits","select=time_slot,date_key,max_spots");
+      const lm={};(limitsData||[]).forEach(r=>{lm[`${r.date_key}:${r.time_slot}`]=r.max_spots;});setClassLimits(lm);
+      const ffData=await sbGet("feature_flags","id=eq.1&select=wellness_enabled");
+      if(ffData&&ffData.length)setWellnessEnabled(ffData[0].wellness_enabled!==false);
       setReady(true);
     })();
   },[]);
@@ -1679,7 +1678,7 @@ function App(){
   async function handleBook(time){
     if(!session)return;
     const lk=`${selDK}-${time}`;setBkBusy(p=>({...p,[lk]:true}));
-    const list=getBksFor(selDK,time);const maxSp=getMaxSpots(time,selDate.getDay()===6);
+    const list=getBksFor(selDK,time);const maxSp=getMaxSpots(time,selDK);
     if(list.length>=maxSp){showToast("Class is full");setBkBusy(p=>({...p,[lk]:false}));return;}
     if(list.some(b=>b.email===session.email)){showToast("Already booked");setBkBusy(p=>({...p,[lk]:false}));return;}
     const newBk={email:session.email,name:session.name,date_key:selDK,time};
@@ -1697,18 +1696,16 @@ function App(){
     showToast("Booking cancelled");
   }
 
-  function getMaxSpots(time,isSat){const k=`${isSat?"saturday":"weekday"}:${time}`;return classLimits[k]||MAX_SPOTS;}
-  async function saveClassLimit(time,isSat,spots){
-    const dayType=isSat?"saturday":"weekday";const n=parseInt(spots);if(isNaN(n)||n<1)return;
-    const existing=await sbGet("class_limits",`time_slot=eq.${encodeURIComponent(time)}&day_type=eq.${dayType}&select=id`);
-    if(existing.length){await sbPatch("class_limits",`time_slot=eq.${encodeURIComponent(time)}&day_type=eq.${dayType}`,{max_spots:n});}
-    else{await sbPost("class_limits",{time_slot:time,day_type:dayType,max_spots:n});}
-    setClassLimits(p=>({...p,[`${dayType}:${time}`]:n}));
+  function getMaxSpots(time,dateKey){const k=`${dateKey}:${time}`;return classLimits[k]||MAX_SPOTS;}
+  async function saveClassLimit(time,dateKey,spots){
+    const n=parseInt(spots);if(isNaN(n)||n<1)return;
+    const existing=await sbGet("class_limits",`time_slot=eq.${encodeURIComponent(time)}&date_key=eq.${encodeURIComponent(dateKey)}&select=id`);
+    if(existing.length){await sbPatch("class_limits",`time_slot=eq.${encodeURIComponent(time)}&date_key=eq.${encodeURIComponent(dateKey)}`,{max_spots:n});}
+    else{await sbPost("class_limits",{time_slot:time,date_key:dateKey,max_spots:n});}
+    setClassLimits(p=>({...p,[`${dateKey}:${time}`]:n}));
   }
   async function saveWellnessSetting(enabled){
-    const val=enabled?"true":"false";
-    const h={...SB_HDR,"Prefer":"resolution=merge-duplicates"};
-    try{await fetch(`${SB_URL}/rest/v1/app_settings`,{method:"POST",headers:h,body:JSON.stringify({key:"wellness_enabled",value:val})});}catch(e){console.log("settings save:",e);}
+    await sbPatch("feature_flags","id=eq.1",{wellness_enabled:enabled});
     setWellnessEnabled(enabled);
     if(!enabled&&tab==="wellness")setTab("book");
   }
@@ -1840,7 +1837,7 @@ function App(){
       React.createElement("div",{className:"cls-wrap"},
         React.createElement("div",{className:"day-hdr",style:{textAlign:"center"}},React.createElement("span",null,DAY_LONG[selDay].toUpperCase()),React.createElement("em",null,` \u00B7 ${times.length} CLASSES`)),
         times.map(time=>{
-          const list=getBksFor(selDK,time);const taken=list.length;const maxSp=getMaxSpots(time,selDate.getDay()===6);const left=maxSp-taken;
+          const list=getBksFor(selDK,time);const taken=list.length;const maxSp=getMaxSpots(time,selDK);const left=maxSp-taken;
           const userBkd=userBooked(selDK,time);const full=left===0&&!userBkd;
           const past=isPastClass(time);const lk=`${selDK}-${time}`;const busy=!!bkBusy[lk];
           const subText=userBkd?"Booked \u2713":full?"Full":`${left} ${left===1?"Spot":"Spots"} Available`;
