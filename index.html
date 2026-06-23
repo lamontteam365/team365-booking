@@ -1208,8 +1208,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
             );
           })
       )
-    )
-  ),
+    ),
   admSeg==="settings"&&React.createElement("div",{style:{marginTop:16}},
     React.createElement("div",{style:{background:"#141414",border:"1px solid #222",borderRadius:8,padding:"16px"}},
       React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},"BOOKING SECTIONS"),
@@ -1229,6 +1228,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
 }
 
 // ── Strength Program Tab ──────────────────────────────────────────────────────
+
 function getNZDate(){
   try{return new Date(new Date().toLocaleString("en-US",{timeZone:"Pacific/Auckland"}));}
   catch{return new Date();}
