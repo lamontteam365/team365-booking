@@ -1325,6 +1325,70 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
 
 // ── Onboarding View ──────────────────────────────────────────────────────────
 
+function ProcessNoteEditor({showToast}){
+  const PROCESS_KEY="__ONBOARDING_PROCESS__";
+  const [note,setNote]=useState("");
+  const [editing,setEditing]=useState(false);
+  const [draft,setDraft]=useState("");
+  const [saving,setSaving]=useState(false);
+  const [loaded,setLoaded]=useState(false);
+  useEffect(()=>{
+    sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(PROCESS_KEY)}&select=content`)
+      .then(d=>{if(d&&d.length)setNote(d[0].content||"");setLoaded(true);});
+  },[]);
+  async function save(){
+    setSaving(true);
+    const existing=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(PROCESS_KEY)}&select=id`);
+    if(existing&&existing.length){await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(PROCESS_KEY)}`,{content:draft,updated_at:Date.now()});}
+    else{await sbPost("coaching_notes",{class_name:PROCESS_KEY,content:draft,updated_at:Date.now()});}
+    setNote(draft);setSaving(false);setEditing(false);
+    showToast("Onboarding process saved ✓");
+  }
+  if(!loaded)return React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"10px 0"}},"LOADING...");
+  return React.createElement("div",null,
+    React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:8}},
+      !editing
+        ?React.createElement("button",{onClick:()=>{setDraft(note);setEditing(true);},style:{background:"none",border:"1px solid #333",borderRadius:4,padding:"5px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT")
+        :React.createElement("div",{style:{display:"flex",gap:8}},
+          React.createElement("button",{onClick:()=>setEditing(false),style:{background:"none",border:"1px solid #333",borderRadius:4,padding:"5px 12px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
+          React.createElement("button",{onClick:save,disabled:saving,style:{background:"#1d9bf0",border:"none",borderRadius:4,padding:"5px 12px",color:"#fff",fontSize:10,letterSpacing:"0.1em",cursor:"pointer",fontWeight:600}},saving?"SAVING...":"SAVE")
+        )
+    ),
+    editing
+      ?React.createElement("textarea",{value:draft,onChange:e=>setDraft(e.target.value),style:{width:"100%",minHeight:240,background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#ccc",fontSize:13,lineHeight:1.7,padding:"10px 12px",fontFamily:"'DM Sans',sans-serif",fontWeight:300,letterSpacing:"0.02em",resize:"vertical",boxSizing:"border-box"}})
+      :note
+        ?React.createElement("div",{style:{fontSize:13,color:"#ccc",lineHeight:1.8,fontWeight:300,whiteSpace:"pre-wrap",letterSpacing:"0.02em"}},note)
+        :React.createElement("div",{style:{fontSize:10,color:"#333",letterSpacing:"0.1em",textAlign:"center",padding:"20px 0"}},"NO PROCESS NOTES YET · TAP EDIT TO ADD")
+  );
+}
+
+function InviteForm(){
+  const [email,setEmail]=useState("");
+  const [sending,setSending]=useState(false);
+  const [msg,setMsg]=useState("");
+  async function send(){
+    if(!email.trim())return;
+    setSending(true);setMsg("");
+    try{
+      const res=await fetch("https://xczwmexavysvljmobbgv.supabase.co/functions/v1/send-onboarding-invite",{
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhjendtZXhhdnlzdmxqbW9iYmd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzOTI5NDIsImV4cCI6MjA5NTk2ODk0Mn0.xhB8SYiJ9CJZE5OC1cCIbS2xNPZ4f76pZaRoTsLb0Gs"},
+        body:JSON.stringify({email:email.trim()})
+      });
+      const json=await res.json();
+      if(json.ok){setMsg("✓ Invite sent to "+email.trim());setEmail("");}
+      else{setMsg("Error: "+(json.error||"Could not send"));}
+    }catch(e){setMsg("Error: "+e.message);}
+    setSending(false);
+  }
+  return React.createElement("div",null,
+    React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.1em",marginBottom:12,lineHeight:1.7}},"Enter a new member's email address to send them the Team 365 registration form."),
+    React.createElement("input",{type:"email",placeholder:"member@email.com",value:email,onChange:e=>setEmail(e.target.value),onKeyDown:e=>{if(e.key==="Enter")send();},style:{width:"100%",background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#ccc",fontSize:13,padding:"10px 12px",fontFamily:"'DM Sans',sans-serif",letterSpacing:"0.02em",boxSizing:"border-box",marginBottom:10,outline:"none"}}),
+    React.createElement("button",{onClick:send,disabled:sending||!email.trim(),style:{width:"100%",background:email.trim()?"#1d9bf0":"#1a1a1a",border:"none",borderRadius:4,padding:"11px",color:email.trim()?"#fff":"#444",fontSize:10,letterSpacing:"0.14em",fontWeight:600,cursor:email.trim()?"pointer":"default",fontFamily:"'DM Sans',sans-serif",transition:"all .15s"}},sending?"SENDING...":"SEND REGISTRATION FORM"),
+    msg&&React.createElement("div",{style:{marginTop:10,fontSize:10,letterSpacing:"0.1em",color:msg.startsWith("✓")?"#4aaa66":"#e05",textAlign:"center"}},msg)
+  );
+}
+
 function OnboardingPanel({id,title,children,openPanel,setOpenPanel}){
   const open=openPanel===id;
   return React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:8,marginBottom:8,overflow:"hidden"}},
@@ -1346,62 +1410,8 @@ function OnboardingView({expandedTier,setExpandedTier,showToast}){
     {name:"DUO MEMBER",desc:"Unlimited HIIT · Unlimited Strength · 2 Wellness (Each)",prices:{3:105,6:102,12:99},note:""},
   ];
 
-  // Onboarding Process note (saved via coaching_notes table with special key)
-  const PROCESS_KEY="__ONBOARDING_PROCESS__";
-  const [processNote,setProcessNote]=useState("");
-  const [processEditing,setProcessEditing]=useState(false);
-  const [processDraft,setProcessDraft]=useState("");
-  const [processSaving,setProcessSaving]=useState(false);
-  const [processLoaded,setProcessLoaded]=useState(false);
-
-  // Send invite
-  const [inviteEmail,setInviteEmail]=useState("");
-  const [inviteSending,setInviteSending]=useState(false);
-  const [inviteMsg,setInviteMsg]=useState("");
-
   // Which outer panel is open
   const [openPanel,setOpenPanel]=useState(null);
-
-  useEffect(()=>{
-    sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(PROCESS_KEY)}&select=content`)
-      .then(d=>{
-        if(d&&d.length)setProcessNote(d[0].content||"");
-        setProcessLoaded(true);
-      });
-  },[]);
-
-  async function saveProcess(){
-    setProcessSaving(true);
-    const existing=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(PROCESS_KEY)}&select=id`);
-    if(existing&&existing.length){
-      await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(PROCESS_KEY)}`,{content:processDraft,updated_at:Date.now()});
-    } else {
-      await sbPost("coaching_notes",{class_name:PROCESS_KEY,content:processDraft,updated_at:Date.now()});
-    }
-    setProcessNote(processDraft);
-    setProcessSaving(false);
-    setProcessEditing(false);
-    showToast("Onboarding process saved ✓");
-  }
-
-  async function sendInvite(){
-    if(!inviteEmail.trim())return;
-    setInviteSending(true);
-    setInviteMsg("");
-    try{
-      const SUPABASE_URL="https://xczwmexavysvljmobbgv.supabase.co";
-      const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhjendtZXhhdnlzdmxqbW9iYmd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzOTI5NDIsImV4cCI6MjA5NTk2ODk0Mn0.xhB8SYiJ9CJZE5OC1cCIbS2xNPZ4f76pZaRoTsLb0Gs";
-      const res=await fetch(`${SUPABASE_URL}/functions/v1/send-onboarding-invite`,{
-        method:"POST",
-        headers:{"Content-Type":"application/json","Authorization":`Bearer ${SUPABASE_ANON_KEY}`},
-        body:JSON.stringify({email:inviteEmail.trim()})
-      });
-      const json=await res.json();
-      if(json.ok){setInviteMsg("✓ Invite sent to "+inviteEmail.trim());setInviteEmail("");}
-      else{setInviteMsg("Error: "+(json.error||"Could not send"));}
-    }catch(e){setInviteMsg("Error: "+e.message);}
-    setInviteSending(false);
-  }
 
   return React.createElement("div",{style:{marginTop:16}},
     React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},"ONBOARDING · ADMIN"),
@@ -1432,43 +1442,32 @@ function OnboardingView({expandedTier,setExpandedTier,showToast}){
 
     // ── Onboarding Process ──
     React.createElement(OnboardingPanel,{id:"process",title:"ONBOARDING PROCESS",openPanel,setOpenPanel},
-      !processLoaded
-        ?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"10px 0"}},"LOADING...")
-        :React.createElement("div",null,
-          React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:8}},
-            !processEditing
-              ?React.createElement("button",{onClick:()=>{setProcessDraft(processNote);setProcessEditing(true);},style:{background:"none",border:"1px solid #333",borderRadius:4,padding:"5px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT")
-              :React.createElement("div",{style:{display:"flex",gap:8}},
-                React.createElement("button",{onClick:()=>setProcessEditing(false),style:{background:"none",border:"1px solid #333",borderRadius:4,padding:"5px 12px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
-                React.createElement("button",{onClick:saveProcess,disabled:processSaving,style:{background:"#1d9bf0",border:"none",borderRadius:4,padding:"5px 12px",color:"#fff",fontSize:10,letterSpacing:"0.1em",cursor:"pointer",fontWeight:600}},processSaving?"SAVING...":"SAVE")
-              )
-          ),
-          processEditing
-            ?React.createElement("textarea",{value:processDraft,onChange:e=>setProcessDraft(e.target.value),style:{width:"100%",minHeight:240,background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#ccc",fontSize:13,lineHeight:1.7,padding:"10px 12px",fontFamily:"'DM Sans',sans-serif",fontWeight:300,letterSpacing:"0.02em",resize:"vertical",boxSizing:"border-box"}})
-            :processNote
-              ?React.createElement("div",{style:{fontSize:13,color:"#ccc",lineHeight:1.8,fontWeight:300,whiteSpace:"pre-wrap",letterSpacing:"0.02em"}},processNote)
-              :React.createElement("div",{style:{fontSize:10,color:"#333",letterSpacing:"0.1em",textAlign:"center",padding:"20px 0"}},"NO PROCESS NOTES YET · TAP EDIT TO ADD")
-        )
+      React.createElement(ProcessNoteEditor,{showToast})
     ),
 
     // ── Send Registration Form ──
     React.createElement(OnboardingPanel,{id:"invite",title:"SEND REGISTRATION FORM",openPanel,setOpenPanel},
+      React.createElement(InviteForm,null)
+    ),
+
+    // ── Member Journey ──
+    React.createElement(OnboardingPanel,{id:"journey",title:"MEMBER JOURNEY",openPanel,setOpenPanel},
       React.createElement("div",null,
-        React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.1em",marginBottom:12,lineHeight:1.7}},"Enter a new member's email address to send them the Team 365 registration form."),
-        React.createElement("input",{
-          type:"email",
-          placeholder:"member@email.com",
-          value:inviteEmail,
-          onChange:e=>setInviteEmail(e.target.value),
-          onKeyDown:e=>{if(e.key==="Enter")sendInvite();},
-          style:{width:"100%",background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#ccc",fontSize:13,padding:"10px 12px",fontFamily:"'DM Sans',sans-serif",letterSpacing:"0.02em",boxSizing:"border-box",marginBottom:10,outline:"none"}
-        }),
-        React.createElement("button",{
-          onClick:sendInvite,
-          disabled:inviteSending||!inviteEmail.trim(),
-          style:{width:"100%",background:inviteEmail.trim()?"#1d9bf0":"#1a1a1a",border:"none",borderRadius:4,padding:"11px",color:inviteEmail.trim()?"#fff":"#444",fontSize:10,letterSpacing:"0.14em",fontWeight:600,cursor:inviteEmail.trim()?"pointer":"default",fontFamily:"'DM Sans',sans-serif",transition:"all .15s"}
-        },inviteSending?"SENDING...":"SEND REGISTRATION FORM"),
-        inviteMsg&&React.createElement("div",{style:{marginTop:10,fontSize:10,letterSpacing:"0.1em",color:inviteMsg.startsWith("✓")?"#4aaa66":"#e05",textAlign:"center"}},inviteMsg)
+        ...[
+          {n:"1",t:"SEND REGISTRATION INVITE",b:"Admin goes to Onboarding → Send Registration Form, enters the new member's email and taps Send. They receive a branded email with a COMPLETE REGISTRATION button linking to the form."},
+          {n:"2",t:"MEMBER COMPLETES REGISTRATION FORM",b:"Member fills out personal details, emergency contact, PAR-Q health screening, selects their membership plan and term, sets up direct debit, and signs the agreement."},
+          {n:"3",t:"AUTOMATIC EMAILS FIRE ON SUBMISSION",b:"Two emails send automatically the moment they submit: (1) a welcome email with their temporary app password and login link, and (2) a direct debit agreement PDF for their records."},
+          {n:"4",t:"SUCCESS SCREEN SHOWS HOME SCREEN INSTRUCTIONS",b:"After submitting, the member sees a success screen with device-specific instructions to add Team 365 to their home screen — iPhone users see the Share → Add to Home Screen steps, Android users see the Menu → Install App steps."},
+          {n:"5",t:"MEMBER LOGS INTO THE APP",b:"Using the temporary password from the welcome email, the member opens the app and logs in for the first time."},
+          {n:"6",t:"ADMIN VERIFIES PROFILE",b:"Admin opens the member's profile and confirms their membership tier, term, and expiry date came through correctly from the form."},
+          {n:"7",t:"MEMBER IS ACTIVE",b:"The member can now book HIIT, Strength, and Wellness sessions according to their tier. Automatic expiry reminders fire at 14 days and 7 days before their membership ends."},
+        ].map(({n,t,b},i)=>React.createElement("div",{key:i,style:{display:"flex",gap:12,marginBottom:16,paddingBottom:16,borderBottom:i<6?"1px solid #141414":"none"}},
+          React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#1d9bf0",lineHeight:1,minWidth:20,paddingTop:1}},n),
+          React.createElement("div",null,
+            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.1em",color:"#fff",marginBottom:5}},t),
+            React.createElement("div",{style:{fontSize:12,color:"#777",lineHeight:1.7,fontWeight:300}},b)
+          )
+        ))
       )
     )
   );
