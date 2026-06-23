@@ -116,6 +116,7 @@ function addMonths(date, months) {
 }
 
 const PLANS = [
+  {id:"foundationmember", name:"FOUNDATION MEMBER", sub:"",          desc:"3 HIIT · 1 Strength · 1 Wellness",                       prices:{3:45,6:42,12:39}},
   {id:"foundation",  name:"ACTIVE",     sub:"",                                    desc:"2 HIIT · 1 Strength · 50% Off Wellness Sessions",        prices:{3:45,6:42,12:39}},
   {id:"collective",  name:"COMMUNITY",  sub:"Student · Youth · Surf Life Saving",  desc:"3 HIIT · 1 Strength · 50% Off Wellness Sessions",        prices:{3:45,6:42,12:39}},
   {id:"momentum",    name:"ESSENTIAL",  sub:"",                                    desc:"3 HIIT · 1 Strength · 1 Wellness",                       prices:{3:55,6:52,12:49}},
@@ -185,7 +186,6 @@ function renderForm() {
             <div class="plan-top">
               <div>
                 <div class="plan-name">${p.name}${p.sub?'<span class="plan-sub"> · '+p.sub+'</span>':''}</div>
-                <div class="plan-desc">${p.desc}</div>
               </div>
               <div class="radio-dot"><div class="radio-inner"></div></div>
             </div>
