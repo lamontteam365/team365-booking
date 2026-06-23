@@ -216,19 +216,19 @@ function BookingWidget(){
 
   useEffect(()=>{setSelTime(null);},[selDay]);
 
-  // Fetch dynamic class limits on mount
+  // Fetch dynamic class limits when week changes
   useEffect(()=>{
-    sbGet("class_limits","select=time_slot,day_type,max_spots").then(d=>setClassLimits(d||[]));
-  },[]);
+    const keys=weekDates.map(toDS).filter(Boolean);
+    sbGet("class_limits",`date_key=in.(${keys.join(",")})&select=time_slot,date_key,max_spots`).then(d=>setClassLimits(d||[]));
+  },[weekStart]);
 
-  function getMaxSpots(time,isSat){
-    const dt=isSat?"saturday":"weekday";
-    const cl=classLimits.find(l=>l.time_slot===time&&l.day_type===dt);
+  function getMaxSpots(time,dateKey){
+    const cl=classLimits.find(l=>l.time_slot===time&&l.date_key===dateKey);
     return cl?cl.max_spots:MAX_SPOTS;
   }
 
   // Availability calcs
-  const classSlots=t=>{const maxSp=getMaxSpots(t,selDate.getDay()===6);const taken=bookings.filter(b=>b.date_key===selDK&&b.time===t).length;return{taken,left:maxSp-taken,maxSp};};
+  const classSlots=t=>{const maxSp=getMaxSpots(t,selDK);const taken=bookings.filter(b=>b.date_key===selDK&&b.time===t).length;return{taken,left:maxSp-taken,maxSp};};
   const wellSlotTaken=t=>wellBks.some(b=>b.date_key===selDK&&b.time===t);
 
   async function handleBook(){
