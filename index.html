@@ -504,6 +504,10 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
   const [pwResetOk,setPwResetOk]=useState("");
   const [editingEmergency,setEditingEmergency]=useState(false);
   const [emergencyEdits,setEmergencyEdits]=useState({emergency_name:"",emergency_phone:""});
+  const [editingMembership,setEditingMembership]=useState(false);
+  const [membershipEdit,setMembershipEdit]=useState(member.membership_type||"");
+  const [savingMembership,setSavingMembership]=useState(false);
+  const [membershipOk,setMembershipOk]=useState(false);
   const [editingExtra,setEditingExtra]=useState(false);
   const [extraEdits,setExtraEdits]=useState({
     medical_conditions: member.medical_conditions||"",
@@ -515,6 +519,13 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
   const [savingExtra,setSavingExtra]=useState(false);
   const [extraOk,setExtraOk]=useState(false);
 
+  async function saveMembership(){
+    setSavingMembership(true);
+    await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,{membership_type:membershipEdit});
+    member.membership_type=membershipEdit;
+    setSavingMembership(false);setEditingMembership(false);setMembershipOk(true);
+    setTimeout(()=>setMembershipOk(false),2000);
+  }
   async function saveExtra(){
     setSavingExtra(true);
     await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,extraEdits);
@@ -583,7 +594,36 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
       React.createElement(Row,{label:"Email",value:member.email}),
       React.createElement(Row,{label:"Phone",value:member.phone}),
       React.createElement(Row,{label:"Date of Birth",value:member.dob}),
-      React.createElement(Row,{label:"Membership",value:member.membership_type}),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #0f0f0f"}},
+        React.createElement("div",{className:"mp-label"},"Membership"),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+          !editingMembership&&React.createElement("div",{className:"mp-value",style:{color:member.membership_type?"#4aaa66":"#555"}},member.membership_type||"—"),
+          currentUserIsAdmin&&React.createElement("button",{
+            onClick:()=>{setMembershipEdit(member.membership_type||"");setEditingMembership(e=>!e);},
+            style:{background:"none",border:"1px solid #333",color:"#888",fontSize:9,letterSpacing:"0.12em",padding:"3px 8px",borderRadius:3,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600,flexShrink:0}
+          },editingMembership?"CANCEL":"EDIT")
+        )
+      ),
+      editingMembership&&React.createElement("div",{style:{padding:"10px 0 4px"}},
+        React.createElement("select",{
+          value:membershipEdit,
+          onChange:e=>setMembershipEdit(e.target.value),
+          style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:300,padding:"10px 12px",borderRadius:3,outline:"none",marginBottom:8,cursor:"pointer"}
+        },
+          React.createElement("option",{value:""},"Select membership..."),
+          ["FOUNDATION MEMBER - 3 months","FOUNDATION MEMBER - 6 months","FOUNDATION MEMBER - 12 months",
+           "ACTIVE - 3 months","ACTIVE - 6 months","ACTIVE - 12 months",
+           "COMMUNITY - 3 months","COMMUNITY - 6 months","COMMUNITY - 12 months",
+           "ESSENTIAL - 3 months","ESSENTIAL - 6 months","ESSENTIAL - 12 months",
+           "SIGNATURE - 3 months","SIGNATURE - 6 months","SIGNATURE - 12 months",
+           "DUO - 3 months","DUO - 6 months","DUO - 12 months"
+          ].map(opt=>React.createElement("option",{key:opt,value:opt},opt))
+        ),
+        React.createElement("button",{
+          onClick:saveMembership,disabled:savingMembership,
+          style:{width:"100%",background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.15em",padding:"12px",borderRadius:3,cursor:"pointer",marginBottom:4}
+        },savingMembership?"SAVING...":membershipOk?"SAVED ✓":"SAVE MEMBERSHIP")
+      ),
       React.createElement(Row,{label:"Registered",value:member.registration_date}),
       React.createElement("div",{className:"mp-section",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
         React.createElement("span",null,"EMERGENCY CONTACT"),
@@ -1093,7 +1133,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
       React.createElement("button",{className:`adm-seg-btn${admSeg==="members"?" aas":""}`,onClick:()=>setAdmSeg("members")},"MEMBERS"),
       React.createElement("button",{className:`adm-seg-btn${admSeg==="classes"?" aas":""}`,onClick:()=>setAdmSeg("classes")},"CLASSES"),
       React.createElement("button",{className:`adm-seg-btn${admSeg==="wellness"?" aas":""}`,onClick:()=>setAdmSeg("wellness")},"WELLNESS"),
-      React.createElement("button",{className:`adm-seg-btn${admSeg==="settings"?" aas":""}`,onClick:()=>setAdmSeg("settings")},"SETTINGS")
+      React.createElement("button",{className:`adm-seg-btn${admSeg==="settings"?" aas":""}`,onClick:()=>setAdmSeg("settings")},"SETTINGS"),
+      React.createElement("button",{className:`adm-seg-btn${admSeg==="tiers"?" aas":""}`,onClick:()=>setAdmSeg("tiers")},"TIERS")
     ),
     admSeg==="members"&&(!membersLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
     :React.createElement(React.Fragment,null,
@@ -1113,6 +1154,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
           ),
           React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.email)),
           mb.phone&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.phone)),
+          mb.membership_type&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",{style:{color:"#4aaa66"}},mb.membership_type)),
           React.createElement("div",{className:"adm-mc-detail"},`Joined ${joinDate} \u00B7 ${mbBks} upcoming booking${mbBks!==1?"s":""}`)
         );
       })
@@ -1223,6 +1265,34 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
         },wellnessEnabled?"ON":"OFF")
       )
     )
+  ),
+  admSeg==="tiers"&&React.createElement("div",{style:{marginTop:16}},
+    React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},"MEMBERSHIP TIERS · ADMIN REFERENCE"),
+    [
+      {name:"FOUNDATION MEMBER",sub:"",desc:"3 HIIT · 1 Strength · 1 Wellness",prices:{3:45,6:42,12:39},note:"Same access as Essential. Reserved for founding members."},
+      {name:"ACTIVE",sub:"",desc:"2 HIIT · 1 Strength · 50% Off Wellness Sessions",prices:{3:45,6:42,12:39},note:""},
+      {name:"COMMUNITY",sub:"Student · Youth · Surf Life Saving",desc:"3 HIIT · 1 Strength · 50% Off Wellness Sessions",prices:{3:45,6:42,12:39},note:""},
+      {name:"ESSENTIAL",sub:"",desc:"3 HIIT · 1 Strength · 1 Wellness",prices:{3:55,6:52,12:49},note:""},
+      {name:"SIGNATURE",sub:"",desc:"Unlimited HIIT · Unlimited Strength · 2 Wellness",prices:{3:65,6:62,12:59},note:""},
+      {name:"DUO",sub:"2 Adults",desc:"Unlimited HIIT · Unlimited Strength · 2 Wellness (Each)",prices:{3:105,6:102,12:99},note:""},
+    ].map((p,i)=>React.createElement("div",{key:i,style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:8,padding:"14px",marginBottom:10}},
+      React.createElement("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:8}},
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.08em",color:"#fff"}},
+            p.name,p.sub?React.createElement("span",{style:{fontSize:13,color:"#555",letterSpacing:"0.06em"}}," · "+p.sub):null
+          ),
+          React.createElement("div",{style:{fontSize:11,color:"#4aaa66",letterSpacing:"0.06em",marginTop:3,fontWeight:500}},p.desc)
+        )
+      ),
+      p.note&&React.createElement("div",{style:{fontSize:10,color:"#666",letterSpacing:"0.06em",marginBottom:8,fontStyle:"italic"}},p.note),
+      React.createElement("div",{style:{display:"flex",gap:6,marginTop:8}},
+        [[12,"12 MO"],[6,"6 MO"],[3,"3 MO"]].map(([t,lbl])=>React.createElement("div",{key:t,style:{flex:1,background:"#141414",border:"1px solid #222",borderRadius:4,padding:"7px 4px",textAlign:"center"}},
+          React.createElement("div",{style:{fontSize:8,letterSpacing:"0.1em",color:"#555",fontWeight:600,marginBottom:2}},lbl),
+          React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#aaa"}},`$${p.prices[t].toFixed(2)}`),
+          React.createElement("div",{style:{fontSize:7,color:"#444",letterSpacing:"0.08em"}},"per week")
+        ))
+      )
+    ))
   )
   );
 }
