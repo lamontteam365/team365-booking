@@ -72,7 +72,7 @@ html,body{background:#080808;min-height:100vh}
 .c-sub.cl{color:#e06040}
 .c-sub.co{color:#aaa}
 .c-sub.ck{color:#777}
-.c-sub.cf{color:#555}.c-sub.cg{color:#4aaa66}
+.c-sub.cf{color:#555}.c-sub.cg{color:#1d9bf0}
 .c-btn{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:0.12em;padding:8px 12px;border-radius:3px;border:none;cursor:pointer;white-space:nowrap;transition:all .15s}
 .c-btn.bb{background:#fff;color:#000}
 .c-btn.bb:hover:not(:disabled){background:#ddd}
@@ -104,7 +104,7 @@ html,body{background:#080808;min-height:100vh}
 .well-slot-mid{flex:1}
 .well-slot-name{font-size:11px;letter-spacing:0.08em;color:#aaa;font-weight:500}
 .well-slot-status{font-size:10px;letter-spacing:0.1em;color:#999;font-weight:500;margin-top:2px}
-.well-slot-status.wss-mine{color:#4aaa66}
+.well-slot-status.wss-mine{color:#1d9bf0}
 .well-slot-status.wss-taken{color:#e06040}
 .well-btn{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:0.12em;padding:8px 12px;border-radius:3px;border:none;cursor:pointer;white-space:nowrap;transition:all .15s}
 .well-btn.wb-book{background:#fff;color:#000}
@@ -257,7 +257,7 @@ html,body{background:#080808;min-height:100vh}
 .adm-class-mid{flex:1}
 .adm-class-count{font-size:10px;letter-spacing:0.1em;color:#999;font-weight:500}
 .adm-class-count.full{color:#e06040}
-.adm-class-count.has-bk{color:#4aaa66}
+.adm-class-count.has-bk{color:#1d9bf0}
 .adm-class-bars{display:flex;gap:2px;margin-top:5px}
 .adm-bar{flex:1;height:2px;border-radius:1px;background:#2a2a2a}
 .adm-bar.at{background:#4aaa66}
@@ -597,7 +597,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
       React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #0f0f0f"}},
         React.createElement("div",{className:"mp-label"},"Membership"),
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
-          !editingMembership&&React.createElement("div",{className:"mp-value",style:{color:member.membership_type?"#4aaa66":"#555"}},member.membership_type||"—"),
+          !editingMembership&&React.createElement("div",{className:"mp-value",style:{color:member.membership_type?"#1d9bf0":"#555"}},member.membership_type||"—"),
           currentUserIsAdmin&&React.createElement("button",{
             onClick:()=>{setMembershipEdit(member.membership_type||"");setEditingMembership(e=>!e);},
             style:{background:"none",border:"1px solid #333",color:"#888",fontSize:9,letterSpacing:"0.12em",padding:"3px 8px",borderRadius:3,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600,flexShrink:0}
@@ -1153,7 +1153,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
           ),
           React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.email)),
           mb.phone&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.phone)),
-          mb.membership_type&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",{style:{color:"#4aaa66"}},mb.membership_type)),
+          mb.membership_type&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",{style:{color:"#1d9bf0"}},mb.membership_type)),
           React.createElement("div",{className:"adm-mc-detail"},`Joined ${joinDate} \u00B7 ${mbBks} upcoming booking${mbBks!==1?"s":""}`)
         );
       })
@@ -1249,8 +1249,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
               React.createElement("div",{className:"adm-class-hdr",style:{cursor:"default"}},
                 React.createElement("div",{className:"adm-class-time"},fmt12(time)),
                 React.createElement("div",{className:"adm-class-mid"},
-                  React.createElement("div",{className:"adm-class-count",style:{color:"#4aaa66"}},"Booked \u2713"),
-                  React.createElement("div",{className:"adm-member-email",style:{marginTop:4,color:"#4aaa66"}},bk.name+" \u00B7 "+bk.email)
+                  React.createElement("div",{className:"adm-class-count",style:{color:"#1d9bf0"}},"Booked \u2713"),
+                  React.createElement("div",{className:"adm-member-email",style:{marginTop:4,color:"#1d9bf0"}},bk.name+" \u00B7 "+bk.email)
                 ),
                 React.createElement("button",{className:"adm-remove-btn",style:{fontSize:11},onClick:async()=>{
                   setWellAdmBks(prev=>prev.filter(b=>!(b.date_key===admDK&&b.time===time)));
@@ -1277,7 +1277,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
           React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.08em",color:"#fff"}},
             p.name,p.sub?React.createElement("span",{style:{fontSize:13,color:"#555",letterSpacing:"0.06em"}}," · "+p.sub):null
           ),
-          React.createElement("div",{style:{fontSize:11,color:"#7dd3fc",letterSpacing:"0.06em",marginTop:3,fontWeight:500}},p.desc)
+          React.createElement("div",{style:{fontSize:11,color:"#1d9bf0",letterSpacing:"0.06em",marginTop:3,fontWeight:500}},p.desc)
         )
       ),
       p.note&&React.createElement("div",{style:{fontSize:10,color:"#666",letterSpacing:"0.06em",marginBottom:8,fontStyle:"italic"}},p.note),
@@ -2048,7 +2048,7 @@ function App(){
         React.createElement("input",{className:"fi",type:"tel",value:profForm.phone,autoComplete:"tel",onChange:e=>{setProfForm(f=>({...f,phone:e.target.value}));setProfErr("");setProfOk("");}}),
         memberData?.membership_type&&React.createElement("div",{style:{marginBottom:14}},
           React.createElement("label",{className:"fl"},"MEMBERSHIP TYPE"),
-          React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1a1a1a",borderRadius:3,padding:"10px 12px",fontSize:14,fontWeight:300,color:"#7dd3fc",letterSpacing:"0.04em"}},memberData.membership_type)
+          React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1a1a1a",borderRadius:3,padding:"10px 12px",fontSize:14,fontWeight:300,color:"#1d9bf0",letterSpacing:"0.04em"}},memberData.membership_type)
         ),
         React.createElement("div",{className:"prof-section"},"EMERGENCY CONTACT"),
         React.createElement("label",{className:"fl"},"CONTACT NAME"),
