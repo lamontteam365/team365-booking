@@ -1325,6 +1325,17 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
 
 // ── Onboarding View ──────────────────────────────────────────────────────────
 
+function OnboardingPanel({id,title,children,openPanel,setOpenPanel}){
+  const open=openPanel===id;
+  return React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:8,marginBottom:8,overflow:"hidden"}},
+    React.createElement("button",{onClick:()=>setOpenPanel(open?null:id),style:{width:"100%",background:"none",border:"none",padding:"14px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",textAlign:"left"}},
+      React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.08em",color:"#fff"}},title),
+      React.createElement("div",{style:{color:"#444",fontSize:14,transition:"transform .2s",transform:open?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
+    ),
+    open&&React.createElement("div",{style:{padding:"0 14px 14px"}},children)
+  );
+}
+
 function OnboardingView({expandedTier,setExpandedTier,showToast}){
   const TIERS=[
     {name:"FOUNDATION MEMBER",desc:"3 HIIT · 1 Strength · 1 Wellness",prices:{3:45,6:42,12:39},note:"Same as Essential Member · Price reserved for founding members"},
@@ -1392,22 +1403,11 @@ function OnboardingView({expandedTier,setExpandedTier,showToast}){
     setInviteSending(false);
   }
 
-  function Panel({id,title,children}){
-    const open=openPanel===id;
-    return React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:8,marginBottom:8,overflow:"hidden"}},
-      React.createElement("button",{onClick:()=>setOpenPanel(open?null:id),style:{width:"100%",background:"none",border:"none",padding:"14px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",textAlign:"left"}},
-        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.08em",color:"#fff"}},title),
-        React.createElement("div",{style:{color:"#444",fontSize:14,transition:"transform .2s",transform:open?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
-      ),
-      open&&React.createElement("div",{style:{padding:"0 14px 14px"}},children)
-    );
-  }
-
   return React.createElement("div",{style:{marginTop:16}},
     React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},"ONBOARDING · ADMIN"),
 
     // ── Membership Tiers ──
-    React.createElement(Panel,{id:"tiers",title:"MEMBERSHIP TIERS"},
+    React.createElement(OnboardingPanel,{id:"tiers",title:"MEMBERSHIP TIERS",openPanel,setOpenPanel},
       TIERS.map((p,i)=>{
         const open=expandedTier===i;
         return React.createElement("div",{key:i,style:{background:"#111",border:"1px solid #1e1e1e",borderRadius:6,marginBottom:6,overflow:"hidden"}},
@@ -1431,7 +1431,7 @@ function OnboardingView({expandedTier,setExpandedTier,showToast}){
     ),
 
     // ── Onboarding Process ──
-    React.createElement(Panel,{id:"process",title:"ONBOARDING PROCESS"},
+    React.createElement(OnboardingPanel,{id:"process",title:"ONBOARDING PROCESS",openPanel,setOpenPanel},
       !processLoaded
         ?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"10px 0"}},"LOADING...")
         :React.createElement("div",null,
@@ -1452,7 +1452,7 @@ function OnboardingView({expandedTier,setExpandedTier,showToast}){
     ),
 
     // ── Send Registration Form ──
-    React.createElement(Panel,{id:"invite",title:"SEND REGISTRATION FORM"},
+    React.createElement(OnboardingPanel,{id:"invite",title:"SEND REGISTRATION FORM",openPanel,setOpenPanel},
       React.createElement("div",null,
         React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.1em",marginBottom:12,lineHeight:1.7}},"Enter a new member's email address to send them the Team 365 registration form."),
         React.createElement("input",{
