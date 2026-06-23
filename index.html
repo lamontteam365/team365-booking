@@ -1327,38 +1327,82 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
 
 function ProcessNoteEditor({showToast}){
   const PROCESS_KEY="__ONBOARDING_PROCESS__";
-  const [note,setNote]=useState("");
+  const DEFAULT_STEPS=[
+    {title:"SEND REGISTRATION INVITE",body:"Go to Onboarding → Send Registration Form, enter the new member's email and tap Send. They receive a branded email with a link to the registration form."},
+    {title:"MEMBER COMPLETES REGISTRATION FORM",body:"Member fills out personal details, emergency contact, PAR-Q health screening, selects their membership plan and term, sets up direct debit, and signs the agreement."},
+    {title:"AUTOMATIC EMAILS FIRE ON SUBMISSION",body:"Two emails send automatically on submit: a welcome email with their temporary app password and login link, and a direct debit agreement PDF for their records."},
+    {title:"SUCCESS SCREEN SHOWS APP INSTALL INSTRUCTIONS",body:"After submitting, the member sees a success screen with device-specific steps to add Team 365 to their home screen — iPhone (Share → Add to Home Screen) or Android (Menu → Install App)."},
+    {title:"MEMBER LOGS INTO THE APP",body:"Using the temporary password from the welcome email, the member opens the app and logs in for the first time."},
+    {title:"ADMIN VERIFIES PROFILE",body:"Open the member's profile in the admin panel and confirm their membership tier, term, and expiry date came through correctly from the form."},
+    {title:"MEMBER IS ACTIVE",body:"The member can now book HIIT, Strength, and Wellness sessions according to their tier. Automatic expiry reminders fire at 14 days and 7 days before their membership ends."},
+  ];
+  const [steps,setSteps]=useState([]);
   const [editing,setEditing]=useState(false);
-  const [draft,setDraft]=useState("");
+  const [draft,setDraft]=useState([]);
   const [saving,setSaving]=useState(false);
   const [loaded,setLoaded]=useState(false);
-  useEffect(()=>{
-    sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(PROCESS_KEY)}&select=content`)
-      .then(d=>{if(d&&d.length)setNote(d[0].content||"");setLoaded(true);});
-  },[]);
+
+  useEffect(()=>{load();},[]);
+
+  async function load(){
+    const data=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(PROCESS_KEY)}&select=content`);
+    if(data&&data.length&&data[0].content){
+      try{
+        const parsed=JSON.parse(data[0].content);
+        if(Array.isArray(parsed))setSteps(parsed);
+        else setSteps(DEFAULT_STEPS);
+      }catch{setSteps([{title:"ONBOARDING PROCESS",body:data[0].content}]);}
+    } else {setSteps(DEFAULT_STEPS);}
+    setLoaded(true);
+  }
+
   async function save(){
     setSaving(true);
+    const json=JSON.stringify(draft);
     const existing=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(PROCESS_KEY)}&select=id`);
-    if(existing&&existing.length){await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(PROCESS_KEY)}`,{content:draft,updated_at:Date.now()});}
-    else{await sbPost("coaching_notes",{class_name:PROCESS_KEY,content:draft,updated_at:Date.now()});}
-    setNote(draft);setSaving(false);setEditing(false);
+    if(existing&&existing.length){await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(PROCESS_KEY)}`,{content:json,updated_at:Date.now()});}
+    else{await sbPost("coaching_notes",{class_name:PROCESS_KEY,content:json,updated_at:Date.now()});}
+    setSteps(draft.map(s=>({...s})));setSaving(false);setEditing(false);
     showToast("Onboarding process saved ✓");
   }
+
+  function updateDraft(i,field,val){setDraft(d=>d.map((s,idx)=>idx===i?{...s,[field]:val}:s));}
+  function addStep(){setDraft(d=>[...d,{title:"",body:""}]);}
+  function removeStep(i){setDraft(d=>d.filter((_,idx)=>idx!==i));}
+
   if(!loaded)return React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"10px 0"}},"LOADING...");
+
+  if(editing){
+    return React.createElement("div",null,
+      React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:14}},
+        React.createElement("button",{onClick:()=>setEditing(false),style:{background:"none",border:"1px solid #333",borderRadius:4,padding:"4px 12px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
+        React.createElement("button",{onClick:save,disabled:saving,style:{background:"#1d9bf0",border:"none",borderRadius:4,padding:"4px 14px",color:"#fff",fontSize:10,letterSpacing:"0.1em",cursor:"pointer",fontWeight:600}},saving?"SAVING...":"SAVE")
+      ),
+      draft.map((s,i)=>React.createElement("div",{key:i,style:{background:"#141414",border:"1px solid #1e1e1e",borderRadius:6,padding:"12px",marginBottom:10}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:8}},
+          React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#1d9bf0",lineHeight:1,minWidth:20}},i+1),
+          React.createElement("input",{value:s.title,onChange:e=>updateDraft(i,"title",e.target.value),placeholder:"Step title",
+            style:{flex:1,background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:4,color:"#ccc",fontSize:12,padding:"6px 10px",fontFamily:"'DM Sans',sans-serif",outline:"none",letterSpacing:"0.06em"}}),
+          React.createElement("button",{onClick:()=>removeStep(i),style:{background:"none",border:"1px solid #2a2a2a",borderRadius:4,padding:"3px 8px",color:"#555",fontSize:11,cursor:"pointer",flexShrink:0}},"✕")
+        ),
+        React.createElement("textarea",{value:s.body,onChange:e=>updateDraft(i,"body",e.target.value),placeholder:"Step description",rows:3,
+          style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:4,color:"#888",fontSize:12,padding:"8px 10px",fontFamily:"'DM Sans',sans-serif",lineHeight:1.6,resize:"vertical",boxSizing:"border-box",outline:"none"}})
+      )),
+      React.createElement("button",{onClick:addStep,style:{width:"100%",background:"none",border:"1px dashed #2a2a2a",borderRadius:6,padding:"10px",color:"#444",fontSize:10,letterSpacing:"0.12em",cursor:"pointer",marginTop:4}},"+ ADD STEP")
+    );
+  }
+
   return React.createElement("div",null,
-    React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:8}},
-      !editing
-        ?React.createElement("button",{onClick:()=>{setDraft(note);setEditing(true);},style:{background:"none",border:"1px solid #333",borderRadius:4,padding:"5px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT")
-        :React.createElement("div",{style:{display:"flex",gap:8}},
-          React.createElement("button",{onClick:()=>setEditing(false),style:{background:"none",border:"1px solid #333",borderRadius:4,padding:"5px 12px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
-          React.createElement("button",{onClick:save,disabled:saving,style:{background:"#1d9bf0",border:"none",borderRadius:4,padding:"5px 12px",color:"#fff",fontSize:10,letterSpacing:"0.1em",cursor:"pointer",fontWeight:600}},saving?"SAVING...":"SAVE")
-        )
+    React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:12}},
+      React.createElement("button",{onClick:()=>{setDraft(steps.map(s=>({...s})));setEditing(true);},style:{background:"none",border:"1px solid #333",borderRadius:4,padding:"4px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT")
     ),
-    editing
-      ?React.createElement("textarea",{value:draft,onChange:e=>setDraft(e.target.value),style:{width:"100%",minHeight:240,background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#ccc",fontSize:13,lineHeight:1.7,padding:"10px 12px",fontFamily:"'DM Sans',sans-serif",fontWeight:300,letterSpacing:"0.02em",resize:"vertical",boxSizing:"border-box"}})
-      :note
-        ?React.createElement("div",{style:{fontSize:13,color:"#ccc",lineHeight:1.8,fontWeight:300,whiteSpace:"pre-wrap",letterSpacing:"0.02em"}},note)
-        :React.createElement("div",{style:{fontSize:10,color:"#333",letterSpacing:"0.1em",textAlign:"center",padding:"20px 0"}},"NO PROCESS NOTES YET · TAP EDIT TO ADD")
+    steps.map((s,i)=>React.createElement("div",{key:i,style:{display:"flex",gap:12,marginBottom:16,paddingBottom:16,borderBottom:i<steps.length-1?"1px solid #141414":"none"}},
+      React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#1d9bf0",lineHeight:1,minWidth:20,paddingTop:1}},i+1),
+      React.createElement("div",null,
+        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.1em",color:"#fff",marginBottom:5}},s.title),
+        React.createElement("div",{style:{fontSize:12,color:"#777",lineHeight:1.7,fontWeight:300}},s.body)
+      )
+    ))
   );
 }
 
@@ -1501,6 +1545,11 @@ function OnboardingView({showToast}){
   return React.createElement("div",{style:{marginTop:16}},
     React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},"ONBOARDING · ADMIN"),
 
+    // ── Onboarding Process ──
+    React.createElement(OnboardingPanel,{id:"process",title:"ONBOARDING PROCESS",openPanel,setOpenPanel},
+      React.createElement(ProcessNoteEditor,{showToast})
+    ),
+
     // ── Member Journey ──
     React.createElement(OnboardingPanel,{id:"journey",title:"MEMBER JOURNEY",openPanel,setOpenPanel},
       React.createElement("div",null,
@@ -1508,7 +1557,7 @@ function OnboardingView({showToast}){
           {n:"1",t:"SEND REGISTRATION INVITE",b:"Admin goes to Onboarding → Send Registration Form, enters the new member's email and taps Send. They receive a branded email with a COMPLETE REGISTRATION button linking to the form."},
           {n:"2",t:"MEMBER COMPLETES REGISTRATION FORM",b:"Member fills out personal details, emergency contact, PAR-Q health screening, selects their membership plan and term, sets up direct debit, and signs the agreement."},
           {n:"3",t:"AUTOMATIC EMAILS FIRE ON SUBMISSION",b:"Two emails send automatically the moment they submit: (1) a welcome email with their temporary app password and login link, and (2) a direct debit agreement PDF for their records."},
-          {n:"4",t:"SUCCESS SCREEN SHOWS HOME SCREEN INSTRUCTIONS",b:"After submitting, the member sees a success screen with device-specific instructions to add Team 365 to their home screen — iPhone users see the Share → Add to Home Screen steps, Android users see the Menu → Install App steps."},
+          {n:"4",t:"SUCCESS SCREEN SHOWS APP INSTALL INSTRUCTIONS",b:"After submitting, the member sees a success screen with device-specific instructions to add Team 365 to their home screen — iPhone users see the Share → Add to Home Screen steps, Android users see the Menu → Install App steps."},
           {n:"5",t:"MEMBER LOGS INTO THE APP",b:"Using the temporary password from the welcome email, the member opens the app and logs in for the first time."},
           {n:"6",t:"ADMIN VERIFIES PROFILE",b:"Admin opens the member's profile and confirms their membership tier, term, and expiry date came through correctly from the form."},
           {n:"7",t:"MEMBER IS ACTIVE",b:"The member can now book HIIT, Strength, and Wellness sessions according to their tier. Automatic expiry reminders fire at 14 days and 7 days before their membership ends."},
@@ -1525,11 +1574,6 @@ function OnboardingView({showToast}){
     // ── Membership Tiers ──
     React.createElement(OnboardingPanel,{id:"tiers",title:"MEMBERSHIP TIERS",openPanel,setOpenPanel},
       React.createElement(TierEditor,{showToast})
-    ),
-
-    // ── Onboarding Process ──
-    React.createElement(OnboardingPanel,{id:"process",title:"ONBOARDING PROCESS",openPanel,setOpenPanel},
-      React.createElement(ProcessNoteEditor,{showToast})
     ),
 
     // ── Send Registration Form ──
