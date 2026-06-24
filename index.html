@@ -2389,11 +2389,16 @@ function App(){
           ?React.createElement(React.Fragment,null,"New member? ",React.createElement("button",{onClick:()=>{setAuthMode("signup");setAuthErr("");setShowForgotPw(false);}},"Create an account"))
           :React.createElement(React.Fragment,null,"Already a member? ",React.createElement("button",{onClick:()=>{setAuthMode("login");setAuthErr("");}},"Log in"))
       ),
-      React.createElement("div",{className:"auth-reg"},React.createElement("a",{href:"/register.html"},"Complete registration & PAR-Q form")),
       React.createElement("div",{className:"auth-guest-divider"},React.createElement("span",null,"OR")),
       React.createElement("div",{className:"auth-guest"},"Not a member? ",React.createElement("a",{href:"/WIDGET.HTML",target:"_blank"},"Book as a guest"))
     ),
-    React.createElement("div",{className:"foot",style:{marginTop:48,fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION.")
+    React.createElement("div",{style:{marginTop:48,textAlign:"center"}},
+      React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION."),
+      React.createElement("div",{style:{marginTop:8,fontSize:"8px",letterSpacing:"0.08em",color:"#444"}},
+        "Powered by ",
+        React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"www.lamontcollective.com")
+      )
+    )
   );
 
   return React.createElement("div",{className:"app",onTouchStart:handleTouchStart,onTouchEnd:handleTouchEnd},
@@ -2568,7 +2573,13 @@ function App(){
       wellnessEnabled&&React.createElement("button",{className:`tab-btn${tab==="wellness"?" ta":""}`,onClick:()=>setTab("wellness")},"WELLNESS"),
       isAdmin&&React.createElement("button",{className:`tab-btn${tab==="admin"?" ta":""}`,onClick:()=>setTab("admin")},"ADMIN")
     ),
-    React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION."),
+    React.createElement("div",{style:{textAlign:"center"}},
+      React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION."),
+      React.createElement("div",{style:{marginTop:8,fontSize:"8px",letterSpacing:"0.08em",color:"#444"}},
+        "Powered by ",
+        React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"www.lamontcollective.com")
+      )
+    ),
     React.createElement("div",{className:`toast${toast.show?" show":""}`},toast.msg),
 
     showProf&&React.createElement("div",{className:"prof-overlay"},
