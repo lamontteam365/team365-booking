@@ -1789,7 +1789,7 @@ function isWorkoutReleased(monthYear,weekNum,isAdmin){
 function ExSection({sectionName,exercises,isFirst,ctx}){
   const {editingId,setEditingId,exEdit,setExEdit,savingEx,saveExercise,
          session,ticks,toggleTick,expandedEx,toggleEx,weights,saveSetWeight,
-         isAdmin,deleteExercise}=ctx;
+         isAdmin,deleteExercise,monthYear}=ctx;
   return React.createElement(React.Fragment,null,
     React.createElement("div",{className:`sp-section-hdr${isFirst?" spsh-first":""}`},sectionName.toUpperCase()),
     exercises.map(ex=>{
@@ -1821,6 +1821,9 @@ function ExSection({sectionName,exercises,isFirst,ctx}){
           ),
           React.createElement("div",{className:"sp-edit-lbl"},"DURATION (optional)"),
           React.createElement("input",{className:"sp-edit-input",value:exEdit.duration||"",onChange:e=>setExEdit(p=>({...p,duration:e.target.value})),placeholder:"e.g. 45 sec"}),
+          React.createElement("div",{style:{fontSize:9,letterSpacing:"0.12em",color:ex.month_year?"#4ade80":"#60a5fa",marginBottom:10,marginTop:4,fontWeight:600}},
+            ex.month_year?`THIS MONTH ONLY (${ex.month_year})`:"ALL MONTHS (CONTINUOUS)"
+          ),
           React.createElement("div",{className:"sp-edit-actions"},
             React.createElement("button",{className:"sp-edit-cancel",onClick:()=>setEditingId(null)},"Cancel"),
             React.createElement("button",{className:"sp-edit-save",onClick:saveExercise,disabled:savingEx},savingEx?"SAVING...":"SAVE")
@@ -1887,14 +1890,14 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
   const [exEdit,setExEdit]=useState({});
   const [savingEx,setSavingEx]=useState(false);
   const [addingEx,setAddingEx]=useState(false);
-  const [newEx,setNewEx]=useState({exercise:"",section:"Main",sets:"",reps:"",duration:"",weeks:[1,2,3,4]});
+  const [newEx,setNewEx]=useState({exercise:"",section:"Main",sets:"",reps:"",duration:"",weeks:[1,2,3,4],scope:"month"});
   const [savingNew,setSavingNew]=useState(false);
 
   useEffect(()=>{loadData();},[sessType,weekNum,monthYear]);
 
   async function loadData(){
     setLoading(true);
-    const prog=await sbGet("strength_program",`session_type=eq.${sessType}&week_number=eq.${weekNum}&order=order_num.asc`);
+    const prog=await sbGet("strength_program",`session_type=eq.${sessType}&week_number=eq.${weekNum}&or=(month_year.is.null,month_year.eq.${monthYear})&order=order_num.asc`);
     const wts=session?await sbGet("member_weights",`email=eq.${encodeURIComponent(session.email)}&session_type=eq.${sessType}&week_number=eq.${weekNum}&month_year=eq.${monthYear}`):[];
     setProgram(prog||[]);
     const wtMap={};
@@ -1966,7 +1969,7 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
     const sectionExes=program.filter(e=>e.section===newEx.section);
     const maxOrder=sectionExes.length>0?Math.max(...sectionExes.map(e=>e.order_num||0)):0;
     for(const wk of newEx.weeks){
-      await sbPost("strength_program",{session_type:sessType,week_number:wk,section:newEx.section,exercise:newEx.exercise.trim().toUpperCase(),sets:newEx.sets?parseInt(newEx.sets):null,reps:newEx.reps||null,duration:newEx.duration||null,order_num:maxOrder+1});
+      await sbPost("strength_program",{session_type:sessType,week_number:wk,section:newEx.section,exercise:newEx.exercise.trim().toUpperCase(),sets:newEx.sets?parseInt(newEx.sets):null,reps:newEx.reps||null,duration:newEx.duration||null,order_num:maxOrder+1,month_year:newEx.scope==="month"?monthYear:null});
     }
     setSavingNew(false);setAddingEx(false);
     setNewEx({exercise:"",section:"Main",sets:"",reps:"",duration:"",weeks:[1,2,3,4]});
@@ -2029,7 +2032,7 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
       ...(()=>{
         const exCtx={editingId,setEditingId,exEdit,setExEdit,savingEx,saveExercise,
           session,ticks,toggleTick,expandedEx,toggleEx,weights,saveSetWeight,
-          isAdmin,deleteExercise};
+          isAdmin,deleteExercise,monthYear};
         return sectionOrder.filter(s=>sections[s]&&sections[s].length>0).map((s,i)=>
           React.createElement(ExSection,{key:s,sectionName:s,exercises:sections[s],isFirst:i===0,ctx:exCtx})
         );
@@ -2044,6 +2047,11 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
               React.createElement("option",{value:"Main"},"Main"),
               React.createElement("option",{value:"Mobility"},"Mobility"),
               React.createElement("option",{value:"Accessories"},"Accessories")
+            ),
+            React.createElement("div",{className:"sp-edit-lbl"},"APPLY TO"),
+            React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}},
+              React.createElement("button",{onClick:()=>setNewEx(p=>({...p,scope:"month"})),style:{flex:1,padding:"8px 0",borderRadius:6,border:"1px solid",borderColor:newEx.scope==="month"?"#4ade80":"#333",background:newEx.scope==="month"?"rgba(74,222,128,0.15)":"transparent",color:newEx.scope==="month"?"#4ade80":"#555",fontSize:10,fontWeight:600,letterSpacing:"0.1em",cursor:"pointer"}},"THIS MONTH ONLY"),
+              React.createElement("button",{onClick:()=>setNewEx(p=>({...p,scope:"all"})),style:{flex:1,padding:"8px 0",borderRadius:6,border:"1px solid",borderColor:newEx.scope==="all"?"#60a5fa":"#333",background:newEx.scope==="all"?"rgba(96,165,250,0.15)":"transparent",color:newEx.scope==="all"?"#60a5fa":"#555",fontSize:10,fontWeight:600,letterSpacing:"0.1em",cursor:"pointer"}},"ALL MONTHS")
             ),
             React.createElement("div",{className:"sp-edit-row"},
               React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-edit-lbl"},"SETS"),React.createElement("input",{className:"sp-edit-input",value:newEx.sets,onChange:e=>setNewEx(p=>({...p,sets:e.target.value})),placeholder:"e.g. 3"})),
@@ -2073,7 +2081,7 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
         :React.createElement("button",{onClick:()=>{
             const cw=autoWeek();
             const defaultWeeks=monthYear===nowMY?[1,2,3,4].filter(w=>w>=cw):[1,2,3,4];
-            setNewEx({exercise:"",section:"Main",sets:"",reps:"",duration:"",weeks:defaultWeeks});
+            setNewEx({exercise:"",section:"Main",sets:"",reps:"",duration:"",weeks:defaultWeeks,scope:"month"});
             setAddingEx(true);
           },style:{display:"block",width:"100%",marginTop:20,padding:"12px",background:"transparent",border:"1px dashed #333",borderRadius:8,color:"#555",fontSize:11,letterSpacing:"0.15em",fontWeight:600,cursor:"pointer"}},"+ ADD EXERCISE")
       )
