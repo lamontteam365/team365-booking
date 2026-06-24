@@ -464,7 +464,8 @@ function getTierLimits(membershipType){
   const mt=membershipType.toUpperCase();
   if(mt.includes("SIGNATURE")||mt.includes("DUO"))return{hiit:null,strength:null,wellness:2};
   if(mt.includes("CORE"))return{hiit:2,strength:1,wellness:1};
-  return{hiit:3,strength:1,wellness:1}; // Foundation, Essential, Community
+  if(mt.includes("COMMUNITY")||mt.includes("ESSENTIAL"))return{hiit:3,strength:1,wellness:1};
+  return{hiit:3,strength:1,wellness:1}; // Foundation and any other tier
 }
 // Tuesday=2, Thursday=4 are Strength days
 const isStrengthDay=dk=>{const d=new Date(dk+"T00:00:00");return d.getDay()===2||d.getDay()===4;};;
@@ -534,7 +535,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
     const m=membershipType.match(/(\d+)\s*months?/i);
     if(!m)return null;
     const months=parseInt(m[1]);
-    const base=new Date(joinedAt);
+    const base=new Date();
     base.setMonth(base.getMonth()+months);
     return base.toISOString().split("T")[0];
   }
@@ -633,9 +634,9 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
         },
           React.createElement("option",{value:""},"Select membership..."),
           ["FOUNDATION MEMBER - 3 months","FOUNDATION MEMBER - 6 months","FOUNDATION MEMBER - 12 months",
-           "CORE - 3 months","CORE - 6 months","CORE - 12 months",
-           "COMMUNITY - 3 months","COMMUNITY - 6 months","COMMUNITY - 12 months",
-           "ESSENTIAL - 3 months","ESSENTIAL - 6 months","ESSENTIAL - 12 months",
+           "CORE MEMBER - 3 months","CORE MEMBER - 6 months","CORE MEMBER - 12 months",
+           "COMMUNITY MEMBER - 3 months","COMMUNITY MEMBER - 6 months","COMMUNITY MEMBER - 12 months",
+           "ESSENTIAL MEMBER - 3 months","ESSENTIAL MEMBER - 6 months","ESSENTIAL MEMBER - 12 months",
            "SIGNATURE - 3 months","SIGNATURE - 6 months","SIGNATURE - 12 months",
            "DUO - 3 months","DUO - 6 months","DUO - 12 months"
           ].map(opt=>React.createElement("option",{key:opt,value:opt},opt))
