@@ -1114,7 +1114,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
     undoTimerRef.current=setTimeout(()=>setUndoData(null),6000);
   }
   async function hideClass(time){
-    if(saveClassLimit)await saveClassLimit(time,admDK,"0");
+    if(cancelClass)await cancelClass(time,admDK);
     showToast("Class hidden ✓");
   }
   async function unhideClass(time,spots){
