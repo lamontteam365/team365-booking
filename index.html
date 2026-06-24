@@ -1089,7 +1089,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
   );
 }
 // ── Admin View ────────────────────────────────────────────────────────────────
-function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,classLimits,wellnessEnabled,saveWellnessSetting}){
+function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,dowNames,saveDowName}){
   const [admSeg,setAdmSeg]=useState(()=>lsGet("t365-admseg","members"));
   useEffect(()=>{lsSet("t365-admseg",admSeg);},[admSeg]);
   const [expandedTier,setExpandedTier]=useState(null);
@@ -1109,6 +1109,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
   const [newTimeVal,setNewTimeVal]=useState("");
   const [undoData,setUndoData]=useState(null);
   const undoTimerRef=useRef(null);
+  const [editingClassName,setEditingClassName]=useState(false);
+  const [classNameInput,setClassNameInput]=useState("");
   function scheduleUndoClear(){
     if(undoTimerRef.current)clearTimeout(undoTimerRef.current);
     undoTimerRef.current=setTimeout(()=>setUndoData(null),6000);
@@ -1117,8 +1119,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
     if(cancelClass)await cancelClass(time,admDK);
     showToast("Class hidden ✓");
   }
-  async function unhideClass(time,spots){
-    if(saveClassLimit)await saveClassLimit(time,admDK,String(spots||MAX_SPOTS));
+  async function unhideClass(time){
+    if(restoreClass)await restoreClass(time,admDK);
     showToast("Class restored ✓");
   }
   async function removeClassWithUndo(time){
@@ -1218,6 +1220,35 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
         React.createElement("div",{className:"adm-day-lbl"},admDateLabel.toUpperCase()),
         React.createElement("button",{className:"adm-arrow",onClick:()=>changeDay(1)},"\u203a")
       ),
+      admDOW!==0&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#111",border:"1px solid #222",borderRadius:6,padding:"9px 14px",marginBottom:10}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,flex:1}},
+          React.createElement("div",{style:{fontSize:8,letterSpacing:"0.15em",color:"#555",fontWeight:600,flexShrink:0}},"CLASS NAME"),
+          editingClassName
+            ?React.createElement(React.Fragment,null,
+                React.createElement("input",{
+                  autoFocus:true,value:classNameInput,
+                  onChange:e=>setClassNameInput(e.target.value),
+                  onKeyDown:async e=>{if(e.key==="Enter"){await saveDowName(admDOW,classNameInput);setEditingClassName(false);showToast("Class name updated \u2713");}if(e.key==="Escape")setEditingClassName(false);},
+                  style:{flex:1,background:"#1a1a1a",border:"1px solid #444",borderRadius:4,padding:"4px 8px",color:"#fff",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.08em",outline:"none"}
+                }),
+                React.createElement("button",{
+                  onClick:async()=>{await saveDowName(admDOW,classNameInput);setEditingClassName(false);showToast("Class name updated \u2713");},
+                  style:{background:"#fff",color:"#000",border:"none",borderRadius:3,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.1em",padding:"5px 10px",cursor:"pointer",flexShrink:0}
+                },"SAVE"),
+                React.createElement("button",{
+                  onClick:()=>setEditingClassName(false),
+                  style:{background:"none",border:"1px solid #333",color:"#666",borderRadius:3,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.1em",padding:"5px 8px",cursor:"pointer",flexShrink:0}
+                },"\u2715")
+              )
+            :React.createElement(React.Fragment,null,
+                React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#bbb",letterSpacing:"0.06em",flex:1}},dowNames?.[admDOW]||"\u2014"),
+                React.createElement("button",{
+                  onClick:()=>{setClassNameInput(dowNames?.[admDOW]||"");setEditingClassName(true);},
+                  style:{background:"none",border:"none",color:"#555",fontFamily:"'DM Sans',sans-serif",fontSize:9,letterSpacing:"0.08em",cursor:"pointer",padding:"2px 4px",flexShrink:0}
+                },"Edit")
+              )
+        )
+      ),
       undoData&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:6,padding:"10px 14px",marginBottom:10}},
         React.createElement("div",{style:{fontSize:11,color:"#888",letterSpacing:"0.08em"}},"Class removed"),
         React.createElement("button",{onClick:undoRemove,style:{background:"none",border:"none",color:"#1d9bf0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.1em",cursor:"pointer"}},"UNDO")
@@ -1238,10 +1269,10 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
           return React.createElement("div",{key:time,style:{background:"#110808",border:"1px solid #3a1208",borderRadius:8,marginBottom:8,padding:"12px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}},
             React.createElement("div",null,
               React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:"#555",letterSpacing:"0.08em"}},fmt12(time)),
-              React.createElement("div",{style:{fontSize:8,letterSpacing:"0.15em",color:"#e06040",fontWeight:600,marginTop:3}},"HIDDEN FROM MEMBERS")
+              React.createElement("div",{style:{fontSize:8,letterSpacing:"0.15em",color:"#6a3828",fontWeight:600,marginTop:3}},"HIDDEN FROM MEMBERS")
             ),
             React.createElement("button",{
-              onClick:async e=>{e.stopPropagation();await unhideClass(time,MAX_SPOTS);},
+              onClick:async e=>{e.stopPropagation();await unhideClass(time);},
               style:{background:"#0e2a1a",border:"1px solid #4aaa66",borderRadius:6,color:"#4aaa66",
                      fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",
                      padding:"7px 14px",cursor:"pointer"}
@@ -2397,6 +2428,7 @@ function App(){
   const [allMemberNames,setAllMemberNames]=useState([]);
   const [classLimits,setClassLimits]=useState({});
   const [wellnessEnabled,setWellnessEnabled]=useState(true);
+  const [dowNames,setDowNames]=useState({1:"RISE UP",2:"STRENGTH LOWER",3:"ASCEND",4:"STRENGTH UPPER",5:"ELEVATE",6:"SUMMIT"});
   const photoRef=useRef(null);
   const touchStartX=useRef(null);
   const touchStartY=useRef(null);
@@ -2424,6 +2456,8 @@ function App(){
       const lm={};(limitsData||[]).forEach(r=>{lm[`${r.date_key}:${r.time_slot}`]=r.max_spots;});setClassLimits(lm);
       const ffData=await sbGet("feature_flags","id=eq.1&select=wellness_enabled");
       if(ffData&&ffData.length)setWellnessEnabled(ffData[0].wellness_enabled!==false);
+      const dnData=await sbGet("coaching_notes","class_name=eq.__DOW_NAMES__&select=content");
+      if(dnData&&dnData.length){try{const dn=JSON.parse(dnData[0].content);setDowNames(p=>({...p,...dn}));}catch{}}
       setReady(true);
     })();
   },[]);
@@ -2578,10 +2612,28 @@ function App(){
     else{await sbPost("class_limits",{time_slot:time,date_key:dateKey,max_spots:0});}
     setClassLimits(p=>({...p,[`${dateKey}:${time}`]:0}));
   }
+  async function restoreClass(time,dateKey){
+    const n=MAX_SPOTS;
+    const existing=await sbGet("class_limits",`time_slot=eq.${encodeURIComponent(time)}&date_key=eq.${encodeURIComponent(dateKey)}&select=id`);
+    if(existing.length){await sbPatch("class_limits",`time_slot=eq.${encodeURIComponent(time)}&date_key=eq.${encodeURIComponent(dateKey)}`,{max_spots:n});}
+    else{await sbPost("class_limits",{time_slot:time,date_key:dateKey,max_spots:n});}
+    setClassLimits(p=>({...p,[`${dateKey}:${time}`]:n}));
+  }
   async function saveWellnessSetting(enabled){
     await sbPatch("feature_flags","id=eq.1",{wellness_enabled:enabled});
     setWellnessEnabled(enabled);
     if(!enabled&&tab==="wellness")setTab("book");
+  }
+  function getDayClassName(dateKey){
+    const dow=new Date(dateKey+"T00:00:00").getDay();
+    return dowNames[dow]||"";
+  }
+  async function saveDowName(dow,name){
+    const newDn={...dowNames,[dow]:name.toUpperCase()};
+    setDowNames(newDn);
+    const existing=await sbGet("coaching_notes","class_name=eq.__DOW_NAMES__&select=id");
+    if(existing&&existing.length){await sbPatch("coaching_notes","class_name=eq.__DOW_NAMES__",{content:JSON.stringify(newDn),updated_at:Date.now()});}
+    else{await sbPost("coaching_notes",{class_name:"__DOW_NAMES__",content:JSON.stringify(newDn),updated_at:Date.now()});}
   }
   function isPastClass(time){
     if(isPastD(selDate))return true;if(!isToday(selDate))return false;
@@ -2714,7 +2766,10 @@ function App(){
           const isExpanded=expandedClass===time;
           return React.createElement("div",{key:time,style:{borderRadius:7,overflow:"hidden",marginBottom:0}},
             React.createElement("div",{className:`c-row${userBkd?" cb":""}${past?" cp":""}`,style:{cursor:isAdmin?"pointer":"default"},onClick:isAdmin?()=>setExpandedClass(isExpanded?null:time):undefined},
-              React.createElement("div",{className:"c-time"},fmt12(time)),
+              React.createElement("div",{style:{display:"flex",flexDirection:"column",minWidth:72}},
+                React.createElement("div",{className:"c-time",style:{minWidth:"unset"}},fmt12(time)),
+                getDayClassName(selDK)&&React.createElement("div",{style:{fontSize:7,letterSpacing:"0.12em",color:"#555",fontWeight:600,marginTop:1,fontFamily:"'DM Sans',sans-serif"}},getDayClassName(selDK))
+              ),
               React.createElement("div",{className:"c-mid"},
                 React.createElement("div",{className:`c-bars${userBkd?" cb-mine":""}`},Array.from({length:maxSp}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}`}))),
                 React.createElement("div",{className:`c-sub ${subCls}`},subText)
@@ -2761,11 +2816,12 @@ function App(){
           const d=new Date(bk.date_key+"T12:00:00");const dow=d.getDay();
           const dayLbl=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][dow];
           const sessIdx=dow===6?5:Math.max(0,dow-1);
+          const clsName=getDayClassName(bk.date_key)||DAY_SESS[sessIdx].toUpperCase();
           items.push(React.createElement("div",{key:i,className:"my-item"},
             React.createElement("div",null,
               React.createElement("div",{className:"my-date"},`${dayLbl.toUpperCase()} \u00B7 ${dateStr(d).toUpperCase()}`),
               React.createElement("div",{className:"my-time"},fmt12(bk.time)),
-              React.createElement("div",{className:"my-sess"},DAY_SESS[sessIdx].toUpperCase())
+              React.createElement("div",{className:"my-sess"},clsName)
             ),
             React.createElement("button",{className:"my-x",onClick:()=>handleCancel(bk.time,bk.date_key)},"Cancel")
           ));
@@ -2841,7 +2897,7 @@ function App(){
     tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
     tab==="wellness"&&wellnessEnabled&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin,memberData}),
     tab==="strength"&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast,bookings,memberData})),
-    tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,classLimits,wellnessEnabled,saveWellnessSetting}),
+    tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,dowNames,saveDowName}),
     React.createElement("div",{className:"tab-bar"},
       React.createElement("button",{className:`tab-btn${tab==="community"?" ta":""}`,style:{position:"relative"},onClick:()=>{setTab("community");lsSet("t365-last-read",Date.now());}},
         "NOTICE BOARD",
