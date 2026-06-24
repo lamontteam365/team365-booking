@@ -83,6 +83,7 @@ html,body{background:#080808;min-height:100vh}
 .my-wrap{padding:18px 16px;flex:1;overflow-y:auto}
 .my-hdr{font-size:10px;letter-spacing:0.22em;color:#fff;font-weight:600;margin-bottom:14px;text-align:center}
 .my-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#141414;border:1px solid #666;border-radius:7px;margin-bottom:7px}
+.my-week-sep{font-size:8px;letter-spacing:0.2em;color:#555;font-weight:600;padding:14px 0 8px;margin-top:4px;border-top:1px solid #1e1e1e}
 .my-date{font-size:10px;letter-spacing:0.12em;color:#999;font-weight:500;margin-bottom:2px}
 .my-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff}
 .my-sess{font-size:9px;letter-spacing:0.1em;color:#777;margin-top:1px}
@@ -2502,38 +2503,67 @@ function App(){
       React.createElement("div",{className:"my-hdr"},"MY UPCOMING BOOKINGS"),
       React.createElement("div",{className:"day-hdr",style:{marginBottom:10}},React.createElement("span",null,"CLASSES")),
       myUpcoming.length===0?React.createElement("div",{className:"no-bk",style:{padding:"16px 0 24px"}},"No upcoming classes")
-      :myUpcoming.map((bk,i)=>{
-        const d=new Date(bk.date_key+"T12:00:00");const dow=d.getDay();
-        const dayLbl=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][dow];
-        const sessIdx=dow===6?5:Math.max(0,dow-1);
-        return React.createElement("div",{key:i,className:"my-item"},
-          React.createElement("div",null,
-            React.createElement("div",{className:"my-date"},`${dayLbl.toUpperCase()} \u00B7 ${dateStr(d).toUpperCase()}`),
-            React.createElement("div",{className:"my-time"},fmt12(bk.time)),
-            React.createElement("div",{className:"my-sess"},DAY_SESS[sessIdx].toUpperCase())
-          ),
-          React.createElement("button",{className:"my-x",onClick:()=>handleCancel(bk.time,bk.date_key)},"Cancel")
-        );
-      }),
-      wellnessEnabled&&React.createElement(React.Fragment,null,
-        React.createElement("div",{className:"day-hdr",style:{marginTop:20,marginBottom:10}},React.createElement("span",null,"WELLNESS")),
-        myWellness.length===0?React.createElement("div",{className:"no-bk",style:{padding:"16px 0 24px"}},"No upcoming wellness sessions")
-        :myWellness.sort((a,b)=>a.date_key.localeCompare(b.date_key)||a.time.localeCompare(b.time)).map((bk,i)=>{
+      :(()=>{
+        const nowD=new Date();nowD.setHours(0,0,0,0);
+        const dow0=nowD.getDay();
+        const mon=new Date(nowD);mon.setDate(nowD.getDate()-(dow0===0?6:dow0-1));
+        const getWk=dk=>Math.floor((new Date(dk+"T12:00:00")-mon)/(7*24*60*60*1000));
+        const wkLbl=idx=>idx===0?"THIS WEEK":idx===1?"NEXT WEEK":`${idx} WEEKS AWAY`;
+        let lastWk=-1;const items=[];
+        myUpcoming.forEach((bk,i)=>{
+          const wk=getWk(bk.date_key);
+          if(wk!==lastWk){
+            items.push(React.createElement("div",{key:`sep-${wk}`,className:"my-week-sep",style:lastWk===-1?{borderTop:"none",paddingTop:0,marginTop:0}:{}},wkLbl(wk)));
+            lastWk=wk;
+          }
           const d=new Date(bk.date_key+"T12:00:00");const dow=d.getDay();
           const dayLbl=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][dow];
-          return React.createElement("div",{key:i,className:"my-item"},
+          const sessIdx=dow===6?5:Math.max(0,dow-1);
+          items.push(React.createElement("div",{key:i,className:"my-item"},
             React.createElement("div",null,
               React.createElement("div",{className:"my-date"},`${dayLbl.toUpperCase()} \u00B7 ${dateStr(d).toUpperCase()}`),
               React.createElement("div",{className:"my-time"},fmt12(bk.time)),
-              React.createElement("div",{className:"my-sess"},"SAUNA + COLD PLUNGE")
+              React.createElement("div",{className:"my-sess"},DAY_SESS[sessIdx].toUpperCase())
             ),
-            React.createElement("button",{className:"my-x",onClick:async()=>{
-              setMyWellness(prev=>prev.filter(b=>!(b.date_key===bk.date_key&&b.time===bk.time)));
-              await sbDelete("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=eq.${bk.date_key}&time=eq.${encodeURIComponent(bk.time)}`);
-              showToast("Booking cancelled");
-            }},"Cancel")
-          );
-        })
+            React.createElement("button",{className:"my-x",onClick:()=>handleCancel(bk.time,bk.date_key)},"Cancel")
+          ));
+        });
+        return items;
+      })(),
+      wellnessEnabled&&React.createElement(React.Fragment,null,
+        React.createElement("div",{className:"day-hdr",style:{marginTop:20,marginBottom:10}},React.createElement("span",null,"WELLNESS")),
+        myWellness.length===0?React.createElement("div",{className:"no-bk",style:{padding:"16px 0 24px"}},"No upcoming wellness sessions")
+        :(()=>{
+          const sorted=myWellness.slice().sort((a,b)=>a.date_key.localeCompare(b.date_key)||a.time.localeCompare(b.time));
+          const nowD=new Date();nowD.setHours(0,0,0,0);
+          const dow0=nowD.getDay();
+          const mon=new Date(nowD);mon.setDate(nowD.getDate()-(dow0===0?6:dow0-1));
+          const getWk=dk=>Math.floor((new Date(dk+"T12:00:00")-mon)/(7*24*60*60*1000));
+          const wkLbl=idx=>idx===0?"THIS WEEK":idx===1?"NEXT WEEK":`${idx} WEEKS AWAY`;
+          let lastWk=-1;const items=[];
+          sorted.forEach((bk,i)=>{
+            const wk=getWk(bk.date_key);
+            if(wk!==lastWk){
+              items.push(React.createElement("div",{key:`wsep-${wk}`,className:"my-week-sep",style:lastWk===-1?{borderTop:"none",paddingTop:0,marginTop:0}:{}},wkLbl(wk)));
+              lastWk=wk;
+            }
+            const d=new Date(bk.date_key+"T12:00:00");const dow=d.getDay();
+            const dayLbl=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][dow];
+            items.push(React.createElement("div",{key:i,className:"my-item"},
+              React.createElement("div",null,
+                React.createElement("div",{className:"my-date"},`${dayLbl.toUpperCase()} \u00B7 ${dateStr(d).toUpperCase()}`),
+                React.createElement("div",{className:"my-time"},fmt12(bk.time)),
+                React.createElement("div",{className:"my-sess"},"SAUNA + COLD PLUNGE")
+              ),
+              React.createElement("button",{className:"my-x",onClick:async()=>{
+                setMyWellness(prev=>prev.filter(b=>!(b.date_key===bk.date_key&&b.time===bk.time)));
+                await sbDelete("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=eq.${bk.date_key}&time=eq.${encodeURIComponent(bk.time)}`);
+                showToast("Booking cancelled");
+              }},"Cancel")
+            ));
+          });
+          return items;
+        })()
       ),
       React.createElement("div",{style:{marginTop:28}},
         React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",marginBottom:12}},
