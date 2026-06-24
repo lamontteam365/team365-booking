@@ -451,6 +451,8 @@ const hashPw=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)^s.charCodeAt
 const initials=n=>n.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
 const lsGet=(k,fb=null)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
+const ssGet=(k,fb=null)=>{try{const v=sessionStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;}};
+const ssSet=(k,v)=>{try{sessionStorage.setItem(k,JSON.stringify(v));}catch{}};
 const getWeekStart=()=>{const now=new Date();const m=mondayOf(now);return now.getDay()===0?addDays(m,7):m;};
 const getInitDay=()=>{const d=new Date().getDay();return d===0?0:Math.min(d-1,5);};
 function timeAgo(ts){const s=Math.floor((Date.now()-ts)/1000);if(s<60)return"just now";if(s<3600)return`${Math.floor(s/60)}m ago`;if(s<86400)return`${Math.floor(s/3600)}h ago`;return`${Math.floor(s/86400)}d ago`;}
@@ -1252,7 +1254,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
                 onClick:e=>{e.stopPropagation();if(isEditingTimeThis){setEditingTime(null);}else{setEditingTime(time);setNewTimeVal(time);setEditingLimit(null);}}
               },isEditingTimeThis?"\u2715":"Edit Time"),
               !isEditingThis&&!isEditingTimeThis&&!isHidden&&React.createElement("button",{
-                style:{fontSize:9,flexShrink:0,background:"none",border:"none",color:"#666",cursor:"pointer",padding:"4px 2px",letterSpacing:"0.08em",fontFamily:"'DM Sans',sans-serif",fontWeight:600},
+                style:{fontSize:9,flexShrink:0,background:"none",border:"none",color:"#8a2515",cursor:"pointer",padding:"4px 2px",letterSpacing:"0.08em",fontFamily:"'DM Sans',sans-serif",fontWeight:600},
                 onClick:async e=>{
                   e.stopPropagation();
                   if(slotBks.length>0){showToast(`${slotBks.length} member${slotBks.length>1?"s":""} booked \u2014 remove them first`);return;}
@@ -1260,7 +1262,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
                 }
               },"Hide"),
               !isEditingThis&&!isEditingTimeThis&&isHidden&&React.createElement("button",{
-                style:{fontSize:9,flexShrink:0,background:"none",border:"none",color:"#8a2515",cursor:"pointer",padding:"4px 2px",letterSpacing:"0.08em",fontFamily:"'DM Sans',sans-serif",fontWeight:600},
+                style:{fontSize:9,flexShrink:0,background:"none",border:"none",color:"#4aaa66",cursor:"pointer",padding:"4px 2px",letterSpacing:"0.08em",fontFamily:"'DM Sans',sans-serif",fontWeight:600},
                 onClick:async e=>{e.stopPropagation();await unhideClass(time,MAX_SPOTS);}
               },"▲ Unhide"),
               !isEditingThis&&!isEditingTimeThis&&React.createElement("div",{className:`adm-chev${isOpen?" open":""}`},"\u25BE")
@@ -2357,8 +2359,8 @@ function App(){
   const [memberPhotos,setMemberPhotos]=useState({});
   const [weekStart,setWeekStart]=useState(getWeekStart);
   const [selDay,setSelDay]=useState(getInitDay);
-  const [tab,setTab]=useState(()=>lsGet("t365-tab","community"));
-  useEffect(()=>{lsSet("t365-tab",tab);},[tab]);
+  const [tab,setTab]=useState(()=>ssGet("t365-tab","community"));
+  useEffect(()=>{ssSet("t365-tab",tab);},[tab]);
   const [authMode,setAuthMode]=useState("login");
   const [authForm,setAuthForm]=useState({name:"",email:"",phone:"",password:""});
   const [authErr,setAuthErr]=useState("");
