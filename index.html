@@ -1104,6 +1104,34 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
   const [newClassSpots,setNewClassSpots]=useState("16");
   const [editingTime,setEditingTime]=useState(null);
   const [newTimeVal,setNewTimeVal]=useState("");
+  const [undoData,setUndoData]=useState(null);
+  const undoTimerRef=useRef(null);
+  function scheduleUndoClear(){
+    if(undoTimerRef.current)clearTimeout(undoTimerRef.current);
+    undoTimerRef.current=setTimeout(()=>setUndoData(null),6000);
+  }
+  async function hideClass(time){
+    if(saveClassLimit)await saveClassLimit(time,admDK,"0");
+    showToast("Class hidden ✓");
+  }
+  async function unhideClass(time,spots){
+    if(saveClassLimit)await saveClassLimit(time,admDK,String(spots||MAX_SPOTS));
+    showToast("Class restored ✓");
+  }
+  async function removeClassWithUndo(time){
+    const spots=getMaxSpots?getMaxSpots(time,admDK):MAX_SPOTS;
+    if(cancelClass)await cancelClass(time,admDK);
+    setUndoData({time,dateKey:admDK,spots:String(spots)});
+    scheduleUndoClear();
+    showToast("Class removed");
+  }
+  async function undoRemove(){
+    if(!undoData)return;
+    if(undoTimerRef.current)clearTimeout(undoTimerRef.current);
+    if(saveClassLimit)await saveClassLimit(undoData.time,undoData.dateKey,undoData.spots);
+    setUndoData(null);
+    showToast("Class restored ✓");
+  }
   function openMemberProfile(mb){
     setSelectedMember(mb);
     window.history.pushState({overlay:"member"},"");
@@ -1128,9 +1156,9 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
   const admDK=toDS(admDate);const admDOW=admDate.getDay();const admIsSat=admDOW===6;
   const standardTimes=admDOW===0?[]:admIsSat?SAT_TIMES:WD_TIMES;
   const extraTimes=Object.keys(classLimits||{}).filter(k=>k.startsWith(admDK+':')).map(k=>k.slice(admDK.length+1)).filter(t=>!standardTimes.includes(t));
-  const admTimes=[...standardTimes,...extraTimes].sort().filter(t=>(classLimits[admDK+':'+t]??MAX_SPOTS)>0);
+  const admTimes=[...standardTimes,...extraTimes].sort();const admVisibleTimes=admTimes.filter(t=>(classLimits[admDK+':'+t]??MAX_SPOTS)>0);
   const dayBks=bookings.filter(b=>b.date_key===admDK);
-  const totalBooked=dayBks.length;const totalSpots=admTimes.reduce((s,t)=>s+(getMaxSpots?getMaxSpots(t,admDK):MAX_SPOTS),0);
+  const totalBooked=dayBks.length;const totalSpots=admVisibleTimes.reduce((s,t)=>s+(getMaxSpots?getMaxSpots(t,admDK):MAX_SPOTS),0);
   function changeDay(n){let d=new Date(admDate);d.setDate(d.getDate()+n);if(d.getDay()===0)d.setDate(d.getDate()+n);setAdmDate(d);setExpanded({});}
   async function adminCancel(time,email){
     setBookings(prev=>prev.filter(b=>!(b.date_key===admDK&&b.time===time&&b.email===email)));
@@ -1187,19 +1215,24 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
         React.createElement("div",{className:"adm-day-lbl"},admDateLabel.toUpperCase()),
         React.createElement("button",{className:"adm-arrow",onClick:()=>changeDay(1)},"\u203a")
       ),
+      undoData&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:6,padding:"10px 14px",marginBottom:10}},
+        React.createElement("div",{style:{fontSize:11,color:"#888",letterSpacing:"0.08em"}},"Class removed"),
+        React.createElement("button",{onClick:undoRemove,style:{background:"none",border:"none",color:"#1d9bf0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.1em",cursor:"pointer"}},"UNDO")
+      ),
       admTimes.length>0&&React.createElement("div",{className:"adm-stats-row"},
         React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},totalBooked),React.createElement("div",{className:"adm-stat-lbl"},"BOOKED")),
         React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},totalSpots-totalBooked),React.createElement("div",{className:"adm-stat-lbl"},"AVAILABLE")),
-        React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},admTimes.length),React.createElement("div",{className:"adm-stat-lbl"},"SESSIONS"))
+        React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},admVisibleTimes.length),React.createElement("div",{className:"adm-stat-lbl"},"SESSIONS"))
       ),
       admTimes.length===0?React.createElement("div",{className:"adm-no-classes"},"No classes on Sunday")
       :admTimes.map(time=>{
-        const slotBks=dayBks.filter(b=>b.time===time);const taken=slotBks.length;const isOpen=!!expanded[time];
+        const slotBks=dayBks.filter(b=>b.time===time);const taken=slotBks.length;const isOpen=!!expanded[time];const isHidden=slotMax===0;
         const slotMax=getMaxSpots?getMaxSpots(time,admDK):MAX_SPOTS;
         const isEditingThis=editingLimit===time;
         const isExtra=extraTimes.includes(time);
         const isEditingTimeThis=editingTime===time;
-        return React.createElement("div",{key:time,className:"adm-class-card"},
+        return React.createElement("div",{key:time,className:"adm-class-card",style:{opacity:isHidden?0.45:1}},
+          isHidden&&React.createElement("div",{style:{fontSize:8,letterSpacing:"0.15em",color:"#e06040",fontWeight:600,paddingTop:8,paddingLeft:14}},"HIDDEN FROM MEMBERS"),
           React.createElement("div",{className:"adm-class-hdr",onClick:()=>!isEditingThis&&!isEditingTimeThis&&setExpanded(p=>({...p,[time]:!p[time]}))},
             React.createElement("div",{className:"adm-class-time"},fmt12(time)),
             React.createElement("div",{className:"adm-class-mid"},
@@ -1217,15 +1250,26 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
                 style:{fontSize:9,flexShrink:0,color:isEditingTimeThis?"#e06040":"#777"},
                 onClick:e=>{e.stopPropagation();if(isEditingTimeThis){setEditingTime(null);}else{setEditingTime(time);setNewTimeVal(time);setEditingLimit(null);}}
               },isEditingTimeThis?"\u2715":"Edit Time"),
-              !isEditingThis&&!isEditingTimeThis&&React.createElement("button",{
+              !isEditingThis&&!isEditingTimeThis&&!isHidden&&React.createElement("button",{
+                style:{fontSize:9,flexShrink:0,background:"none",border:"none",color:"#666",cursor:"pointer",padding:"4px 2px",letterSpacing:"0.08em",fontFamily:"'DM Sans',sans-serif",fontWeight:600},
+                onClick:async e=>{
+                  e.stopPropagation();
+                  if(slotBks.length>0){showToast(`${slotBks.length} member${slotBks.length>1?"s":""} booked \u2014 remove them first`);return;}
+                  await hideClass(time);
+                }
+              },"Hide"),
+              !isEditingThis&&!isEditingTimeThis&&!isHidden&&React.createElement("button",{
                 style:{fontSize:9,flexShrink:0,background:"none",border:"none",color:"#8a2515",cursor:"pointer",padding:"4px 2px",letterSpacing:"0.08em",fontFamily:"'DM Sans',sans-serif",fontWeight:600},
                 onClick:async e=>{
                   e.stopPropagation();
                   if(slotBks.length>0){showToast(`${slotBks.length} member${slotBks.length>1?"s":""} booked \u2014 remove them first`);return;}
-                  if(cancelClass)await cancelClass(time,admDK);
-                  showToast("Class removed \u2713");
+                  await removeClassWithUndo(time);
                 }
               },"Remove"),
+              !isEditingThis&&!isEditingTimeThis&&isHidden&&React.createElement("button",{
+                style:{fontSize:9,flexShrink:0,background:"none",border:"none",color:"#4aaa66",cursor:"pointer",padding:"4px 2px",letterSpacing:"0.08em",fontFamily:"'DM Sans',sans-serif",fontWeight:600},
+                onClick:async e=>{e.stopPropagation();await unhideClass(time,MAX_SPOTS);}
+              },"Unhide"),
               !isEditingThis&&!isEditingTimeThis&&React.createElement("div",{className:`adm-chev${isOpen?" open":""}`},"\u25BE")
             )
           ),
@@ -1338,7 +1382,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
           ?React.createElement("div",{className:"adm-no-classes"},"No wellness bookings today")
           :WELL_TIMES.filter(time=>wellAdmBks.find(b=>b.date_key===admDK&&b.time===time)).map(time=>{
             const bk=wellAdmBks.find(b=>b.date_key===admDK&&b.time===time);
-            return React.createElement("div",{key:time,className:"adm-class-card"},
+            return React.createElement("div",{key:time,className:"adm-class-card",style:{opacity:isHidden?0.45:1}},
+          isHidden&&React.createElement("div",{style:{fontSize:8,letterSpacing:"0.15em",color:"#e06040",fontWeight:600,paddingTop:8,paddingLeft:14}},"HIDDEN FROM MEMBERS"),
               React.createElement("div",{className:"adm-class-hdr",style:{cursor:"default"}},
                 React.createElement("div",{className:"adm-class-time"},fmt12(time)),
                 React.createElement("div",{className:"adm-class-mid"},
@@ -1665,6 +1710,12 @@ function CoachingNoteEditor({className,showToast}){
     ))
   );
 }
+function renderBoldText(str){
+  const parts=str.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((p,i)=>p.startsWith("**")&&p.endsWith("**")
+    ?React.createElement("strong",{key:i,style:{color:"#fff",fontWeight:700}},p.slice(2,-2))
+    :p);
+}
 function WorkoutDetailsEditor({className,showToast}){
   const storageKey="__WORKOUT__"+className;
   const [text,setText]=useState("");
@@ -1672,6 +1723,7 @@ function WorkoutDetailsEditor({className,showToast}){
   const [editing,setEditing]=useState(false);
   const [saving,setSaving]=useState(false);
   const [loaded,setLoaded]=useState(false);
+  const taRef=useRef(null);
   useEffect(()=>{
     sbGet("coaching_notes","class_name=eq."+encodeURIComponent(storageKey)+"&select=content")
       .then(data=>{
@@ -1690,10 +1742,28 @@ function WorkoutDetailsEditor({className,showToast}){
     setText(draft);setSaving(false);setEditing(false);
     showToast("Workout details saved ✓");
   }
+  function applyBold(){
+    const ta=taRef.current;if(!ta)return;
+    const s=ta.selectionStart,e=ta.selectionEnd;
+    if(s===e)return;
+    const selected=draft.substring(s,e);
+    const newDraft=draft.substring(0,s)+"**"+selected+"**"+draft.substring(e);
+    setDraft(newDraft);
+    setTimeout(()=>{ta.selectionStart=s+2;ta.selectionEnd=e+2;ta.focus();},0);
+  }
   if(!loaded)return React.createElement("div",{style:{color:"#444",fontSize:11,padding:"12px 0"}},"Loading...");
   if(editing){
     return React.createElement("div",null,
+      React.createElement("div",{style:{display:"flex",gap:6,marginBottom:6}},
+        React.createElement("button",{onMouseDown:e=>{e.preventDefault();applyBold();},
+          style:{background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:4,
+                 padding:"4px 10px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},
+          "B"),
+        React.createElement("div",{style:{fontSize:10,color:"#444",alignSelf:"center",letterSpacing:"0.08em"}},
+          "SELECT TEXT THEN TAP B TO BOLD")
+      ),
       React.createElement("textarea",{
+        ref:taRef,
         value:draft,
         onChange:e=>setDraft(e.target.value),
         style:{width:"100%",minHeight:280,background:"#111",border:"1px solid #2a2a2a",borderRadius:6,color:"#ddd",
@@ -1714,8 +1784,9 @@ function WorkoutDetailsEditor({className,showToast}){
   }
   return React.createElement("div",null,
     text
-      ? React.createElement("pre",{style:{whiteSpace:"pre-wrap",fontSize:13,color:"#ccc",lineHeight:1.75,
-                                           fontFamily:"'DM Sans',sans-serif",fontWeight:300,marginBottom:12}},text)
+      ? React.createElement("div",{style:{whiteSpace:"pre-wrap",fontSize:13,color:"#ccc",lineHeight:1.75,
+                                           fontFamily:"'DM Sans',sans-serif",fontWeight:300,marginBottom:12}},
+          ...text.split("\n").flatMap((line,i,arr)=>[...renderBoldText(line),(i<arr.length-1?React.createElement("br",{key:"br"+i}):null)]).filter(Boolean))
       : React.createElement("div",{style:{fontSize:11,color:"#444",letterSpacing:"0.1em",padding:"16px 0",textAlign:"center"}},
           "NO WORKOUT DETAILS YET · TAP EDIT TO ADD"),
     React.createElement("button",{onClick:()=>{setDraft(text);setEditing(true);},
@@ -1884,7 +1955,7 @@ function CoachingView({showToast}){
             React.createElement("button",{
               onClick:()=>!isEditing&&selectClass(cn),
               style:{width:"100%",height:44,background:isSelected?"#fff":"#131313",color:isSelected?"#000":"#777",
-                     border:isSelected?"1px solid #555":"1px solid #3a3a3a",borderRadius:8,
+                     border:isSelected?"1px solid #888":"1px solid #666",borderRadius:8,
                      fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.05em",
                      cursor:isEditing?"default":"pointer",transition:"all .15s",
                      opacity:isEditing&&isExtra?0.5:1}
@@ -2569,7 +2640,7 @@ function App(){
     ),
     React.createElement("div",{style:{marginTop:48,textAlign:"center"}},
       React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION."),
-      React.createElement("div",{style:{marginTop:4,paddingBottom:20,fontSize:"8px",letterSpacing:"0.08em",color:"#444"}},
+      React.createElement("div",{style:{marginTop:4,paddingBottom:20,fontSize:"7px",letterSpacing:"0.06em",color:"#333"}},
         React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"WWW.LAMONTCOLLECTIVE.COM")
       )
     )
@@ -2769,7 +2840,7 @@ function App(){
     ),
     React.createElement("div",{style:{textAlign:"center"}},
       React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION."),
-      React.createElement("div",{style:{marginTop:4,paddingBottom:20,fontSize:"8px",letterSpacing:"0.08em",color:"#444"}},
+      React.createElement("div",{style:{marginTop:4,paddingBottom:20,fontSize:"7px",letterSpacing:"0.06em",color:"#333"}},
         React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"WWW.LAMONTCOLLECTIVE.COM")
       )
     ),
