@@ -1119,7 +1119,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
 }
 
 // ── Admin View ────────────────────────────────────────────────────────────────
-function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,classLimits,wellnessEnabled,saveWellnessSetting}){
+function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,classLimits,wellnessEnabled,saveWellnessSetting}){
   const [admSeg,setAdmSeg]=useState("members");
   const [expandedTier,setExpandedTier]=useState(null);
   const [admDate,setAdmDate]=useState(new Date());
@@ -1134,6 +1134,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
   const [addingClass,setAddingClass]=useState(false);
   const [newClassTime,setNewClassTime]=useState("");
   const [newClassSpots,setNewClassSpots]=useState("16");
+  const [editingTime,setEditingTime]=useState(null);
+  const [newTimeVal,setNewTimeVal]=useState("");
 
   function openMemberProfile(mb){
     setSelectedMember(mb);
@@ -1235,20 +1237,36 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
         const slotBks=dayBks.filter(b=>b.time===time);const taken=slotBks.length;const isOpen=!!expanded[time];
         const slotMax=getMaxSpots?getMaxSpots(time,admDK):MAX_SPOTS;
         const isEditingThis=editingLimit===time;
+        const isExtra=extraTimes.includes(time);
+        const isEditingTimeThis=editingTime===time;
         return React.createElement("div",{key:time,className:"adm-class-card"},
-          React.createElement("div",{className:"adm-class-hdr",onClick:()=>!isEditingThis&&setExpanded(p=>({...p,[time]:!p[time]}))},
+          React.createElement("div",{className:"adm-class-hdr",onClick:()=>!isEditingThis&&!isEditingTimeThis&&setExpanded(p=>({...p,[time]:!p[time]}))},
             React.createElement("div",{className:"adm-class-time"},fmt12(time)),
             React.createElement("div",{className:"adm-class-mid"},
               React.createElement("div",{className:`adm-class-count${taken>=slotMax?" full":taken>0?" has-bk":""}`},`${taken} / ${slotMax}${taken>=slotMax?" \u00B7 FULL":""}`),
               React.createElement("div",{className:"adm-class-bars"},Array.from({length:Math.min(slotMax,20)}).map((_,i)=>React.createElement("div",{key:i,className:`adm-bar${i<taken?" at":""}`})))
             ),
-            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
-              React.createElement("button",{
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+              !isEditingTimeThis&&React.createElement("button",{
                 className:"sp-ex-edit",
                 style:{fontSize:9,flexShrink:0},
-                onClick:e=>{e.stopPropagation();if(isEditingThis){setEditingLimit(null);}else{setEditingLimit(time);setLimitInput(String(slotMax));}}
+                onClick:e=>{e.stopPropagation();if(isEditingThis){setEditingLimit(null);}else{setEditingLimit(time);setLimitInput(String(slotMax));setEditingTime(null);}}
               },isEditingThis?"\u2715":"Edit Spots"),
-              !isEditingThis&&React.createElement("div",{className:`adm-chev${isOpen?" open":""}`},"\u25BE")
+              isExtra&&!isEditingThis&&React.createElement("button",{
+                className:"sp-ex-edit",
+                style:{fontSize:9,flexShrink:0,color:isEditingTimeThis?"#e06040":"#777"},
+                onClick:e=>{e.stopPropagation();if(isEditingTimeThis){setEditingTime(null);}else{setEditingTime(time);setNewTimeVal(time);setEditingLimit(null);}}
+              },isEditingTimeThis?"\u2715":"Edit Time"),
+              isExtra&&!isEditingThis&&!isEditingTimeThis&&React.createElement("button",{
+                style:{fontSize:9,flexShrink:0,background:"none",border:"none",color:"#8a2515",cursor:"pointer",padding:"4px 2px",letterSpacing:"0.08em",fontFamily:"'DM Sans',sans-serif",fontWeight:600},
+                onClick:async e=>{
+                  e.stopPropagation();
+                  if(slotBks.length>0){showToast(`${slotBks.length} member${slotBks.length>1?"s":""} booked \u2014 remove them first`);return;}
+                  if(deleteClass){await deleteClass(time,admDK);}
+                  showToast("Class removed \u2713");
+                }
+              },"Remove"),
+              !isEditingThis&&!isEditingTimeThis&&React.createElement("div",{className:`adm-chev${isOpen?" open":""}`},"\u25BE")
             )
           ),
           isEditingThis&&React.createElement("div",{style:{padding:"12px 14px",borderTop:"1px solid #141414",display:"flex",alignItems:"center",gap:8}},
@@ -1267,7 +1285,29 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
               style:{background:"none",border:"1px solid #333",color:"#666",borderRadius:3,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.1em",padding:"8px 10px",cursor:"pointer",flexShrink:0}
             },"CANCEL")
           ),
-          isOpen&&!isEditingThis&&React.createElement("div",{className:"adm-members-list"},
+          isEditingTimeThis&&React.createElement("div",{style:{padding:"12px 14px",borderTop:"1px solid #141414",display:"flex",alignItems:"center",gap:8}},
+            React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.12em",fontWeight:600,flexShrink:0}},"NEW TIME"),
+            React.createElement("input",{
+              type:"time",value:newTimeVal,
+              onChange:e=>setNewTimeVal(e.target.value),
+              style:{flex:1,background:"#0e0e0e",border:"1px solid #333",borderRadius:4,padding:"7px 8px",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:14,outline:"none"}
+            }),
+            React.createElement("button",{
+              disabled:!newTimeVal||newTimeVal===time,
+              onClick:async()=>{
+                if(deleteClass)await deleteClass(time,admDK);
+                if(saveClassLimit)await saveClassLimit(newTimeVal,admDK,String(slotMax));
+                setEditingTime(null);
+                showToast("Time updated \u2713");
+              },
+              style:{background:newTimeVal&&newTimeVal!==time?"#fff":"#1a1a1a",color:newTimeVal&&newTimeVal!==time?"#000":"#444",border:"none",borderRadius:3,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",padding:"8px 14px",cursor:"pointer",flexShrink:0}
+            },"SAVE"),
+            React.createElement("button",{
+              onClick:()=>setEditingTime(null),
+              style:{background:"none",border:"1px solid #333",color:"#666",borderRadius:3,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.1em",padding:"8px 10px",cursor:"pointer",flexShrink:0}
+            },"CANCEL")
+          ),
+          isOpen&&!isEditingThis&&!isEditingTimeThis&&React.createElement("div",{className:"adm-members-list"},
             slotBks.length===0?React.createElement("div",{className:"adm-empty"},"NO BOOKINGS")
             :slotBks.map((bk,i)=>React.createElement("div",{key:i,className:"adm-member-row"},
               React.createElement("div",null,React.createElement("div",{className:"adm-member-name"},bk.name),React.createElement("div",{className:"adm-member-email"},bk.email)),
@@ -2153,7 +2193,9 @@ function App(){
 
   const selDate=addDays(weekStart,selDay);
   const selDK=toDS(selDate);
-  const times=selDate.getDay()===6?SAT_TIMES:WD_TIMES;
+  const baseTimes=selDate.getDay()===6?SAT_TIMES:WD_TIMES;
+  const extraTimesBook=Object.keys(classLimits||{}).filter(k=>k.startsWith(selDK+':')).map(k=>k.slice(selDK.length+1)).filter(t=>!baseTimes.includes(t));
+  const times=[...baseTimes,...extraTimesBook].sort();
   const weekDates=Array.from({length:6},(_,i)=>addDays(weekStart,i));
   const isThisWeek=toDS(weekStart)===toDS(mondayOf(new Date()));
   const getBksFor=(dk,t)=>bookings.filter(b=>b.date_key===dk&&b.time===t);
@@ -2256,6 +2298,10 @@ function App(){
     if(existing.length){await sbPatch("class_limits",`time_slot=eq.${encodeURIComponent(time)}&date_key=eq.${encodeURIComponent(dateKey)}`,{max_spots:n});}
     else{await sbPost("class_limits",{time_slot:time,date_key:dateKey,max_spots:n});}
     setClassLimits(p=>({...p,[`${dateKey}:${time}`]:n}));
+  }
+  async function deleteClass(time,dateKey){
+    await sbDelete("class_limits",`time_slot=eq.${encodeURIComponent(time)}&date_key=eq.${encodeURIComponent(dateKey)}`);
+    setClassLimits(p=>{const n={...p};delete n[`${dateKey}:${time}`];return n;});
   }
   async function saveWellnessSetting(enabled){
     await sbPatch("feature_flags","id=eq.1",{wellness_enabled:enabled});
@@ -2503,7 +2549,7 @@ function App(){
     tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
     tab==="wellness"&&wellnessEnabled&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin,memberData}),
     tab==="strength"&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast,bookings,memberData})),
-    tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,classLimits,wellnessEnabled,saveWellnessSetting}),
+    tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,classLimits,wellnessEnabled,saveWellnessSetting}),
 
     React.createElement("div",{className:"tab-bar"},
       React.createElement("button",{className:`tab-btn${tab==="community"?" ta":""}`,style:{position:"relative"},onClick:()=>{setTab("community");lsSet("t365-last-read",Date.now());}},
