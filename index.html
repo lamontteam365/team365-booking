@@ -1786,6 +1786,89 @@ function isWorkoutReleased(monthYear,weekNum,isAdmin){
   if(wkStart>1&&nowDay===wkStart-1&&nowHour>=21)return true;
   return false;
 }
+function ExSection({sectionName,exercises,isFirst,ctx}){
+  const {editingId,setEditingId,exEdit,setExEdit,savingEx,saveExercise,
+         session,ticks,toggleTick,expandedEx,toggleEx,weights,saveSetWeight,
+         isAdmin,deleteExercise}=ctx;
+  return React.createElement(React.Fragment,null,
+    React.createElement("div",{className:`sp-section-hdr${isFirst?" spsh-first":""}`},sectionName.toUpperCase()),
+    exercises.map(ex=>{
+      const isCore=ex.section==="Core";
+      const isMobility=ex.section==="Mobility";
+      const setCount=parseInt(ex.sets)||1;
+      const repsList=ex.reps?ex.reps.split(",").map(r=>r.trim()):[];
+      const metaParts=[];
+      if(ex.sets)metaParts.push(`${ex.sets} sets`);
+      if(ex.reps&&repsList.length===1)metaParts.push(`${ex.reps} reps`);
+      if(ex.duration)metaParts.push(ex.duration);
+      if(ex.side)metaParts.push(ex.side);
+      const meta=metaParts.join(" · ");
+      const isEditing=editingId===ex.id;
+      if(isEditing&&isAdmin){
+        return React.createElement("div",{key:ex.id,className:"sp-edit-form"},
+          React.createElement("div",{className:"sp-edit-lbl"},"EXERCISE"),
+          React.createElement("input",{className:"sp-edit-input",value:exEdit.exercise||"",onChange:e=>setExEdit(p=>({...p,exercise:e.target.value})),placeholder:"Exercise name"}),
+          React.createElement("div",{className:"sp-edit-lbl"},"SECTION"),
+          React.createElement("select",{className:"sp-edit-input",value:exEdit.section||"Main",onChange:e=>setExEdit(p=>({...p,section:e.target.value}))},
+            React.createElement("option",{value:"Core"},"Core"),
+            React.createElement("option",{value:"Main"},"Main"),
+            React.createElement("option",{value:"Mobility"},"Mobility"),
+            React.createElement("option",{value:"Accessories"},"Accessories")
+          ),
+          React.createElement("div",{className:"sp-edit-row"},
+            React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-edit-lbl"},"SETS"),React.createElement("input",{className:"sp-edit-input",value:exEdit.sets||"",onChange:e=>setExEdit(p=>({...p,sets:e.target.value})),placeholder:"e.g. 3"})),
+            React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-edit-lbl"},"REPS"),React.createElement("input",{className:"sp-edit-input",value:exEdit.reps||"",onChange:e=>setExEdit(p=>({...p,reps:e.target.value})),placeholder:"e.g. 10"}))
+          ),
+          React.createElement("div",{className:"sp-edit-lbl"},"DURATION (optional)"),
+          React.createElement("input",{className:"sp-edit-input",value:exEdit.duration||"",onChange:e=>setExEdit(p=>({...p,duration:e.target.value})),placeholder:"e.g. 45 sec"}),
+          React.createElement("div",{className:"sp-edit-actions"},
+            React.createElement("button",{className:"sp-edit-cancel",onClick:()=>setEditingId(null)},"Cancel"),
+            React.createElement("button",{className:"sp-edit-save",onClick:saveExercise,disabled:savingEx},savingEx?"SAVING...":"SAVE")
+          ),
+          React.createElement("button",{onClick:()=>deleteExercise(ex.id),style:{width:"100%",marginTop:8,padding:"8px",background:"transparent",border:"1px solid #e53e3e",borderRadius:6,color:"#e53e3e",fontSize:10,letterSpacing:"0.15em",fontWeight:600,cursor:"pointer"}},"DELETE EXERCISE")
+        );
+      }
+      if(isCore||isMobility){
+        return React.createElement("div",{key:ex.id,className:"sp-ex"},
+          React.createElement("div",{className:"sp-ex-top",style:{cursor:"default"}},
+            React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-ex-name"},ex.exercise),meta&&React.createElement("div",{className:"sp-ex-meta"},meta)),
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+              isAdmin&&React.createElement("button",{className:"sp-ex-edit",onClick:e=>{e.stopPropagation();setEditingId(ex.id);setExEdit({id:ex.id,exercise:ex.exercise,section:ex.section||"Core",sets:ex.sets||"",reps:ex.reps||"",duration:ex.duration||""});}},"Edit"),
+              session&&Array.from({length:setCount}).map((_,idx)=>{
+                const tKey=`${ex.id}_${idx}`;
+                const done=!!ticks[tKey];
+                return React.createElement("button",{key:idx,className:`sp-tick${done?" sptd":""}`,style:{width:30,height:30,fontSize:13},onClick:e=>{e.stopPropagation();toggleTick(ex.id,ex.exercise,idx,!done);}},isMobility?"✓":(done?"✓":`${idx+1}`));
+              })
+            )
+          )
+        );
+      }
+      const isExpanded=expandedEx.has(ex.id);
+      return React.createElement("div",{key:ex.id,className:"sp-ex"},
+        React.createElement("div",{className:"sp-ex-top",style:{cursor:"pointer"},onClick:()=>toggleEx(ex.id)},
+          React.createElement("div",null,React.createElement("div",{className:"sp-ex-name"},ex.exercise),meta&&React.createElement("div",{className:"sp-ex-meta"},meta)),
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+            isAdmin&&React.createElement("button",{className:"sp-ex-edit",onClick:e=>{e.stopPropagation();setEditingId(ex.id);setExEdit({id:ex.id,exercise:ex.exercise,section:ex.section||"Main",sets:ex.sets||"",reps:ex.reps||"",duration:ex.duration||""});}},"Edit"),
+            React.createElement("div",{style:{color:"#444",fontSize:13,transition:"transform .2s",transform:isExpanded?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
+          )
+        ),
+        isExpanded&&session&&React.createElement("div",{className:"sp-sets-col"},
+          Array.from({length:setCount}).map((_,idx)=>{
+            const setKey=`${ex.exercise}_s${idx+1}`;
+            const savedVal=weights[setKey]||"";
+            const repTarget=repsList.length>1?(repsList[idx]||repsList[repsList.length-1]):null;
+            return React.createElement("div",{key:`${ex.id}_s${idx}`,className:"sp-set-row"},
+              React.createElement("span",{className:"sp-set-lbl"},`S${idx+1}`),
+              React.createElement("input",{className:"sp-set-input",type:"text",inputMode:"numeric",pattern:"[0-9]*",defaultValue:savedVal,placeholder:"—",onBlur:e=>saveSetWeight(ex.exercise,idx+1,e.target.value)}),
+              React.createElement("span",{className:"sp-set-kg"},"kg"),
+              repTarget&&React.createElement("span",{className:"sp-set-reps"},`· ${repTarget} reps`)
+            );
+          })
+        )
+      );
+    })
+  );
+}
 function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
   const SP_MONTHS=["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
   const nowMY=(()=>{const n=new Date();return`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`;})();
@@ -1908,78 +1991,12 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
   const sectionOrder=["Core","Main","Mobility","Accessories"];
   const currentWeek=autoWeek();
 
-  function ExSection({sectionName,exercises,isFirst}){
-    return React.createElement(React.Fragment,null,
-      React.createElement("div",{className:`sp-section-hdr${isFirst?" spsh-first":""}`},sectionName.toUpperCase()),
-      exercises.map(ex=>{
-        const isMain=ex.section==="Main";
-        const isCore=ex.section==="Core";
-        const isMobility=ex.section==="Mobility";
-        const setCount=parseInt(ex.sets)||1;
-        const repsList=ex.reps?ex.reps.split(",").map(r=>r.trim()):[];
-        const metaParts=[];
-        if(ex.sets)metaParts.push(`${ex.sets} sets`);
-        if(ex.reps&&repsList.length===1)metaParts.push(`${ex.reps} reps`);
-        if(ex.duration)metaParts.push(ex.duration);
-        if(ex.side)metaParts.push(ex.side);
-        const meta=metaParts.join(" · ");
-        const isEditing=editingId===ex.id;
-        if(isEditing&&isAdmin){
-          return React.createElement("div",{key:ex.id,className:"sp-edit-form"},
-            React.createElement("div",{className:"sp-edit-lbl"},"EXERCISE"),
-            React.createElement("input",{className:"sp-edit-input",value:exEdit.exercise||"",onChange:e=>setExEdit(p=>({...p,exercise:e.target.value})),placeholder:"Exercise name"}),
-            React.createElement("div",{className:"sp-edit-row"},
-              React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-edit-lbl"},"SETS"),React.createElement("input",{className:"sp-edit-input",value:exEdit.sets||"",onChange:e=>setExEdit(p=>({...p,sets:e.target.value})),placeholder:"e.g. 3"})),
-              React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-edit-lbl"},"REPS"),React.createElement("input",{className:"sp-edit-input",value:exEdit.reps||"",onChange:e=>setExEdit(p=>({...p,reps:e.target.value})),placeholder:"e.g. 10"}))
-            ),
-            React.createElement("div",{className:"sp-edit-lbl"},"DURATION (optional)"),
-            React.createElement("input",{className:"sp-edit-input",value:exEdit.duration||"",onChange:e=>setExEdit(p=>({...p,duration:e.target.value})),placeholder:"e.g. 45 sec"}),
-            React.createElement("div",{className:"sp-edit-actions"},
-              React.createElement("button",{className:"sp-edit-cancel",onClick:()=>setEditingId(null)},"Cancel"),
-              React.createElement("button",{className:"sp-edit-save",onClick:saveExercise,disabled:savingEx},savingEx?"SAVING...":"SAVE")
-            )
-          );
-        }
-        if(isCore||isMobility){
-          return React.createElement("div",{key:ex.id,className:"sp-ex"},
-            React.createElement("div",{className:"sp-ex-top",style:{cursor:"default"}},
-              React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-ex-name"},ex.exercise),meta&&React.createElement("div",{className:"sp-ex-meta"},meta)),
-              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
-                isAdmin&&React.createElement("button",{className:"sp-ex-edit",onClick:e=>{e.stopPropagation();setEditingId(ex.id);setExEdit({id:ex.id,exercise:ex.exercise,sets:ex.sets||"",reps:ex.reps||"",duration:ex.duration||""});}},"Edit"),
-                session&&Array.from({length:setCount}).map((_,idx)=>{
-                  const tKey=`${ex.id}_${idx}`;
-                  const done=!!ticks[tKey];
-                  return React.createElement("button",{key:idx,className:`sp-tick${done?" sptd":""}`,style:{width:30,height:30,fontSize:13},onClick:e=>{e.stopPropagation();toggleTick(ex.id,ex.exercise,idx,!done);}},isMobility?"✓":(done?"✓":`${idx+1}`));
-                })
-              )
-            )
-          );
-        }
-        const isExpanded=expandedEx.has(ex.id);
-        return React.createElement("div",{key:ex.id,className:"sp-ex"},
-          React.createElement("div",{className:"sp-ex-top",style:{cursor:"pointer"},onClick:()=>toggleEx(ex.id)},
-            React.createElement("div",null,React.createElement("div",{className:"sp-ex-name"},ex.exercise),meta&&React.createElement("div",{className:"sp-ex-meta"},meta)),
-            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
-              isAdmin&&React.createElement("button",{className:"sp-ex-edit",onClick:e=>{e.stopPropagation();setEditingId(ex.id);setExEdit({id:ex.id,exercise:ex.exercise,sets:ex.sets||"",reps:ex.reps||"",duration:ex.duration||""});}},"Edit"),
-              React.createElement("div",{style:{color:"#444",fontSize:13,transition:"transform .2s",transform:isExpanded?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
-            )
-          ),
-          isExpanded&&session&&React.createElement("div",{className:"sp-sets-col"},
-            Array.from({length:setCount}).map((_,idx)=>{
-              const setKey=`${ex.exercise}_s${idx+1}`;
-              const savedVal=weights[setKey]||"";
-              const repTarget=repsList.length>1?(repsList[idx]||repsList[repsList.length-1]):null;
-              return React.createElement("div",{key:`${ex.id}_s${idx}`,className:"sp-set-row"},
-                React.createElement("span",{className:"sp-set-lbl"},`S${idx+1}`),
-                React.createElement("input",{className:"sp-set-input",type:"text",inputMode:"numeric",pattern:"[0-9]*",defaultValue:savedVal,placeholder:"—",onBlur:e=>saveSetWeight(ex.exercise,idx+1,e.target.value)}),
-                React.createElement("span",{className:"sp-set-kg"},"kg"),
-                repTarget&&React.createElement("span",{className:"sp-set-reps"},`· ${repTarget} reps`)
-              );
-            })
-          )
-        );
-      })
-    );
+  async function deleteExercise(id){
+    if(!window.confirm("Delete this exercise?"))return;
+    await sbDelete("strength_program",`id=eq.${id}`);
+    setProgram(prev=>prev.filter(ex=>ex.id!==id));
+    setEditingId(null);
+    showToast("Exercise deleted");
   }
 
   const released=isWorkoutReleased(monthYear,weekNum,isAdmin);
@@ -2009,9 +2026,14 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
     :loading?React.createElement("div",{className:"sp-loading"},"LOADING...")
     :React.createElement(React.Fragment,null,
       program.length===0&&React.createElement("div",{className:"sp-loading"},"NO PROGRAM DATA"),
-      ...sectionOrder.filter(s=>sections[s]&&sections[s].length>0).map((s,i)=>
-        React.createElement(ExSection,{key:s,sectionName:s,exercises:sections[s],isFirst:i===0})
-      ),
+      ...(()=>{
+        const exCtx={editingId,setEditingId,exEdit,setExEdit,savingEx,saveExercise,
+          session,ticks,toggleTick,expandedEx,toggleEx,weights,saveSetWeight,
+          isAdmin,deleteExercise};
+        return sectionOrder.filter(s=>sections[s]&&sections[s].length>0).map((s,i)=>
+          React.createElement(ExSection,{key:s,sectionName:s,exercises:sections[s],isFirst:i===0,ctx:exCtx})
+        );
+      })(),
       isAdmin&&(addingEx
         ?React.createElement("div",{className:"sp-edit-form",style:{marginTop:16}},
             React.createElement("div",{className:"sp-edit-lbl"},"EXERCISE NAME"),
@@ -2031,14 +2053,29 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
             React.createElement("input",{className:"sp-edit-input",value:newEx.duration,onChange:e=>setNewEx(p=>({...p,duration:e.target.value})),placeholder:"e.g. 45 sec"}),
             React.createElement("div",{className:"sp-edit-lbl"},"APPLY TO WEEKS"),
             React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}},
-              [1,2,3,4].map(w=>React.createElement("button",{key:w,onClick:()=>setNewEx(p=>({...p,weeks:p.weeks.includes(w)?p.weeks.filter(x=>x!==w):[...p.weeks,w]})),style:{flex:1,padding:"6px 0",borderRadius:6,border:"1px solid",borderColor:newEx.weeks.includes(w)?"#4ade80":"#333",background:newEx.weeks.includes(w)?"rgba(74,222,128,0.15)":"transparent",color:newEx.weeks.includes(w)?"#4ade80":"#555",fontSize:12,fontWeight:600,letterSpacing:"0.1em",cursor:"pointer"}},`W${w}`))
+              [1,2,3,4].map(w=>{
+                const isPast=monthYear===nowMY&&w<currentWeek;
+                return React.createElement("button",{key:w,
+                  onClick:()=>!isPast&&setNewEx(p=>({...p,weeks:p.weeks.includes(w)?p.weeks.filter(x=>x!==w):[...p.weeks,w]})),
+                  style:{flex:1,padding:"6px 0",borderRadius:6,border:"1px solid",
+                    borderColor:newEx.weeks.includes(w)?"#4ade80":isPast?"#1a1a1a":"#333",
+                    background:newEx.weeks.includes(w)?"rgba(74,222,128,0.15)":"transparent",
+                    color:newEx.weeks.includes(w)?"#4ade80":isPast?"#2a2a2a":"#555",
+                    fontSize:12,fontWeight:600,letterSpacing:"0.1em",cursor:isPast?"not-allowed":"pointer"}
+                },`W${w}`)
+              })
             ),
             React.createElement("div",{className:"sp-edit-actions"},
               React.createElement("button",{className:"sp-edit-cancel",onClick:()=>setAddingEx(false)},"Cancel"),
               React.createElement("button",{className:"sp-edit-save",onClick:addExercise,disabled:savingNew||!newEx.exercise.trim()||!newEx.weeks.length},savingNew?"SAVING...":"ADD EXERCISE")
             )
           )
-        :React.createElement("button",{onClick:()=>setAddingEx(true),style:{display:"block",width:"100%",marginTop:20,padding:"12px",background:"transparent",border:"1px dashed #333",borderRadius:8,color:"#555",fontSize:11,letterSpacing:"0.15em",fontWeight:600,cursor:"pointer"}},"+ ADD EXERCISE")
+        :React.createElement("button",{onClick:()=>{
+            const cw=autoWeek();
+            const defaultWeeks=monthYear===nowMY?[1,2,3,4].filter(w=>w>=cw):[1,2,3,4];
+            setNewEx({exercise:"",section:"Main",sets:"",reps:"",duration:"",weeks:defaultWeeks});
+            setAddingEx(true);
+          },style:{display:"block",width:"100%",marginTop:20,padding:"12px",background:"transparent",border:"1px dashed #333",borderRadius:8,color:"#555",fontSize:11,letterSpacing:"0.15em",fontWeight:600,cursor:"pointer"}},"+ ADD EXERCISE")
       )
     )
   );
