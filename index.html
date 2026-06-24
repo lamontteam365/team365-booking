@@ -1741,8 +1741,9 @@ function CoachingView({showToast}){
   return React.createElement("div",{style:{marginTop:16}},
     React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},
       "COACHING NOTES · ADMIN"),
-    GROUPS.map(g=>
-      React.createElement("div",{key:g.label,style:{marginBottom:16}},
+    GROUPS.map(g=>{
+      const groupSelected=g.names.includes(selectedClass);
+      return React.createElement("div",{key:g.label,style:{marginBottom:groupSelected?0:16}},
         React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#444",fontWeight:600,marginBottom:8}},
           g.label),
         React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}},
@@ -1757,30 +1758,30 @@ function CoachingView({showToast}){
                      fontSize:16,letterSpacing:"0.05em",cursor:"pointer",transition:"all .15s"}
             },i+1);
           })
+        ),
+        groupSelected&&React.createElement("div",{style:{marginTop:10,marginBottom:16,background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:10,padding:14}},
+          React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:"0.08em",
+                                             color:"#fff",marginBottom:14}},selectedClass),
+          React.createElement("div",{style:{display:"flex",gap:0,marginBottom:14,background:"#141414",borderRadius:8,padding:3}},
+            React.createElement("button",{
+              onClick:()=>setSubTab("notes"),
+              style:{flex:1,background:subTab==="notes"?"#222":"transparent",color:subTab==="notes"?"#fff":"#555",
+                     border:"none",borderRadius:6,padding:"8px 0",fontFamily:"'Bebas Neue',sans-serif",
+                     fontSize:13,letterSpacing:"0.12em",cursor:"pointer",transition:"all .15s"}
+            },"COACHING NOTES"),
+            React.createElement("button",{
+              onClick:()=>setSubTab("details"),
+              style:{flex:1,background:subTab==="details"?"#222":"transparent",color:subTab==="details"?"#fff":"#555",
+                     border:"none",borderRadius:6,padding:"8px 0",fontFamily:"'Bebas Neue',sans-serif",
+                     fontSize:13,letterSpacing:"0.12em",cursor:"pointer",transition:"all .15s"}
+            },"WORKOUT DETAILS")
+          ),
+          subTab==="notes"
+            ? React.createElement(CoachingNoteEditor,{className:selectedClass,showToast})
+            : React.createElement(WorkoutDetailsEditor,{className:selectedClass,showToast})
         )
-      )
-    ),
-    selectedClass&&React.createElement("div",{style:{marginTop:16,background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:10,padding:14}},
-      React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:"0.08em",
-                                         color:"#fff",marginBottom:14}},selectedClass),
-      React.createElement("div",{style:{display:"flex",gap:0,marginBottom:14,background:"#141414",borderRadius:8,padding:3}},
-        React.createElement("button",{
-          onClick:()=>setSubTab("notes"),
-          style:{flex:1,background:subTab==="notes"?"#222":"transparent",color:subTab==="notes"?"#fff":"#555",
-                 border:"none",borderRadius:6,padding:"8px 0",fontFamily:"'Bebas Neue',sans-serif",
-                 fontSize:13,letterSpacing:"0.12em",cursor:"pointer",transition:"all .15s"}
-        },"COACHING NOTES"),
-        React.createElement("button",{
-          onClick:()=>setSubTab("details"),
-          style:{flex:1,background:subTab==="details"?"#222":"transparent",color:subTab==="details"?"#fff":"#555",
-                 border:"none",borderRadius:6,padding:"8px 0",fontFamily:"'Bebas Neue',sans-serif",
-                 fontSize:13,letterSpacing:"0.12em",cursor:"pointer",transition:"all .15s"}
-        },"WORKOUT DETAILS")
-      ),
-      subTab==="notes"
-        ? React.createElement(CoachingNoteEditor,{className:selectedClass,showToast})
-        : React.createElement(WorkoutDetailsEditor,{className:selectedClass,showToast})
-    )
+      );
+    })
   );
 }
 // ── Strength Program Tab ──────────────────────────────────────────────────────
