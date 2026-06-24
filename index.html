@@ -1806,38 +1806,13 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
   const [addingEx,setAddingEx]=useState(false);
   const [newEx,setNewEx]=useState({exercise:"",section:"Main",sets:"",reps:"",duration:"",weeks:[1,2,3,4]});
   const [savingNew,setSavingNew]=useState(false);
-  const [pastBookingUnlock,setPastBookingUnlock]=useState(null);
 
   useEffect(()=>{loadData();},[sessType,weekNum,monthYear]);
 
   async function loadData(){
     setLoading(true);
-    const currentWeekNow=autoWeek();
     const prog=await sbGet("strength_program",`session_type=eq.${sessType}&week_number=eq.${weekNum}&order=order_num.asc`);
     const wts=session?await sbGet("member_weights",`email=eq.${encodeURIComponent(session.email)}&session_type=eq.${sessType}&week_number=eq.${weekNum}&month_year=eq.${monthYear}`):[];
-    // For past weeks/months, determine unlock status for this specific session type
-    // Past months always unlock (already happened); only gate current-month past weeks
-    if(session&&!isAdmin&&monthYear===nowMY&&weekNum<currentWeekNow){
-      // Primary check: if member has saved weights for this past week, they were there
-      const hasWeights=(wts||[]).some(w=>!w.exercise.endsWith("_tick"));
-      if(hasWeights){
-        // Saved data exists — unlock this session type only
-        setPastBookingUnlock({Lower:sessType==="Lower",Upper:sessType==="Upper"});
-      } else {
-        // No saved weights — fall back to checking the bookings table
-        const [yr,mo]=monthYear.split("-").map(Number);
-        const startDay=weekNum===1?1:weekNum===2?8:weekNum===3?15:25;
-        const endDay=weekNum===1?7:weekNum===2?14:weekNum===3?24:new Date(yr,mo,0).getDate();
-        const checkStart=`${monthYear}-${String(startDay).padStart(2,"0")}`;
-        const checkEnd=`${monthYear}-${String(endDay).padStart(2,"0")}`;
-        const pastBks=await sbGet("bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=gte.${checkStart}&date_key=lte.${checkEnd}&select=date_key`);
-        const hasLower=(pastBks||[]).some(b=>{const d=new Date(b.date_key+"T00:00:00");return d.getDay()===2;});
-        const hasUpper=(pastBks||[]).some(b=>{const d=new Date(b.date_key+"T00:00:00");return d.getDay()===4;});
-        setPastBookingUnlock({Lower:hasLower,Upper:hasUpper});
-      }
-    } else {
-      setPastBookingUnlock(null);
-    }
     setProgram(prog||[]);
     const wtMap={};
     const initTicks={};
@@ -1930,7 +1905,7 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
 
   const sections={};
   program.forEach(ex=>{if(!sections[ex.section])sections[ex.section]=[];sections[ex.section].push(ex);});
-  const sectionOrder=["Core","Main","Mobility"];
+  const sectionOrder=["Core","Main","Mobility","Accessories"];
   const currentWeek=autoWeek();
 
   function ExSection({sectionName,exercises,isFirst}){
@@ -2009,42 +1984,6 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
 
   const released=isWorkoutReleased(monthYear,weekNum,isAdmin);
 
-  // Determine which strength sessions member has booked for the VIEWED month+week.
-  // For the current program week we use the full calendar Mon–Sun window so that
-  // a Tuesday (e.g. day 23, prog-week 3) and the following Thursday (day 26,
-  // prog-week 4) both count — they're the same calendar week even though the
-  // day-of-month boundary puts them in different program weeks.
-  const strengthUnlock=(()=>{
-    if(isAdmin)return{Lower:true,Upper:true};
-    if(!session||!bookings)return{Lower:false,Upper:false};
-    // Past months: always unlocked — workout already happened, members can review
-    if(monthYear<nowMY) return{Lower:true,Upper:true};
-    // Current month past weeks: use on-demand check from loadData
-    if(monthYear===nowMY&&weekNum<currentWeek){
-      return pastBookingUnlock||{Lower:false,Upper:false};
-    }
-    const [yr,mo]=monthYear.split("-").map(Number);
-    const startDay=weekNum===1?1:weekNum===2?8:weekNum===3?15:25;
-    const endDay=weekNum===1?7:weekNum===2?14:weekNum===3?24:new Date(yr,mo,0).getDate();
-    let checkStart=`${monthYear}-${String(startDay).padStart(2,"0")}`;
-    let checkEnd=`${monthYear}-${String(endDay).padStart(2,"0")}`;
-    // Widen to full calendar week for the current program week
-    if(monthYear===nowMY&&weekNum===currentWeek){
-      const nz=getNZDate();
-      checkStart=toDS(mondayOf(nz));
-      checkEnd=toDS(addDays(mondayOf(nz),6));
-    }
-    const wkStrength=bookings.filter(b=>
-      b.email===session.email&&
-      b.date_key>=checkStart&&b.date_key<=checkEnd&&
-      (b.session_type==="Strength"||isStrengthDay(b.date_key))
-    );
-    const hasLower=wkStrength.some(b=>{const d=new Date(b.date_key+"T00:00:00");return d.getDay()===2;}); // Tuesday
-    const hasUpper=wkStrength.some(b=>{const d=new Date(b.date_key+"T00:00:00");return d.getDay()===4;}); // Thursday
-    return{Lower:hasLower,Upper:hasUpper};
-  })();
-  const canViewCurrent=strengthUnlock[sessType];
-
   return React.createElement("div",{className:"sp-wrap"},
     React.createElement("div",{className:"well-hdr",style:{padding:"0 0 4px"}},
       React.createElement("div",{className:"well-title"},"STRENGTH"),
@@ -2066,16 +2005,7 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
       })
     ),
     React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.14em",marginBottom:16,fontWeight:600}},`${sessType.toUpperCase()} · WEEK ${weekNum}${weekNum===currentWeek&&monthYear===nowMY?" · CURRENT WEEK":""}`),
-    !canViewCurrent?React.createElement("div",{className:"sp-locked"},
-      React.createElement("div",{style:{fontSize:20,marginBottom:8}},"🔒"),
-      React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:6}},`${sessType.toUpperCase()} LOCKED`),
-      React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",lineHeight:1.8}},
-        "Book a "+(sessType==="Lower"?"TUESDAY":"THURSDAY")+" class",
-        React.createElement("br",null),
-        "to unlock this week's program"
-      )
-    )
-    :!released?React.createElement("div",{className:"sp-locked"},"🔒",React.createElement("br",null),"THIS WORKOUT UNLOCKS",React.createElement("br",null),"AT 9PM THE NIGHT BEFORE")
+    !released?React.createElement("div",{className:"sp-locked"},"🔒",React.createElement("br",null),"THIS WORKOUT UNLOCKS",React.createElement("br",null),"AT 9PM THE NIGHT BEFORE")
     :loading?React.createElement("div",{className:"sp-loading"},"LOADING...")
     :React.createElement(React.Fragment,null,
       program.length===0&&React.createElement("div",{className:"sp-loading"},"NO PROGRAM DATA"),
@@ -2090,7 +2020,8 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
             React.createElement("select",{className:"sp-edit-input",value:newEx.section,onChange:e=>setNewEx(p=>({...p,section:e.target.value}))},
               React.createElement("option",{value:"Core"},"Core"),
               React.createElement("option",{value:"Main"},"Main"),
-              React.createElement("option",{value:"Mobility"},"Mobility")
+              React.createElement("option",{value:"Mobility"},"Mobility"),
+              React.createElement("option",{value:"Accessories"},"Accessories")
             ),
             React.createElement("div",{className:"sp-edit-row"},
               React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-edit-lbl"},"SETS"),React.createElement("input",{className:"sp-edit-input",value:newEx.sets,onChange:e=>setNewEx(p=>({...p,sets:e.target.value})),placeholder:"e.g. 3"})),
