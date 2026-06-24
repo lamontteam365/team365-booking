@@ -207,7 +207,6 @@ async function handleSubmit(){
   const ePhone    = document.getElementById("ephone").value.trim();
   const medCond   = document.getElementById("med-cond").value.trim();
   const meds      = document.getElementById("meds").value.trim();
-  const memType   = document.getElementById("mem-type").value;
 
   // Validation
   if(!firstName||!lastName){errEl.textContent="Please enter your full name.";return;}
@@ -221,7 +220,6 @@ async function handleSubmit(){
   if(!healthDeclaration){errEl.textContent="Please confirm the health declaration.";return;}
   if(!mediaConsent){errEl.textContent="Please confirm your media consent preference.";return;}
   if(!hasSig){errEl.textContent="Please sign the form.";return;}
-  if(!memType){errEl.textContent="Please select a membership type.";return;}
 
   // Check if account already exists
   const existing = await sbGet("members",`email=eq.${encodeURIComponent(email)}`);
@@ -250,13 +248,12 @@ async function handleSubmit(){
     health_declaration:   healthDeclaration,
     media_consent:        mediaConsent,
     signature:            sigData,
-    membership_type:      memType,
     registration_date:    regDate
   };
 
   const healthData = {
     name, email, phone,
-    dob, membershipType: memType,
+    dob,
     emergencyName: eName, emergencyPhone: ePhone,
     parqHeart: parqAnswers[0]||"", parqChestActivity: parqAnswers[1]||"",
     parqChestRest: parqAnswers[2]||"", parqDizziness: parqAnswers[3]||"",
@@ -343,156 +340,6 @@ document.getElementById("root").innerHTML = `
     <input class="fi" id="phone" type="tel" placeholder="+64 21 000 0000" autocomplete="tel"/>
     <label class="fl" for="email">EMAIL ADDRESS</label>
     <input class="fi" id="email" type="email" placeholder="your@email.com" autocomplete="email"/>
-    <label class="fl" for="mem-type">MEMBERSHIP TYPE</label>
-    <select class="fi" id="mem-type">
-      <option value="">Select membership...</option>
-      <option value="3 months">3 Months</option>
-      <option value="6 months">6 Months</option>
-      <option value="12 months">12 Months</option>
-    </select>
-  </div>
-
-  <!-- Emergency Contact -->
-  <div class="section">
-    <div class="section-label">EMERGENCY CONTACT</div>
-    <div class="row2">
-      <div>
-        <label class="fl" for="ename">CONTACT NAME</label>
-        <input class="fi" id="ename" placeholder="Full name"/>
-      </div>
-      <div>
-        <label class="fl" for="ephone">PHONE NUMBER</label>
-        <input class="fi" id="ephone" type="tel" placeholder="+64 21 000 0000"/>
-      </div>
-    </div>
-  </div>
-
-  <!-- PAR-Q Health Screening -->
-  <div class="section">
-    <div class="section-label">HEALTH SCREENING · PAR-Q</div>
-    ${PARQ.map((q,i)=>`
-      <div class="parq-item parq-${i}">
-        <div class="parq-q">${q}</div>
-        <div class="parq-opts">
-          <button class="parq-btn" data-val="Yes" onclick="selectParq(${i},'Yes')">YES</button>
-          <button class="parq-btn" data-val="No" onclick="selectParq(${i},'No')">NO</button>
-        </div>
-      </div>`).join("")}
-  </div>
-
-  <!-- Medical Info -->
-  <div class="section">
-    <div class="section-label">MEDICAL INFORMATION</div>
-    <label class="fl" for="med-cond">INJURIES OR CONDITIONS WE SHOULD KNOW ABOUT</label>
-    <textarea class="fi" id="med-cond" placeholder="List any injuries or conditions, or write 'None'"></textarea>
-    <label class="fl" for="meds">CURRENT MEDICATIONS</label>
-    <textarea class="fi" id="meds" placeholder="List any current medications, or write 'None'"></textarea>
-  </div>
-
-  <!-- Fitness Level -->
-  <div class="section">
-    <div class="section-label">STARTING LEVEL</div>
-    <div class="fitness-opts">
-      <button class="fitness-btn" data-val="1. New to fitness or returning after a break." onclick="selectFitness(this.dataset.val)">
-        <div class="fitness-num">1</div>
-        <div class="fitness-desc">New to fitness or returning after a break</div>
-      </button>
-      <button class="fitness-btn" data-val="2. Active and training regularly." onclick="selectFitness(this.dataset.val)">
-        <div class="fitness-num">2</div>
-        <div class="fitness-desc">Active and training regularly</div>
-      </button>
-      <button class="fitness-btn" data-val="3. High performance, pushing the limits." onclick="selectFitness(this.dataset.val)">
-        <div class="fitness-num">3</div>
-        <div class="fitness-desc">High performance, pushing the limits</div>
-      </button>
-    </div>
-  </div>
-
-  <!-- Declaration -->
-  <div class="section">
-    <div class="section-label">DECLARATIONS</div>
-    <div class="consent-item consent-health">
-      <div class="consent-bold">HEALTH & MEDICAL DECLARATION</div>
-      <div class="consent-text">I confirm that the information provided is accurate to the best of my knowledge. I agree to inform Team 365 of any changes to my health or medical status. I acknowledge that physical activity carries inherent risks, and I participate at my own risk.</div>
-      <div class="consent-opts">
-        <button class="consent-btn" data-val="Yes" onclick="selectConsent('health','Yes')">I AGREE</button>
-        <button class="consent-btn" data-val="No" onclick="selectConsent('health','No')">I DO NOT AGREE</button>
-      </div>
-    </div>
-    <div class="consent-item consent-media">
-      <div class="consent-bold">MEDIA & PROMOTIONAL USE</div>
-      <div class="consent-text">I grant permission for Team 365 to capture and use photographs and video footage of me during training sessions for promotional, marketing, and social media purposes.</div>
-      <div class="consent-opts">
-        <button class="consent-btn" data-val="Yes" onclick="selectConsent('media','Yes')">I AGREE</button>
-        <button class="consent-btn" data-val="No" onclick="selectConsent('media','No')">I DO NOT AGREE</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Signature -->
-  <div class="section">
-    <div class="section-label">SIGNATURE</div>
-    <div class="sig-wrap">
-      <canvas id="sig-canvas" class="sig-canvas"></canvas>
-      <button class="sig-clear" onclick="clearSig()">CLEAR</button>
-      <div class="sig-hint">Sign here with your finger</div>
-    </div>
-  </div>
-
-  <div id="err-msg" class="err-msg"></div>
-  <button id="submit-btn" class="submit-btn" onclick="handleSubmit()">SUBMIT REGISTRATION</button>
-</div>`;
-
-// Pre-fill form if member is already logged in
-async function prefillForm() {
-  try {
-    const session = JSON.parse(localStorage.getItem("t365-session"));
-    if(!session || !session.email) return;
-
-    const rows = await sbGet("members", `email=eq.${encodeURIComponent(session.email)}`);
-    if(!rows.length) return;
-    const mb = rows[0];
-
-    // Personal details
-    const nameParts = (mb.name||"").split(" ");
-    const fname = nameParts[0]||"";
-    const lname = nameParts.slice(1).join(" ")||"";
-    if(document.getElementById("fname")) document.getElementById("fname").value = fname;
-    if(document.getElementById("lname")) document.getElementById("lname").value = lname;
-    if(document.getElementById("dob"))   document.getElementById("dob").value   = mb.dob||"";
-    if(document.getElementById("phone")) document.getElementById("phone").value = mb.phone||"";
-    if(document.getElementById("email")) document.getElementById("email").value = mb.email||"";
-
-    // Membership
-    const memSel = document.getElementById("mem-type");
-    if(memSel && mb.membership_type) memSel.value = mb.membership_type;
-
-    // Emergency contact
-    if(document.getElementById("ename"))  document.getElementById("ename").value  = mb.emergency_name||"";
-    if(document.getElementById("ephone")) document.getElementById("ephone").value = mb.emergency_phone||"";
-
-    // PAR-Q
-    const parqMap = {
-      0: mb.parq_heart, 1: mb.parq_chest_activity, 2: mb.parq_chest_rest,
-      3: mb.parq_dizziness, 4: mb.parq_joint, 5: mb.parq_blood_pressure, 6: mb.parq_other
-    };
-    Object.entries(parqMap).forEach(([idx, val]) => {
-      if(val) selectParq(parseInt(idx), val);
-    });
-
-    // Fitness level
-    if(mb.fitness_level) selectFitness(mb.fitness_level);
-
-    // Declarations
-    if(mb.health_declaration) selectConsent("health", mb.health_declaration);
-    if(mb.media_consent)      selectConsent("media",  mb.media_consent);
-
-    // Medical info
-    if(document.getElementById("med-cond")) document.getElementById("med-cond").value = mb.medical_conditions||"";
-    if(document.getElementById("meds"))     document.getElementById("meds").value     = mb.medications||"";
-
-  } catch(e) { console.log("Prefill error:", e); }
-}
 
 // Init signature canvas after render
 setTimeout(()=>{ initCanvas(); prefillForm(); }, 100);
