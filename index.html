@@ -1226,8 +1226,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
       ),
       admTimes.length===0?React.createElement("div",{className:"adm-no-classes"},"No classes on Sunday")
       :admTimes.map(time=>{
-        const slotBks=dayBks.filter(b=>b.time===time);const taken=slotBks.length;const isOpen=!!expanded[time];const isHidden=slotMax===0;
-        const slotMax=getMaxSpots?getMaxSpots(time,admDK):MAX_SPOTS;
+        const slotBks=dayBks.filter(b=>b.time===time);const taken=slotBks.length;const isOpen=!!expanded[time];
+        const slotMax=getMaxSpots?getMaxSpots(time,admDK):MAX_SPOTS;const isHidden=slotMax===0;
         const isEditingThis=editingLimit===time;
         const isExtra=extraTimes.includes(time);
         const isEditingTimeThis=editingTime===time;
@@ -1947,7 +1947,18 @@ function CoachingView({showToast}){
           },removingGroup===label?"...":"REMOVE ROW")
         )
       ),
-      React.createElement("div",{className:"no-sb",style:{display:"flex",overflowX:"auto",gap:6,WebkitOverflowScrolling:"touch"},onTouchStart:e=>e.stopPropagation(),onTouchMove:e=>e.stopPropagation(),onTouchEnd:e=>e.stopPropagation()},
+      React.createElement("div",{
+        className:"no-sb",
+        style:{display:"flex",overflowX:"auto",gap:6,WebkitOverflowScrolling:"touch",cursor:"grab"},
+        onTouchStart:e=>e.stopPropagation(),
+        onTouchMove:e=>e.stopPropagation(),
+        onTouchEnd:e=>e.stopPropagation(),
+        onWheel:e=>{e.currentTarget.scrollLeft+=e.deltaY;},
+        onMouseDown:e=>{const el=e.currentTarget;el._drag={x:e.pageX,sl:el.scrollLeft};el.style.cursor="grabbing";el.style.userSelect="none";},
+        onMouseMove:e=>{const d=e.currentTarget._drag;if(!d)return;e.currentTarget.scrollLeft=d.sl-(e.pageX-d.x);},
+        onMouseUp:e=>{delete e.currentTarget._drag;e.currentTarget.style.cursor="grab";e.currentTarget.style.userSelect=""},
+        onMouseLeave:e=>{delete e.currentTarget._drag;e.currentTarget.style.cursor="grab";e.currentTarget.style.userSelect=""}
+      },
         names.map((cn,i)=>{
           const isSelected=selectedClass===cn;
           const isExtra=!base||(extraNames.includes(cn));
