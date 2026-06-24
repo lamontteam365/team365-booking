@@ -1806,24 +1806,41 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
   const [addingEx,setAddingEx]=useState(false);
   const [newEx,setNewEx]=useState({exercise:"",section:"Main",sets:"",reps:"",duration:"",weeks:[1,2,3,4]});
   const [savingNew,setSavingNew]=useState(false);
+  const [pastBookingUnlock,setPastBookingUnlock]=useState(null);
 
   useEffect(()=>{loadData();},[sessType,weekNum,monthYear]);
 
   async function loadData(){
     setLoading(true);
+    const currentWeekNow=autoWeek();
     const prog=await sbGet("strength_program",`session_type=eq.${sessType}&week_number=eq.${weekNum}&order=order_num.asc`);
     const wts=session?await sbGet("member_weights",`email=eq.${encodeURIComponent(session.email)}&session_type=eq.${sessType}&week_number=eq.${weekNum}&month_year=eq.${monthYear}`):[];
+    // For past weeks/months, fetch actual booking records to check if member attended
+    if(session&&!isAdmin&&(monthYear<nowMY||(monthYear===nowMY&&weekNum<currentWeekNow))){
+      const [yr,mo]=monthYear.split("-").map(Number);
+      const startDay=weekNum===1?1:weekNum===2?8:weekNum===3?15:25;
+      const endDay=weekNum===1?7:weekNum===2?14:weekNum===3?24:new Date(yr,mo,0).getDate();
+      const checkStart=`${monthYear}-${String(startDay).padStart(2,"0")}`;
+      const checkEnd=`${monthYear}-${String(endDay).padStart(2,"0")}`;
+      const pastBks=await sbGet("bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=gte.${checkStart}&date_key=lte.${checkEnd}&select=date_key`);
+      const hasLower=(pastBks||[]).some(b=>{const d=new Date(b.date_key+"T00:00:00");return d.getDay()===2;});
+      const hasUpper=(pastBks||[]).some(b=>{const d=new Date(b.date_key+"T00:00:00");return d.getDay()===4;});
+      setPastBookingUnlock({Lower:hasLower,Upper:hasUpper});
+    } else {
+      setPastBookingUnlock(null);
+    }
     setProgram(prog||[]);
     const wtMap={};
     const initTicks={};
     (wts||[]).forEach(w=>{
       if(w.exercise.endsWith("_tick")){
+        // Key format: "${exId}_s${N}_tick"
         const base=w.exercise.slice(0,-5);
         const si=base.lastIndexOf("_s");
         if(si>-1){
-          const exName=base.slice(0,si);
+          const exId=base.slice(0,si);
           const setIdx=parseInt(base.slice(si+2))-1;
-          if(w.weight==="1")initTicks[`${exName}_${setIdx}`]=true;
+          if(w.weight==="1")initTicks[`${exId}_${setIdx}`]=true;
         }
       } else {
         wtMap[w.exercise]=w.weight;
@@ -1848,13 +1865,13 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
     }else{
       await sbPost("member_weights",{email:session.email,session_type:sessType,week_number:weekNum,month_year:monthYear,exercise:key,weight:v,logged_at:Date.now()});
     }
-    showToast("Saved ✓");
+    // Silent save — no toast so focus is not disrupted between set inputs
   }
 
-  async function toggleTick(exercise,setIdx,newState){
+  async function toggleTick(exId,exercise,setIdx,newState){
     if(!session)return;
-    const tKey=`${exercise}_${setIdx}`;
-    const dbKey=`${exercise}_s${setIdx+1}_tick`;
+    const tKey=`${exId}_${setIdx}`;
+    const dbKey=`${exId}_s${setIdx+1}_tick`;
     setTicks(p=>({...p,[tKey]:newState}));
     if(newState){
       const existing=await sbGet("member_weights",`email=eq.${encodeURIComponent(session.email)}&session_type=eq.${sessType}&week_number=eq.${weekNum}&month_year=eq.${monthYear}&exercise=eq.${encodeURIComponent(dbKey)}`);
@@ -1946,9 +1963,9 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
               React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
                 isAdmin&&React.createElement("button",{className:"sp-ex-edit",onClick:e=>{e.stopPropagation();setEditingId(ex.id);setExEdit({id:ex.id,exercise:ex.exercise,sets:ex.sets||"",reps:ex.reps||"",duration:ex.duration||""});}},"Edit"),
                 session&&Array.from({length:setCount}).map((_,idx)=>{
-                  const tKey=`${ex.exercise}_${idx}`;
+                  const tKey=`${ex.id}_${idx}`;
                   const done=!!ticks[tKey];
-                  return React.createElement("button",{key:idx,className:`sp-tick${done?" sptd":""}`,style:{width:30,height:30,fontSize:13},onClick:e=>{e.stopPropagation();toggleTick(ex.exercise,idx,!done);}},isMobility?"✓":(done?"✓":`${idx+1}`));
+                  return React.createElement("button",{key:idx,className:`sp-tick${done?" sptd":""}`,style:{width:30,height:30,fontSize:13},onClick:e=>{e.stopPropagation();toggleTick(ex.id,ex.exercise,idx,!done);}},isMobility?"✓":(done?"✓":`${idx+1}`));
                 })
               )
             )
@@ -1991,10 +2008,10 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
   const strengthUnlock=(()=>{
     if(isAdmin)return{Lower:true,Upper:true};
     if(!session||!bookings)return{Lower:false,Upper:false};
-    // Past months are always unlocked — you already attended, let members review logs
-    if(monthYear<nowMY)return{Lower:true,Upper:true};
-    // Past weeks within the current month are always unlocked
-    if(monthYear===nowMY&&weekNum<currentWeek)return{Lower:true,Upper:true};
+    // Past weeks/months: use on-demand booking records fetched in loadData
+    if(monthYear<nowMY||(monthYear===nowMY&&weekNum<currentWeek)){
+      return pastBookingUnlock||{Lower:false,Upper:false};
+    }
     const [yr,mo]=monthYear.split("-").map(Number);
     const startDay=weekNum===1?1:weekNum===2?8:weekNum===3?15:25;
     const endDay=weekNum===1?7:weekNum===2?14:weekNum===3?24:new Date(yr,mo,0).getDate();
