@@ -1119,7 +1119,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
 }
 
 // ── Admin View ────────────────────────────────────────────────────────────────
-function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,wellnessEnabled,saveWellnessSetting}){
+function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,classLimits,wellnessEnabled,saveWellnessSetting}){
   const [admSeg,setAdmSeg]=useState("members");
   const [expandedTier,setExpandedTier]=useState(null);
   const [admDate,setAdmDate]=useState(new Date());
@@ -1131,6 +1131,9 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
   const [selectedMember,setSelectedMember]=useState(null);
   const [editingLimit,setEditingLimit]=useState(null);
   const [limitInput,setLimitInput]=useState("");
+  const [addingClass,setAddingClass]=useState(false);
+  const [newClassTime,setNewClassTime]=useState("");
+  const [newClassSpots,setNewClassSpots]=useState("16");
 
   function openMemberProfile(mb){
     setSelectedMember(mb);
@@ -1157,7 +1160,9 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
   },[admSeg]);
 
   const admDK=toDS(admDate);const admDOW=admDate.getDay();const admIsSat=admDOW===6;
-  const admTimes=admDOW===0?[]:admIsSat?SAT_TIMES:WD_TIMES;
+  const standardTimes=admDOW===0?[]:admIsSat?SAT_TIMES:WD_TIMES;
+  const extraTimes=Object.keys(classLimits||{}).filter(k=>k.startsWith(admDK+':')).map(k=>k.slice(admDK.length+1)).filter(t=>!standardTimes.includes(t));
+  const admTimes=[...standardTimes,...extraTimes].sort();
   const dayBks=bookings.filter(b=>b.date_key===admDK);
   const totalBooked=dayBks.length;const totalSpots=admTimes.reduce((s,t)=>s+(getMaxSpots?getMaxSpots(t,admDK):MAX_SPOTS),0);
 
@@ -1270,7 +1275,39 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
             ))
           )
         );
-      })
+      }),
+      admDOW!==0&&React.createElement("div",{style:{marginTop:12}},
+        !addingClass
+          ?React.createElement("button",{onClick:()=>{setAddingClass(true);setNewClassTime("");setNewClassSpots("16");},style:{width:"100%",background:"none",border:"1px dashed #2a2a2a",borderRadius:6,padding:"11px",color:"#555",fontSize:10,letterSpacing:"0.14em",cursor:"pointer"}},"+ ADD CLASS")
+          :React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:6,padding:"14px"}},
+              React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,marginBottom:10}},"NEW CLASS · "+admDateLabel.toUpperCase()),
+              React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center",marginBottom:10}},
+                React.createElement("div",{style:{flex:1}},
+                  React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.1em",fontWeight:600,marginBottom:4}},"TIME"),
+                  React.createElement("input",{type:"time",value:newClassTime,onChange:e=>setNewClassTime(e.target.value),
+                    style:{width:"100%",background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#ccc",fontSize:14,padding:"8px 10px",fontFamily:"'DM Sans',sans-serif",outline:"none",boxSizing:"border-box"}})
+                ),
+                React.createElement("div",{style:{width:80}},
+                  React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.1em",fontWeight:600,marginBottom:4}},"MAX SPOTS"),
+                  React.createElement("input",{type:"number",min:1,max:99,value:newClassSpots,onChange:e=>setNewClassSpots(e.target.value),
+                    style:{width:"100%",background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#ccc",fontSize:14,padding:"8px",fontFamily:"'DM Sans',sans-serif",textAlign:"center",outline:"none",boxSizing:"border-box"}})
+                )
+              ),
+              React.createElement("div",{style:{display:"flex",gap:8}},
+                React.createElement("button",{onClick:()=>setAddingClass(false),style:{flex:1,background:"none",border:"1px solid #333",borderRadius:4,padding:"9px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
+                React.createElement("button",{
+                  disabled:!newClassTime,
+                  onClick:async()=>{
+                    if(!newClassTime)return;
+                    await saveClassLimit(newClassTime,admDK,newClassSpots||"16");
+                    setAddingClass(false);
+                    showToast("Class added ✓");
+                  },
+                  style:{flex:2,background:newClassTime?"#fff":"#1a1a1a",color:newClassTime?"#000":"#444",border:"none",borderRadius:4,padding:"9px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:newClassTime?"pointer":"default"}
+                },"SAVE CLASS")
+              )
+          )
+      )
     ),
     admSeg==="wellness"&&React.createElement(React.Fragment,null,
       React.createElement("div",{style:{background:"#141414",border:"1px solid #222",borderRadius:8,padding:"12px 16px",marginTop:16,marginBottom:4}},
@@ -1588,71 +1625,98 @@ function OnboardingView({showToast}){
 
 // ── Coaching Notes ────────────────────────────────────────────────────────────
 
+// Standalone per-class coaching note editor — sections with title + body (no numbers)
+// MUST be defined outside CoachingView to avoid focus-loss bug
+function CoachingNoteEditor({className,showToast}){
+  const [sections,setSections]=useState([]);
+  const [editing,setEditing]=useState(false);
+  const [draft,setDraft]=useState([]);
+  const [saving,setSaving]=useState(false);
+  const [loaded,setLoaded]=useState(false);
+
+  useEffect(()=>{load();},[className]);
+
+  function parsePlainText(text){
+    return text.split(/\n\n+/).map(block=>{
+      const lines=block.trim().split('\n');
+      if(!lines.length)return null;
+      const title=lines[0].trim().toUpperCase();
+      const body=lines.slice(1).map(l=>l.replace(/^-\s*/,'')).filter(Boolean).join('\n');
+      return{title,body};
+    }).filter(Boolean);
+  }
+
+  async function load(){
+    const data=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(className)}&select=content`);
+    if(data&&data.length&&data[0].content){
+      try{
+        const parsed=JSON.parse(data[0].content);
+        setSections(Array.isArray(parsed)?parsed:parsePlainText(data[0].content));
+      }catch{setSections(parsePlainText(data[0].content));}
+    }else{setSections([]);}
+    setLoaded(true);
+  }
+
+  async function save(){
+    setSaving(true);
+    const json=JSON.stringify(draft);
+    const existing=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(className)}&select=id`);
+    if(existing&&existing.length){await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(className)}`,{content:json,updated_at:Date.now()});}
+    else{await sbPost("coaching_notes",{class_name:className,content:json,updated_at:Date.now()});}
+    setSections(draft.map(s=>({...s})));setSaving(false);setEditing(false);
+    showToast("Notes saved ✓");
+  }
+
+  function updateDraft(i,field,val){setDraft(d=>d.map((s,idx)=>idx===i?{...s,[field]:val}:s));}
+
+  if(!loaded)return React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"10px 0"}},"LOADING...");
+
+  if(editing){
+    return React.createElement("div",null,
+      React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:14}},
+        React.createElement("button",{onClick:()=>setEditing(false),style:{background:"none",border:"1px solid #333",borderRadius:4,padding:"4px 12px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
+        React.createElement("button",{onClick:save,disabled:saving,style:{background:"#1d9bf0",border:"none",borderRadius:4,padding:"4px 14px",color:"#fff",fontSize:10,letterSpacing:"0.1em",cursor:"pointer",fontWeight:600}},saving?"SAVING...":"SAVE")
+      ),
+      draft.map((s,i)=>React.createElement("div",{key:i,style:{background:"#141414",border:"1px solid #1e1e1e",borderRadius:6,padding:"12px",marginBottom:10}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:8}},
+          React.createElement("input",{value:s.title,onChange:e=>updateDraft(i,"title",e.target.value),placeholder:"Section title",
+            style:{flex:1,background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:4,color:"#ccc",fontSize:12,padding:"6px 10px",fontFamily:"'DM Sans',sans-serif",outline:"none",letterSpacing:"0.06em"}}),
+          React.createElement("button",{onClick:()=>setDraft(d=>d.filter((_,idx)=>idx!==i)),style:{background:"none",border:"1px solid #2a2a2a",borderRadius:4,padding:"3px 8px",color:"#555",fontSize:11,cursor:"pointer",flexShrink:0}},"✕")
+        ),
+        React.createElement("textarea",{value:s.body,onChange:e=>updateDraft(i,"body",e.target.value),placeholder:"Notes for this section",rows:4,
+          style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:4,color:"#888",fontSize:12,padding:"8px 10px",fontFamily:"'DM Sans',sans-serif",lineHeight:1.6,resize:"vertical",boxSizing:"border-box",outline:"none"}})
+      )),
+      React.createElement("button",{onClick:()=>setDraft(d=>[...d,{title:"",body:""}]),style:{width:"100%",background:"none",border:"1px dashed #2a2a2a",borderRadius:6,padding:"10px",color:"#444",fontSize:10,letterSpacing:"0.12em",cursor:"pointer",marginTop:4}},"+ ADD SECTION")
+    );
+  }
+
+  return React.createElement("div",null,
+    React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:12}},
+      React.createElement("button",{onClick:()=>{setDraft(sections.map(s=>({...s})));setEditing(true);},style:{background:"none",border:"1px solid #333",borderRadius:4,padding:"4px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT")
+    ),
+    sections.length===0&&React.createElement("div",{style:{fontSize:10,color:"#333",letterSpacing:"0.1em",textAlign:"center",padding:"20px 0"}},"NO NOTES YET · TAP EDIT TO ADD"),
+    sections.map((s,i)=>React.createElement("div",{key:i,style:{marginBottom:16,paddingBottom:16,borderBottom:i<sections.length-1?"1px solid #141414":"none"}},
+      React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",color:"#fff",marginBottom:s.body?6:0}},s.title),
+      s.body&&React.createElement("div",{style:{fontSize:12,color:"#777",lineHeight:1.7,fontWeight:300,whiteSpace:"pre-wrap"}},s.body)
+    ))
+  );
+}
+
 function CoachingView({showToast}){
   const CLASS_NAMES=["RISE UP 1","RISE UP 2","RISE UP 3","RISE UP 4","STRENGTH LOWER 1","STRENGTH LOWER 2","STRENGTH LOWER 3","STRENGTH LOWER 4","ASCEND 1","ASCEND 2","ASCEND 3","ASCEND 4","STRENGTH UPPER 1","STRENGTH UPPER 2","STRENGTH UPPER 3","STRENGTH UPPER 4","ELEVATE 1","ELEVATE 2","ELEVATE 3","ELEVATE 4","SUMMIT 1","SUMMIT 2","SUMMIT 3","SUMMIT 4"];
-  const [notes,setNotes]=useState({});
   const [expanded,setExpanded]=useState(null);
-  const [editing,setEditing]=useState(null);
-  const [draft,setDraft]=useState("");
-  const [saving,setSaving]=useState(false);
-  const [loading,setLoading]=useState(true);
-
-  useEffect(()=>{loadNotes();},[]);
-
-  async function loadNotes(){
-    setLoading(true);
-    const data=await sbGet("coaching_notes","select=class_name,content");
-    const map={};
-    (data||[]).forEach(r=>{map[r.class_name]=r.content;});
-    setNotes(map);
-    setLoading(false);
-  }
-
-  async function saveNote(className){
-    setSaving(true);
-    const existing=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(className)}&select=id`);
-    if(existing&&existing.length){
-      await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(className)}`,{content:draft,updated_at:Date.now()});
-    } else {
-      await sbPost("coaching_notes",{class_name:className,content:draft,updated_at:Date.now()});
-    }
-    setNotes(p=>({...p,[className]:draft}));
-    setSaving(false);setEditing(null);
-    showToast("Coaching notes saved ✓");
-  }
-
-  function startEdit(className){
-    setDraft(notes[className]||"");
-    setEditing(className);
-  }
-
-  if(loading)return React.createElement("div",{style:{padding:20,fontSize:10,letterSpacing:"0.18em",color:"#555"}},"LOADING...");
 
   return React.createElement("div",{style:{marginTop:16}},
     React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},"COACHING NOTES · ADMIN"),
     CLASS_NAMES.map(cn=>{
       const isOpen=expanded===cn;
-      const isEditing=editing===cn;
-      const content=notes[cn]||"";
       return React.createElement("div",{key:cn,style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:8,marginBottom:8,overflow:"hidden"}},
-        React.createElement("button",{onClick:()=>{setExpanded(isOpen?null:cn);setEditing(null);},style:{width:"100%",background:"none",border:"none",padding:"14px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",textAlign:"left"}},
+        React.createElement("button",{onClick:()=>setExpanded(isOpen?null:cn),style:{width:"100%",background:"none",border:"none",padding:"14px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",textAlign:"left"}},
           React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.08em",color:"#fff"}},cn),
           React.createElement("div",{style:{color:"#444",fontSize:14,transition:"transform .2s",transform:isOpen?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
         ),
         isOpen&&React.createElement("div",{style:{padding:"0 14px 14px"}},
-          React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:8}},
-            !isEditing
-              ?React.createElement("button",{onClick:()=>startEdit(cn),style:{background:"none",border:"1px solid #333",borderRadius:4,padding:"5px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT")
-              :React.createElement("div",{style:{display:"flex",gap:8}},
-                React.createElement("button",{onClick:()=>setEditing(null),style:{background:"none",border:"1px solid #333",borderRadius:4,padding:"5px 12px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
-                React.createElement("button",{onClick:()=>saveNote(cn),disabled:saving,style:{background:"#1d9bf0",border:"none",borderRadius:4,padding:"5px 12px",color:"#fff",fontSize:10,letterSpacing:"0.1em",cursor:"pointer",fontWeight:600}},saving?"SAVING...":"SAVE")
-              )
-          ),
-          isEditing
-            ?React.createElement("textarea",{value:draft,onChange:e=>setDraft(e.target.value),style:{width:"100%",minHeight:320,background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#ccc",fontSize:13,lineHeight:1.7,padding:"10px 12px",fontFamily:"'DM Sans',sans-serif",fontWeight:300,letterSpacing:"0.02em",resize:"vertical",boxSizing:"border-box"}})
-            :content
-              ?React.createElement("div",{style:{fontSize:13,color:"#ccc",lineHeight:1.8,fontWeight:300,whiteSpace:"pre-wrap",letterSpacing:"0.02em"}},content)
-              :React.createElement("div",{style:{fontSize:10,color:"#333",letterSpacing:"0.1em",textAlign:"center",padding:"20px 0"}},"NO NOTES YET · TAP EDIT TO ADD")
+          React.createElement(CoachingNoteEditor,{className:cn,showToast})
         )
       );
     })
@@ -2439,7 +2503,7 @@ function App(){
     tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
     tab==="wellness"&&wellnessEnabled&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin,memberData}),
     tab==="strength"&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast,bookings,memberData})),
-    tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,wellnessEnabled,saveWellnessSetting}),
+    tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,classLimits,wellnessEnabled,saveWellnessSetting}),
 
     React.createElement("div",{className:"tab-bar"},
       React.createElement("button",{className:`tab-btn${tab==="community"?" ta":""}`,style:{position:"relative"},onClick:()=>{setTab("community");lsSet("t365-last-read",Date.now());}},
