@@ -398,10 +398,8 @@ html,body{background:#080808;min-height:100vh}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script>
 const { useState, useEffect, useRef } = React;
-
 const ADMIN_EMAIL = "lamont.team365@gmail.com";
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz5cruljVDUVScwm14Sj1z5_6cRrNK9cgOaq7Tx8P9LfPAEI7p_kx8ZJnaghF_SmU46Fw/exec";
-
 async function notifyWellnessBooking(name, email, dateKey, time) {
   try {
     const d = new Date(dateKey + "T12:00:00");
@@ -423,7 +421,6 @@ async function notifyWellnessBooking(name, email, dateKey, time) {
 const SB_URL = "https://xczwmexavysvljmobbgv.supabase.co";
 const SB_KEY = "sb_publishable_tujGGhPRUimflq1-IFzuvA_Crw6knMO";
 const SB_HDR = {"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return=minimal"};
-
 async function sbGet(t,q=""){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
 async function sbPost(t,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
 async function sbPatch(t,q,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{method:"PATCH",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
@@ -434,7 +431,6 @@ async function sbDelete(t,q){
     return r.ok;
   }catch{return false;}
 }
-
 const MAX_SPOTS=16;
 const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
 const SAT_TIMES=["06:30","07:30","08:30","09:30"];
@@ -443,7 +439,6 @@ const DAY_SHORT=["Mon","Tue","Wed","Thu","Fri","Sat"];
 const DAY_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const DAY_SESS=["Rise Up","Strength Lower","Ascend","Strength Upper","Elevate","Summit"];
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
 const mondayOf=d=>{const x=new Date(d);x.setHours(0,0,0,0);const day=x.getDay();x.setDate(x.getDate()-(day===0?6:day-1));return x;};
 const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
 const toDS=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -470,7 +465,6 @@ function getTierLimits(membershipType){
 }
 // Tuesday=2, Thursday=4 are Strength days
 const isStrengthDay=dk=>{const d=new Date(dk+"T00:00:00");return d.getDay()===2||d.getDay()===4;};;
-
 // ── Image Cropper ─────────────────────────────────────────────────────────────
 function ImageCropper({imageSrc,onSave,onCancel}){
   const canvasRef=useRef(null);
@@ -498,7 +492,6 @@ function ImageCropper({imageSrc,onSave,onCancel}){
     React.createElement("div",{className:"crop-actions"},React.createElement("button",{className:"crop-cancel",onClick:onCancel},"CANCEL"),React.createElement("button",{className:"crop-save",onClick:handleSave},"SAVE PHOTO"))
   );
 }
-
 // ── Member Profile Overlay (Admin) ────────────────────────────────────────────
 function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
   const upcomingBks=bookings.filter(b=>b.email===member.email&&b.date_key>=toDS(new Date())).length;
@@ -531,7 +524,6 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
   });
   const [savingExtra,setSavingExtra]=useState(false);
   const [extraOk,setExtraOk]=useState(false);
-
   function calcExpiryDate(joinedAt,membershipType){
     const m=membershipType.match(/(\d+)\s*months?/i);
     if(!m)return null;
@@ -556,7 +548,6 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
     setSavingExtra(false);setEditingExtra(false);setExtraOk(true);
     setTimeout(()=>setExtraOk(false),2000);
   }
-
   async function saveParq(){
     setSavingParq(true);
     const updates={};
@@ -566,7 +557,6 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
     setSavingParq(false);setEditingParq(false);setParqOk(true);
     setTimeout(()=>setParqOk(false),2000);
   }
-
   async function toggleAdmin(){
     if(member.email===ADMIN_EMAIL)return;
     setTogglingAdmin(true);
@@ -574,7 +564,6 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
     await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,{is_admin:newVal});
     setMemberIsAdmin(newVal);setTogglingAdmin(false);
   }
-
   function Row({label,value,type}){
     const cls=type==="yes"?"yes":type==="no"?"no":type==="na"?"na":"";
     return React.createElement("div",{className:"mp-row"},
@@ -582,7 +571,6 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
       React.createElement("div",{className:`mp-value ${cls}`},value||"\u2014")
     );
   }
-
   return React.createElement("div",{className:"member-profile-overlay"},
     React.createElement("div",{className:"mp-hdr"},
       React.createElement("div",{className:"mp-title"},"MEMBER PROFILE"),
@@ -836,16 +824,13 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
     )
   );
 }
-
 // ── Wellness View ─────────────────────────────────────────────────────────────
 function WellnessView({session,showToast,bookings,isAdmin,memberData}){
   const [wellBks,setWellBks]=useState([]);
   const [weekStart,setWeekStart]=useState(getWeekStart);
   const [selDay,setSelDay]=useState(getInitDay);
   const [busy,setBusy]=useState({});
-
   useEffect(()=>{loadWellBks();},[]);
-
   async function loadWellBks(){
     const keys=[];const now=new Date();now.setHours(0,0,0,0);
     for(let i=0;i<28;i++){const d=addDays(now,i);if(d.getDay()!==0)keys.push(toDS(d));}
@@ -853,7 +838,6 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData}){
     const data=await sbGet("wellness_bookings",`date_key=in.(${keys.join(",")})&select=email,name,date_key,time`);
     setWellBks(data||[]);
   }
-
   const selDate=addDays(weekStart,selDay);
   const selDK=toDS(selDate);
   const weekDates=Array.from({length:6},(_,i)=>addDays(weekStart,i));
@@ -861,13 +845,11 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData}){
   const dayBks=wellBks.filter(b=>b.date_key===selDK);
   const weekDots=weekDates.map(d=>isAdmin?(wellBks.some(b=>b.date_key===toDS(d))||(bookings||[]).some(b=>b.date_key===toDS(d))):session&&(wellBks.some(b=>b.date_key===toDS(d)&&b.email===session.email)||(bookings||[]).some(b=>b.date_key===toDS(d)&&b.email===session.email)));
   const [expandedWell,setExpandedWell]=useState(null);
-
   function isPastSlot(time){
     if(isPastD(selDate))return true;if(!isToday(selDate))return false;
     const now=new Date();const[h,m]=time.split(":").map(Number);
     return(h*60+m+45)<(now.getHours()*60+now.getMinutes());
   }
-
   async function handleBook(time){
     if(!session)return;
     const lk=`${selDK}-${time}`;setBusy(p=>({...p,[lk]:true}));
@@ -880,14 +862,12 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData}){
     else{showToast("Wellness session booked \u2713");notifyWellnessBooking(session.name,session.email,selDK,time);}
     setBusy(p=>({...p,[lk]:false}));
   }
-
   async function handleCancel(time){
     if(!session)return;
     setWellBks(prev=>prev.filter(b=>!(b.date_key===selDK&&b.time===time&&b.email===session.email)));
     await sbDelete("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=eq.${selDK}&time=eq.${encodeURIComponent(time)}`);
     showToast("Booking cancelled");
   }
-
   return React.createElement("div",{className:"well-wrap"},
     React.createElement("div",{className:"well-hdr"},
       React.createElement("div",{className:"well-title"},"WELLNESS")
@@ -952,7 +932,6 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData}){
     )
   );
 }
-
 // ── Notice Board ───────────────────────────────────────────────────────────
 function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
   const [posts,setPosts]=useState([]);
@@ -964,14 +943,11 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
   const [tagQuery,setTagQuery]=useState("");
   const [showTags,setShowTags]=useState(false);
   const MAX_CHARS=300;
-
   useEffect(()=>{loadPosts();const id=setInterval(loadPosts,30000);return()=>clearInterval(id);},[]);
-
   async function loadPosts(){
     const data=await sbGet("posts","select=id,author_email,author_name,content,created_at,likes,pinned,reply_to,reply_to_name&order=pinned.desc,created_at.desc&limit=80");
     setPosts(data||[]);setLoading(false);
   }
-
   function handleTextChange(e,setter){
     const val=e.target.value;
     setter(val);
@@ -980,20 +956,16 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
     else if(atIdx>=0&&val.slice(atIdx+1).match(/^\w+$/)){setTagQuery(val.slice(atIdx+1).toLowerCase());setShowTags(true);}
     else{setShowTags(false);}
   }
-
   function insertTag(name,setter,currentText){
     const atIdx=currentText.lastIndexOf("@");
     const newText=currentText.slice(0,atIdx)+"@"+name.replace(/ /g,"")+" ";
     setter(newText);setShowTags(false);
   }
-
   const filteredMembers=allMemberNames.filter(n=>n.toLowerCase().replace(/ /g,"").includes(tagQuery)).slice(0,5);
-
   function renderContent(content){
     if(!content) return "";
     return content.replace(/@(\S+)/g,'<span class="tag-highlight">@$1</span>');
   }
-
   async function handlePost(){
     const content=text.trim();if(!content||content.length>MAX_CHARS)return;
     setPosting(true);
@@ -1003,7 +975,6 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
     else showToast("Failed to post");
     setPosting(false);
   }
-
   async function handleReply(parentPost){
     const content=replyText.trim();if(!content)return;
     const reply={
@@ -1015,7 +986,6 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
     if(ok){setReplyingTo(null);setReplyText("");await loadPosts();}
     else showToast("Failed to post reply");
   }
-
   async function handleLike(post,idx){
     const likes=Array.isArray(post.likes)?post.likes:[];
     const alreadyLiked=likes.includes(session.email);
@@ -1023,14 +993,12 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
     const updated=[...posts];updated[idx]={...post,likes:newLikes};setPosts(updated);
     await sbPatch("posts",`id=eq.${post.id}`,{likes:newLikes});
   }
-
   async function handlePin(post,idx){
     const newPinned=!post.pinned;
     const updated=[...posts];updated[idx]={...post,pinned:newPinned};
     setPosts([...updated].sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||(b.created_at-a.created_at)));
     await sbPatch("posts",`id=eq.${post.id}`,{pinned:newPinned});
   }
-
   async function handleDelete(id){
     const snapshot=posts.find(p=>p.id===id);
     setPosts(prev=>prev.filter(p=>p.id!==id));
@@ -1041,10 +1009,8 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
       showToast("Delete failed — check Supabase permissions");
     }
   }
-
   const charsLeft=MAX_CHARS-text.length;
   const topLevelPosts=posts.filter(p=>!p.reply_to);
-
   return React.createElement("div",{className:"comm-wrap"},
     React.createElement("div",{className:"comm-hdr"},
       React.createElement("div",{className:"comm-title"},"THE 365 NOTICE BOARD"),
@@ -1119,7 +1085,6 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
     )
   );
 }
-
 // ── Admin View ────────────────────────────────────────────────────────────────
 function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,classLimits,wellnessEnabled,saveWellnessSetting}){
   const [admSeg,setAdmSeg]=useState("members");
@@ -1138,12 +1103,10 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
   const [newClassSpots,setNewClassSpots]=useState("16");
   const [editingTime,setEditingTime]=useState(null);
   const [newTimeVal,setNewTimeVal]=useState("");
-
   function openMemberProfile(mb){
     setSelectedMember(mb);
     window.history.pushState({overlay:"member"},"");
   }
-
   useEffect(()=>{
     const handlePop=()=>{
       if(selectedMember){setSelectedMember(null);return;}
@@ -1151,7 +1114,6 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
     window.addEventListener("popstate",handlePop);
     return()=>window.removeEventListener("popstate",handlePop);
   },[selectedMember]);
-
   useEffect(()=>{
     if(admSeg==="members"&&!membersLoaded){
       sbGet("members","select=*&order=name.asc").then(data=>{setMembers(data||[]);setMembersLoaded(true);});
@@ -1162,24 +1124,19 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
       sbGet("wellness_bookings",`date_key=in.(${keys.join(",")})&select=email,name,date_key,time`).then(data=>{setWellAdmBks(data||[]);setWellAdmLoaded(true);});
     }
   },[admSeg]);
-
   const admDK=toDS(admDate);const admDOW=admDate.getDay();const admIsSat=admDOW===6;
   const standardTimes=admDOW===0?[]:admIsSat?SAT_TIMES:WD_TIMES;
   const extraTimes=Object.keys(classLimits||{}).filter(k=>k.startsWith(admDK+':')).map(k=>k.slice(admDK.length+1)).filter(t=>!standardTimes.includes(t));
   const admTimes=[...standardTimes,...extraTimes].sort().filter(t=>(classLimits[admDK+':'+t]??MAX_SPOTS)>0);
   const dayBks=bookings.filter(b=>b.date_key===admDK);
   const totalBooked=dayBks.length;const totalSpots=admTimes.reduce((s,t)=>s+(getMaxSpots?getMaxSpots(t,admDK):MAX_SPOTS),0);
-
   function changeDay(n){let d=new Date(admDate);d.setDate(d.getDate()+n);if(d.getDay()===0)d.setDate(d.getDate()+n);setAdmDate(d);setExpanded({});}
-
   async function adminCancel(time,email){
     setBookings(prev=>prev.filter(b=>!(b.date_key===admDK&&b.time===time&&b.email===email)));
     await sbDelete("bookings",`email=eq.${encodeURIComponent(email)}&date_key=eq.${admDK}&time=eq.${encodeURIComponent(time)}`);
     showToast("Booking removed");
   }
-
   const admDateLabel=`${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][admDOW]} ${admDate.getDate()} ${MONTHS[admDate.getMonth()]} ${admDate.getFullYear()}`;
-
   return React.createElement("div",{className:"adm-wrap"},
     selectedMember&&React.createElement(MemberProfileOverlay,{member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin}),
     React.createElement("div",{className:"adm-title"},"ADMIN"),
@@ -1401,9 +1358,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
   admSeg==="coaching"&&React.createElement(CoachingView,{showToast})
   );
 }
-
 // ── Onboarding View ──────────────────────────────────────────────────────────
-
 // Generic editable step list — used for both Onboarding Process and Member Journey
 // storageKey: key in coaching_notes table  defaultSteps: fallback if nothing saved  toastMsg: save confirmation
 function StepListEditor({storageKey,defaultSteps,toastMsg,showToast}){
@@ -1412,7 +1367,6 @@ function StepListEditor({storageKey,defaultSteps,toastMsg,showToast}){
   const [draft,setDraft]=useState([]);
   const [saving,setSaving]=useState(false);
   const [loaded,setLoaded]=useState(false);
-
   useEffect(()=>{
     sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(storageKey)}&select=content`)
       .then(data=>{
@@ -1425,7 +1379,6 @@ function StepListEditor({storageKey,defaultSteps,toastMsg,showToast}){
         setLoaded(true);
       });
   },[storageKey]);
-
   async function save(){
     setSaving(true);
     const json=JSON.stringify(draft);
@@ -1435,13 +1388,10 @@ function StepListEditor({storageKey,defaultSteps,toastMsg,showToast}){
     setSteps(draft.map(s=>({...s})));setSaving(false);setEditing(false);
     showToast(toastMsg||"Saved ✓");
   }
-
   function updateDraft(i,field,val){setDraft(d=>d.map((s,idx)=>idx===i?{...s,[field]:val}:s));}
   function addStep(){setDraft(d=>[...d,{title:"",body:""}]);}
   function removeStep(i){setDraft(d=>d.filter((_,idx)=>idx!==i));}
-
   if(!loaded)return React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"10px 0"}},"LOADING...");
-
   if(editing){
     return React.createElement("div",null,
       React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:14}},
@@ -1461,7 +1411,6 @@ function StepListEditor({storageKey,defaultSteps,toastMsg,showToast}){
       React.createElement("button",{onClick:addStep,style:{width:"100%",background:"none",border:"1px dashed #2a2a2a",borderRadius:6,padding:"10px",color:"#444",fontSize:10,letterSpacing:"0.12em",cursor:"pointer",marginTop:4}},"+ ADD STEP")
     );
   }
-
   return React.createElement("div",null,
     React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:12}},
       React.createElement("button",{onClick:()=>{setDraft(steps.map(s=>({...s})));setEditing(true);},style:{background:"none",border:"1px solid #333",borderRadius:4,padding:"4px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT")
@@ -1476,7 +1425,6 @@ function StepListEditor({storageKey,defaultSteps,toastMsg,showToast}){
     ))
   );
 }
-
 // Thin wrappers so each panel has its own isolated state (avoids re-render focus bug)
 function ProcessNoteEditor({showToast}){
   const DEFAULTS=[
@@ -1490,7 +1438,6 @@ function ProcessNoteEditor({showToast}){
   ];
   return React.createElement(StepListEditor,{storageKey:"__ONBOARDING_PROCESS__",defaultSteps:DEFAULTS,toastMsg:"Onboarding process saved ✓",showToast});
 }
-
 function MemberJourneyEditor({showToast}){
   const DEFAULTS=[
     {title:"SEND REGISTRATION INVITE",body:"Admin goes to Onboarding → Send Registration Form, enters the new member's email and taps Send. They receive a branded email with a link to the registration form."},
@@ -1503,7 +1450,6 @@ function MemberJourneyEditor({showToast}){
   ];
   return React.createElement(StepListEditor,{storageKey:"__MEMBER_JOURNEY__",defaultSteps:DEFAULTS,toastMsg:"Member journey saved ✓",showToast});
 }
-
 function InviteForm(){
   const [email,setEmail]=useState("");
   const [sending,setSending]=useState(false);
@@ -1530,7 +1476,6 @@ function InviteForm(){
     msg&&React.createElement("div",{style:{marginTop:10,fontSize:10,letterSpacing:"0.1em",color:msg.startsWith("✓")?"#4aaa66":"#e05",textAlign:"center"}},msg)
   );
 }
-
 function TierEditor({showToast}){
   const [tiers,setTiers]=useState([]);
   const [loading,setLoading]=useState(true);
@@ -1538,21 +1483,17 @@ function TierEditor({showToast}){
   const [editing,setEditing]=useState(null);
   const [draft,setDraft]=useState({});
   const [saving,setSaving]=useState(false);
-
   useEffect(()=>{load();},[]);
-
   async function load(){
     setLoading(true);
     const data=await sbGet("membership_tiers","select=*&order=sort_order.asc");
     setTiers(data||[]);
     setLoading(false);
   }
-
   function startEdit(tier){
     setDraft({name:tier.name,desc_text:tier.desc_text,note:tier.note||"",price_3:tier.price_3,price_6:tier.price_6,price_12:tier.price_12});
     setEditing(tier.id);
   }
-
   async function save(id){
     setSaving(true);
     await sbPatch("membership_tiers",`id=eq.${encodeURIComponent(id)}`,{
@@ -1565,16 +1506,13 @@ function TierEditor({showToast}){
     setSaving(false);setEditing(null);
     showToast("Tier saved ✓");
   }
-
   const inp=(field,placeholder,type="text")=>React.createElement("input",{
     type,value:draft[field]??"",
     onChange:e=>setDraft(d=>({...d,[field]:e.target.value})),
     placeholder,
     style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:4,color:"#ccc",fontSize:13,padding:"8px 10px",fontFamily:"'DM Sans',sans-serif",boxSizing:"border-box",marginBottom:8,outline:"none"}
   });
-
   if(loading)return React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"10px 0"}},"LOADING...");
-
   return React.createElement("div",null,
     tiers.map(tier=>{
       const isOpen=expanded===tier.id;
@@ -1625,7 +1563,6 @@ function TierEditor({showToast}){
     })
   );
 }
-
 function OnboardingPanel({id,title,children,openPanel,setOpenPanel}){
   const open=openPanel===id;
   return React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:8,marginBottom:8,overflow:"hidden"}},
@@ -1636,37 +1573,29 @@ function OnboardingPanel({id,title,children,openPanel,setOpenPanel}){
     open&&React.createElement("div",{style:{padding:"0 14px 14px"}},children)
   );
 }
-
 function OnboardingView({showToast}){
   const [openPanel,setOpenPanel]=useState(null);
-
   return React.createElement("div",{style:{marginTop:16}},
     React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},"ONBOARDING · ADMIN"),
-
     // ── Onboarding Process ──
     React.createElement(OnboardingPanel,{id:"process",title:"ONBOARDING PROCESS",openPanel,setOpenPanel},
       React.createElement(ProcessNoteEditor,{showToast})
     ),
-
     // ── Member Journey ──
     React.createElement(OnboardingPanel,{id:"journey",title:"MEMBER JOURNEY",openPanel,setOpenPanel},
       React.createElement(MemberJourneyEditor,{showToast})
     ),
-
     // ── Membership Tiers ──
     React.createElement(OnboardingPanel,{id:"tiers",title:"MEMBERSHIP TIERS",openPanel,setOpenPanel},
       React.createElement(TierEditor,{showToast})
     ),
-
     // ── Send Registration Form ──
     React.createElement(OnboardingPanel,{id:"invite",title:"SEND REGISTRATION FORM",openPanel,setOpenPanel},
       React.createElement(InviteForm,null)
     )
   );
 }
-
 // ── Coaching Notes ────────────────────────────────────────────────────────────
-
 // Standalone per-class coaching note editor — sections with title + body (no numbers)
 // MUST be defined outside CoachingView to avoid focus-loss bug
 function CoachingNoteEditor({className,showToast}){
@@ -1675,9 +1604,7 @@ function CoachingNoteEditor({className,showToast}){
   const [draft,setDraft]=useState([]);
   const [saving,setSaving]=useState(false);
   const [loaded,setLoaded]=useState(false);
-
   useEffect(()=>{load();},[className]);
-
   function parsePlainText(text){
     return text.split(/\n\n+/).map(block=>{
       const lines=block.trim().split('\n');
@@ -1687,7 +1614,6 @@ function CoachingNoteEditor({className,showToast}){
       return{title,body};
     }).filter(Boolean);
   }
-
   async function load(){
     const data=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(className)}&select=content`);
     if(data&&data.length&&data[0].content){
@@ -1698,7 +1624,6 @@ function CoachingNoteEditor({className,showToast}){
     }else{setSections([]);}
     setLoaded(true);
   }
-
   async function save(){
     setSaving(true);
     const json=JSON.stringify(draft);
@@ -1708,11 +1633,8 @@ function CoachingNoteEditor({className,showToast}){
     setSections(draft.map(s=>({...s})));setSaving(false);setEditing(false);
     showToast("Notes saved ✓");
   }
-
   function updateDraft(i,field,val){setDraft(d=>d.map((s,idx)=>idx===i?{...s,[field]:val}:s));}
-
   if(!loaded)return React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"10px 0"}},"LOADING...");
-
   if(editing){
     return React.createElement("div",null,
       React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:14}},
@@ -1731,7 +1653,6 @@ function CoachingNoteEditor({className,showToast}){
       React.createElement("button",{onClick:()=>setDraft(d=>[...d,{title:"",body:""}]),style:{width:"100%",background:"none",border:"1px dashed #2a2a2a",borderRadius:6,padding:"10px",color:"#444",fontSize:10,letterSpacing:"0.12em",cursor:"pointer",marginTop:4}},"+ ADD SECTION")
     );
   }
-
   return React.createElement("div",null,
     React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:12}},
       React.createElement("button",{onClick:()=>{setDraft(sections.map(s=>({...s})));setEditing(true);},style:{background:"none",border:"1px solid #333",borderRadius:4,padding:"4px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT")
@@ -1743,30 +1664,131 @@ function CoachingNoteEditor({className,showToast}){
     ))
   );
 }
+function WorkoutDetailsEditor({className,showToast}){
+  const storageKey="__WORKOUT__"+className;
+  const [text,setText]=useState("");
+  const [draft,setDraft]=useState("");
+  const [editing,setEditing]=useState(false);
+  const [saving,setSaving]=useState(false);
+  const [loaded,setLoaded]=useState(false);
+  useEffect(()=>{
+    sbGet("coaching_notes","class_name=eq."+encodeURIComponent(storageKey)+"&select=content")
+      .then(data=>{
+        setText(data&&data.length&&data[0].content?data[0].content:"");
+        setLoaded(true);
+      });
+  },[className]);
+  async function save(){
+    setSaving(true);
+    const existing=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(storageKey)+"&select=id");
+    if(existing&&existing.length){
+      await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent(storageKey),{content:draft,updated_at:Date.now()});
+    }else{
+      await sbPost("coaching_notes",{class_name:storageKey,content:draft,updated_at:Date.now()});
+    }
+    setText(draft);setSaving(false);setEditing(false);
+    showToast("Workout details saved ✓");
+  }
+  if(!loaded)return React.createElement("div",{style:{color:"#444",fontSize:11,padding:"12px 0"}},"Loading...");
+  if(editing){
+    return React.createElement("div",null,
+      React.createElement("textarea",{
+        value:draft,
+        onChange:e=>setDraft(e.target.value),
+        style:{width:"100%",minHeight:280,background:"#111",border:"1px solid #2a2a2a",borderRadius:6,color:"#ddd",
+               fontSize:13,fontFamily:"'DM Sans',sans-serif",lineHeight:1.75,padding:12,resize:"vertical"},
+        placeholder:"Enter workout details...
 
-function CoachingView({showToast}){
-  const CLASS_NAMES=["RISE UP 1","RISE UP 2","RISE UP 3","RISE UP 4","STRENGTH LOWER 1","STRENGTH LOWER 2","STRENGTH LOWER 3","STRENGTH LOWER 4","ASCEND 1","ASCEND 2","ASCEND 3","ASCEND 4","STRENGTH UPPER 1","STRENGTH UPPER 2","STRENGTH UPPER 3","STRENGTH UPPER 4","ELEVATE 1","ELEVATE 2","ELEVATE 3","ELEVATE 4","SUMMIT 1","SUMMIT 2","SUMMIT 3","SUMMIT 4"];
-  const [expanded,setExpanded]=useState(null);
-
-  return React.createElement("div",{style:{marginTop:16}},
-    React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},"COACHING NOTES · ADMIN"),
-    CLASS_NAMES.map(cn=>{
-      const isOpen=expanded===cn;
-      return React.createElement("div",{key:cn,style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:8,marginBottom:8,overflow:"hidden"}},
-        React.createElement("button",{onClick:()=>setExpanded(isOpen?null:cn),style:{width:"100%",background:"none",border:"none",padding:"14px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",textAlign:"left"}},
-          React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.08em",color:"#fff"}},cn),
-          React.createElement("div",{style:{color:"#444",fontSize:14,transition:"transform .2s",transform:isOpen?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
-        ),
-        isOpen&&React.createElement("div",{style:{padding:"0 14px 14px"}},
-          React.createElement(CoachingNoteEditor,{className:cn,showToast})
-        )
-      );
-    })
+E.g.:
+A. Back Squats — 4x6 @ 75%
+B. Romanian Deadlift — 3x10
+..."
+      }),
+      React.createElement("div",{style:{display:"flex",gap:8,marginTop:10}},
+        React.createElement("button",{onClick:save,disabled:saving,
+          style:{flex:1,background:"#fff",color:"#000",border:"none",borderRadius:6,padding:"10px 0",
+                 fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",cursor:"pointer"}},
+          saving?"SAVING...":"SAVE"),
+        React.createElement("button",{onClick:()=>setEditing(false),
+          style:{flex:1,background:"#1a1a1a",color:"#888",border:"1px solid #2a2a2a",borderRadius:6,
+                 padding:"10px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",cursor:"pointer"}},
+          "CANCEL")
+      )
+    );
+  }
+  return React.createElement("div",null,
+    text
+      ? React.createElement("pre",{style:{whiteSpace:"pre-wrap",fontSize:13,color:"#ccc",lineHeight:1.75,
+                                           fontFamily:"'DM Sans',sans-serif",fontWeight:300,marginBottom:12}},text)
+      : React.createElement("div",{style:{fontSize:11,color:"#444",letterSpacing:"0.1em",padding:"16px 0",textAlign:"center"}},
+          "NO WORKOUT DETAILS YET · TAP EDIT TO ADD"),
+    React.createElement("button",{onClick:()=>{setDraft(text);setEditing(true);},
+      style:{background:"#1a1a1a",color:"#888",border:"1px solid #2a2a2a",borderRadius:6,padding:"8px 20px",
+             fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.1em",cursor:"pointer"}},
+      "EDIT")
   );
 }
-
+function CoachingView({showToast}){
+  const GROUPS=[
+    {label:"RISE UP",names:["RISE UP 1","RISE UP 2","RISE UP 3","RISE UP 4"]},
+    {label:"STRENGTH LOWER",names:["STRENGTH LOWER 1","STRENGTH LOWER 2","STRENGTH LOWER 3","STRENGTH LOWER 4"]},
+    {label:"ASCEND",names:["ASCEND 1","ASCEND 2","ASCEND 3","ASCEND 4"]},
+    {label:"STRENGTH UPPER",names:["STRENGTH UPPER 1","STRENGTH UPPER 2","STRENGTH UPPER 3","STRENGTH UPPER 4"]},
+    {label:"ELEVATE",names:["ELEVATE 1","ELEVATE 2","ELEVATE 3","ELEVATE 4"]},
+    {label:"SUMMIT",names:["SUMMIT 1","SUMMIT 2","SUMMIT 3","SUMMIT 4"]},
+  ];
+  const [selectedClass,setSelectedClass]=useState(null);
+  const [subTab,setSubTab]=useState("notes");
+  function selectClass(cn){
+    if(selectedClass===cn){setSelectedClass(null);}
+    else{setSelectedClass(cn);setSubTab("notes");}
+  }
+  return React.createElement("div",{style:{marginTop:16}},
+    React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},
+      "COACHING NOTES · ADMIN"),
+    GROUPS.map(g=>
+      React.createElement("div",{key:g.label,style:{marginBottom:16}},
+        React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#444",fontWeight:600,marginBottom:8}},
+          g.label),
+        React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}},
+          g.names.map((cn,i)=>{
+            const isSelected=selectedClass===cn;
+            return React.createElement("button",{
+              key:cn,
+              onClick:()=>selectClass(cn),
+              style:{background:isSelected?"#fff":"#131313",color:isSelected?"#000":"#777",
+                     border:isSelected?"none":"1px solid #222",borderRadius:8,
+                     padding:"10px 4px",fontFamily:"'Bebas Neue',sans-serif",
+                     fontSize:16,letterSpacing:"0.05em",cursor:"pointer",transition:"all .15s"}
+            },i+1);
+          })
+        )
+      )
+    ),
+    selectedClass&&React.createElement("div",{style:{marginTop:16,background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:10,padding:14}},
+      React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:"0.08em",
+                                         color:"#fff",marginBottom:14}},selectedClass),
+      React.createElement("div",{style:{display:"flex",gap:0,marginBottom:14,background:"#141414",borderRadius:8,padding:3}},
+        React.createElement("button",{
+          onClick:()=>setSubTab("notes"),
+          style:{flex:1,background:subTab==="notes"?"#222":"transparent",color:subTab==="notes"?"#fff":"#555",
+                 border:"none",borderRadius:6,padding:"8px 0",fontFamily:"'Bebas Neue',sans-serif",
+                 fontSize:13,letterSpacing:"0.12em",cursor:"pointer",transition:"all .15s"}
+        },"COACHING NOTES"),
+        React.createElement("button",{
+          onClick:()=>setSubTab("details"),
+          style:{flex:1,background:subTab==="details"?"#222":"transparent",color:subTab==="details"?"#fff":"#555",
+                 border:"none",borderRadius:6,padding:"8px 0",fontFamily:"'Bebas Neue',sans-serif",
+                 fontSize:13,letterSpacing:"0.12em",cursor:"pointer",transition:"all .15s"}
+        },"WORKOUT DETAILS")
+      ),
+      subTab==="notes"
+        ? React.createElement(CoachingNoteEditor,{className:selectedClass,showToast})
+        : React.createElement(WorkoutDetailsEditor,{className:selectedClass,showToast})
+    )
+  );
+}
 // ── Strength Program Tab ──────────────────────────────────────────────────────
-
 function getNZDate(){
   try{return new Date(new Date().toLocaleString("en-US",{timeZone:"Pacific/Auckland"}));}
   catch{return new Date();}
@@ -1878,7 +1900,6 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
   const nowMY=(()=>{const n=new Date();return`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`;})();
   const autoWeek=()=>{const d=getNZDate().getDate();return d<=7?1:d<=14?2:d<=24?3:4;};
   const autoType=()=>(getNZDate().getDay()===4?"Upper":"Lower");
-
   const [sessType,setSessType]=useState(autoType);
   const [weekNum,setWeekNum]=useState(autoWeek);
   const [monthYear,setMonthYear]=useState(nowMY);
@@ -1893,9 +1914,7 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
   const [addingEx,setAddingEx]=useState(false);
   const [newEx,setNewEx]=useState({exercise:"",section:"Main",sets:"",reps:"",duration:"",weeks:[1,2,3,4],scope:"month"});
   const [savingNew,setSavingNew]=useState(false);
-
   useEffect(()=>{loadData();},[sessType,weekNum,monthYear]);
-
   async function loadData(){
     setLoading(true);
     const prog=await sbGet("strength_program",`session_type=eq.${sessType}&week_number=eq.${weekNum}&or=(month_year.is.null,month_year.eq.${monthYear})&order=order_num.asc`);
@@ -1919,7 +1938,6 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
     });
     setWeights(wtMap);setTicks(initTicks);setLoading(false);
   }
-
   async function saveSetWeight(exercise,setNum,val){
     if(!session)return;
     const key=`${exercise}_s${setNum}`;
@@ -1938,7 +1956,6 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
     }
     // Silent save — no toast so focus is not disrupted between set inputs
   }
-
   async function toggleTick(exId,exercise,setIdx,newState){
     if(!session)return;
     const tKey=`${exId}_${setIdx}`;
@@ -1955,7 +1972,6 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
       await sbDelete("member_weights",`email=eq.${encodeURIComponent(session.email)}&session_type=eq.${sessType}&week_number=eq.${weekNum}&month_year=eq.${monthYear}&exercise=eq.${encodeURIComponent(dbKey)}`);
     }
   }
-
   async function saveExercise(){
     setSavingEx(true);
     const{id,...updates}=exEdit;
@@ -1963,7 +1979,6 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
     setProgram(prev=>prev.map(ex=>ex.id===id?{...ex,...updates}:ex));
     setEditingId(null);setSavingEx(false);showToast("Exercise updated ✓");
   }
-
   async function addExercise(){
     if(!newEx.exercise.trim()||!newEx.weeks.length)return;
     setSavingNew(true);
@@ -1976,11 +1991,9 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
     setNewEx({exercise:"",section:"Main",sets:"",reps:"",duration:"",weeks:[1,2,3,4]});
     await loadData();showToast("Exercise added ✓");
   }
-
   function toggleEx(id){
     setExpandedEx(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});
   }
-
   const [myY,myM]=monthYear.split("-").map(Number);
   const monthLabel=`${SP_MONTHS[myM-1]} ${myY}`;
   const atCurrent=!isAdmin&&monthYear===nowMY;
@@ -1989,12 +2002,10 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
     const d=new Date(myY,myM-1+dir,1);
     setMonthYear(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);
   }
-
   const sections={};
   program.forEach(ex=>{if(!sections[ex.section])sections[ex.section]=[];sections[ex.section].push(ex);});
   const sectionOrder=["Core","Main","Mobility","Accessories"];
   const currentWeek=autoWeek();
-
   async function deleteExercise(id){
     if(!window.confirm("Delete this exercise?"))return;
     await sbDelete("strength_program",`id=eq.${id}`);
@@ -2002,9 +2013,7 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
     setEditingId(null);
     showToast("Exercise deleted");
   }
-
   const released=isWorkoutReleased(monthYear,weekNum,isAdmin);
-
   return React.createElement("div",{className:"sp-wrap"},
     React.createElement("div",{className:"well-hdr",style:{padding:"0 0 4px"}},
       React.createElement("div",{className:"well-title"},"STRENGTH"),
@@ -2089,7 +2098,6 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
     )
   );
 }
-
 // ── Main App ──────────────────────────────────────────────────────────────────
 function App(){
   const [ready,setReady]=useState(false);
@@ -2131,7 +2139,6 @@ function App(){
   const touchStartX=useRef(null);
   const touchStartY=useRef(null);
   const isAdmin=session?.email===ADMIN_EMAIL||memberData?.is_admin===true;
-
   useEffect(()=>{
     (async()=>{
       // FIX 2: Track join date to use as fallback for notice board unread baseline
@@ -2158,9 +2165,7 @@ function App(){
       setReady(true);
     })();
   },[]);
-
   useEffect(()=>{const id=setInterval(refreshBookings,30000);return()=>clearInterval(id);},[]);
-
   // FIX 4: Load attendance counts on-demand for the selected month only
   async function loadStatCounts(month){
     if(!session)return;
@@ -2174,7 +2179,6 @@ function App(){
     setStatCounts({classes:(cls||[]).length,wellness:(well||[]).length});
   }
   useEffect(()=>{if(session&&tab==="my")loadStatCounts(statMonth);},[statMonth,session,tab]);
-
   useEffect(()=>{
     if(!session)return;
     const keys=[];const now=new Date();now.setHours(0,0,0,0);
@@ -2182,7 +2186,6 @@ function App(){
     // FIX 5: Only fetch upcoming wellness for My Bookings display (not all history)
     sbGet("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=in.(${keys.join(",")})&select=email,name,date_key,time`).then(data=>setMyWellness(data||[]));
   },[session]);
-
   // FIX 6: Restored to upcoming-only — no more 90-day historical lookback on every load
   async function refreshBookings(){
     const keys=[];const now=new Date();now.setHours(0,0,0,0);
@@ -2191,7 +2194,6 @@ function App(){
     const data=await sbGet("bookings",`date_key=in.(${keys.join(",")})&select=email,name,date_key,time,session_type`);
     setBookings(data||[]);
   }
-
   const TAB_ORDER=["community","my","book","strength",...(wellnessEnabled?["wellness"]:[]),...(isAdmin?["admin"]:[])];
   function handleTouchStart(e){touchStartX.current=e.touches[0].clientX;touchStartY.current=e.touches[0].clientY;}
   function handleTouchEnd(e){
@@ -2204,7 +2206,6 @@ function App(){
     if(dx<0&&idx<TAB_ORDER.length-1)setTab(TAB_ORDER[idx+1]);
     else if(dx>0&&idx>0)setTab(TAB_ORDER[idx-1]);
   }
-
   const selDate=addDays(weekStart,selDay);
   const selDK=toDS(selDate);
   const baseTimes=selDate.getDay()===6?SAT_TIMES:WD_TIMES;
@@ -2217,9 +2218,7 @@ function App(){
   const weekDots=weekDates.map(d=>isAdmin?bookings.some(b=>b.date_key===toDS(d)):session&&bookings.some(b=>b.date_key===toDS(d)&&b.email===session.email));
   const [expandedClass,setExpandedClass]=useState(null);
   const myUpcoming=session?bookings.filter(b=>b.email===session.email&&b.date_key>=toDS(new Date())).sort((a,b)=>a.date_key.localeCompare(b.date_key)||a.time.localeCompare(b.time)):[];
-
   function showToast(msg){setToast({msg,show:true});setTimeout(()=>setToast(t=>({...t,show:false})),2200);}
-
   async function handleAuth(){
     const{name,email,phone,password}=authForm;const em=email.toLowerCase().trim();
     if(!em||!password){setAuthErr("Email and password are required.");return;}
@@ -2243,9 +2242,7 @@ function App(){
     }
     setAuthBusy(false);
   }
-
   function handleLogout(){lsSet("t365-session",null);setSession(null);setMemberData(null);setShowProf(false);}
-
   async function handleForgotPw(){
     const em=fpEmail.toLowerCase().trim();
     if(!em||!/\S+@\S+\.\S+/.test(em)){setFpErr("Please enter a valid email address.");return;}
@@ -2261,7 +2258,6 @@ function App(){
     try{await fetch(APPS_SCRIPT_URL+"?"+params.toString(),{method:"GET",mode:"no-cors"});}catch(e){}
     setFpBusy(false);setFpMsg("Reset link sent! Check your email. The link expires in 24 hours.");
   }
-
   // Count how many HIIT or Strength bookings a member has in a given Mon-Sun week
   function weeklyClassCount(email,type,refDateKey){
     const refDate=new Date(refDateKey+"T00:00:00");
@@ -2274,7 +2270,6 @@ function App(){
       return bType===type;
     }).length;
   }
-
   async function handleBook(time){
     if(!session)return;
     const lk=`${selDK}-${time}`;setBkBusy(p=>({...p,[lk]:true}));
@@ -2297,14 +2292,12 @@ function App(){
     else showToast("Spot reserved \u2713");
     setBkBusy(p=>({...p,[lk]:false}));
   }
-
   async function handleCancel(time,dk){
     if(!session)return;
     setBookings(prev=>prev.filter(b=>!(b.email===session.email&&b.date_key===dk&&b.time===time)));
     await sbDelete("bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=eq.${dk}&time=eq.${encodeURIComponent(time)}`);
     showToast("Booking cancelled");
   }
-
   function getMaxSpots(time,dateKey){const k=`${dateKey}:${time}`;return k in classLimits?classLimits[k]:MAX_SPOTS;}
   async function saveClassLimit(time,dateKey,spots){
     const n=parseInt(spots);if(isNaN(n)||n<1)return;
@@ -2328,28 +2321,23 @@ function App(){
     setWellnessEnabled(enabled);
     if(!enabled&&tab==="wellness")setTab("book");
   }
-
   function isPastClass(time){
     if(isPastD(selDate))return true;if(!isToday(selDate))return false;
     const now=new Date();const[h,m]=time.split(":").map(Number);
     return(h*60+m+45)<(now.getHours()*60+now.getMinutes());
   }
-
   function openProf(){
     setProfForm({name:session.name,email:session.email,phone:memberData?.phone||"",photo:memberData?.photo||"",newPw:"",confirmPw:"",emergencyName:memberData?.emergency_name||"",emergencyPhone:memberData?.emergency_phone||""});
     setProfErr("");setProfOk("");setProfTab("details");setShowProf(true);
     window.history.pushState({overlay:"profile"},"");
   }
-
   useEffect(()=>{
     const handlePop=()=>{if(showProf){setShowProf(false);return;}};
     window.addEventListener("popstate",handlePop);
     return()=>window.removeEventListener("popstate",handlePop);
   },[showProf]);
-
   function handlePhotoChange(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>setCropSrc(ev.target.result);reader.readAsDataURL(file);e.target.value="";}
   function handleCropSave(dataUrl){setProfForm(f=>({...f,photo:dataUrl}));setCropSrc(null);}
-
   async function handleSaveProf(){
     const{name,email,phone,photo,newPw,confirmPw}=profForm;const em=email.toLowerCase().trim();
     if(!name.trim()){setProfErr("Name cannot be empty.");return;}
@@ -2366,12 +2354,9 @@ function App(){
     if(photo)setMemberPhotos(p=>({...p,[em]:photo}));
     setProfOk("Profile updated.");setProfErr("");setProfBusy(false);
   }
-
   const memberPhoto=memberData?.photo||"";
   const memberInit=session?initials(session.name):"";
-
   if(!ready)return React.createElement("div",{className:"loading-screen"},React.createElement("div",null,"TEAM 365"),React.createElement("div",{className:"loading-bar"},React.createElement("div",{className:"loading-fill"})));
-
   if(!session)return React.createElement("div",{className:"auth-page"},
     React.createElement("div",{className:"auth-logo-sub"},"LAMONT"),
     React.createElement("div",{className:"auth-logo"},"TEAM 365"),
@@ -2410,14 +2395,12 @@ function App(){
       React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION."),
       React.createElement("div",{style:{marginTop:4,paddingBottom:20,fontSize:"8px",letterSpacing:"0.08em",color:"#444"}},
         "Powered by ",
-        React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"www.lamontcollective.com")
+        React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"[www.lamontcollective.com](https://www.lamontcollective.com)")
       )
     )
   );
-
   return React.createElement("div",{className:"app",onTouchStart:handleTouchStart,onTouchEnd:handleTouchEnd},
     cropSrc&&React.createElement(ImageCropper,{imageSrc:cropSrc,onSave:handleCropSave,onCancel:()=>setCropSrc(null)}),
-
     React.createElement("div",{className:"hdr",style:{alignItems:"center",paddingBottom:6,cursor:"pointer"},onClick:openProf},
       memberPhoto
         ?React.createElement("img",{src:memberPhoto,alt:"profile",style:{display:"block",width:70,height:70,borderRadius:"50%",objectFit:"cover",border:"2px solid #333",margin:"0 auto 8px"}})
@@ -2438,7 +2421,6 @@ function App(){
         isAdmin&&React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="admin"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="admin"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="admin"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="admin"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("admin")},"ADMIN")
       )
     ),
-
     tab==="book"&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"well-hdr"},
         React.createElement("div",{className:"well-title"},"CLASSES")
@@ -2498,7 +2480,6 @@ function App(){
         })
       )
     ),
-
     tab==="my"&&React.createElement("div",{className:"my-wrap"},
       React.createElement("div",{className:"my-hdr"},"MY UPCOMING BOOKINGS"),
       React.createElement("div",{className:"day-hdr",style:{marginBottom:10}},React.createElement("span",null,"CLASSES")),
@@ -2596,12 +2577,10 @@ function App(){
         )
       )
     ),
-
     tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
     tab==="wellness"&&wellnessEnabled&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin,memberData}),
     tab==="strength"&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast,bookings,memberData})),
     tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,classLimits,wellnessEnabled,saveWellnessSetting}),
-
     React.createElement("div",{className:"tab-bar"},
       React.createElement("button",{className:`tab-btn${tab==="community"?" ta":""}`,style:{position:"relative"},onClick:()=>{setTab("community");lsSet("t365-last-read",Date.now());}},
         "NOTICE BOARD",
@@ -2617,11 +2596,10 @@ function App(){
       React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION."),
       React.createElement("div",{style:{marginTop:4,paddingBottom:20,fontSize:"8px",letterSpacing:"0.08em",color:"#444"}},
         "Powered by ",
-        React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"www.lamontcollective.com")
+        React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"[www.lamontcollective.com](https://www.lamontcollective.com)")
       )
     ),
     React.createElement("div",{className:`toast${toast.show?" show":""}`},toast.msg),
-
     showProf&&React.createElement("div",{className:"prof-overlay"},
       React.createElement("div",{className:"prof-hdr"},
         React.createElement("div",{className:"prof-title"},"PROFILE"),
@@ -2667,9 +2645,7 @@ function App(){
     )
   );
 }
-
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
-
 if("serviceWorker"in navigator){
   window.addEventListener("load",()=>{navigator.serviceWorker.register("/sw.js");});
 }
