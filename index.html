@@ -1269,7 +1269,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
           return React.createElement("div",{key:time,style:{background:"#110808",border:"1px solid #3a1208",borderRadius:8,marginBottom:8,padding:"12px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}},
             React.createElement("div",null,
               React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:"#555",letterSpacing:"0.08em"}},fmt12(time)),
-              React.createElement("div",{style:{fontSize:8,letterSpacing:"0.15em",color:"#6a3828",fontWeight:600,marginTop:3}},"HIDDEN FROM MEMBERS")
+              dowNames?.[admDOW]&&React.createElement("div",{style:{fontSize:7,letterSpacing:"0.1em",color:"#4a2a2a",fontWeight:600,marginTop:2,fontFamily:"'DM Sans',sans-serif"}},dowNames[admDOW]),
+                React.createElement("div",{style:{fontSize:8,letterSpacing:"0.15em",color:"#6a3828",fontWeight:600,marginTop:3}},"HIDDEN FROM MEMBERS")
             ),
             React.createElement("button",{
               onClick:async e=>{e.stopPropagation();await unhideClass(time);},
@@ -1281,7 +1282,10 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
         }
         return React.createElement("div",{key:time,className:"adm-class-card"},
           React.createElement("div",{className:"adm-class-hdr",onClick:()=>!isEditingThis&&!isEditingTimeThis&&setExpanded(p=>({...p,[time]:!p[time]}))},
-            React.createElement("div",{className:"adm-class-time"},fmt12(time)),
+            React.createElement("div",{style:{display:"flex",flexDirection:"column",minWidth:68}},
+                React.createElement("div",{className:"adm-class-time",style:{minWidth:"unset"}},fmt12(time)),
+                dowNames?.[admDOW]&&React.createElement("div",{style:{fontSize:7,letterSpacing:"0.1em",color:"#555",fontWeight:600,marginTop:2,fontFamily:"'DM Sans',sans-serif"}},dowNames[admDOW])
+              ),
             React.createElement("div",{className:"adm-class-mid"},
               React.createElement("div",{className:`adm-class-count${taken>=slotMax?" full":taken>0?" has-bk":""}`},`${taken} / ${slotMax}${taken>=slotMax?" \u00B7 FULL":""}`),
               React.createElement("div",{className:"adm-class-bars"},Array.from({length:Math.min(slotMax,20)}).map((_,i)=>React.createElement("div",{key:i,className:`adm-bar${i<taken?" at":""}`})))
@@ -1847,7 +1851,6 @@ function CoachingView({showToast}){
   const [newRowName,setNewRowName]=useState("");
   const [savingRow,setSavingRow]=useState(false);
   const [removingGroup,setRemovingGroup]=useState(null);
-
   useEffect(()=>{
     // Load extra classes per group
     [...BASE_GROUPS.map(g=>g.label)].forEach(label=>{
@@ -1878,7 +1881,6 @@ function CoachingView({showToast}){
         }
       });
   },[]);
-
   async function saveCustomGroups(groups){
     const key="__CUSTOM_GROUPS__";
     const existing=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(key)+"&select=id");
@@ -1888,7 +1890,6 @@ function CoachingView({showToast}){
       await sbPost("coaching_notes",{class_name:key,content:JSON.stringify(groups),updated_at:Date.now()});
     }
   }
-
   async function addRow(){
     const name=newRowName.trim().toUpperCase();
     if(!name)return;
@@ -1904,7 +1905,6 @@ function CoachingView({showToast}){
     setNewRowName("");setAddingRow(false);setSavingRow(false);
     showToast(name+" added ✓");
   }
-
   async function removeRow(label){
     setRemovingGroup(label);
     const newGroups=customGroups.filter(g=>g!==label);
@@ -1915,7 +1915,6 @@ function CoachingView({showToast}){
     setRemovingGroup(null);
     showToast(label+" removed");
   }
-
   async function addClass(label,base){
     setAdding(prev=>({...prev,[label]:true}));
     const existing=extras[label]||[];
@@ -1934,7 +1933,6 @@ function CoachingView({showToast}){
     setAdding(prev=>({...prev,[label]:false}));
     showToast(newName+" added ✓");
   }
-
   async function removeClass(label,base,cn){
     setRemoving(prev=>({...prev,[cn]:true}));
     const isBase=(base||[]).includes(cn);
@@ -1951,12 +1949,10 @@ function CoachingView({showToast}){
     setRemoving(prev=>({...prev,[cn]:false}));
     showToast(cn+" removed");
   }
-
   function selectClass(cn){
     if(selectedClass===cn){setSelectedClass(null);}
     else{setSelectedClass(cn);setSubTab("notes");}
   }
-
   function renderGroup(label,base,isCustom){
     const extraNames=extras[label]||[];
     const names=base?[...base,...extraNames]:extraNames;
@@ -2043,7 +2039,6 @@ function CoachingView({showToast}){
       )
     );
   }
-
   return React.createElement("div",{style:{marginTop:16}},
     React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},
       "COACHING NOTES & WORKOUTS"),
@@ -2400,6 +2395,7 @@ function App(){
   const [selDay,setSelDay]=useState(getInitDay);
   const [tab,setTab]=useState(()=>ssGet("t365-tab","community"));
   useEffect(()=>{ssSet("t365-tab",tab);},[tab]);
+  useEffect(()=>{if(tab==="book"){sbGet("class_limits","select=time_slot,date_key,max_spots").then(data=>{const lm={};(data||[]).forEach(r=>{lm[`${r.date_key}:${r.time_slot}`]=r.max_spots;});setClassLimits(lm);});}},[tab]);
   const [authMode,setAuthMode]=useState("login");
   const [authForm,setAuthForm]=useState({name:"",email:"",phone:"",password:""});
   const [authErr,setAuthErr]=useState("");
@@ -2708,7 +2704,7 @@ function App(){
     React.createElement("div",{style:{marginTop:48,textAlign:"center"}},
       React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION."),
       React.createElement("div",{style:{marginTop:4,paddingBottom:20,fontSize:"7px",letterSpacing:"0.06em",color:"#333"}},
-        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"WWW.LAMONTCOLLECTIVE.COM")
+        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"[WWW.LAMONTCOLLECTIVE.COM](https://WWW.LAMONTCOLLECTIVE.COM)")
       )
     )
   );
@@ -2912,7 +2908,7 @@ function App(){
     React.createElement("div",{style:{textAlign:"center"}},
       React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION."),
       React.createElement("div",{style:{marginTop:4,paddingBottom:20,fontSize:"7px",letterSpacing:"0.06em",color:"#333"}},
-        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"WWW.LAMONTCOLLECTIVE.COM")
+        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"[WWW.LAMONTCOLLECTIVE.COM](https://WWW.LAMONTCOLLECTIVE.COM)")
       )
     ),
     React.createElement("div",{className:`toast${toast.show?" show":""}`},toast.msg),
