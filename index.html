@@ -1262,8 +1262,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
                 onClick:async e=>{
                   e.stopPropagation();
                   if(slotBks.length>0){showToast(`${slotBks.length} member${slotBks.length>1?"s":""} booked \u2014 remove them first`);return;}
-                  if(isExtra){if(deleteClass)await deleteClass(time,admDK);}
-                  else{if(cancelClass)await cancelClass(time,admDK);}
+                  if(cancelClass)await cancelClass(time,admDK);
                   showToast("Class removed \u2713");
                 }
               },"Remove"),
@@ -1296,7 +1295,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
             React.createElement("button",{
               disabled:!newTimeVal||newTimeVal===time,
               onClick:async()=>{
-                if(deleteClass)await deleteClass(time,admDK);
+                if(cancelClass)await cancelClass(time,admDK);
                 if(saveClassLimit)await saveClassLimit(newTimeVal,admDK,String(slotMax));
                 setEditingTime(null);
                 showToast("Time updated \u2713");
