@@ -1991,6 +1991,10 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
   const strengthUnlock=(()=>{
     if(isAdmin)return{Lower:true,Upper:true};
     if(!session||!bookings)return{Lower:false,Upper:false};
+    // Past months are always unlocked — you already attended, let members review logs
+    if(monthYear<nowMY)return{Lower:true,Upper:true};
+    // Past weeks within the current month are always unlocked
+    if(monthYear===nowMY&&weekNum<currentWeek)return{Lower:true,Upper:true};
     const [yr,mo]=monthYear.split("-").map(Number);
     const startDay=weekNum===1?1:weekNum===2?8:weekNum===3?15:25;
     const endDay=weekNum===1?7:weekNum===2?14:weekNum===3?24:new Date(yr,mo,0).getDate();
