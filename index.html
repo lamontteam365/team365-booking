@@ -463,7 +463,7 @@ function getTierLimits(membershipType){
   if(!membershipType)return{hiit:0,strength:0,wellness:0};
   const mt=membershipType.toUpperCase();
   if(mt.includes("SIGNATURE")||mt.includes("DUO"))return{hiit:null,strength:null,wellness:2};
-  if(mt.includes("ACTIVE"))return{hiit:2,strength:1,wellness:1};
+  if(mt.includes("CORE"))return{hiit:2,strength:1,wellness:1};
   return{hiit:3,strength:1,wellness:1}; // Foundation, Essential, Community
 }
 // Tuesday=2, Thursday=4 are Strength days
@@ -633,7 +633,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
         },
           React.createElement("option",{value:""},"Select membership..."),
           ["FOUNDATION MEMBER - 3 months","FOUNDATION MEMBER - 6 months","FOUNDATION MEMBER - 12 months",
-           "ACTIVE - 3 months","ACTIVE - 6 months","ACTIVE - 12 months",
+           "CORE - 3 months","CORE - 6 months","CORE - 12 months",
            "COMMUNITY - 3 months","COMMUNITY - 6 months","COMMUNITY - 12 months",
            "ESSENTIAL - 3 months","ESSENTIAL - 6 months","ESSENTIAL - 12 months",
            "SIGNATURE - 3 months","SIGNATURE - 6 months","SIGNATURE - 12 months",
