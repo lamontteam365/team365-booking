@@ -2124,9 +2124,9 @@ function App(){
       let joinedAt=0;
       const s=lsGet("t365-session",null);
       if(s){
-        setSession(s);
         const mb=await sbGet("members",`email=eq.${encodeURIComponent(s.email)}`);
-        if(mb.length){setMemberData(mb[0]);joinedAt=mb[0].joined_at||0;}
+        if(mb.length){setSession(s);setMemberData(mb[0]);joinedAt=mb[0].joined_at||0;}
+        else{lsSet("t365-session",null);}
       }
       await refreshBookings();
       // FIX 3: Use join date as fallback so existing posts don't flag as new on first login
