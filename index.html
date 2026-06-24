@@ -1145,7 +1145,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
       React.createElement("button",{className:`adm-seg-btn${admSeg==="classes"?" aas":""}`,onClick:()=>setAdmSeg("classes")},"CLASSES"),
       React.createElement("button",{className:`adm-seg-btn${admSeg==="wellness"?" aas":""}`,onClick:()=>setAdmSeg("wellness")},"WELLNESS"),
       React.createElement("button",{className:`adm-seg-btn${admSeg==="onboarding"?" aas":""}`,onClick:()=>setAdmSeg("onboarding")},"ONBOARDING"),
-      React.createElement("button",{className:`adm-seg-btn${admSeg==="coaching"?" aas":""}`,onClick:()=>setAdmSeg("coaching")},"COACHING")
+      React.createElement("button",{className:`adm-seg-btn${admSeg==="coaching"?" aas":""}`,onClick:()=>setAdmSeg("coaching")},"DETAILS")
     ),
     admSeg==="members"&&(!membersLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
     :React.createElement(React.Fragment,null,
@@ -1724,40 +1724,84 @@ function WorkoutDetailsEditor({className,showToast}){
   );
 }
 function CoachingView({showToast}){
-  const GROUPS=[
-    {label:"RISE UP",names:["RISE UP 1","RISE UP 2","RISE UP 3","RISE UP 4"]},
-    {label:"STRENGTH LOWER",names:["STRENGTH LOWER 1","STRENGTH LOWER 2","STRENGTH LOWER 3","STRENGTH LOWER 4"]},
-    {label:"ASCEND",names:["ASCEND 1","ASCEND 2","ASCEND 3","ASCEND 4"]},
-    {label:"STRENGTH UPPER",names:["STRENGTH UPPER 1","STRENGTH UPPER 2","STRENGTH UPPER 3","STRENGTH UPPER 4"]},
-    {label:"ELEVATE",names:["ELEVATE 1","ELEVATE 2","ELEVATE 3","ELEVATE 4"]},
-    {label:"SUMMIT",names:["SUMMIT 1","SUMMIT 2","SUMMIT 3","SUMMIT 4"]},
+  const BASE_GROUPS=[
+    {label:"RISE UP",base:["RISE UP 1","RISE UP 2","RISE UP 3","RISE UP 4"]},
+    {label:"ASCEND",base:["ASCEND 1","ASCEND 2","ASCEND 3","ASCEND 4"]},
+    {label:"ELEVATE",base:["ELEVATE 1","ELEVATE 2","ELEVATE 3","ELEVATE 4"]},
+    {label:"SUMMIT",base:["SUMMIT 1","SUMMIT 2","SUMMIT 3","SUMMIT 4"]},
   ];
+  const [extras,setExtras]=useState({});
   const [selectedClass,setSelectedClass]=useState(null);
   const [subTab,setSubTab]=useState("notes");
+  const [adding,setAdding]=useState({});
+
+  useEffect(()=>{
+    BASE_GROUPS.forEach(g=>{
+      sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__EXTRA__"+g.label)+"&select=content")
+        .then(data=>{
+          if(data&&data.length&&data[0].content){
+            try{
+              const arr=JSON.parse(data[0].content);
+              setExtras(prev=>({...prev,[g.label]:arr}));
+            }catch{}
+          }
+        });
+    });
+  },[]);
+
+  async function addClass(g){
+    setAdding(prev=>({...prev,[g.label]:true}));
+    const existing=extras[g.label]||[];
+    const allNames=[...g.base,...existing];
+    const nextNum=allNames.length+1;
+    const newName=g.label+" "+nextNum;
+    const newExtras=[...existing,newName];
+    const key="__EXTRA__"+g.label;
+    const dbRows=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(key)+"&select=id");
+    if(dbRows&&dbRows.length){
+      await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent(key),{content:JSON.stringify(newExtras),updated_at:Date.now()});
+    }else{
+      await sbPost("coaching_notes",{class_name:key,content:JSON.stringify(newExtras),updated_at:Date.now()});
+    }
+    setExtras(prev=>({...prev,[g.label]:newExtras}));
+    setAdding(prev=>({...prev,[g.label]:false}));
+    showToast(newName+" added ✓");
+  }
+
   function selectClass(cn){
     if(selectedClass===cn){setSelectedClass(null);}
     else{setSelectedClass(cn);setSubTab("notes");}
   }
+
   return React.createElement("div",{style:{marginTop:16}},
     React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},
-      "COACHING NOTES · ADMIN"),
-    GROUPS.map(g=>{
-      const groupSelected=g.names.includes(selectedClass);
+      "COACHING NOTES & WORKOUTS"),
+    BASE_GROUPS.map(g=>{
+      const names=[...g.base,...(extras[g.label]||[])];
+      const groupSelected=names.includes(selectedClass);
       return React.createElement("div",{key:g.label,style:{marginBottom:groupSelected?0:16}},
         React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#444",fontWeight:600,marginBottom:8}},
           g.label),
-        React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}},
-          g.names.map((cn,i)=>{
+        React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}},
+          names.map((cn,i)=>{
             const isSelected=selectedClass===cn;
             return React.createElement("button",{
               key:cn,
               onClick:()=>selectClass(cn),
               style:{background:isSelected?"#fff":"#131313",color:isSelected?"#000":"#777",
                      border:isSelected?"none":"1px solid #222",borderRadius:8,
-                     padding:"10px 4px",fontFamily:"'Bebas Neue',sans-serif",
-                     fontSize:16,letterSpacing:"0.05em",cursor:"pointer",transition:"all .15s"}
+                     width:52,height:40,fontFamily:"'Bebas Neue',sans-serif",
+                     fontSize:16,letterSpacing:"0.05em",cursor:"pointer",transition:"all .15s",
+                     flexShrink:0}
             },i+1);
-          })
+          }),
+          React.createElement("button",{
+            onClick:()=>addClass(g),
+            disabled:adding[g.label],
+            style:{width:40,height:40,background:"#0e0e0e",color:"#555",border:"1px dashed #2a2a2a",
+                   borderRadius:8,fontSize:20,lineHeight:1,cursor:"pointer",flexShrink:0,
+                   display:"flex",alignItems:"center",justifyContent:"center",transition:"color .15s"}
+          },adding[g.label]?"…":"+")
         ),
         groupSelected&&React.createElement("div",{style:{marginTop:10,marginBottom:16,background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:10,padding:14}},
           React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:"0.08em",
