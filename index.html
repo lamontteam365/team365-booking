@@ -259,7 +259,7 @@ html,body{background:#080808;min-height:100vh}
 .adm-class-mid{flex:1}
 .adm-class-count{font-size:10px;letter-spacing:0.1em;color:#999;font-weight:500}
 .adm-class-count.full{color:#e06040}
-.adm-class-count.has-bk{color:#1d9bf0}
+.adm-class-count.has-bk{color:#4aaa66}
 .adm-class-bars{display:flex;gap:2px;margin-top:5px}
 .adm-bar{flex:1;height:2px;border-radius:1px;background:#2a2a2a}
 .adm-bar.at{background:#4aaa66}
@@ -1088,7 +1088,8 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
 }
 // ── Admin View ────────────────────────────────────────────────────────────────
 function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,classLimits,wellnessEnabled,saveWellnessSetting}){
-  const [admSeg,setAdmSeg]=useState("members");
+  const [admSeg,setAdmSeg]=useState(()=>lsGet("t365-admseg","members"));
+  useEffect(()=>{lsSet("t365-admseg",admSeg);},[admSeg]);
   const [expandedTier,setExpandedTier]=useState(null);
   const [admDate,setAdmDate]=useState(new Date());
   const [expanded,setExpanded]=useState({});
