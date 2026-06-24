@@ -1259,18 +1259,10 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
                   await hideClass(time);
                 }
               },"Hide"),
-              !isEditingThis&&!isEditingTimeThis&&!isHidden&&React.createElement("button",{
-                style:{fontSize:9,flexShrink:0,background:"none",border:"none",color:"#8a2515",cursor:"pointer",padding:"4px 2px",letterSpacing:"0.08em",fontFamily:"'DM Sans',sans-serif",fontWeight:600},
-                onClick:async e=>{
-                  e.stopPropagation();
-                  if(slotBks.length>0){showToast(`${slotBks.length} member${slotBks.length>1?"s":""} booked \u2014 remove them first`);return;}
-                  await removeClassWithUndo(time);
-                }
-              },"Remove"),
               !isEditingThis&&!isEditingTimeThis&&isHidden&&React.createElement("button",{
-                style:{fontSize:9,flexShrink:0,background:"none",border:"none",color:"#4aaa66",cursor:"pointer",padding:"4px 2px",letterSpacing:"0.08em",fontFamily:"'DM Sans',sans-serif",fontWeight:600},
+                style:{fontSize:9,flexShrink:0,background:"none",border:"none",color:"#8a2515",cursor:"pointer",padding:"4px 2px",letterSpacing:"0.08em",fontFamily:"'DM Sans',sans-serif",fontWeight:600},
                 onClick:async e=>{e.stopPropagation();await unhideClass(time,MAX_SPOTS);}
-              },"Unhide"),
+              },"▲ Unhide"),
               !isEditingThis&&!isEditingTimeThis&&React.createElement("div",{className:`adm-chev${isOpen?" open":""}`},"\u25BE")
             )
           ),
