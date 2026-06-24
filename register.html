@@ -88,33 +88,22 @@ const hashPw = s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)^s.charCode
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const today = ()=>{const d=new Date();return`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;};
 
-// Apps Script webhook for sending welcome email
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz5cruljVDUVScwm14Sj1z5_6cRrNK9cgOaq7Tx8P9LfPAEI7p_kx8ZJnaghF_SmU46Fw/exec";
 
 async function sendWelcomeEmailViaScript(to, firstName, tempPassword) {
   try {
-    const params = new URLSearchParams({
-      action: "welcome",
-      to: to,
-      firstName: firstName,
-      tempPassword: tempPassword
-    });
-    await fetch(APPS_SCRIPT_URL + "?" + params.toString(), {
-      method: "GET",
-      mode: "no-cors"
-    });
-  } catch(e) { console.log("Email send error:", e); }
+    const params = new URLSearchParams({action:"welcome",to,firstName,tempPassword});
+    await fetch(APPS_SCRIPT_URL + "?" + params.toString(), {method:"GET",mode:"no-cors"});
+  } catch(e) {}
 }
 
 async function logHealthToSheets(data) {
   try {
-    const params = new URLSearchParams({action: "logHealth", ...data});
-    await fetch(APPS_SCRIPT_URL + "?" + params.toString(), {
-      method: "GET",
-      mode: "no-cors"
-    });
-  } catch(e) { console.log("Sheets log error:", e); }
+    const params = new URLSearchParams({action:"logHealth",...data});
+    await fetch(APPS_SCRIPT_URL + "?" + params.toString(), {method:"GET",mode:"no-cors"});
+  } catch(e) {}
 }
+
 const PARQ = [
   "Has your doctor ever said that you have a heart condition and that you should only do physical activity recommended by a doctor?",
   "Do you feel pain in your chest when you do physical activity?",
@@ -125,22 +114,18 @@ const PARQ = [
   "Do you know of any other reason why you should not do physical activity? (e.g. pregnancy, recent surgery, diabetes)"
 ];
 
-const PARQ_KEYS = ["parq_heart","parq_chest_activity","parq_chest_rest","parq_dizziness","parq_joint","parq_blood_pressure","parq_other"];
-
 // State
 let parqAnswers = {};
 let fitnessLevel = "";
 let healthDeclaration = "";
 let mediaConsent = "";
 let sigCanvas, sigCtx, drawing = false, hasSig = false;
-let submitted = false;
 let errEl;
 
 function initCanvas(){
   sigCanvas = document.getElementById("sig-canvas");
   if(!sigCanvas) return;
   sigCtx = sigCanvas.getContext("2d");
-  const rect = sigCanvas.getBoundingClientRect();
   sigCanvas.width = sigCanvas.offsetWidth * window.devicePixelRatio;
   sigCanvas.height = sigCanvas.offsetHeight * window.devicePixelRatio;
   sigCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
@@ -185,7 +170,7 @@ function selectFitness(val){
   });
 }
 
-function selectConsent(field, val, btnClass){
+function selectConsent(field, val){
   if(field==="health") healthDeclaration=val;
   else mediaConsent=val;
   document.querySelectorAll(`.consent-${field} .consent-btn`).forEach(b=>{
@@ -208,7 +193,6 @@ async function handleSubmit(){
   const medCond   = document.getElementById("med-cond").value.trim();
   const meds      = document.getElementById("meds").value.trim();
 
-  // Validation
   if(!firstName||!lastName){errEl.textContent="Please enter your full name.";return;}
   if(!dob){errEl.textContent="Please enter your date of birth.";return;}
   if(!phone){errEl.textContent="Please enter your phone number.";return;}
@@ -221,7 +205,6 @@ async function handleSubmit(){
   if(!mediaConsent){errEl.textContent="Please confirm your media consent preference.";return;}
   if(!hasSig){errEl.textContent="Please sign the form.";return;}
 
-  // Check if account already exists
   const existing = await sbGet("members",`email=eq.${encodeURIComponent(email)}`);
   const isExisting = existing.length > 0;
 
@@ -233,27 +216,27 @@ async function handleSubmit(){
   const name = `${firstName} ${lastName}`;
 
   const regData = {
-    name, phone,
-    dob, emergency_name: eName, emergency_phone: ePhone,
-    parq_heart:           parqAnswers[0]||"",
-    parq_chest_activity:  parqAnswers[1]||"",
-    parq_chest_rest:      parqAnswers[2]||"",
-    parq_dizziness:       parqAnswers[3]||"",
-    parq_joint:           parqAnswers[4]||"",
-    parq_blood_pressure:  parqAnswers[5]||"",
-    parq_other:           parqAnswers[6]||"",
-    medical_conditions:   medCond,
-    medications:          meds,
-    fitness_level:        fitnessLevel,
-    health_declaration:   healthDeclaration,
-    media_consent:        mediaConsent,
-    signature:            sigData,
-    registration_date:    regDate
+    name, phone, dob,
+    emergency_name:      eName,
+    emergency_phone:     ePhone,
+    parq_heart:          parqAnswers[0]||"",
+    parq_chest_activity: parqAnswers[1]||"",
+    parq_chest_rest:     parqAnswers[2]||"",
+    parq_dizziness:      parqAnswers[3]||"",
+    parq_joint:          parqAnswers[4]||"",
+    parq_blood_pressure: parqAnswers[5]||"",
+    parq_other:          parqAnswers[6]||"",
+    medical_conditions:  medCond,
+    medications:         meds,
+    fitness_level:       fitnessLevel,
+    health_declaration:  healthDeclaration,
+    media_consent:       mediaConsent,
+    signature:           sigData,
+    registration_date:   regDate
   };
 
   const healthData = {
-    name, email, phone,
-    dob,
+    name, email, phone, dob,
     emergencyName: eName, emergencyPhone: ePhone,
     parqHeart: parqAnswers[0]||"", parqChestActivity: parqAnswers[1]||"",
     parqChestRest: parqAnswers[2]||"", parqDizziness: parqAnswers[3]||"",
@@ -275,13 +258,7 @@ async function handleSubmit(){
     if(ok) logHealthToSheets(healthData);
   } else {
     tempPw = Math.random().toString(36).slice(2,10);
-    const member = {
-      email, photo:"",
-      password: hashPw(tempPw),
-      joined_at: Date.now(),
-      ...regData
-    };
-    ok = await sbPost("members", member);
+    ok = await sbPost("members", {email,photo:"",password:hashPw(tempPw),joined_at:Date.now(),...regData});
     if(ok){
       sendWelcomeEmailViaScript(email, firstName, tempPw);
       logHealthToSheets(healthData);
@@ -290,11 +267,10 @@ async function handleSubmit(){
 
   if(!ok){
     errEl.textContent="Something went wrong. Please try again.";
-    btn.disabled=false; btn.textContent="SUBMIT REGISTRATION";
+    btn.disabled=false; btn.textContent="SUBMIT";
     return;
   }
 
-  // Show success
   document.getElementById("root").innerHTML = `
     <div class="success-page">
       <div class="success-icon">✓</div>
@@ -302,7 +278,7 @@ async function handleSubmit(){
       <div class="success-body">
         ${isExisting
           ? `Thanks ${firstName}. Your health screening form has been updated successfully.`
-          : `Welcome ${firstName}. A welcome email with your login details and app install instructions has been sent to <strong style="color:#fff;">${email}</strong>.`
+          : `Welcome ${firstName}. A welcome email with your login details has been sent to <strong style="color:#fff;">${email}</strong>.`
         }
       </div>
       <a href="https://team365-booking.vercel.app" class="success-link">OPEN BOOKING APP</a>
@@ -321,7 +297,6 @@ document.getElementById("root").innerHTML = `
   <div class="form-title">Health Screening Form</div>
   <div class="form-sub">COMPLETE BEFORE YOUR FIRST SESSION</div>
 
-  <!-- Personal Details -->
   <div class="section">
     <div class="section-label">PERSONAL DETAILS</div>
     <div class="row2">
@@ -335,13 +310,134 @@ document.getElementById("root").innerHTML = `
       </div>
     </div>
     <label class="fl" for="dob">DATE OF BIRTH</label>
-    <input class="fi" id="dob" type="date" placeholder="DD/MM/YYYY"/>
+    <input class="fi" id="dob" type="date"/>
     <label class="fl" for="phone">PHONE NUMBER</label>
     <input class="fi" id="phone" type="tel" placeholder="+64 21 000 0000" autocomplete="tel"/>
     <label class="fl" for="email">EMAIL ADDRESS</label>
     <input class="fi" id="email" type="email" placeholder="your@email.com" autocomplete="email"/>
+  </div>
 
-// Init signature canvas after render
+  <div class="section">
+    <div class="section-label">EMERGENCY CONTACT</div>
+    <div class="row2">
+      <div>
+        <label class="fl" for="ename">CONTACT NAME</label>
+        <input class="fi" id="ename" placeholder="Full name"/>
+      </div>
+      <div>
+        <label class="fl" for="ephone">PHONE NUMBER</label>
+        <input class="fi" id="ephone" type="tel" placeholder="+64 21 000 0000"/>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">HEALTH SCREENING · PAR-Q</div>
+    ${PARQ.map((q,i)=>`
+      <div class="parq-item parq-${i}">
+        <div class="parq-q">${q}</div>
+        <div class="parq-opts">
+          <button class="parq-btn" data-val="Yes" onclick="selectParq(${i},'Yes')">YES</button>
+          <button class="parq-btn" data-val="No" onclick="selectParq(${i},'No')">NO</button>
+        </div>
+      </div>`).join("")}
+  </div>
+
+  <div class="section">
+    <div class="section-label">MEDICAL INFORMATION</div>
+    <label class="fl" for="med-cond">INJURIES OR CONDITIONS WE SHOULD KNOW ABOUT</label>
+    <textarea class="fi" id="med-cond" placeholder="List any injuries or conditions, or write 'None'"></textarea>
+    <label class="fl" for="meds">CURRENT MEDICATIONS</label>
+    <textarea class="fi" id="meds" placeholder="List any current medications, or write 'None'"></textarea>
+  </div>
+
+  <div class="section">
+    <div class="section-label">STARTING LEVEL</div>
+    <div class="fitness-opts">
+      <button class="fitness-btn" data-val="1. New to fitness or returning after a break." onclick="selectFitness(this.dataset.val)">
+        <div class="fitness-num">1</div>
+        <div class="fitness-desc">New to fitness or returning after a break</div>
+      </button>
+      <button class="fitness-btn" data-val="2. Active and training regularly." onclick="selectFitness(this.dataset.val)">
+        <div class="fitness-num">2</div>
+        <div class="fitness-desc">Active and training regularly</div>
+      </button>
+      <button class="fitness-btn" data-val="3. High performance, pushing the limits." onclick="selectFitness(this.dataset.val)">
+        <div class="fitness-num">3</div>
+        <div class="fitness-desc">High performance, pushing the limits</div>
+      </button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">DECLARATIONS</div>
+    <div class="consent-item consent-health">
+      <div class="consent-bold">HEALTH & MEDICAL DECLARATION</div>
+      <div class="consent-text">I confirm that the information provided is accurate to the best of my knowledge. I agree to inform Team 365 of any changes to my health or medical status. I acknowledge that physical activity carries inherent risks, and I participate at my own risk.</div>
+      <div class="consent-opts">
+        <button class="consent-btn" data-val="Yes" onclick="selectConsent('health','Yes')">I AGREE</button>
+        <button class="consent-btn" data-val="No" onclick="selectConsent('health','No')">I DO NOT AGREE</button>
+      </div>
+    </div>
+    <div class="consent-item consent-media">
+      <div class="consent-bold">MEDIA & PROMOTIONAL USE</div>
+      <div class="consent-text">I grant permission for Team 365 to capture and use photographs and video footage of me during training sessions for promotional, marketing, and social media purposes.</div>
+      <div class="consent-opts">
+        <button class="consent-btn" data-val="Yes" onclick="selectConsent('media','Yes')">I AGREE</button>
+        <button class="consent-btn" data-val="No" onclick="selectConsent('media','No')">I DO NOT AGREE</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">SIGNATURE</div>
+    <div class="sig-wrap">
+      <canvas id="sig-canvas" class="sig-canvas"></canvas>
+      <button class="sig-clear" onclick="clearSig()">CLEAR</button>
+      <div class="sig-hint">Sign here with your finger</div>
+    </div>
+  </div>
+
+  <div id="err-msg" class="err-msg"></div>
+  <button id="submit-btn" class="submit-btn" onclick="handleSubmit()">SUBMIT</button>
+</div>`;
+
+// Pre-fill form if member is already logged in
+async function prefillForm() {
+  try {
+    const session = JSON.parse(localStorage.getItem("t365-session"));
+    if(!session || !session.email) return;
+
+    const rows = await sbGet("members", `email=eq.${encodeURIComponent(session.email)}`);
+    if(!rows.length) return;
+    const mb = rows[0];
+
+    const nameParts = (mb.name||"").split(" ");
+    if(document.getElementById("fname")) document.getElementById("fname").value = nameParts[0]||"";
+    if(document.getElementById("lname")) document.getElementById("lname").value = nameParts.slice(1).join(" ")||"";
+    if(document.getElementById("dob"))   document.getElementById("dob").value   = mb.dob||"";
+    if(document.getElementById("phone")) document.getElementById("phone").value = mb.phone||"";
+    if(document.getElementById("email")) document.getElementById("email").value = mb.email||"";
+
+    if(document.getElementById("ename"))  document.getElementById("ename").value  = mb.emergency_name||"";
+    if(document.getElementById("ephone")) document.getElementById("ephone").value = mb.emergency_phone||"";
+
+    const parqMap = {
+      0:mb.parq_heart, 1:mb.parq_chest_activity, 2:mb.parq_chest_rest,
+      3:mb.parq_dizziness, 4:mb.parq_joint, 5:mb.parq_blood_pressure, 6:mb.parq_other
+    };
+    Object.entries(parqMap).forEach(([idx,val])=>{ if(val) selectParq(parseInt(idx),val); });
+
+    if(mb.fitness_level)      selectFitness(mb.fitness_level);
+    if(mb.health_declaration) selectConsent("health", mb.health_declaration);
+    if(mb.media_consent)      selectConsent("media",  mb.media_consent);
+
+    if(document.getElementById("med-cond")) document.getElementById("med-cond").value = mb.medical_conditions||"";
+    if(document.getElementById("meds"))     document.getElementById("meds").value     = mb.medications||"";
+
+  } catch(e) {}
+}
+
 setTimeout(()=>{ initCanvas(); prefillForm(); }, 100);
 </script>
 </body>
