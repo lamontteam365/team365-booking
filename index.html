@@ -2346,8 +2346,7 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
   const released=isWorkoutReleased(monthYear,weekNum,isAdmin);
   return React.createElement("div",{className:"sp-wrap"},
     React.createElement("div",{className:"well-hdr",style:{padding:"0 0 4px"}},
-      React.createElement("div",{className:"well-title"},"STRENGTH"),
-      React.createElement("div",{className:"well-sub"},"CORE · STRENGTH · MOBILITY")
+      React.createElement("div",{className:"well-title"},"CORE · STRENGTH · MOBILITY")
     ),
     React.createElement("div",{className:"sp-month-nav"},
       React.createElement("button",{className:"sp-month-arrow",disabled:atStart,onClick:()=>shiftMonth(-1)},"‹"),
