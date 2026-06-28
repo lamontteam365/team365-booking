@@ -2176,12 +2176,15 @@ function ProgressTab({session,isAdmin,showToast}){
       ok=await sbPost("personal_bests",data);
     }
     if(ok){
-      const updatedMyPBs={...myPBs,[exerciseId]:{...existing,...data}};
-      setMyPBs(updatedMyPBs);
-      // Auto-update community best if this is the new highest
-      const currentCB=communityBests[exerciseId];
-      if(!currentCB||!currentCB.weight_kg||newWeight>=parseFloat(currentCB.weight_kg)){
-        const cbData={exercise_id:exerciseId,weight_kg:newWeight,holder_name:session.name||session.email,holder_email:session.email,achieved_date:newDate,updated_at:Date.now()};
+      setMyPBs(prev=>({...prev,[exerciseId]:{...existing,...data}}));
+      // Query ALL members' PBs for this exercise and crown the true highest
+      const allPBs=await sbGet("personal_bests",`exercise_id=eq.${exerciseId}&select=email,weight_kg,achieved_date&order=weight_kg.desc&limit=1`);
+      if(allPBs&&allPBs.length>0){
+        const top=allPBs[0];
+        const holderRows=await sbGet("members",`email=eq.${encodeURIComponent(top.email)}&select=name`);
+        const holderName=(holderRows&&holderRows[0]&&holderRows[0].name)||top.email;
+        const cbData={exercise_id:exerciseId,weight_kg:parseFloat(top.weight_kg),holder_name:holderName,holder_email:top.email,achieved_date:top.achieved_date||"",updated_at:Date.now()};
+        const currentCB=communityBests[exerciseId];
         let cbOk;
         if(currentCB){
           cbOk=await sbPatch("community_bests",`exercise_id=eq.${exerciseId}`,cbData);
@@ -2376,7 +2379,7 @@ function ProgressTab({session,isAdmin,showToast}){
                     pb
                       ?React.createElement("div",null,
                           React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8}},
-                            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#4aaa66",lineHeight:1}},`${pb.weight_kg}kg`),
+                            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#ccc",lineHeight:1}},`${pb.weight_kg}kg`),
                             React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.08em"}},fmtDate(pb.achieved_date))
                           )
                         )
