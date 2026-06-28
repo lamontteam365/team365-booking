@@ -24,26 +24,22 @@ html,body{background:#080808;min-height:100vh;font-family:'DM Sans',sans-serif;c
   display:flex;
   flex-direction:column;
   align-items:center;
-  gap:0;
   border-bottom:1px solid #1a1a1a;
 }
 .hero-circle{
   width:72px;height:72px;border-radius:50%;
-  border:2px solid #333;
-  background:#111;
-  overflow:hidden;
-  margin-bottom:12px;
+  border:2px solid #333;background:#111;
+  overflow:hidden;margin-bottom:14px;
   display:flex;align-items:center;justify-content:center;
 }
 .hero-circle img{width:100%;height:100%;object-fit:cover;}
-.hero-sub{font-size:9px;letter-spacing:0.22em;color:#777;font-weight:500;margin-bottom:4px;text-align:center}
-.hero-title{font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:0.2em;margin-bottom:2px;color:#fff;text-align:center}
-.hero-tag{font-size:8px;letter-spacing:0.22em;color:#555;font-weight:600;margin-bottom:10px;text-align:center}
+.hero-name{font-family:'Syncopate',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;color:#fff;margin-bottom:4px}
+.hero-tag{font-family:'Syncopate',sans-serif;font-size:7px;font-weight:700;letter-spacing:0.2em;color:#555;margin-bottom:12px}
 .hero-badge{font-size:8px;letter-spacing:0.18em;color:#1d9bf0;background:#0a1a2a;border:1px solid #1d3a5a;border-radius:3px;padding:3px 10px}
 
 /* ── Day nav ── */
-.day-nav{display:flex;align-items:center;padding:14px 16px 0;gap:0}
-.day-arrow{background:none;border:none;color:#888;cursor:pointer;font-size:26px;padding:4px 12px;line-height:1;transition:color .15s;font-family:'DM Sans',sans-serif}
+.day-nav{display:flex;align-items:center;padding:14px 16px 0}
+.day-arrow{background:none;border:none;color:#888;cursor:pointer;font-size:26px;padding:4px 12px;line-height:1;transition:color .15s}
 .day-arrow:not(:disabled):hover{color:#fff}
 .day-label{flex:1;text-align:center}
 .day-label-main{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.06em;color:#fff;line-height:1}
@@ -58,8 +54,8 @@ html,body{background:#080808;min-height:100vh;font-family:'DM Sans',sans-serif;c
 .c-row{display:flex;align-items:center;gap:10px;padding:10px 13px;background:#141414;border:1px solid #666;border-radius:7px;transition:border-color .15s;cursor:pointer}
 .c-row:hover{border-color:#999}
 .c-row.expanded{border-color:#1d9bf0;border-bottom-left-radius:0;border-bottom-right-radius:0}
-.c-time{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.03em;color:#fff;min-width:72px}
-.c-slot-name{font-size:7px;letter-spacing:0.12em;color:#555;font-weight:600;margin-top:1px;font-family:'DM Sans',sans-serif}
+.c-time{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.03em;color:#fff;min-width:72px;line-height:1}
+.c-class-name{font-size:7px;letter-spacing:0.12em;color:#555;font-weight:600;margin-top:3px;font-family:'DM Sans',sans-serif}
 .c-mid{flex:1;display:flex;flex-direction:column;gap:5px}
 .c-bars{display:flex;gap:2px}
 .c-bar{flex:1;height:2px;border-radius:1px;background:#2a2a2a}
@@ -84,9 +80,13 @@ html,body{background:#080808;min-height:100vh;font-family:'DM Sans',sans-serif;c
 .checkin-btn.undo:hover{color:#e06040;border-color:#e06040}
 .checkin-tick{color:#4aaa66;font-size:16px;margin-right:6px;flex-shrink:0}
 
-/* ── Refresh bar ── */
-.refresh-bar{display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 16px;border-top:1px solid #111}
-.refresh-lbl{font-size:8px;letter-spacing:0.14em;color:#333;font-weight:500}
+/* ── Footer ── */
+.kiosk-footer{padding:14px 20px;border-top:1px solid #111;text-align:center}
+.footer-tagline{font-family:'Syncopate',sans-serif;font-size:6px;letter-spacing:0.18em;color:#333;font-weight:700;margin-bottom:6px}
+.footer-powered{font-size:7px;letter-spacing:0.06em;color:#333;margin-bottom:8px}
+.footer-powered a{color:#555;text-decoration:none}
+.refresh-row{display:flex;align-items:center;justify-content:center;gap:8px}
+.refresh-lbl{font-size:8px;letter-spacing:0.14em;color:#2a2a2a;font-weight:500}
 .refresh-btn{font-size:8px;letter-spacing:0.1em;color:#1d9bf0;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600}
 
 /* ── Toast ── */
@@ -112,17 +112,14 @@ const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov",
 const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
 const SAT_TIMES=["06:30","07:30","08:30","09:30"];
 const MAX_SPOTS=16;
+// Default day class names — overridden by admin via coaching_notes
+const DEFAULT_DOW_NAMES={1:"RISE UP",2:"STRENGTH LOWER",3:"ASCEND",4:"STRENGTH UPPER",5:"ELEVATE",6:"SUMMIT"};
 
 function toDS(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
 function fmt12(t){if(!t)return"";const[h,m]=t.split(":").map(Number);const ampm=h<12?"AM":"PM";const h12=h===0?12:h>12?h-12:h;return`${h12}:${String(m).padStart(2,"0")} ${ampm}`;}
 function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r;}
 function isToday(d){const n=new Date();return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate();}
-function getToday(){
-  const d=new Date();
-  // Skip Sunday — jump to Monday
-  if(d.getDay()===0){d.setDate(d.getDate()+1);}
-  return d;
-}
+function getToday(){const d=new Date();if(d.getDay()===0){d.setDate(d.getDate()+1);}return d;}
 
 function App(){
   const today=getToday();
@@ -130,20 +127,24 @@ function App(){
   const [bookings,setBookings]=useState([]);
   const [classLimits,setClassLimits]=useState({});
   const [slotNames,setSlotNames]=useState({});
+  const [dowNames,setDowNames]=useState(DEFAULT_DOW_NAMES);
   const [loading,setLoading]=useState(true);
   const [expandedSlot,setExpandedSlot]=useState(null);
   const [busy,setBusy]=useState({});
   const [toast,setToast]=useState({show:false,msg:""});
   const [lastRefresh,setLastRefresh]=useState(new Date());
 
+  // Load admin day-name overrides once on mount
+  useEffect(()=>{
+    sbGet("coaching_notes","class_name=eq.__DOW_NAMES__&select=content&limit=1").then(rows=>{
+      if(rows&&rows[0]){try{const dn=JSON.parse(rows[0].content);setDowNames(p=>({...p,...dn}));}catch{}}
+    });
+  },[]);
+
   const selDK=toDS(selDate);
   const isSat=selDate.getDay()===6;
   const isTodaySel=isToday(selDate);
-
-  function showToast(msg){
-    setToast({show:true,msg});
-    setTimeout(()=>setToast({show:false,msg:""}),2200);
-  }
+  const dayOfWeek=selDate.getDay(); // 0=Sun,1=Mon...6=Sat
 
   const loadData=useCallback(async()=>{
     setLoading(true);
@@ -165,40 +166,36 @@ function App(){
   },[selDate]);
 
   useEffect(()=>{loadData();},[loadData]);
+  useEffect(()=>{const id=setInterval(()=>loadData(),60000);return()=>clearInterval(id);},[loadData]);
 
-  // Auto-refresh every 60s
-  useEffect(()=>{
-    const id=setInterval(()=>loadData(),60000);
-    return()=>clearInterval(id);
-  },[loadData]);
-
-  // All scheduled times for this day (same logic as main app)
+  // All scheduled times — same logic as main app; admin hiding (max_spots=0) removes slot
   const baseTimes=isSat?SAT_TIMES:WD_TIMES;
   const extraTimes=Object.keys(classLimits).filter(t=>!baseTimes.includes(t));
   const allTimes=[...baseTimes,...extraTimes].sort().filter(t=>(classLimits[t]??MAX_SPOTS)>0);
+
+  // Class name for a slot: custom slot name → admin day name → default day name
+  function getClassName(time){
+    return slotNames[time]||dowNames[dayOfWeek]||"";
+  }
 
   async function toggleCheckIn(bk){
     if(busy[bk.id])return;
     setBusy(p=>({...p,[bk.id]:true}));
     const newVal=!bk.checked_in;
-    const ok=await sbPatch("bookings",`id=eq.${bk.id}`,{
-      checked_in:newVal,
-      checked_in_at:newVal?Date.now():null
-    });
+    const ok=await sbPatch("bookings",`id=eq.${bk.id}`,{checked_in:newVal,checked_in_at:newVal?Date.now():null});
     if(ok){
       setBookings(prev=>prev.map(b=>b.id===bk.id?{...b,checked_in:newVal,checked_in_at:newVal?Date.now():null}:b));
       showToast(newVal?`${bk.name} checked in ✓`:`${bk.name} undone`);
-    }else{
-      showToast("Error — try again");
-    }
+    }else{showToast("Error — try again");}
     setBusy(p=>({...p,[bk.id]:false}));
   }
 
+  function showToast(msg){setToast({show:true,msg});setTimeout(()=>setToast({show:false,msg:""}),2200);}
+
   function changeDay(delta){
     let next=addDays(selDate,delta);
-    if(next.getDay()===0)next=addDays(next,delta>0?1:-1); // skip Sunday
-    setSelDate(next);
-    setExpandedSlot(null);
+    if(next.getDay()===0)next=addDays(next,delta>0?1:-1);
+    setSelDate(next);setExpandedSlot(null);
   }
 
   const DAY_NAMES=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -206,17 +203,15 @@ function App(){
 
   return React.createElement("div",{className:"app"},
 
-    // ── Hero header ──────────────────────────────────────────────────────────
+    // ── Hero ─────────────────────────────────────────────────────────────────
     React.createElement("div",{className:"hero"},
       React.createElement("div",{className:"hero-circle"},
         React.createElement("img",{
           src:"https://raw.githubusercontent.com/lamontteam365/team365-booking/main/icon-192.png",
-          onError:e=>{e.target.style.display="none";},
-          alt:"Team 365"
+          onError:e=>{e.target.style.display="none";},alt:"Team 365"
         })
       ),
-      React.createElement("div",{className:"hero-sub"},"LAMONT"),
-      React.createElement("div",{className:"hero-title"},"TEAM 365"),
+      React.createElement("div",{className:"hero-name"},"LAMONT TEAM 365"),
       React.createElement("div",{className:"hero-tag"},"EVERYDAY. ALL YEAR ROUND."),
       React.createElement("div",{className:"hero-badge"},"CHECK IN KIOSK")
     ),
@@ -225,12 +220,8 @@ function App(){
     React.createElement("div",{className:"day-nav"},
       React.createElement("button",{className:"day-arrow",onClick:()=>changeDay(-1)},"‹"),
       React.createElement("div",{className:"day-label"},
-        React.createElement("div",{className:"day-label-main"},
-          isTodaySel?"TODAY":DAY_NAMES[selDate.getDay()].toUpperCase()
-        ),
-        React.createElement("div",{className:"day-label-sub"},
-          `${selDate.getDate()} ${MONTHS[selDate.getMonth()]} ${selDate.getFullYear()}`
-        )
+        React.createElement("div",{className:"day-label-main"},isTodaySel?"TODAY":DAY_NAMES[selDate.getDay()].toUpperCase()),
+        React.createElement("div",{className:"day-label-sub"},`${selDate.getDate()} ${MONTHS[selDate.getMonth()]} ${selDate.getFullYear()}`)
       ),
       React.createElement("button",{className:"day-arrow",onClick:()=>changeDay(1)},"›")
     ),
@@ -241,9 +232,7 @@ function App(){
 
     // ── Class cards ──────────────────────────────────────────────────────────
     loading
-      ?React.createElement("div",{className:"cls-wrap"},
-          React.createElement("div",{className:"no-classes"},"LOADING...")
-        )
+      ?React.createElement("div",{className:"cls-wrap"},React.createElement("div",{className:"no-classes"},"LOADING..."))
       :React.createElement("div",{className:"cls-wrap"},
           allTimes.length===0
             ?React.createElement("div",{className:"no-classes"},"NO CLASSES SCHEDULED")
@@ -253,7 +242,7 @@ function App(){
                 const maxSp=classLimits[time]||MAX_SPOTS;
                 const checkedCount=list.filter(b=>b.checked_in).length;
                 const isExpanded=expandedSlot===time;
-                const slotName=slotNames[time];
+                const className=getClassName(time);
 
                 return React.createElement("div",{key:time},
                   React.createElement("div",{
@@ -262,18 +251,14 @@ function App(){
                   },
                     React.createElement("div",{style:{display:"flex",flexDirection:"column",minWidth:72}},
                       React.createElement("div",{className:"c-time"},fmt12(time)),
-                      slotName&&React.createElement("div",{className:"c-slot-name"},slotName)
+                      className&&React.createElement("div",{className:"c-class-name"},className)
                     ),
                     React.createElement("div",{className:"c-mid"},
                       React.createElement("div",{className:"c-bars"},
-                        Array.from({length:maxSp}).map((_,i)=>
-                          React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}` })
-                        )
+                        Array.from({length:maxSp}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}` }))
                       ),
                       React.createElement("div",{className:"c-sub"},
-                        taken===0
-                          ?"No bookings yet"
-                          :`${checkedCount} of ${taken} checked in`
+                        taken===0?"No bookings yet":`${checkedCount} of ${taken} checked in`
                       )
                     ),
                     React.createElement("div",{className:"c-chevron"},"▾")
@@ -282,36 +267,41 @@ function App(){
                   isExpanded&&React.createElement("div",{className:"members-panel"},
                     list.length===0
                       ?React.createElement("div",{className:"members-panel-empty"},"NO BOOKINGS FOR THIS CLASS")
-                      :list.map(bk=>
-                          React.createElement("div",{
+                      :list.map(bk=>React.createElement("div",{
                             key:bk.id,
                             className:`member-row${bk.checked_in?" checked":""}`
                           },
-                            React.createElement("div",{style:{display:"flex",alignItems:"center"}},
-                              bk.checked_in&&React.createElement("span",{className:"checkin-tick"},"✓"),
-                              React.createElement("div",{className:"member-info"},
-                                React.createElement("div",{className:"member-name"},bk.name),
-                                bk.checked_in&&bk.checked_in_at&&React.createElement("div",{className:"member-checkin-time"},
-                                  `Checked in ${new Date(bk.checked_in_at).getHours()}:${String(new Date(bk.checked_in_at).getMinutes()).padStart(2,"0")}`
-                                )
+                          React.createElement("div",{style:{display:"flex",alignItems:"center"}},
+                            bk.checked_in&&React.createElement("span",{className:"checkin-tick"},"✓"),
+                            React.createElement("div",{className:"member-info"},
+                              React.createElement("div",{className:"member-name"},bk.name),
+                              bk.checked_in&&bk.checked_in_at&&React.createElement("div",{className:"member-checkin-time"},
+                                `Checked in ${new Date(bk.checked_in_at).getHours()}:${String(new Date(bk.checked_in_at).getMinutes()).padStart(2,"0")}`
                               )
-                            ),
-                            React.createElement("button",{
-                              className:`checkin-btn ${bk.checked_in?"undo":"do"}`,
-                              onClick:()=>toggleCheckIn(bk),
-                              disabled:!!busy[bk.id]
-                            },busy[bk.id]?"...":bk.checked_in?"Undo":"Check In")
-                          )
-                        )
+                            )
+                          ),
+                          React.createElement("button",{
+                            className:`checkin-btn ${bk.checked_in?"undo":"do"}`,
+                            onClick:()=>toggleCheckIn(bk),
+                            disabled:!!busy[bk.id]
+                          },busy[bk.id]?"...":bk.checked_in?"Undo":"Check In")
+                        ))
                   )
                 );
               })
         ),
 
-    // ── Refresh bar ──────────────────────────────────────────────────────────
-    React.createElement("div",{className:"refresh-bar"},
-      React.createElement("div",{className:"refresh-lbl"},`LAST UPDATED ${refreshStr}`),
-      React.createElement("button",{className:"refresh-btn",onClick:loadData},"REFRESH")
+    // ── Footer ───────────────────────────────────────────────────────────────
+    React.createElement("div",{className:"kiosk-footer"},
+      React.createElement("div",{className:"footer-tagline"},"COMMITMENT. CONSISTENCY. DETERMINATION."),
+      React.createElement("div",{className:"footer-powered"},
+        "POWERED BY ",
+        React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener"},"WWW.LAMONTCOLLECTIVE.COM")
+      ),
+      React.createElement("div",{className:"refresh-row"},
+        React.createElement("div",{className:"refresh-lbl"},`LAST UPDATED ${refreshStr}`),
+        React.createElement("button",{className:"refresh-btn",onClick:loadData},"REFRESH")
+      )
     ),
 
     React.createElement("div",{className:`toast${toast.show?" show":""}`},toast.msg)
