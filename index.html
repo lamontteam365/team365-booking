@@ -2165,16 +2165,33 @@ function ProgressTab({session,isAdmin,showToast}){
   async function savePB(exerciseId){
     if(!session||!pbDraft.weight_kg)return;
     setSavingPB(true);
+    const newWeight=parseFloat(pbDraft.weight_kg);
+    const newDate=pbDraft.achieved_date||toDS(new Date());
     const existing=myPBs[exerciseId];
-    const data={email:session.email,exercise_id:exerciseId,weight_kg:parseFloat(pbDraft.weight_kg),achieved_date:pbDraft.achieved_date||toDS(new Date()),updated_at:Date.now()};
+    const data={email:session.email,exercise_id:exerciseId,weight_kg:newWeight,achieved_date:newDate,updated_at:Date.now()};
     let ok;
     if(existing){
       ok=await sbPatch("personal_bests",`email=eq.${encodeURIComponent(session.email)}&exercise_id=eq.${exerciseId}`,data);
     }else{
       ok=await sbPost("personal_bests",data);
     }
-    if(ok){setMyPBs(prev=>({...prev,[exerciseId]:{...existing,...data}}));showToast("Personal best saved ✓");setEditingPB(null);}
-    else showToast("Save failed — try again");
+    if(ok){
+      const updatedMyPBs={...myPBs,[exerciseId]:{...existing,...data}};
+      setMyPBs(updatedMyPBs);
+      // Auto-update community best if this is the new highest
+      const currentCB=communityBests[exerciseId];
+      if(!currentCB||!currentCB.weight_kg||newWeight>=parseFloat(currentCB.weight_kg)){
+        const cbData={exercise_id:exerciseId,weight_kg:newWeight,holder_name:session.name||session.email,holder_email:session.email,achieved_date:newDate,updated_at:Date.now()};
+        let cbOk;
+        if(currentCB){
+          cbOk=await sbPatch("community_bests",`exercise_id=eq.${exerciseId}`,cbData);
+        }else{
+          cbOk=await sbPost("community_bests",cbData);
+        }
+        if(cbOk){setCommunityBests(prev=>({...prev,[exerciseId]:{...currentCB,...cbData}}));}
+      }
+      showToast("Personal best saved ✓");setEditingPB(null);
+    }else showToast("Save failed — try again");
     setSavingPB(false);
   }
 
@@ -2375,9 +2392,6 @@ function ProgressTab({session,isAdmin,showToast}){
 
     // ── Community Personal Bests ─────────────────────────────────────────────
     React.createElement("div",{style:{...CS.sectionHdr,marginTop:8}},"COMMUNITY PERSONAL BESTS"),
-    React.createElement("div",{style:{fontSize:9,letterSpacing:"0.1em",color:"#555",fontWeight:400,marginBottom:12,marginTop:-8}},
-      "All-time gym records"
-    ),
     enabledExercises.length===0
       ?null
       :enabledExercises.map(ex=>{
