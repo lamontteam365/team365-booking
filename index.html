@@ -2118,6 +2118,323 @@ function CoachingView({showToast}){
         )
   );
 }
+// ── Progress Tab ──────────────────────────────────────────────────────────────
+function ProgressTab({session,isAdmin,showToast}){
+  const [exercises,setExercises]=useState([]);
+  const [myPBs,setMyPBs]=useState({});
+  const [communityBests,setCommunityBests]=useState({});
+  const [loading,setLoading]=useState(true);
+  const [editingPB,setEditingPB]=useState(null);
+  const [pbDraft,setPBDraft]=useState({weight_kg:"",achieved_date:""});
+  const [savingPB,setSavingPB]=useState(false);
+  const [editingCB,setEditingCB]=useState(null);
+  const [cbDraft,setCBDraft]=useState({weight_kg:"",holder_name:"",holder_email:"",achieved_date:""});
+  const [savingCB,setSavingCB]=useState(false);
+  const [showExAdmin,setShowExAdmin]=useState(false);
+  const [addingEx,setAddingEx]=useState(false);
+  const [newExName,setNewExName]=useState("");
+  const [savingNewEx,setSavingNewEx]=useState(false);
+  const [editingExName,setEditingExName]=useState(null);
+  const [exNameDraft,setExNameDraft]=useState("");
+
+  useEffect(()=>{loadAll();},[]);
+
+  async function loadAll(){
+    setLoading(true);
+    const[exData,pbData,cbData]=await Promise.all([
+      sbGet("exercises","order=order_num.asc,created_at.asc"),
+      session?sbGet("personal_bests",`email=eq.${encodeURIComponent(session.email)}&select=*`):Promise.resolve([]),
+      sbGet("community_bests","select=*")
+    ]);
+    setExercises(exData||[]);
+    const pbMap={};
+    (pbData||[]).forEach(pb=>{pbMap[pb.exercise_id]=pb;});
+    setMyPBs(pbMap);
+    const cbMap={};
+    (cbData||[]).forEach(cb=>{cbMap[cb.exercise_id]=cb;});
+    setCommunityBests(cbMap);
+    setLoading(false);
+  }
+
+  function fmtDate(dateStr){
+    if(!dateStr)return"—";
+    const d=new Date(dateStr+"T12:00:00");
+    return`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
+  async function savePB(exerciseId){
+    if(!session||!pbDraft.weight_kg)return;
+    setSavingPB(true);
+    const existing=myPBs[exerciseId];
+    const data={email:session.email,exercise_id:exerciseId,weight_kg:parseFloat(pbDraft.weight_kg),achieved_date:pbDraft.achieved_date||toDS(new Date()),updated_at:Date.now()};
+    let ok;
+    if(existing){
+      ok=await sbPatch("personal_bests",`email=eq.${encodeURIComponent(session.email)}&exercise_id=eq.${exerciseId}`,data);
+    }else{
+      ok=await sbPost("personal_bests",data);
+    }
+    if(ok){setMyPBs(prev=>({...prev,[exerciseId]:{...existing,...data}}));showToast("Personal best saved ✓");setEditingPB(null);}
+    else showToast("Save failed — try again");
+    setSavingPB(false);
+  }
+
+  async function saveCB(exerciseId){
+    if(!isAdmin)return;
+    setSavingCB(true);
+    const existing=communityBests[exerciseId];
+    const data={exercise_id:exerciseId,weight_kg:parseFloat(cbDraft.weight_kg)||null,holder_name:cbDraft.holder_name||"",holder_email:cbDraft.holder_email||"",achieved_date:cbDraft.achieved_date||"",updated_at:Date.now()};
+    let ok;
+    if(existing){
+      ok=await sbPatch("community_bests",`exercise_id=eq.${exerciseId}`,data);
+    }else{
+      ok=await sbPost("community_bests",data);
+    }
+    if(ok){setCommunityBests(prev=>({...prev,[exerciseId]:{...existing,...data}}));showToast("Community best updated ✓");setEditingCB(null);}
+    else showToast("Save failed — try again");
+    setSavingCB(false);
+  }
+
+  async function addExercise(){
+    const name=newExName.trim().toUpperCase();
+    if(!name)return;
+    setSavingNewEx(true);
+    const maxOrder=exercises.length>0?Math.max(...exercises.map(e=>e.order_num||0)):0;
+    const ok=await sbPost("exercises",{name,order_num:maxOrder+1,enabled:true,created_at:Date.now()});
+    if(ok){await loadAll();showToast(`${name} added ✓`);setNewExName("");setAddingEx(false);}
+    else showToast("Failed to add exercise");
+    setSavingNewEx(false);
+  }
+
+  async function toggleExercise(ex){
+    const newEnabled=!ex.enabled;
+    await sbPatch("exercises",`id=eq.${ex.id}`,{enabled:newEnabled});
+    setExercises(prev=>prev.map(e=>e.id===ex.id?{...e,enabled:newEnabled}:e));
+    showToast(newEnabled?`${ex.name} enabled`:`${ex.name} hidden`);
+  }
+
+  async function deleteExercise(ex){
+    if(!window.confirm(`Delete "${ex.name}"? All personal bests for this exercise will also be removed.`))return;
+    const ok=await sbDelete("exercises",`id=eq.${ex.id}`);
+    if(ok){
+      setExercises(prev=>prev.filter(e=>e.id!==ex.id));
+      setMyPBs(prev=>{const n={...prev};delete n[ex.id];return n;});
+      setCommunityBests(prev=>{const n={...prev};delete n[ex.id];return n;});
+      showToast(`${ex.name} deleted`);
+    }
+  }
+
+  async function moveExercise(ex,dir){
+    const idx=exercises.findIndex(e=>e.id===ex.id);
+    const swapIdx=idx+dir;
+    if(swapIdx<0||swapIdx>=exercises.length)return;
+    const swap=exercises[swapIdx];
+    const newList=[...exercises];
+    newList[idx]={...newList[idx],order_num:swap.order_num};
+    newList[swapIdx]={...newList[swapIdx],order_num:ex.order_num};
+    [newList[idx],newList[swapIdx]]=[newList[swapIdx],newList[idx]];
+    setExercises(newList);
+    await Promise.all([
+      sbPatch("exercises",`id=eq.${ex.id}`,{order_num:swap.order_num}),
+      sbPatch("exercises",`id=eq.${swap.id}`,{order_num:ex.order_num})
+    ]);
+  }
+
+  async function saveExName(ex){
+    const name=exNameDraft.trim().toUpperCase();
+    if(!name)return;
+    await sbPatch("exercises",`id=eq.${ex.id}`,{name});
+    setExercises(prev=>prev.map(e=>e.id===ex.id?{...e,name}:e));
+    showToast("Exercise name updated ✓");
+    setEditingExName(null);
+  }
+
+  const enabledExercises=exercises.filter(e=>e.enabled);
+  const CS={
+    card:{background:"#141414",border:"1px solid #666",borderRadius:7,padding:"12px 14px",marginBottom:7},
+    sectionHdr:{fontSize:9,letterSpacing:"0.22em",color:"#777",fontWeight:600,marginBottom:12,paddingTop:16,borderTop:"1px solid #141414"},
+    label:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,display:"block",marginBottom:4},
+    input:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:4,padding:"9px 10px",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:14,outline:"none",boxSizing:"border-box",marginBottom:8},
+    saveBtn:{background:"#fff",color:"#000",border:"none",borderRadius:3,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",padding:"9px 18px",cursor:"pointer"},
+    cancelBtn:{background:"none",border:"1px solid #333",color:"#666",borderRadius:3,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",padding:"9px 14px",cursor:"pointer"},
+    editBtn:{background:"none",border:"1px solid #333",color:"#888",fontSize:9,letterSpacing:"0.12em",padding:"4px 10px",borderRadius:3,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600,flexShrink:0,whiteSpace:"nowrap"}
+  };
+
+  if(loading)return React.createElement("div",{className:"sp-loading"},"LOADING...");
+
+  return React.createElement("div",{style:{padding:"14px 16px 80px",overflowY:"auto",flex:1}},
+    React.createElement("div",{className:"well-hdr",style:{padding:"0 0 4px"}},
+      React.createElement("div",{className:"well-title"},"PROGRESS")
+    ),
+
+    // ── Admin: Manage Exercises ──────────────────────────────────────────────
+    isAdmin&&React.createElement("div",{style:{marginBottom:16}},
+      React.createElement("button",{
+        onClick:()=>setShowExAdmin(v=>!v),
+        style:{width:"100%",background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:showExAdmin?"8px 8px 0 0":8,padding:"12px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",textAlign:"left"}
+      },
+        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.1em",color:"#aaa"}},"MANAGE EXERCISES"),
+        React.createElement("div",{style:{color:"#444",fontSize:13,transform:showExAdmin?"rotate(180deg)":"none",lineHeight:1,transition:"transform .2s"}},"▾")
+      ),
+      showExAdmin&&React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderTop:"none",borderRadius:"0 0 8px 8px",padding:"4px 14px 14px"}},
+        exercises.length===0&&React.createElement("div",{style:{fontSize:10,color:"#444",textAlign:"center",padding:"12px 0",letterSpacing:"0.14em"}},"NO EXERCISES YET"),
+        exercises.map((ex,i)=>
+          React.createElement("div",{key:ex.id,style:{display:"flex",alignItems:"center",gap:8,padding:"9px 0",borderBottom:"1px solid #111"}},
+            React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:1,flexShrink:0}},
+              React.createElement("button",{onClick:()=>moveExercise(ex,-1),disabled:i===0,style:{background:"none",border:"none",color:i===0?"#252525":"#555",cursor:i===0?"default":"pointer",fontSize:10,padding:"1px 5px",lineHeight:1}},"▲"),
+              React.createElement("button",{onClick:()=>moveExercise(ex,1),disabled:i===exercises.length-1,style:{background:"none",border:"none",color:i===exercises.length-1?"#252525":"#555",cursor:i===exercises.length-1?"default":"pointer",fontSize:10,padding:"1px 5px",lineHeight:1}},"▼")
+            ),
+            editingExName===ex.id
+              ?React.createElement("input",{
+                  value:exNameDraft,onChange:e=>setExNameDraft(e.target.value),
+                  onKeyDown:e=>{if(e.key==="Enter")saveExName(ex);if(e.key==="Escape")setEditingExName(null);},
+                  autoFocus:true,
+                  style:{flex:1,background:"#1a1a1a",border:"1px solid #444",borderRadius:4,padding:"5px 8px",color:"#fff",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.06em",outline:"none"}
+                })
+              :React.createElement("div",{style:{flex:1,fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.06em",color:ex.enabled?"#ccc":"#444"}},ex.name),
+            editingExName===ex.id
+              ?React.createElement(React.Fragment,null,
+                  React.createElement("button",{onClick:()=>saveExName(ex),style:{...CS.editBtn,color:"#fff",borderColor:"#555"}},"SAVE"),
+                  React.createElement("button",{onClick:()=>setEditingExName(null),style:CS.editBtn},"✕")
+                )
+              :React.createElement(React.Fragment,null,
+                  React.createElement("button",{onClick:()=>{setEditingExName(ex.id);setExNameDraft(ex.name);},style:CS.editBtn},"RENAME"),
+                  React.createElement("button",{
+                    onClick:()=>toggleExercise(ex),
+                    style:{...CS.editBtn,color:ex.enabled?"#4aaa66":"#555",borderColor:ex.enabled?"#2a4a2a":"#2a2a2a"}
+                  },ex.enabled?"ON":"OFF"),
+                  React.createElement("button",{onClick:()=>deleteExercise(ex),style:{...CS.editBtn,color:"#8a2515",borderColor:"#3a1208"}},"DELETE")
+                )
+          )
+        ),
+        !addingEx
+          ?React.createElement("button",{onClick:()=>setAddingEx(true),style:{width:"100%",background:"none",border:"1px dashed #2a2a2a",borderRadius:6,padding:"10px",color:"#555",fontSize:10,letterSpacing:"0.14em",cursor:"pointer",marginTop:10}},"+ ADD EXERCISE")
+          :React.createElement("div",{style:{marginTop:10}},
+              React.createElement("input",{
+                value:newExName,onChange:e=>setNewExName(e.target.value.toUpperCase()),
+                onKeyDown:e=>e.key==="Enter"&&addExercise(),
+                placeholder:"EXERCISE NAME",autoFocus:true,
+                style:{...CS.input,marginBottom:8}
+              }),
+              React.createElement("div",{style:{display:"flex",gap:8}},
+                React.createElement("button",{onClick:addExercise,disabled:savingNewEx||!newExName.trim(),style:CS.saveBtn},savingNewEx?"SAVING...":"ADD"),
+                React.createElement("button",{onClick:()=>{setAddingEx(false);setNewExName("");},style:CS.cancelBtn},"CANCEL")
+              )
+            )
+      )
+    ),
+
+    // ── My Personal Bests ────────────────────────────────────────────────────
+    React.createElement("div",{style:{...CS.sectionHdr,borderTop:"none",paddingTop:0,marginTop:0}},"MY PERSONAL BESTS"),
+    enabledExercises.length===0
+      ?React.createElement("div",{style:{fontSize:10,color:"#444",textAlign:"center",padding:"24px 0",letterSpacing:"0.14em"}},"NO EXERCISES AVAILABLE\nAsk your coach to add exercises.")
+      :enabledExercises.map(ex=>{
+          const pb=myPBs[ex.id];
+          const isEditing=editingPB===ex.id;
+          return React.createElement("div",{key:ex.id,style:{...CS.card,borderColor:pb?"#2a3a2a":"#666"}},
+            isEditing
+              ?React.createElement("div",null,
+                  React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.08em",color:"#fff",marginBottom:12}},ex.name),
+                  React.createElement("label",{style:CS.label},"PERSONAL BEST (KG)"),
+                  React.createElement("input",{
+                    type:"number",step:"0.5",min:"0",
+                    value:pbDraft.weight_kg,onChange:e=>setPBDraft(p=>({...p,weight_kg:e.target.value})),
+                    placeholder:"0.0",autoFocus:true,
+                    style:{...CS.input,colorScheme:"dark"}
+                  }),
+                  React.createElement("label",{style:CS.label},"DATE ACHIEVED"),
+                  React.createElement("input",{
+                    type:"date",
+                    value:pbDraft.achieved_date,onChange:e=>setPBDraft(p=>({...p,achieved_date:e.target.value})),
+                    max:toDS(new Date()),
+                    style:{...CS.input,colorScheme:"dark"}
+                  }),
+                  React.createElement("div",{style:{display:"flex",gap:8,marginTop:4}},
+                    React.createElement("button",{onClick:()=>savePB(ex.id),disabled:savingPB||!pbDraft.weight_kg,style:CS.saveBtn},savingPB?"SAVING...":"SAVE"),
+                    React.createElement("button",{onClick:()=>setEditingPB(null),style:CS.cancelBtn},"CANCEL")
+                  )
+                )
+              :React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
+                  React.createElement("div",{style:{flex:1,minWidth:0}},
+                    React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",marginBottom:pb?4:0}},ex.name),
+                    pb
+                      ?React.createElement("div",null,
+                          React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8}},
+                            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#4aaa66",lineHeight:1}},`${pb.weight_kg}kg`),
+                            React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.08em"}},fmtDate(pb.achieved_date))
+                          )
+                        )
+                      :React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",marginTop:2}},"NOT RECORDED YET")
+                  ),
+                  React.createElement("button",{
+                    onClick:()=>{setPBDraft({weight_kg:pb?.weight_kg||"",achieved_date:pb?.achieved_date||toDS(new Date())});setEditingPB(ex.id);},
+                    style:CS.editBtn
+                  },pb?"EDIT":"ADD")
+                )
+          );
+        }),
+
+    // ── Community Personal Bests ─────────────────────────────────────────────
+    React.createElement("div",{style:{...CS.sectionHdr,marginTop:8}},"COMMUNITY PERSONAL BESTS"),
+    React.createElement("div",{style:{fontSize:9,letterSpacing:"0.1em",color:"#555",fontWeight:400,marginBottom:12,marginTop:-8}},
+      "All-time gym records"
+    ),
+    enabledExercises.length===0
+      ?null
+      :enabledExercises.map(ex=>{
+          const cb=communityBests[ex.id];
+          const isEditing=isAdmin&&editingCB===ex.id;
+          return React.createElement("div",{key:ex.id,style:{...CS.card,borderColor:cb&&cb.weight_kg?"#1a2a3a":"#1e1e1e"}},
+            isEditing
+              ?React.createElement("div",null,
+                  React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.08em",color:"#fff",marginBottom:12}},ex.name),
+                  React.createElement("label",{style:CS.label},"COMMUNITY RECORD (KG)"),
+                  React.createElement("input",{
+                    type:"number",step:"0.5",min:"0",
+                    value:cbDraft.weight_kg,onChange:e=>setCBDraft(p=>({...p,weight_kg:e.target.value})),
+                    placeholder:"0.0",autoFocus:true,
+                    style:{...CS.input,colorScheme:"dark"}
+                  }),
+                  React.createElement("label",{style:CS.label},"RECORD HOLDER"),
+                  React.createElement("input",{
+                    type:"text",
+                    value:cbDraft.holder_name,onChange:e=>setCBDraft(p=>({...p,holder_name:e.target.value})),
+                    placeholder:"Member name",
+                    style:CS.input
+                  }),
+                  React.createElement("label",{style:CS.label},"DATE ACHIEVED"),
+                  React.createElement("input",{
+                    type:"date",
+                    value:cbDraft.achieved_date,onChange:e=>setCBDraft(p=>({...p,achieved_date:e.target.value})),
+                    style:{...CS.input,colorScheme:"dark"}
+                  }),
+                  React.createElement("div",{style:{display:"flex",gap:8,marginTop:4}},
+                    React.createElement("button",{onClick:()=>saveCB(ex.id),disabled:savingCB,style:CS.saveBtn},savingCB?"SAVING...":"SAVE"),
+                    React.createElement("button",{onClick:()=>setEditingCB(null),style:CS.cancelBtn},"CANCEL")
+                  )
+                )
+              :React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
+                  React.createElement("div",{style:{flex:1,minWidth:0}},
+                    React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",marginBottom:cb&&cb.weight_kg?4:0}},ex.name),
+                    cb&&cb.weight_kg
+                      ?React.createElement("div",null,
+                          React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8}},
+                            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#1d9bf0",lineHeight:1}},`${cb.weight_kg}kg`),
+                            React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.08em"}},fmtDate(cb.achieved_date))
+                          ),
+                          cb.holder_name&&React.createElement("div",{style:{fontSize:10,color:"#888",letterSpacing:"0.08em",marginTop:2}},"🏆 "+cb.holder_name)
+                        )
+                      :React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",marginTop:2}},"NO RECORD SET")
+                  ),
+                  isAdmin&&React.createElement("button",{
+                    onClick:()=>{setCBDraft({weight_kg:cb?.weight_kg||"",holder_name:cb?.holder_name||"",holder_email:cb?.holder_email||"",achieved_date:cb?.achieved_date||toDS(new Date())});setEditingCB(ex.id);},
+                    style:{...CS.editBtn,color:"#1d9bf0",borderColor:"#1a2a3a"}
+                  },cb&&cb.weight_kg?"EDIT":"SET")
+                )
+          );
+        })
+  );
+}
+
 // ── Strength Program Tab ──────────────────────────────────────────────────────
 function getNZDate(){
   try{return new Date(new Date().toLocaleString("en-US",{timeZone:"Pacific/Auckland"}));}
@@ -2530,7 +2847,7 @@ function App(){
     const data=await sbGet("bookings",`date_key=in.(${keys.join(",")})&select=email,name,date_key,time,session_type`);
     setBookings(data||[]);
   }
-  const TAB_ORDER=["community","my","book","strength",...(wellnessEnabled?["wellness"]:[]),...(isAdmin?["admin"]:[])];
+  const TAB_ORDER=["community","my","book","strength","progress",...(wellnessEnabled?["wellness"]:[]),...(isAdmin?["admin"]:[])];
   function handleTouchStart(e){touchStartX.current=e.touches[0].clientX;touchStartY.current=e.touches[0].clientY;}
   function handleTouchEnd(e){
     if(touchStartX.current===null)return;
@@ -2759,7 +3076,7 @@ function App(){
     React.createElement("div",{style:{marginTop:120,textAlign:"center"}},
       React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION."),
       React.createElement("div",{style:{marginTop:2,paddingBottom:20,fontSize:"7px",letterSpacing:"0.06em",color:"#333"}},
-        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"WWW.LAMONTCOLLECTIVE.COM")
+        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"[WWW.LAMONTCOLLECTIVE.COM](https://WWW.LAMONTCOLLECTIVE.COM)")
       )
     )
   );
@@ -2797,6 +3114,7 @@ function App(){
         React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="my"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="my"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="my"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="my"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("my")},"MY BOOKINGS"),
         React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="book"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="book"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="book"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="book"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("book")},"CLASSES"),
         React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="strength"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="strength"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="strength"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="strength"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("strength")},"STRENGTH"),
+        React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="progress"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="progress"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="progress"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="progress"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("progress")},"PROGRESS"),
         wellnessEnabled&&React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="wellness"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="wellness"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="wellness"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="wellness"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("wellness")},"WELLNESS"),
         isAdmin&&React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="admin"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="admin"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="admin"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="admin"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("admin")},"ADMIN")
       )
@@ -2964,6 +3282,7 @@ function App(){
     tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
     tab==="wellness"&&wellnessEnabled&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin,memberData}),
     tab==="strength"&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast,bookings,memberData})),
+    tab==="progress"&&React.createElement(ProgressTab,{session,isAdmin,showToast}),
     tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,dowNames,saveDowName,slotNames,saveSlotName}),
     React.createElement("div",{className:"tab-bar"},
       React.createElement("button",{className:`tab-btn${tab==="community"?" ta":""}`,style:{position:"relative"},onClick:()=>{setTab("community");lsSet("t365-last-read",Date.now());}},
@@ -2973,13 +3292,14 @@ function App(){
       React.createElement("button",{className:`tab-btn${tab==="my"?" ta":""}`,onClick:()=>setTab("my")},"MY BOOKINGS"),
       React.createElement("button",{className:`tab-btn${tab==="book"?" ta":""}`,onClick:()=>setTab("book")},"CLASSES"),
       React.createElement("button",{className:`tab-btn${tab==="strength"?" ta":""}`,onClick:()=>setTab("strength")},"STRENGTH"),
+      React.createElement("button",{className:`tab-btn${tab==="progress"?" ta":""}`,onClick:()=>setTab("progress")},"PROGRESS"),
       wellnessEnabled&&React.createElement("button",{className:`tab-btn${tab==="wellness"?" ta":""}`,onClick:()=>setTab("wellness")},"WELLNESS"),
       isAdmin&&React.createElement("button",{className:`tab-btn${tab==="admin"?" ta":""}`,onClick:()=>setTab("admin")},"ADMIN")
     ),
     React.createElement("div",{style:{textAlign:"center"}},
       React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION."),
       React.createElement("div",{style:{marginTop:2,paddingBottom:20,fontSize:"7px",letterSpacing:"0.06em",color:"#333"}},
-        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"WWW.LAMONTCOLLECTIVE.COM")
+        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"[WWW.LAMONTCOLLECTIVE.COM](https://WWW.LAMONTCOLLECTIVE.COM)")
       )
     ),
     React.createElement("div",{className:`toast${toast.show?" show":""}`},toast.msg),
