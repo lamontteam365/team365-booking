@@ -3218,8 +3218,30 @@ function App(){
       )
     ),
     tab==="my"&&React.createElement("div",{className:"my-wrap"},
-      React.createElement("div",{className:"my-hdr"},"MY UPCOMING BOOKINGS"),
-      React.createElement("div",{className:"day-hdr",style:{marginBottom:10}},React.createElement("span",null,"CLASSES")),
+      React.createElement("div",{className:"my-hdr"},"MY BOOKINGS"),
+
+      // ── Stats row ──────────────────────────────────────────────────────────
+      React.createElement("div",{className:"adm-stats-row",style:{marginBottom:18}},
+        React.createElement("div",{className:"adm-stat"},
+          React.createElement("div",{className:"adm-stat-num"},
+            session?bookings.filter(b=>b.email===session.email).length:0
+          ),
+          React.createElement("div",{className:"adm-stat-lbl"},"CLASSES BOOKED")
+        ),
+        React.createElement("div",{className:"adm-stat"},
+          React.createElement("div",{className:"adm-stat-num"},
+            session?bookings.filter(b=>b.email===session.email&&b.checked_in).length:0
+          ),
+          React.createElement("div",{className:"adm-stat-lbl"},"CLASSES ATTENDED")
+        ),
+        React.createElement("div",{className:"adm-stat"},
+          React.createElement("div",{className:"adm-stat-num"},myUpcoming.length),
+          React.createElement("div",{className:"adm-stat-lbl"},"UPCOMING")
+        )
+      ),
+
+      // ── Upcoming Classes ───────────────────────────────────────────────────
+      React.createElement("div",{className:"day-hdr",style:{marginBottom:10}},React.createElement("span",null,"UPCOMING CLASSES")),
       myUpcoming.length===0?React.createElement("div",{className:"no-bk",style:{padding:"16px 0 24px"}},"No upcoming classes")
       :(()=>{
         const nowD=new Date();nowD.setHours(0,0,0,0);
@@ -3240,7 +3262,7 @@ function App(){
           const clsName=getDayClassName(bk.date_key)||DAY_SESS[sessIdx].toUpperCase();
           items.push(React.createElement("div",{key:i,className:"my-item"},
             React.createElement("div",null,
-              React.createElement("div",{className:"my-date"},`${dayLbl.toUpperCase()} \u00B7 ${dateStr(d).toUpperCase()}`),
+              React.createElement("div",{className:"my-date"},`${dayLbl.toUpperCase()} · ${dateStr(d).toUpperCase()}`),
               React.createElement("div",{className:"my-time"},fmt12(bk.time)),
               React.createElement("div",{className:"my-sess"},clsName)
             ),
@@ -3249,6 +3271,8 @@ function App(){
         });
         return items;
       })(),
+
+      // ── Wellness (when enabled) ────────────────────────────────────────────
       wellnessEnabled&&React.createElement(React.Fragment,null,
         React.createElement("div",{className:"day-hdr",style:{marginTop:20,marginBottom:10}},React.createElement("span",null,"WELLNESS")),
         myWellness.length===0?React.createElement("div",{className:"no-bk",style:{padding:"16px 0 24px"}},"No upcoming wellness sessions")
@@ -3268,51 +3292,17 @@ function App(){
             }
             const d=new Date(bk.date_key+"T12:00:00");const dow=d.getDay();
             const dayLbl=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][dow];
-            items.push(React.createElement("div",{key:i,className:"my-item"},
+            items.push(React.createElement("div",{key:`w${i}`,className:"my-item"},
               React.createElement("div",null,
-                React.createElement("div",{className:"my-date"},`${dayLbl.toUpperCase()} \u00B7 ${dateStr(d).toUpperCase()}`),
+                React.createElement("div",{className:"my-date"},`${dayLbl.toUpperCase()} · ${dateStr(d).toUpperCase()}`),
                 React.createElement("div",{className:"my-time"},fmt12(bk.time)),
-                React.createElement("div",{className:"my-sess"},"SAUNA + COLD PLUNGE")
+                React.createElement("div",{className:"my-sess"},"WELLNESS")
               ),
-              React.createElement("button",{className:"my-x",onClick:async()=>{
-                setMyWellness(prev=>prev.filter(b=>!(b.date_key===bk.date_key&&b.time===bk.time)));
-                await sbDelete("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=eq.${bk.date_key}&time=eq.${encodeURIComponent(bk.time)}`);
-                showToast("Booking cancelled");
-              }},"Cancel")
+              React.createElement("button",{className:"my-x",onClick:()=>cancelWellness(bk.date_key,bk.time)},"Cancel")
             ));
           });
           return items;
         })()
-      ),
-      React.createElement("div",{style:{marginTop:28}},
-        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",marginBottom:12}},
-          React.createElement("button",{
-            onClick:()=>{const d=new Date(statMonth+"-15");d.setMonth(d.getMonth()-1);setStatMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);},
-            style:{background:"none",border:"none",color:"#555",fontSize:20,cursor:"pointer",padding:"0 14px",lineHeight:1}
-          },"‹"),
-          React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.2em",color:"#fff"}},
-            `${["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"][parseInt(statMonth.split("-")[1])-1]} ${statMonth.split("-")[0]}`
-          ),
-          React.createElement("button",{
-            onClick:()=>{const d=new Date(statMonth+"-15");d.setMonth(d.getMonth()+1);const next=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;if(next<=nowMY2)setStatMonth(next);},
-            style:{background:"none",border:"none",color:statMonth>=nowMY2?"#2a2a2a":"#555",fontSize:20,cursor:statMonth>=nowMY2?"default":"pointer",padding:"0 14px",lineHeight:1}
-          },"›")
-        ),
-        // FIX 7: Stats now use on-demand counts instead of filtering the full bookings array
-        React.createElement("div",{className:"adm-stats-row"},
-          React.createElement("div",{className:"adm-stat"},
-            React.createElement("div",{className:"adm-stat-num"},statCounts.classes),
-            React.createElement("div",{className:"adm-stat-lbl"},"CLASSES ATTENDED")
-          ),
-          wellnessEnabled&&React.createElement("div",{className:"adm-stat"},
-            React.createElement("div",{className:"adm-stat-num"},statCounts.wellness),
-            React.createElement("div",{className:"adm-stat-lbl"},"WELLNESS SESSIONS")
-          ),
-          React.createElement("div",{className:"adm-stat"},
-            React.createElement("div",{className:"adm-stat-num"},myUpcoming.length),
-            React.createElement("div",{className:"adm-stat-lbl"},"UPCOMING EVENTS")
-          )
-        )
       )
     ),
     tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
