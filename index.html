@@ -2217,6 +2217,34 @@ function ProgressTab({session,isAdmin,showToast}){
     setSavingPB(false);
   }
 
+  async function deletePB(exerciseId){
+    if(!session)return;
+    if(!window.confirm("Remove this personal best? This cannot be undone."))return;
+    setSavingPB(true);
+    const ok=await sbDelete("personal_bests",`email=eq.${encodeURIComponent(session.email)}&exercise_id=eq.${exerciseId}`);
+    if(ok){
+      setMyPBs(prev=>{const n={...prev};delete n[exerciseId];return n;});
+      // Recalculate community best now this PB is gone
+      const allPBs=await sbGet("personal_bests",`exercise_id=eq.${exerciseId}&select=email,weight_kg,achieved_date&order=weight_kg.desc&limit=1`);
+      const currentCB=communityBests[exerciseId];
+      if(allPBs&&allPBs.length>0){
+        const top=allPBs[0];
+        const holderRows=await sbGet("members",`email=eq.${encodeURIComponent(top.email)}&select=name`);
+        const holderName=(holderRows&&holderRows[0]&&holderRows[0].name)||top.email;
+        const cbData={exercise_id:exerciseId,weight_kg:parseFloat(top.weight_kg),holder_name:holderName,holder_email:top.email,achieved_date:top.achieved_date||"",updated_at:Date.now()};
+        if(currentCB){await sbPatch("community_bests",`exercise_id=eq.${exerciseId}`,cbData);}
+        else{await sbPost("community_bests",cbData);}
+        setCommunityBests(prev=>({...prev,[exerciseId]:{...currentCB,...cbData}}));
+      }else if(currentCB&&currentCB.holder_email===session.email){
+        // This member was the only record holder — clear community best
+        await sbDelete("community_bests",`exercise_id=eq.${exerciseId}`);
+        setCommunityBests(prev=>{const n={...prev};delete n[exerciseId];return n;});
+      }
+      showToast("Personal best removed");setEditingPB(null);
+    }else showToast("Remove failed — try again");
+    setSavingPB(false);
+  }
+
   async function saveCB(exerciseId){
     if(!isAdmin)return;
     setSavingCB(true);
@@ -2369,7 +2397,7 @@ function ProgressTab({session,isAdmin,showToast}){
       :enabledExercises.map(ex=>{
           const pb=myPBs[ex.id];
           const isEditing=editingPB===ex.id;
-          return React.createElement("div",{key:ex.id,style:{...CS.card,borderColor:pb?"#2a3a2a":"#666"}},
+          return React.createElement("div",{key:ex.id,style:{...CS.card,borderColor:pb?"#1a2a3a":"#666"}},
             isEditing
               ?React.createElement("div",null,
                   React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.08em",color:"#fff",marginBottom:12}},ex.name),
@@ -2389,7 +2417,8 @@ function ProgressTab({session,isAdmin,showToast}){
                   }),
                   React.createElement("div",{style:{display:"flex",gap:8,marginTop:4}},
                     React.createElement("button",{onClick:()=>savePB(ex.id),disabled:savingPB||!pbDraft.weight_kg,style:CS.saveBtn},savingPB?"SAVING...":"SAVE"),
-                    React.createElement("button",{onClick:()=>setEditingPB(null),style:CS.cancelBtn},"CANCEL")
+                    React.createElement("button",{onClick:()=>setEditingPB(null),style:CS.cancelBtn},"CANCEL"),
+                    myPBs[ex.id]&&React.createElement("button",{onClick:()=>deletePB(ex.id),disabled:savingPB,style:{...CS.cancelBtn,color:"#e06040",borderColor:"#3a1a1a",marginLeft:"auto"}},"REMOVE")
                   )
                 )
               :React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
