@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<title>Team 365 · Check In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=Syncopate:wght@700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#080808;min-height:100vh;font-family:'DM Sans',sans-serif;color:#fff}
+.app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:#080808}
+
+/* Header */
+.hdr{padding:18px 20px 12px;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;justify-content:space-between}
+.hdr-logo{display:flex;flex-direction:column;line-height:1}
+.hdr-brand{font-family:'Syncopate',sans-serif;font-size:9px;color:#444;letter-spacing:0.18em;font-weight:700}
+.hdr-title{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:0.06em;color:#fff}
+.hdr-badge{font-size:8px;letter-spacing:0.18em;color:#1d9bf0;font-weight:600;background:#0a1a2a;border:1px solid #1d3a5a;border-radius:3px;padding:3px 8px}
+
+/* Day nav */
+.day-nav{display:flex;align-items:center;padding:14px 16px 0;gap:0}
+.day-arrow{background:none;border:none;color:#888;cursor:pointer;font-size:26px;padding:4px 12px;line-height:1;transition:color .15s;font-family:'DM Sans',sans-serif}
+.day-arrow:disabled{color:#2a2a2a;cursor:default}
+.day-arrow:not(:disabled):hover{color:#fff}
+.day-label{flex:1;text-align:center}
+.day-label-main{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.06em;color:#fff;line-height:1}
+.day-label-sub{font-size:8px;letter-spacing:0.2em;color:#555;font-weight:600;margin-top:2px}
+.today-btn{font-size:8px;letter-spacing:0.12em;color:#1d9bf0;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;padding:4px 8px}
+
+/* Classes list */
+.cls-wrap{flex:1;padding:14px 16px;display:flex;flex-direction:column;gap:7px;overflow-y:auto}
+.no-classes{text-align:center;padding:48px 0;font-size:11px;letter-spacing:0.16em;color:#444;line-height:2.4}
+
+/* Class card */
+.c-row{display:flex;align-items:center;gap:10px;padding:10px 13px;background:#141414;border:1px solid #666;border-radius:7px;transition:border-color .15s;cursor:pointer}
+.c-row:hover{border-color:#999}
+.c-row.expanded{border-color:#1d9bf0;border-bottom-left-radius:0;border-bottom-right-radius:0}
+.c-time{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.03em;color:#fff;min-width:72px}
+.c-slot-name{font-size:7px;letter-spacing:0.12em;color:#555;font-weight:600;margin-top:1px;font-family:'DM Sans',sans-serif}
+.c-mid{flex:1;display:flex;flex-direction:column;gap:5px}
+.c-bars{display:flex;gap:2px}
+.c-bar{flex:1;height:2px;border-radius:1px;background:#2a2a2a}
+.c-bar.ct{background:#fff}
+.c-sub{font-size:10px;letter-spacing:0.1em;color:#999;font-weight:500}
+.c-chevron{font-size:12px;color:#555;flex-shrink:0;transition:transform .2s}
+.c-row.expanded .c-chevron{transform:rotate(180deg)}
+
+/* Expanded member list */
+.members-panel{background:#141414;border:1px solid #1d9bf0;border-top:none;border-bottom-left-radius:7px;border-bottom-right-radius:7px;overflow:hidden;margin-top:-1px}
+.members-panel-empty{text-align:center;padding:18px;font-size:10px;letter-spacing:0.14em;color:#333;font-weight:500}
+.member-row{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid #0f0f0f}
+.member-row:last-child{border-bottom:none}
+.member-row.checked{background:#0a1a0e}
+.member-info{display:flex;flex-direction:column;gap:2px}
+.member-name{font-size:14px;color:#fff;font-weight:500;letter-spacing:0.02em}
+.member-checkin-time{font-size:9px;color:#4aaa66;letter-spacing:0.08em;margin-top:1px}
+.checkin-btn{font-size:9px;letter-spacing:0.1em;font-weight:600;font-family:'DM Sans',sans-serif;border:none;border-radius:4px;padding:7px 14px;cursor:pointer;transition:all .15s}
+.checkin-btn.do{background:#1d9bf0;color:#fff}
+.checkin-btn.do:hover{background:#1a8ad6}
+.checkin-btn.undo{background:#1a1a1a;color:#666;border:1px solid #2a2a2a}
+.checkin-btn.undo:hover{color:#e06040;border-color:#e06040}
+.checkin-tick{color:#4aaa66;font-size:16px;margin-right:6px;flex-shrink:0}
+
+/* Toast */
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#fff;color:#000;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.15em;padding:10px 22px;border-radius:3px;pointer-events:none;transition:opacity .3s;z-index:200;white-space:nowrap;opacity:0}
+.toast.show{opacity:1}
+
+/* Refresh */
+.refresh-bar{display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 16px;border-top:1px solid #111}
+.refresh-lbl{font-size:8px;letter-spacing:0.14em;color:#333;font-weight:500}
+.refresh-btn{font-size:8px;letter-spacing:0.1em;color:#1d9bf0;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+const { useState, useEffect, useRef, useCallback } = React;
+
+const SB_URL = "https://xczwmexavysvljmobbgv.supabase.co";
+const SB_KEY = "sb_publishable_tujGGhPRUimflq1-IFzuvA_Crw6knMO";
+const SB_HDR = {"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return=minimal"};
+
+async function sbGet(t,q=""){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
+async function sbPatch(t,q,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{method:"PATCH",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
+
+const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const DAY_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const DAY_SHORT=["MON","TUE","WED","THU","FRI","SAT"];
+
+function toDS(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
+function fmt12(t){if(!t)return"";const[h,m]=t.split(":").map(Number);const ampm=h<12?"AM":"PM";const h12=h===0?12:h>12?h-12:h;return`${h12}:${String(m).padStart(2,"0")} ${ampm}`;}
+function dateLabel(d){const dow=d.getDay();const days=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];return`${days[dow]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;}
+function isToday(d){const n=new Date();return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate();}
+
+// Only Mon–Sat valid class days
+function getValidDate(d){
+  const day=d.getDay(); // 0=Sun,6=Sat
+  if(day===0){const n=new Date(d);n.setDate(d.getDate()+1);return n;} // Sun → Mon
+  return d;
+}
+function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r;}
+
+function App(){
+  const today=getValidDate(new Date());
+  const [selDate,setSelDate]=useState(today);
+  const [bookings,setBookings]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [expandedSlot,setExpandedSlot]=useState(null);
+  const [busy,setBusy]=useState({});
+  const [toast,setToast]=useState({show:false,msg:""});
+  const [lastRefresh,setLastRefresh]=useState(new Date());
+  const [slotNames,setSlotNames]=useState({});
+  const [classLimits,setClassLimits]=useState({});
+
+  const selDK=toDS(selDate);
+
+  function showToast(msg){
+    setToast({show:true,msg});
+    setTimeout(()=>setToast({show:false,msg:""}),2200);
+  }
+
+  const loadData=useCallback(async()=>{
+    setLoading(true);
+    const dk=toDS(selDate);
+    const [bks, limits] = await Promise.all([
+      sbGet("bookings",`date_key=eq.${dk}&select=id,name,email,time,checked_in,checked_in_at&order=time.asc`),
+      sbGet("class_limits",`date_key=eq.${dk}&select=time_slot,max_spots,name`)
+    ]);
+    setBookings(bks||[]);
+    const sn={};const cl={};
+    (limits||[]).forEach(r=>{
+      cl[r.time_slot]=r.max_spots;
+      if(r.name)sn[r.time_slot]=r.name;
+    });
+    setClassLimits(cl);
+    setSlotNames(sn);
+    setLastRefresh(new Date());
+    setLoading(false);
+  },[selDate]);
+
+  useEffect(()=>{loadData();},[loadData]);
+
+  // Auto-refresh every 60 seconds
+  useEffect(()=>{
+    const id=setInterval(()=>loadData(),60000);
+    return()=>clearInterval(id);
+  },[loadData]);
+
+  // Group bookings by time slot, get unique times
+  const times=[...new Set(bookings.map(b=>b.time))].sort();
+
+  async function toggleCheckIn(bk){
+    const key=bk.id;
+    if(busy[key])return;
+    setBusy(p=>({...p,[key]:true}));
+    const newVal=!bk.checked_in;
+    const ok=await sbPatch("bookings",`id=eq.${bk.id}`,{
+      checked_in:newVal,
+      checked_in_at:newVal?Date.now():null
+    });
+    if(ok){
+      setBookings(prev=>prev.map(b=>b.id===bk.id?{...b,checked_in:newVal,checked_in_at:newVal?Date.now():null}:b));
+      showToast(newVal?`${bk.name} checked in ✓`:`${bk.name} undone`);
+    } else {
+      showToast("Error — try again");
+    }
+    setBusy(p=>({...p,[key]:false}));
+  }
+
+  function changeDay(delta){
+    let next=addDays(selDate,delta);
+    // Skip Sunday
+    if(next.getDay()===0)next=addDays(next,delta>0?1:-1);
+    setSelDate(next);
+    setExpandedSlot(null);
+  }
+
+  function goToday(){
+    setSelDate(today);
+    setExpandedSlot(null);
+  }
+
+  const isTodaySel=isToday(selDate);
+
+  const refreshStr=`${lastRefresh.getHours()}:${String(lastRefresh.getMinutes()).padStart(2,"0")}`;
+
+  return React.createElement("div",{className:"app"},
+    // Header
+    React.createElement("div",{className:"hdr"},
+      React.createElement("div",{className:"hdr-logo"},
+        React.createElement("div",{className:"hdr-brand"},"LAMONT"),
+        React.createElement("div",{className:"hdr-title"},"TEAM 365")
+      ),
+      React.createElement("div",{className:"hdr-badge"},"CHECK IN KIOSK")
+    ),
+
+    // Day navigation
+    React.createElement("div",{className:"day-nav"},
+      React.createElement("button",{className:"day-arrow",onClick:()=>changeDay(-1)},"‹"),
+      React.createElement("div",{className:"day-label"},
+        React.createElement("div",{className:"day-label-main"},
+          isTodaySel?"TODAY":DAY_SHORT[selDate.getDay()===0?0:selDate.getDay()-1]||""
+        ),
+        React.createElement("div",{className:"day-label-sub"},
+          `${selDate.getDate()} ${MONTHS[selDate.getMonth()]} ${selDate.getFullYear()}`
+        )
+      ),
+      React.createElement("button",{className:"day-arrow",onClick:()=>changeDay(1)},"›")
+    ),
+
+    // Today shortcut (only when not on today)
+    !isTodaySel&&React.createElement("div",{style:{textAlign:"center",padding:"4px 0 0"}},
+      React.createElement("button",{className:"today-btn",onClick:goToday},"← BACK TO TODAY")
+    ),
+
+    // Classes
+    loading
+      ?React.createElement("div",{className:"cls-wrap"},
+          React.createElement("div",{className:"no-classes"},"LOADING...")
+        )
+      :React.createElement("div",{className:"cls-wrap"},
+          times.length===0
+            ?React.createElement("div",{className:"no-classes"},"NO CLASSES SCHEDULED")
+            :times.map(time=>{
+                const list=bookings.filter(b=>b.time===time);
+                const taken=list.length;
+                const maxSp=classLimits[time]||10;
+                const checkedCount=list.filter(b=>b.checked_in).length;
+                const isExpanded=expandedSlot===time;
+                const slotName=slotNames[time];
+
+                return React.createElement("div",{key:time},
+                  // Card header
+                  React.createElement("div",{
+                    className:`c-row${isExpanded?" expanded":""}`,
+                    onClick:()=>setExpandedSlot(isExpanded?null:time)
+                  },
+                    React.createElement("div",{style:{display:"flex",flexDirection:"column",minWidth:72}},
+                      React.createElement("div",{className:"c-time"},fmt12(time)),
+                      slotName&&React.createElement("div",{className:"c-slot-name"},slotName)
+                    ),
+                    React.createElement("div",{className:"c-mid"},
+                      React.createElement("div",{className:"c-bars"},
+                        Array.from({length:maxSp}).map((_,i)=>
+                          React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}` })
+                        )
+                      ),
+                      React.createElement("div",{className:"c-sub"},
+                        taken===0?"No bookings":`${checkedCount}/${taken} checked in`
+                      )
+                    ),
+                    React.createElement("div",{className:"c-chevron"},"▾")
+                  ),
+
+                  // Expanded member list
+                  isExpanded&&React.createElement("div",{className:"members-panel"},
+                    list.length===0
+                      ?React.createElement("div",{className:"members-panel-empty"},"NO BOOKINGS FOR THIS CLASS")
+                      :list.map(bk=>
+                          React.createElement("div",{
+                            key:bk.id,
+                            className:`member-row${bk.checked_in?" checked":""}`
+                          },
+                            React.createElement("div",{style:{display:"flex",alignItems:"center"}},
+                              bk.checked_in&&React.createElement("span",{className:"checkin-tick"},"✓"),
+                              React.createElement("div",{className:"member-info"},
+                                React.createElement("div",{className:"member-name"},bk.name),
+                                bk.checked_in&&bk.checked_in_at&&React.createElement("div",{className:"member-checkin-time"},
+                                  `Checked in at ${new Date(bk.checked_in_at).getHours()}:${String(new Date(bk.checked_in_at).getMinutes()).padStart(2,"0")}`
+                                )
+                              )
+                            ),
+                            React.createElement("button",{
+                              className:`checkin-btn ${bk.checked_in?"undo":"do"}`,
+                              onClick:()=>toggleCheckIn(bk),
+                              disabled:!!busy[bk.id]
+                            },busy[bk.id]?"...":bk.checked_in?"Undo":"Check In")
+                          )
+                        )
+                  )
+                );
+              })
+        ),
+
+    // Refresh bar
+    React.createElement("div",{className:"refresh-bar"},
+      React.createElement("div",{className:"refresh-lbl"},`LAST UPDATED ${refreshStr}`),
+      React.createElement("button",{className:"refresh-btn",onClick:loadData},"REFRESH")
+    ),
+
+    // Toast
+    React.createElement("div",{className:`toast${toast.show?" show":""}`},toast.msg)
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
+</body>
+</html>
