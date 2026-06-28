@@ -2880,7 +2880,7 @@ function App(){
     const keys=[];const now=new Date();now.setHours(0,0,0,0);
     for(let i=0;i<28;i++){const d=addDays(now,i);if(d.getDay()!==0)keys.push(toDS(d));}
     if(!keys.length)return;
-    const data=await sbGet("bookings",`date_key=in.(${keys.join(",")})&select=email,name,date_key,time,session_type`);
+    const data=await sbGet("bookings",`date_key=in.(${keys.join(",")})&select=email,name,date_key,time,session_type,checked_in`);
     setBookings(data||[]);
   }
   const TAB_ORDER=["community","my","book","strength","progress",...(wellnessEnabled?["wellness"]:[]),...(isAdmin?["admin"]:[])];
