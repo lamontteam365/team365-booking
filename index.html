@@ -2141,17 +2141,36 @@ function ProgressTab({session,isAdmin,showToast}){
 
   async function loadAll(){
     setLoading(true);
-    const[exData,pbData,cbData]=await Promise.all([
+    const[exData,myPBData,cbData,allPBData]=await Promise.all([
       sbGet("exercises","order=order_num.asc,created_at.asc"),
       session?sbGet("personal_bests",`email=eq.${encodeURIComponent(session.email)}&select=*`):Promise.resolve([]),
-      sbGet("community_bests","select=*")
+      sbGet("community_bests","select=*"),
+      sbGet("personal_bests","select=email,exercise_id,weight_kg,achieved_date")
     ]);
     setExercises(exData||[]);
     const pbMap={};
-    (pbData||[]).forEach(pb=>{pbMap[pb.exercise_id]=pb;});
+    (myPBData||[]).forEach(pb=>{pbMap[pb.exercise_id]=pb;});
     setMyPBs(pbMap);
     const cbMap={};
     (cbData||[]).forEach(cb=>{cbMap[cb.exercise_id]=cb;});
+    // Find true highest PB per exercise across all members
+    const topPerEx={};
+    (allPBData||[]).forEach(r=>{
+      const w=parseFloat(r.weight_kg)||0;
+      if(!topPerEx[r.exercise_id]||w>parseFloat(topPerEx[r.exercise_id].weight_kg)){topPerEx[r.exercise_id]=r;}
+    });
+    // Sync community_bests: if DB is missing or lower than actual top, update
+    for(const[exId,top] of Object.entries(topPerEx)){
+      const stored=cbMap[exId];
+      if(!stored||!stored.weight_kg||parseFloat(top.weight_kg)>parseFloat(stored.weight_kg)){
+        const holderRows=await sbGet("members",`email=eq.${encodeURIComponent(top.email)}&select=name`);
+        const holderName=(holderRows&&holderRows[0]&&holderRows[0].name)||top.email;
+        const cbEntry={exercise_id:exId,weight_kg:parseFloat(top.weight_kg),holder_name:holderName,holder_email:top.email,achieved_date:top.achieved_date||"",updated_at:Date.now()};
+        if(stored){await sbPatch("community_bests",`exercise_id=eq.${exId}`,cbEntry);}
+        else{await sbPost("community_bests",cbEntry);}
+        cbMap[exId]=cbEntry;
+      }
+    }
     setCommunityBests(cbMap);
     setLoading(false);
   }
@@ -3093,7 +3112,7 @@ function App(){
     React.createElement("div",{style:{marginTop:120,textAlign:"center"}},
       React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION."),
       React.createElement("div",{style:{marginTop:2,paddingBottom:20,fontSize:"7px",letterSpacing:"0.06em",color:"#333"}},
-        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"[WWW.LAMONTCOLLECTIVE.COM](https://WWW.LAMONTCOLLECTIVE.COM)")
+        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"WWW.LAMONTCOLLECTIVE.COM")
       )
     )
   );
@@ -3316,7 +3335,7 @@ function App(){
     React.createElement("div",{style:{textAlign:"center"}},
       React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION."),
       React.createElement("div",{style:{marginTop:2,paddingBottom:20,fontSize:"7px",letterSpacing:"0.06em",color:"#333"}},
-        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"[WWW.LAMONTCOLLECTIVE.COM](https://WWW.LAMONTCOLLECTIVE.COM)")
+        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"WWW.LAMONTCOLLECTIVE.COM")
       )
     ),
     React.createElement("div",{className:`toast${toast.show?" show":""}`},toast.msg),
