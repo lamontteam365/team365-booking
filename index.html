@@ -155,7 +155,7 @@ html,body{background:#080808;min-height:100vh}
 .post-pin-btn.pinned{color:#888}
 .tab-bar{display:flex;border-top:1px solid #444;border-bottom:1px solid #444;margin-top:auto;background:#141414}
 .tab-btn{flex:1;padding:12px 2px;background:none;border:1px solid transparent;margin:-1px 0;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:8.5px;letter-spacing:0.12em;color:#777;font-weight:600;transition:color .15s;white-space:nowrap;position:relative}
-.tab-btn.ta{color:#fff;background:#1e1e1e;border:1px solid #fff;border-radius:4px}
+.tab-btn.ta{color:#fff;background:#1e1e1e;border:1px solid #fff}
 .tab-btn:hover:not(.ta){color:#bbb}
 .tab-dot{position:absolute;top:8px;right:calc(50% - 14px);width:7px;height:7px;background:#e06040;border-radius:50%;border:1px solid #080808}
 .post-reply-btn{background:none;border:none;color:#444;cursor:pointer;font-size:10px;font-family:'DM Sans',sans-serif;letter-spacing:0.06em;transition:color .15s;font-weight:500}
@@ -2478,14 +2478,13 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
           return React.createElement("div",{key:i,style:{...CS.card,borderColor:"#888"}},
             React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
               React.createElement("div",{style:{flex:1,minWidth:0}},
-                React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",marginBottom:2}},isFirstClass?"FIRST CLASS":"MILESTONE"),
-                e.label&&React.createElement("div",{style:{fontSize:9,color:"#888",letterSpacing:"0.08em",marginBottom:4}},e.label.toUpperCase()),
+                React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",marginBottom:4}},isFirstClass?"FIRST CLASS":"MILESTONE"),
                 React.createElement("div",null,
                   React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8,marginBottom:4}},
-                    React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:24,color:"#1d9bf0",lineHeight:1}},valueDisplay),
+                    React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:18,color:"#1d9bf0",lineHeight:1}},valueDisplay),
                     achievedDate&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.08em"}},fmtDate(achievedDate))
                   ),
-                  React.createElement("div",{style:{fontSize:10,letterSpacing:"0.08em",color:"#ffffff"}},session.name)
+                  e.label&&React.createElement("div",{style:{fontSize:10,letterSpacing:"0.08em",color:"#ffffff"}},e.label.toUpperCase())
                 )
               ),
               React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginLeft:8,flexShrink:0}},
@@ -2595,7 +2594,7 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
                     pb
                       ?React.createElement("div",null,
                           React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8}},
-                            React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:22,color:"#1d9bf0",lineHeight:1}},`${pb.weight_kg}kg`),
+                            React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:18,color:"#1d9bf0",lineHeight:1}},`${pb.weight_kg}kg`),
                             React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.08em"}},fmtDate(pb.achieved_date))
                           )
                         )
@@ -2653,7 +2652,7 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
                     cb&&cb.weight_kg
                       ?React.createElement("div",null,
                           React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8,marginBottom:4}},
-                            React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:24,color:"#1d9bf0",lineHeight:1}},`${cb.weight_kg}kg`),
+                            React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:18,color:"#1d9bf0",lineHeight:1}},`${cb.weight_kg}kg`),
                             React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.08em"}},fmtDate(cb.achieved_date))
                           ),
                           cb.holder_name&&React.createElement("div",{style:{fontSize:10,letterSpacing:"0.08em",color:"#ffffff"}},cb.holder_name)
