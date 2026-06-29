@@ -1131,10 +1131,6 @@ function MilestoneAdminPanel({milestoneConfig,saveMilestoneConfig,showToast}){
   const inputStyle={width:"100%",background:"#0a0a0a",border:"1px solid #888",borderRadius:5,color:"#fff",padding:"7px 10px",fontFamily:"'DM Sans',sans-serif",fontSize:13,boxSizing:"border-box"};
   const labelStyle={fontSize:9,color:"#888",letterSpacing:"0.1em",marginBottom:4};
 
-  // Preview at 50 classes attended
-  const previewAttended=50;
-  const previewEarned=specials.filter(s=>previewAttended>=parseInt(s.classes)).sort((a,b)=>a.classes-b.classes);
-
   return React.createElement(React.Fragment,null,
     React.createElement("div",{className:"adm-section-hdr",style:{marginTop:8}},"MILESTONE SETTINGS"),
 
@@ -1202,26 +1198,6 @@ function MilestoneAdminPanel({milestoneConfig,saveMilestoneConfig,showToast}){
           )
         :React.createElement("button",{onClick:()=>{setAddingSpecial(true);setEditingSpecialIdx(null);setSpecialDraft({classes:"",label:"",emoji:"🏆"});},style:{marginTop:specials.length>0?12:0,width:"100%",background:"none",border:"1px dashed #444",color:"#888",borderRadius:6,padding:"8px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.08em",cursor:"pointer"}},
             "+ ADD MILESTONE"
-          )
-    ),
-
-    // ── Live preview ──────────────────────────────────────────────────────────
-    React.createElement("div",{style:{background:"#141414",border:"1px solid #888",borderRadius:8,padding:"14px 16px",marginBottom:10}},
-      React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:"#aaa",letterSpacing:"0.1em",marginBottom:4}},"PREVIEW — AS SEEN BY MEMBER"),
-      React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.08em",marginBottom:10}},"EXAMPLE: MEMBER WITH "+previewAttended+" CLASSES ATTENDED"),
-      previewEarned.length===0
-        ?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.08em",padding:"10px 0",textAlign:"center",fontStyle:"italic"}},"No milestones would show at "+previewAttended+" classes")
-        :React.createElement(React.Fragment,null,
-            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:11,color:"#555",letterSpacing:"0.12em",marginBottom:6,borderBottom:"1px solid #1a1a1a",paddingBottom:6}},"MILESTONES"),
-            previewEarned.map((e,i)=>
-              React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",background:"#0f0d00",border:"1px solid #555",borderRadius:8,marginBottom:5}},
-                React.createElement("span",{style:{fontSize:22,lineHeight:1}},e.emoji||"🏆"),
-                React.createElement("div",null,
-                  React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:"#1d9bf0",letterSpacing:"0.06em",lineHeight:1}},e.classes+" CLASSES"),
-                  e.label&&React.createElement("div",{style:{fontSize:9,color:"#aaa",letterSpacing:"0.1em",marginTop:2}},e.label.toUpperCase())
-                )
-              )
-            )
           )
     )
   );
@@ -2274,6 +2250,8 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
   const [savingNewEx,setSavingNewEx]=useState(false);
   const [editingExName,setEditingExName]=useState(null);
   const [exNameDraft,setExNameDraft]=useState("");
+  const [holderPhotos,setHolderPhotos]=useState({});
+  const [showMilAdmin,setShowMilAdmin]=useState(false);
 
   useEffect(()=>{loadAll();},[]);
 
@@ -2310,6 +2288,14 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
       }
     }
     setCommunityBests(cbMap);
+    // Fetch profile photos for community best holders
+    const holderEmails=[...new Set(Object.values(cbMap).filter(c=>c.holder_email).map(c=>c.holder_email))];
+    if(holderEmails.length>0){
+      const photoData=await sbGet("members",`email=in.(${holderEmails.join(",")})&select=email,photo`);
+      const pMap={};
+      (photoData||[]).forEach(m=>{if(m.photo)pMap[m.email]=m.photo;});
+      setHolderPhotos(pMap);
+    }
     setLoading(false);
   }
 
@@ -2471,9 +2457,18 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
       React.createElement("div",{className:"well-title"},"PROGRESS")
     ),
 
-    // ── Admin: Manage Milestones ──────────────────────────────────────────────
+    // ── Admin: Milestone Settings ─────────────────────────────────────────────
     isAdmin&&React.createElement("div",{style:{marginBottom:16}},
-      React.createElement(MilestoneAdminPanel,{milestoneConfig,saveMilestoneConfig,showToast})
+      React.createElement("button",{
+        onClick:()=>setShowMilAdmin(v=>!v),
+        style:{width:"100%",background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:showMilAdmin?"8px 8px 0 0":8,padding:"12px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",textAlign:"left"}
+      },
+        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.1em",color:"#aaa"}},"MILESTONE SETTINGS"),
+        React.createElement("div",{style:{color:"#444",fontSize:13,transform:showMilAdmin?"rotate(180deg)":"none",lineHeight:1,transition:"transform .2s"}},"▾")
+      ),
+      showMilAdmin&&React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderTop:"none",borderRadius:"0 0 8px 8px",padding:"4px 14px 14px"}},
+        React.createElement(MilestoneAdminPanel,{milestoneConfig,saveMilestoneConfig,showToast})
+      )
     ),
 
     // ── Milestones ───────────────────────────────────────────────────────────
@@ -2483,10 +2478,12 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
       const attended=checkedInSorted.length;
       if(attended===0)return null;
       const specials=((milestoneConfig||{}).specials||[]).filter(s=>attended>=parseInt(s.classes));
-      if(specials.length===0)return null;
       const sorted=[...specials].sort((a,b)=>a.classes-b.classes);
       return React.createElement("div",{style:{marginBottom:4}},
-        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.1em",color:"#fff",marginBottom:8}},React.createElement("span",null,"MILESTONES")),
+        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.1em",color:"#fff",marginBottom:8,display:"flex",alignItems:"center",gap:10}},
+          React.createElement("span",null,"MILESTONES"),
+          specials.length===0&&React.createElement("span",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:11,color:"#888",letterSpacing:"0.04em",textTransform:"none"}},"Well done — you've completed your first class! 🎉")
+        ),
         React.createElement(React.Fragment,null,...sorted.map((e,i)=>{
           const achievedDate=checkedInSorted[parseInt(e.classes)-1]?.date_key||null;
           return React.createElement("div",{key:i,style:{...CS.card,borderColor:"#888"}},
@@ -2512,7 +2509,7 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
         onClick:()=>setShowExAdmin(v=>!v),
         style:{width:"100%",background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:showExAdmin?"8px 8px 0 0":8,padding:"12px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",textAlign:"left"}
       },
-        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.1em",color:"#aaa"}},"MANAGE EXERCISES"),
+        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.1em",color:"#aaa"}},"EXERCISE SETTINGS"),
         React.createElement("div",{style:{color:"#444",fontSize:13,transform:showExAdmin?"rotate(180deg)":"none",lineHeight:1,transition:"transform .2s"}},"▾")
       ),
       showExAdmin&&React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderTop:"none",borderRadius:"0 0 8px 8px",padding:"4px 14px 14px"}},
@@ -2654,16 +2651,19 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
                   React.createElement("div",{style:{flex:1,minWidth:0}},
                     React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",marginBottom:4}},ex.name),
                     cb&&cb.weight_kg
-                      ?React.createElement("div",null,
-                          cb.holder_name&&React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",marginBottom:4}},cb.holder_name),
-                          React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8}},
-                            React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:24,color:"#1d9bf0",lineHeight:1}},`${cb.weight_kg}kg`),
-                            React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.08em"}},fmtDate(cb.achieved_date))
-                          )
+                      ?React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8}},
+                          React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:24,color:"#1d9bf0",lineHeight:1}},`${cb.weight_kg}kg`),
+                          React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.08em"}},fmtDate(cb.achieved_date))
                         )
                       :React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",marginTop:2}},"NO RECORD SET")
                   ),
-                  cb&&cb.weight_kg&&React.createElement("span",{style:{fontSize:22,lineHeight:1,marginRight:8}},"🏆"),
+                  cb&&cb.weight_kg&&React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4,marginLeft:8}},
+                    holderPhotos[cb.holder_email]
+                      ?React.createElement("img",{src:holderPhotos[cb.holder_email],style:{width:44,height:44,borderRadius:"50%",objectFit:"cover",border:"2px solid #333"},alt:""})
+                      :React.createElement("div",{style:{width:44,height:44,borderRadius:"50%",background:"#1e1e1e",border:"2px solid #333",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:"#aaa",flexShrink:0}},cb.holder_name?(cb.holder_name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()):"?"),
+                    cb.holder_name&&React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:9,color:"#888",letterSpacing:"0.04em",textAlign:"center",maxWidth:50,lineHeight:1.2}},cb.holder_name.split(" ")[0].toUpperCase()),
+                    React.createElement("span",{style:{fontSize:16,lineHeight:1}},"🏆")
+                  ),
                   isAdmin&&React.createElement("button",{
                     onClick:()=>{setCBDraft({weight_kg:cb?.weight_kg||"",holder_name:cb?.holder_name||"",holder_email:cb?.holder_email||"",achieved_date:cb?.achieved_date||toDS(new Date())});setEditingCB(ex.id);},
                     style:{...CS.editBtn,color:"#1d9bf0"}
