@@ -2663,8 +2663,7 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
                         )
                       :React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",marginTop:2}},"NO RECORD SET")
                   ),
-                  cb&&cb.weight_kg&&React.createElement("span",{style:{fontSize:22,lineHeight:1,marginRight:8}},"🏆")
-                  ),
+                  cb&&cb.weight_kg&&React.createElement("span",{style:{fontSize:22,lineHeight:1,marginRight:8}},"🏆"),
                   isAdmin&&React.createElement("button",{
                     onClick:()=>{setCBDraft({weight_kg:cb?.weight_kg||"",holder_name:cb?.holder_name||"",holder_email:cb?.holder_email||"",achieved_date:cb?.achieved_date||toDS(new Date())});setEditingCB(ex.id);},
                     style:{...CS.editBtn,color:"#1d9bf0"}
