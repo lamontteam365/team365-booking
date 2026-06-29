@@ -6,18 +6,37 @@
 <meta name="theme-color" content="#080808"/>
 <title>Team 365 · Book a Session</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Syncopate:wght@700&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{background:#080808;min-height:100vh}
 body{font-family:'DM Sans',sans-serif;color:#fff}
 #root{min-height:100vh}
+/* ── Hero header ── */
+.hero{
+  background-image:linear-gradient(rgba(8,8,8,0.72),rgba(8,8,8,0.88)),
+    url("https://raw.githubusercontent.com/lamontteam365/team365-booking/main/images/671a9a90865c3673c895b473f6d1feed.jpg");
+  background-size:cover;
+  background-position:center top;
+  padding:36px 28px 28px;
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  border-bottom:1px solid #1a1a1a;
+}
+.hero-circle{
+  width:88px;height:88px;border-radius:50%;
+  border:2px solid #333;background:#111;
+  overflow:hidden;margin-bottom:16px;
+  display:flex;align-items:center;justify-content:center;
+}
+.hero-circle img{width:100%;height:100%;object-fit:cover;}
+.hero-name{font-family:'Syncopate',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.18em;color:#fff;margin-bottom:5px}
+.hero-tag{font-family:'Syncopate',sans-serif;font-size:6px;font-weight:700;letter-spacing:0.2em;color:#555;margin-bottom:14px}
+.hero-badge{font-size:9px;letter-spacing:0.18em;color:#1d9bf0;background:#0a1a2a;border:1px solid #1d3a5a;border-radius:3px;padding:4px 14px}
+/* ── Widget ── */
 .widget{background:#080808;min-height:100vh;max-width:480px;margin:0 auto;display:flex;flex-direction:column;padding:28px 16px 48px}
-/* Logo */
-.w-logo-area{text-align:center;margin-bottom:28px}
-.w-logo-sub{font-size:9px;letter-spacing:0.22em;color:#777;font-weight:500}
-.w-logo{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:0.15em;color:#fff}
-.w-logo-tag{font-size:7px;letter-spacing:0.2em;color:#444;margin-top:1px}
 /* Step heading */
 .w-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.12em;color:#fff;margin-bottom:5px}
 .w-sub{font-size:10px;letter-spacing:0.14em;color:#555;font-weight:600;margin-bottom:22px}
@@ -125,12 +144,19 @@ body{font-family:'DM Sans',sans-serif;color:#fff}
 </style>
 </head>
 <body>
+<div class="hero">
+  <div class="hero-circle">
+    <img src="https://raw.githubusercontent.com/lamontteam365/team365-booking/main/icon-192.png" onerror="this.style.display='none'" alt="Team 365"/>
+  </div>
+  <div class="hero-name">LAMONT TEAM 365</div>
+  <div class="hero-tag">EVERYDAY. ALL YEAR ROUND.</div>
+  <div class="hero-badge">BOOK A SESSION</div>
+</div>
 <div id="root"><div class="loading" style="padding:80px 0">LOADING<div class="load-bar"><div class="load-fill"></div></div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script>
 const{useState,useEffect}=React;
-
 // ── Config ─────────────────────────────────────────────────────────────────────
 const SB_URL="https://xczwmexavysvljmobbgv.supabase.co";
 const SB_KEY="sb_publishable_tujGGhPRUimflq1-IFzuvA_Crw6knMO";
@@ -144,7 +170,6 @@ const DAY_SHORT=["Mon","Tue","Wed","Thu","Fri","Sat"];
 const DAY_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const DAY_SESS=["Rise Up","Strength Lower","Ascend","Strength Upper","Elevate","Summit"];
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const mondayOf=d=>{const x=new Date(d);x.setHours(0,0,0,0);const day=x.getDay();x.setDate(x.getDate()-(day===0?6:day-1));return x;};
 const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
@@ -160,11 +185,9 @@ function isPastSlot(date,time){
   const now=new Date();const[h,m]=time.split(":").map(Number);
   return(h*60+m+30)<(now.getHours()*60+now.getMinutes());
 }
-
 // ── Supabase ───────────────────────────────────────────────────────────────────
 async function sbGet(t,q=""){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
 async function sbPost(t,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
-
 // ── Notify admin ───────────────────────────────────────────────────────────────
 async function notifyAdmin(data){
   try{
@@ -179,7 +202,6 @@ async function notifyGuest(data){
     await fetch(APPS_URL+"?"+p.toString(),{method:"GET",mode:"no-cors"});
   }catch(e){console.log("guest email:",e);}
 }
-
 // ── Widget ─────────────────────────────────────────────────────────────────────
 function BookingWidget(){
   const[step,setStep]=useState(0);           // 0=type 1=datetime 2=details 3=confirm
@@ -196,12 +218,10 @@ function BookingWidget(){
   const[err,setErr]=useState("");
   const[conf,setConf]=useState(null);
   const[classLimits,setClassLimits]=useState([]);
-
   const weekDates=Array.from({length:6},(_,i)=>addDays(weekStart,i));
   const isThisWeek=toDS(weekStart)===toDS(mondayOf(new Date()));
   const selDate=weekDates[selDay];
   const selDK=toDS(selDate);
-
   // Load availability when type or week changes
   useEffect(()=>{
     if(!bookType)return;
@@ -213,24 +233,19 @@ function BookingWidget(){
       sbGet("wellness_bookings",`date_key=in.(${keys.join(",")})&select=date_key,time`).then(d=>{setWellBks(d||[]);setLoading(false);});
     }
   },[bookType,weekStart]);
-
   useEffect(()=>{setSelTime(null);},[selDay]);
-
   // Fetch dynamic class limits when week changes
   useEffect(()=>{
     const keys=weekDates.map(toDS).filter(Boolean);
     sbGet("class_limits",`date_key=in.(${keys.join(",")})&select=time_slot,date_key,max_spots`).then(d=>setClassLimits(d||[]));
   },[weekStart]);
-
   function getMaxSpots(time,dateKey){
     const cl=classLimits.find(l=>l.time_slot===time&&l.date_key===dateKey);
     return cl?cl.max_spots:MAX_SPOTS;
   }
-
   // Availability calcs
   const classSlots=t=>{const maxSp=getMaxSpots(t,selDK);const taken=bookings.filter(b=>b.date_key===selDK&&b.time===t).length;return{taken,left:maxSp-taken,maxSp};};
   const wellSlotTaken=t=>wellBks.some(b=>b.date_key===selDK&&b.time===t);
-
   async function handleBook(){
     const nm=form.name.trim(),em=form.email.trim().toLowerCase(),ph=form.phone.trim();
     if(!nm){setErr("Please enter your full name.");return;}
@@ -250,33 +265,20 @@ function BookingWidget(){
     setConf({ref,nm,em,type:bookType,dateLabel,timeLabel,sessName});
     setStep(3);setBusy(false);
   }
-
   function reset(){
     setStep(0);setBookType(null);setSelTime(null);
     setSelDay(()=>{const d=new Date().getDay();return d===0?0:Math.min(d-1,5);});
     setWeekStart(getWeekStart());setForm({name:"",email:"",phone:""});
     setPayment("gym");setConf(null);setErr("");
   }
-
   function goType(type){setBookType(type);setStep(1);}
   function goBack(){setStep(s=>s-1);setSelTime(null);setErr("");}
-
   const curTimes=bookType==="class"?(selDate.getDay()===6?SAT_TIMES:WD_TIMES):WELL_TIMES;
-
   return React.createElement("div",{className:"widget"},
-
-    // ── Logo ────────────────────────────────────────────────────────────────────
-    React.createElement("div",{className:"w-logo-area"},
-      React.createElement("div",{className:"w-logo-sub"},"LAMONT"),
-      React.createElement("div",{className:"w-logo"},"TEAM 365"),
-      React.createElement("div",{className:"w-logo-tag"},"EVERYDAY. ALL YEAR ROUND.")
-    ),
-
     // ── Progress dots (steps 1–2) ───────────────────────────────────────────────
     step>0&&step<3&&React.createElement("div",{className:"w-dots"},
       [0,1,2].map(i=>React.createElement("div",{key:i,className:`w-dot${step-1===i?" active":step-1>i?" done":""}`}))
     ),
-
     // ── STEP 0: Choose type ─────────────────────────────────────────────────────
     step===0&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"w-title"},"BOOK A SESSION"),
@@ -299,12 +301,10 @@ function BookingWidget(){
         " for full access to your bookings, profile and history."
       )
     ),
-
     // ── STEP 1: Day + Time ──────────────────────────────────────────────────────
     step===1&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"w-title"},bookType==="class"?"PICK A CLASS":"PICK A SESSION"),
       React.createElement("div",{className:"w-sub"},bookType==="class"?"SELECT DAY AND TIME":"SELECT YOUR PREFERRED SLOT"),
-
       // Week nav
       React.createElement("div",{className:"week-nav"},
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"‹"),
@@ -313,7 +313,6 @@ function BookingWidget(){
         ),
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,7))},"›")
       ),
-
       // Day strip
       React.createElement("div",{className:"day-strip"},
         weekDates.map((d,i)=>React.createElement("button",{key:i,className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}`,onClick:()=>setSelDay(i)},
@@ -321,7 +320,6 @@ function BookingWidget(){
           React.createElement("div",{className:"d-num"},d.getDate())
         ))
       ),
-
       // Session label (classes only)
       bookType==="class"&&React.createElement("div",{className:"sess-lbl"},
         `${DAY_LONG[selDay].toUpperCase()} · ${curTimes.length} CLASSES`
@@ -329,7 +327,6 @@ function BookingWidget(){
       bookType==="wellness"&&React.createElement("div",{className:"sess-lbl"},
         `${DAY_LONG[selDay].toUpperCase()} · ${curTimes.length} SESSIONS`
       ),
-
       // Slots
       loading
         ?React.createElement("div",{className:"loading"},"CHECKING AVAILABILITY…",React.createElement("div",{className:"load-bar"},React.createElement("div",{className:"load-fill"})))
@@ -373,16 +370,13 @@ function BookingWidget(){
             }
           })
         ),
-
       React.createElement("button",{className:"btn-p",onClick:()=>setStep(2),disabled:!selTime},"CONTINUE"),
       React.createElement("button",{className:"btn-g",onClick:goBack},"BACK")
     ),
-
     // ── STEP 2: Guest details ───────────────────────────────────────────────────
     step===2&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"w-title"},"YOUR DETAILS"),
       React.createElement("div",{className:"w-sub"},"ALMOST THERE — JUST A FEW MORE DETAILS"),
-
       // Booking summary
       React.createElement("div",{className:"summ"},
         React.createElement("div",{className:"summ-row"},
@@ -398,7 +392,6 @@ function BookingWidget(){
           React.createElement("div",{className:"summ-val"},fmt12(selTime))
         )
       ),
-
       // Form
       React.createElement("div",{className:"form-group"},
         React.createElement("label",{className:"fl"},"FULL NAME · REQUIRED"),
@@ -412,7 +405,6 @@ function BookingWidget(){
         React.createElement("label",{className:"fl"},"PHONE · OPTIONAL"),
         React.createElement("input",{className:"fi",type:"tel",placeholder:"Mobile number",value:form.phone,autoComplete:"tel",onChange:e=>setForm(f=>({...f,phone:e.target.value}))})
       ),
-
       // Payment method
       React.createElement("div",{className:"pay-lbl"},"PAYMENT METHOD"),
       React.createElement("div",{className:"pay-opts"},
@@ -427,18 +419,16 @@ function BookingWidget(){
           React.createElement("div",{className:"pay-hint"},"Coming soon")
         )
       ),
-
       err&&React.createElement("div",{className:"err-msg"},err),
       React.createElement("button",{className:"btn-p",onClick:handleBook,disabled:busy||!form.name.trim()||!form.email.trim()},busy?"CONFIRMING…":"CONFIRM BOOKING"),
       React.createElement("button",{className:"btn-g",onClick:goBack},"BACK")
     ),
-
     // ── STEP 3: Confirmation ────────────────────────────────────────────────────
     step===3&&conf&&React.createElement("div",{className:"conf"},
       React.createElement("div",{className:"conf-icon"},"✅"),
       React.createElement("div",{className:"conf-title"},"BOOKING CONFIRMED"),
       React.createElement("div",{className:"conf-msg"},
-        `You’re booked in for ${conf.timeLabel} on ${conf.dateLabel}${conf.sessName?` — ${conf.sessName}`:""}.\nWe’ve sent a confirmation to ${conf.em}.`
+        `You're booked in for ${conf.timeLabel} on ${conf.dateLabel}${conf.sessName?` — ${conf.sessName}`:""}.\nWe've sent a confirmation to ${conf.em}.`
       ),
       React.createElement("div",{className:"ref-box"},
         React.createElement("div",{className:"ref-lbl"},"YOUR BOOKING REFERENCE"),
@@ -464,11 +454,9 @@ function BookingWidget(){
       ),
       React.createElement("button",{className:"btn-p",onClick:reset},"BOOK ANOTHER SESSION")
     ),
-
     React.createElement("div",{className:"w-foot"},"COMMITMENT. CONSISTENCY. DETERMINATION.")
   );
 }
-
 ReactDOM.render(React.createElement(BookingWidget),document.getElementById("root"));
 </script>
 </body>
