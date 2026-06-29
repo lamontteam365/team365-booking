@@ -154,8 +154,8 @@ html,body{background:#080808;min-height:100vh}
 .post-pin-btn:hover{color:#aaa}
 .post-pin-btn.pinned{color:#888}
 .tab-bar{display:flex;border-top:1px solid #444;border-bottom:1px solid #444;margin-top:auto;background:#141414}
-.tab-btn{flex:1;padding:12px 2px;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:8.5px;letter-spacing:0.12em;color:#777;font-weight:600;transition:color .15s;white-space:nowrap;position:relative}
-.tab-btn.ta{color:#fff;background:#1e1e1e;border-radius:4px}
+.tab-btn{flex:1;padding:12px 2px;background:none;border:1px solid transparent;margin:-1px 0;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:8.5px;letter-spacing:0.12em;color:#777;font-weight:600;transition:color .15s;white-space:nowrap;position:relative}
+.tab-btn.ta{color:#fff;background:#1e1e1e;border:1px solid #fff;border-radius:4px}
 .tab-btn:hover:not(.ta){color:#bbb}
 .tab-dot{position:absolute;top:8px;right:calc(50% - 14px);width:7px;height:7px;background:#e06040;border-radius:50%;border:1px solid #080808}
 .post-reply-btn{background:none;border:none;color:#444;cursor:pointer;font-size:10px;font-family:'DM Sans',sans-serif;letter-spacing:0.06em;transition:color .15s;font-weight:500}
@@ -2478,14 +2478,14 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
           return React.createElement("div",{key:i,style:{...CS.card,borderColor:"#888"}},
             React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
               React.createElement("div",{style:{flex:1,minWidth:0}},
-                React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",marginBottom:4}},isFirstClass?"FIRST CLASS":"MILESTONE"),
+                React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",marginBottom:2}},isFirstClass?"FIRST CLASS":"MILESTONE"),
+                e.label&&React.createElement("div",{style:{fontSize:9,color:"#888",letterSpacing:"0.08em",marginBottom:4}},e.label.toUpperCase()),
                 React.createElement("div",null,
                   React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8,marginBottom:4}},
                     React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:24,color:"#1d9bf0",lineHeight:1}},valueDisplay),
                     achievedDate&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.08em"}},fmtDate(achievedDate))
                   ),
-                  React.createElement("div",{style:{fontSize:10,letterSpacing:"0.08em",color:"#ffffff"}},session.name),
-                  e.label&&React.createElement("div",{style:{fontSize:9,color:"#888",letterSpacing:"0.08em",marginTop:3}},e.label.toUpperCase())
+                  React.createElement("div",{style:{fontSize:10,letterSpacing:"0.08em",color:"#ffffff"}},session.name)
                 )
               ),
               React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginLeft:8,flexShrink:0}},
@@ -3356,16 +3356,16 @@ function App(){
         )
       ),
       React.createElement("div",{style:{display:"flex",marginTop:10,marginLeft:-20,marginRight:-20,width:"calc(100% + 40px)",borderTop:"1px solid #444",borderBottom:"1px solid #444",background:"#141414"},onClick:e=>e.stopPropagation()},
-        React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="community"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="community"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="community"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="community"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap",position:"relative"},onClick:()=>{setTab("community");lsSet("t365-last-read",Date.now());}},
+        React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="community"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="community"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="community"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="community"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="community"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="community"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap",position:"relative"},onClick:()=>{setTab("community");lsSet("t365-last-read",Date.now());}},
           "NOTICE BOARD",
           unreadPosts>0&&tab!=="community"&&React.createElement("div",{className:"tab-dot"})
         ),
-        React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="my"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="my"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="my"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="my"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("my")},"MY BOOKINGS"),
-        React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="book"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="book"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="book"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="book"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("book")},"CLASSES"),
-        React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="strength"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="strength"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="strength"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="strength"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("strength")},"STRENGTH"),
-        React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="progress"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="progress"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="progress"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="progress"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("progress")},"PROGRESS"),
-        wellnessEnabled&&React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="wellness"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="wellness"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="wellness"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="wellness"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("wellness")},"WELLNESS"),
-        isAdmin&&React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="admin"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="admin"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="admin"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="admin"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("admin")},"ADMIN")
+        React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="my"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="my"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="my"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="my"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="my"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="my"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("my")},"MY BOOKINGS"),
+        React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="book"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="book"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="book"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="book"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="book"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="book"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("book")},"CLASSES"),
+        React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="strength"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="strength"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="strength"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="strength"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="strength"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="strength"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("strength")},"STRENGTH"),
+        React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="progress"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="progress"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="progress"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="progress"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="progress"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="progress"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("progress")},"PROGRESS"),
+        wellnessEnabled&&React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="wellness"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="wellness"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="wellness"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="wellness"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="wellness"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="wellness"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("wellness")},"WELLNESS"),
+        isAdmin&&React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="admin"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="admin"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="admin"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="admin"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="admin"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="admin"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("admin")},"ADMIN")
       )
     ),
     tab==="book"&&React.createElement(React.Fragment,null,
@@ -3569,25 +3569,4 @@ function App(){
         React.createElement("label",{className:"fl"},"CONTACT PHONE"),
         React.createElement("input",{className:"fi",type:"tel",placeholder:"Emergency contact phone",value:profForm.emergencyPhone||"",onChange:e=>{setProfForm(f=>({...f,emergencyPhone:e.target.value}));setProfErr("");setProfOk("");}}),
         React.createElement("div",{className:"prof-section"},"HEALTH INFORMATION"),
-        React.createElement("a",{href:"/register.html",style:{display:"block",width:"100%",background:"transparent",color:"#aaa",border:"1px solid #2a2a2a",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.18em",padding:"15px",borderRadius:3,textAlign:"center",textDecoration:"none",marginBottom:4}},"UPDATE HEALTH SCREENING FORM"),
-        React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.06em",marginBottom:4}},"Update your medical conditions, fitness level, or consents"),
-        React.createElement("div",{className:"prof-section"},"CHANGE PASSWORD"),
-        React.createElement("label",{className:"fl"},"NEW PASSWORD"),
-        React.createElement("input",{className:"fi",type:"password",placeholder:"Leave blank to keep current",value:profForm.newPw,onChange:e=>{setProfForm(f=>({...f,newPw:e.target.value}));setProfErr("");setProfOk("");}}),
-        React.createElement("label",{className:"fl"},"CONFIRM PASSWORD"),
-        React.createElement("input",{className:"fi",type:"password",placeholder:"Repeat new password",value:profForm.confirmPw,onChange:e=>{setProfForm(f=>({...f,confirmPw:e.target.value}));setProfErr("");setProfOk("");}}),
-        profErr&&React.createElement("div",{className:"prof-err"},profErr),
-        profOk&&React.createElement("div",{className:"prof-ok"},profOk),
-        React.createElement("button",{className:"prof-save",onClick:handleSaveProf,disabled:profBusy},profBusy?"SAVING...":"SAVE CHANGES"),
-        React.createElement("button",{className:"prof-logout",onClick:handleLogout},"LOG OUT")
-      )
-    )
-  );
-}
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
-if("serviceWorker"in navigator){
-  window.addEventListener("load",()=>{navigator.serviceWorker.register("/sw.js");});
-}
-</script>
-</body>
-</html>
+        React.createElement("a",{href:"/register.html",style:{display:"block",width:"100%",background:"transparent",color:"#a
