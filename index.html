@@ -2651,7 +2651,7 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
           return React.createElement("div",{key:i,style:{...CS.card,borderColor:"#888"}},
             React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
               React.createElement("div",{style:{flex:1,minWidth:0}},
-                React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",marginBottom:4,display:"flex",alignItems:"center",gap:4}},isFirstClass?"FIRST CLASS":"MILESTONE",React.createElement("span",{style:{fontSize:12,lineHeight:1}},"🏆")),
+                React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",marginBottom:4,display:"flex",alignItems:"center",gap:4}},isFirstClass?"FIRST CLASS":"MILESTONE",React.createElement("span",{style:{fontSize:12,lineHeight:1}},e.emoji||"🏆")),
                 React.createElement("div",null,
                   React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8,marginBottom:4}},
                     React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:18,color:"#1d9bf0",lineHeight:1}},valueDisplay),
