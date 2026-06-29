@@ -7,17 +7,37 @@
 <meta name="theme-color" content="#080808"/>
 <title>Team 365 · Member Registration</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Syncopate:wght@700&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{background:#080808;min-height:100vh}
 body{font-family:'DM Sans',sans-serif;color:#fff;padding:0}
+/* ── Hero header ── */
+.hero{
+  background-image:linear-gradient(rgba(8,8,8,0.72),rgba(8,8,8,0.88)),
+    url("https://raw.githubusercontent.com/lamontteam365/team365-booking/main/images/671a9a90865c3673c895b473f6d1feed.jpg");
+  background-size:cover;
+  background-position:center top;
+  padding:36px 28px 28px;
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  border-bottom:1px solid #1a1a1a;
+}
+.hero-circle{
+  width:88px;height:88px;border-radius:50%;
+  border:2px solid #333;background:#111;
+  overflow:hidden;margin-bottom:16px;
+  display:flex;align-items:center;justify-content:center;
+}
+.hero-circle img{width:100%;height:100%;object-fit:cover;}
+.hero-name{font-family:'Syncopate',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.18em;color:#fff;margin-bottom:5px}
+.hero-tag{font-family:'Syncopate',sans-serif;font-size:6px;font-weight:700;letter-spacing:0.2em;color:#555;margin-bottom:14px}
+.hero-badge{font-size:9px;letter-spacing:0.18em;color:#1d9bf0;background:#0a1a2a;border:1px solid #1d3a5a;border-radius:3px;padding:4px 14px}
+/* ── Form wrap ── */
 .wrap{max-width:480px;margin:0 auto;padding:32px 20px 60px}
-.logo-area{text-align:center;margin-bottom:36px}
-.logo-sub{font-size:9px;letter-spacing:0.22em;color:#777;font-weight:500;margin-bottom:4px}
-.logo{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:0.18em;color:#fff}
-.logo-tag{font-size:8px;letter-spacing:0.2em;color:#444;margin-top:3px}
 .form-title{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:0.12em;color:#fff;margin-bottom:6px}
 .form-sub{font-size:11px;letter-spacing:0.1em;color:#777;font-weight:500;margin-bottom:32px}
 .part-header{margin:36px 0 24px}
@@ -130,16 +150,13 @@ const SB_URL="https://xczwmexavysvljmobbgv.supabase.co";
 const SB_KEY="sb_publishable_tujGGhPRUimflq1-IFzuvA_Crw6knMO";
 const SB_HDR={"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return=minimal"};
 const APPS_SCRIPT_URL="https://script.google.com/macros/s/AKfycbz5cruljVDUVScwm14Sj1z5_6cRrNK9cgOaq7Tx8P9LfPAEI7p_kx8ZJnaghF_SmU46Fw/exec";
-
 async function sbGet(t,q=""){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
 async function sbPost(t,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
 async function sbPatch(t,q,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{method:"PATCH",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
-
 const hashPw=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)^s.charCodeAt(i);return(h>>>0).toString(36);};
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const today=()=>{const d=new Date();return`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;};
 function addMonths(date,months){const d=new Date(date);d.setMonth(d.getMonth()+months);return d;}
-
 // PLANS loaded dynamically from Supabase membership_tiers table
 let PLANS=[];
 async function loadPlans(){
@@ -155,7 +172,6 @@ async function loadPlans(){
     }));
   }
 }
-
 const PARQ=[
   "Has your doctor ever said that you have a heart condition and that you should only do physical activity recommended by a doctor?",
   "Do you feel pain in your chest when you do physical activity?",
@@ -165,7 +181,6 @@ const PARQ=[
   "Is your doctor currently prescribing drugs for your blood pressure or heart condition?",
   "Do you know of any other reason why you should not do physical activity? (e.g. pregnancy, recent surgery, diabetes)"
 ];
-
 // State
 let parqAnswers={};
 let fitnessLevel="";
@@ -175,18 +190,19 @@ let selectedPlan=null;
 let selectedTerm=null;
 let selectedFreq=null;
 let sigCanvas,sigCtx,drawing=false,hasSig=false;
-
 function renderForm(){
   document.getElementById("root").innerHTML=`
-  <div class="wrap">
-    <div class="logo-area">
-      <div class="logo-sub">LAMONT</div>
-      <div class="logo">TEAM 365</div>
-      <div class="logo-tag">EVERYDAY. ALL YEAR ROUND.</div>
+  <div class="hero">
+    <div class="hero-circle">
+      <img src="https://raw.githubusercontent.com/lamontteam365/team365-booking/main/icon-192.png" onerror="this.style.display='none'" alt="Team 365"/>
     </div>
+    <div class="hero-name">LAMONT TEAM 365</div>
+    <div class="hero-tag">EVERYDAY. ALL YEAR ROUND.</div>
+    <div class="hero-badge">MEMBER REGISTRATION</div>
+  </div>
+  <div class="wrap">
     <div class="form-title">Member Registration</div>
     <div class="form-sub">COMPLETE BOTH SECTIONS TO JOIN</div>
-
     <!-- ══════════════════════════════ -->
     <!-- PART 1: HEALTH SCREENING      -->
     <!-- ══════════════════════════════ -->
@@ -195,7 +211,6 @@ function renderForm(){
       <div class="part-title">Health Screening</div>
       <div class="part-sub">COMPLETE BEFORE YOUR FIRST SESSION</div>
     </div>
-
     <div class="section">
       <div class="section-label">PERSONAL DETAILS</div>
       <div class="row2">
@@ -215,7 +230,6 @@ function renderForm(){
       <label class="fl" for="email">EMAIL ADDRESS</label>
       <input class="fi" id="email" type="email" placeholder="your@email.com" autocomplete="email"/>
     </div>
-
     <div class="section">
       <div class="section-label">EMERGENCY CONTACT</div>
       <div class="row2">
@@ -229,7 +243,6 @@ function renderForm(){
         </div>
       </div>
     </div>
-
     <div class="section">
       <div class="section-label">HEALTH SCREENING · PAR-Q</div>
       ${PARQ.map((q,i)=>`
@@ -241,7 +254,6 @@ function renderForm(){
           </div>
         </div>`).join("")}
     </div>
-
     <div class="section">
       <div class="section-label">MEDICAL INFORMATION</div>
       <label class="fl" for="med-cond">INJURIES OR CONDITIONS WE SHOULD KNOW ABOUT</label>
@@ -249,7 +261,6 @@ function renderForm(){
       <label class="fl" for="meds">CURRENT MEDICATIONS</label>
       <textarea class="fi" id="meds" placeholder="List any current medications, or write 'None'"></textarea>
     </div>
-
     <div class="section">
       <div class="section-label">STARTING LEVEL</div>
       <div class="fitness-opts">
@@ -267,7 +278,6 @@ function renderForm(){
         </button>
       </div>
     </div>
-
     <div class="section">
       <div class="section-label">DECLARATIONS</div>
       <div class="consent-item consent-health">
@@ -287,7 +297,6 @@ function renderForm(){
         </div>
       </div>
     </div>
-
     <!-- ══════════════════════════════════ -->
     <!-- PART 2: MEMBERSHIP + DIRECT DEBIT -->
     <!-- ══════════════════════════════════ -->
@@ -297,7 +306,6 @@ function renderForm(){
       <div class="part-title">Membership & Direct Debit</div>
       <div class="part-sub">SELECT YOUR PLAN AND SET UP PAYMENT</div>
     </div>
-
     <div class="section">
       <div class="section-label">SELECT YOUR MEMBERSHIP</div>
       ${PLANS.map(p=>`
@@ -316,7 +324,6 @@ function renderForm(){
           </div>
         </div>`).join("")}
     </div>
-
     <div class="section">
       <div class="section-label">PAYMENT FREQUENCY</div>
       <div class="freq-opts">
@@ -325,12 +332,10 @@ function renderForm(){
         <button class="freq-btn" id="freq-monthly" onclick="selectFreq('monthly')">MONTHLY</button>
       </div>
     </div>
-
     <div id="summary-section" style="display:none">
       <div class="section-label" style="border-bottom:none;margin-bottom:12px;">PAYMENT SUMMARY</div>
       <div class="summary-box" id="summary-box"></div>
     </div>
-
     <div class="section">
       <div class="section-label">BANK ACCOUNT DETAILS</div>
       <label class="fl">ACCOUNT NUMBER</label>
@@ -355,7 +360,6 @@ function renderForm(){
       <label class="fl" for="bank-name">ACCOUNT NAME (as it appears at bank)</label>
       <input class="fi" id="bank-name" placeholder="Account holder name"/>
     </div>
-
     <div class="section">
       <div class="section-label">DIRECT DEBIT AUTHORITY</div>
       <div class="decl-box">
@@ -379,7 +383,6 @@ function renderForm(){
         <input class="fi" id="print-name" placeholder="Print your full name here" autocomplete="name"/>
       </div>
     </div>
-
     <div class="section">
       <div class="section-label">SIGNATURE</div>
       <div class="sig-note">This signature applies to both the health screening declaration and the direct debit authority above.</div>
@@ -391,13 +394,11 @@ function renderForm(){
       <label class="fl" for="sig-date">DATE</label>
       <input class="fi" id="sig-date" value="${today()}" readonly style="color:#777"/>
     </div>
-
     <div id="err-msg" class="err-msg"></div>
     <button id="submit-btn" class="submit-btn" onclick="handleSubmit()">COMPLETE REGISTRATION</button>
   </div>`;
   setTimeout(initCanvas,100);
 }
-
 function selectPlan(planId){
   selectedPlan=planId;selectedTerm=null;
   document.querySelectorAll(".plan-card").forEach(c=>c.classList.remove("sel"));
@@ -439,7 +440,6 @@ function updateSummary(){
     <div class="summary-row"><div class="summary-lbl">END DATE</div><div class="summary-val">${edStr}</div></div>
     <div class="summary-row"><div class="summary-total-lbl">AMOUNT PER PAYMENT</div><div class="summary-total">$${fa.toFixed(2)}</div></div>`;
 }
-
 function selectParq(idx,val){
   parqAnswers[idx]=val;
   document.querySelectorAll(`.parq-${idx} .parq-btn`).forEach(b=>{
@@ -458,7 +458,6 @@ function selectConsent(field,val){
     if(b.dataset.val===val)b.classList.add(val==="Yes"?"sel-yes":"sel-no");
   });
 }
-
 function initCanvas(){
   sigCanvas=document.getElementById("sig-canvas");
   if(!sigCanvas)return;
@@ -480,7 +479,6 @@ function clearSig(){
   if(sigCtx)sigCtx.clearRect(0,0,sigCanvas.offsetWidth*2,sigCanvas.offsetHeight*2);
   hasSig=false;document.querySelector(".sig-hint").style.display="block";
 }
-
 function getSigData(){
   const off=document.createElement("canvas");
   off.width=sigCanvas.width;off.height=sigCanvas.height;
@@ -496,12 +494,10 @@ function getSigData(){
   oc.putImageData(out,0,0);
   return off.toDataURL("image/png",0.9);
 }
-
 function generatePDF(d){
   const{jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
   const W=210,pad=20;let y=20;
-
   // ── Letterhead ────────────────────────────────────────────────────────────
   doc.setTextColor(0,0,0);doc.setFontSize(24);doc.setFont("helvetica","bold");
   doc.text("LAMONT TEAM 365",pad,y);y+=7;
@@ -511,13 +507,11 @@ function generatePDF(d){
   doc.text("New Brighton · Christchurch 8061",pad,y);y+=10;
   // Divider line
   doc.setDrawColor(200,200,200);doc.line(pad,y,W-pad,y);y+=8;
-
   // ── Document title ────────────────────────────────────────────────────────
   doc.setFontSize(14);doc.setFont("helvetica","bold");doc.setTextColor(0,0,0);
   doc.text("DIRECT DEBIT AUTHORITY",pad,y);y+=7;
   doc.setFontSize(8);doc.setFont("helvetica","normal");doc.setTextColor(120,120,120);
   doc.text(`Date: ${d.date}`,pad,y);y+=10;
-
   // ── Section helper ────────────────────────────────────────────────────────
   function sec(title,rows){
     if(y>250){doc.addPage();y=20;}
@@ -533,7 +527,6 @@ function generatePDF(d){
     });
     y+=4;
   }
-
   // ── Sections: member + payment only (no health screening) ─────────────────
   sec("MEMBER DETAILS",[["Full Name",d.name],["Date of Birth",d.dob],["Email",d.email],["Phone",d.phone]]);
   sec("MEMBERSHIP & PAYMENT",[
@@ -543,7 +536,6 @@ function generatePDF(d){
     ["Bank Account",`${d.bankBank}-${d.bankBranch}-${d.bankAccount}-${d.bankSuffix}`],
     ["Account Name",d.bankName],["Start Date",d.date],["End Date",d.endDate],
   ]);
-
   // ── Direct Debit declaration ───────────────────────────────────────────────
   if(y>230){doc.addPage();y=20;}
   doc.setFillColor(235,235,235);doc.rect(pad,y,W-pad*2,6,"F");
@@ -553,7 +545,6 @@ function generatePDF(d){
   const decl=`I authorise Lamont Team 365 to debit my account with all amounts owed. This membership is locked in for ${d.term} months and is non-cancellable during that period. The amount of $${d.freqAmt} will be debited ${d.frequency.toLowerCase()}. I will be notified 5 days before membership renewal.`;
   const lines=doc.splitTextToSize(decl,W-pad*2-4);
   doc.text(lines,pad+2,y);y+=lines.length*4+8;
-
   // ── Signature ─────────────────────────────────────────────────────────────
   if(y>220){doc.addPage();y=20;}
   doc.setFillColor(235,235,235);doc.rect(pad,y,W-pad*2,6,"F");
@@ -564,13 +555,11 @@ function generatePDF(d){
   doc.text(`Signed: ${d.name}`,pad,y);y+=5;
   doc.text(`Printed name: ${d.printName}`,pad,y);y+=5;
   doc.text(`Date: ${d.date}`,pad,y);
-
   // ── Footer ────────────────────────────────────────────────────────────────
   doc.setFontSize(6);doc.setTextColor(180,180,180);
   doc.text("Lamont Team 365 · New Brighton · Christchurch 8061 · www.lamontcollective.com",W/2,285,{align:"center"});
   return doc.output("datauristring");
 }
-
 async function sendWelcomeEmail(to,firstName,tempPw){
   try{const p=new URLSearchParams({action:"welcome",to,firstName,tempPassword:tempPw});await fetch(APPS_SCRIPT_URL+"?"+p.toString(),{method:"GET",mode:"no-cors"});}catch(e){}
 }
@@ -586,7 +575,6 @@ async function sendDDEmail(to,name,pdfData,d){
 async function logHealthToSheets(data){
   try{const p=new URLSearchParams({action:"logHealth",...data});await fetch(APPS_SCRIPT_URL+"?"+p.toString(),{method:"GET",mode:"no-cors"});}catch(e){}
 }
-
 async function handleSubmit(){
   const errEl=document.getElementById("err-msg");
   errEl.textContent="";
@@ -625,10 +613,8 @@ async function handleSubmit(){
   if(!authCheck.checked){errEl.textContent="Please tick the direct debit authorisation checkbox.";return;}
   if(!printName){errEl.textContent="Please print your full name to confirm the authority.";return;}
   if(!hasSig){errEl.textContent="Please sign the form.";return;}
-
   const btn=document.getElementById("submit-btn");
   btn.disabled=true;btn.textContent="SUBMITTING...";
-
   const plan=PLANS.find(p=>p.id===selectedPlan);
   const weeklyAmt=plan.prices[selectedTerm].toFixed(2);
   let freqAmt;
@@ -640,7 +626,6 @@ async function handleSubmit(){
   const name=`${firstName} ${lastName}`;
   const membershipType=`${plan.name} - ${selectedTerm} months`;
   const sigData=getSigData();
-
   const regData={
     name,phone,dob,
     emergency_name:eName,emergency_phone:ePhone,
@@ -654,20 +639,16 @@ async function handleSubmit(){
     membership_type:membershipType,registration_date:today(),
     expiry_date:ed.toISOString().split("T")[0]
   };
-
   const existing=await sbGet("members",`email=eq.${encodeURIComponent(email)}`);
   const isExisting=existing.length>0;
   let ok=false,tempPw="";
-
   if(isExisting){
     ok=await sbPatch("members",`email=eq.${encodeURIComponent(email)}`,regData);
   } else {
     tempPw=Math.random().toString(36).slice(2,10);
     ok=await sbPost("members",{email,photo:"",password:hashPw(tempPw),joined_at:Date.now(),...regData});
   }
-
   if(!ok){errEl.textContent="Something went wrong. Please try again.";btn.disabled=false;btn.textContent="COMPLETE REGISTRATION";return;}
-
   const ddData={
     name,email,phone,dob,emergencyName:eName,emergencyPhone:ePhone,
     parq_heart:parqAnswers[0]||"",parq_chest_activity:parqAnswers[1]||"",
@@ -681,7 +662,6 @@ async function handleSubmit(){
     frequency:selectedFreq.charAt(0).toUpperCase()+selectedFreq.slice(1),
     date:today(),endDate:endStr,signature:sigData
   };
-
   if(!isExisting) sendWelcomeEmail(email,firstName,tempPw);
   logHealthToSheets({
     name,email,phone,dob,membershipType,
@@ -692,11 +672,9 @@ async function handleSubmit(){
     parqOther:parqAnswers[6]||"",medicalConditions:medCond,medications:meds,
     fitnessLevel,healthDeclaration,mediaConsent,registrationDate:today()
   });
-
   btn.textContent="GENERATING PDF...";
   const pdfUri=generatePDF(ddData);
   await sendDDEmail(email,name,pdfUri,ddData);
-
   const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
   const isAndroid=/Android/.test(navigator.userAgent);
   const installHTML=isExisting?"":isIOS?`
@@ -722,7 +700,6 @@ async function handleSubmit(){
         Open <strong style="color:#fff">team365-booking.vercel.app</strong> on your phone and follow the prompt to add it to your home screen for quick access.
       </div>
     </div>`;
-
   document.getElementById("root").innerHTML=`
     <div class="success-page">
       <div class="success-icon">✓</div>
@@ -739,7 +716,6 @@ async function handleSubmit(){
       ${installHTML}
     </div>`;
 }
-
 loadPlans().then(()=>renderForm());
 </script>
 </body>
