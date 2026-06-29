@@ -219,6 +219,7 @@ function BookingWidget(){
   const[conf,setConf]=useState(null);
   const[classLimits,setClassLimits]=useState([]);
   const[dowNames,setDowNames]=useState({1:"Rise Up",2:"Strength Lower",3:"Ascend",4:"Strength Upper",5:"Elevate",6:"Summit"});
+  const[wellnessEnabled,setWellnessEnabled]=useState(true);
   const weekDates=Array.from({length:6},(_,i)=>addDays(weekStart,i));
   const isThisWeek=toDS(weekStart)===toDS(mondayOf(new Date()));
   const selDate=weekDates[selDay];
@@ -238,6 +239,9 @@ function BookingWidget(){
   useEffect(()=>{
     sbGet("coaching_notes","class_name=eq.__DOW_NAMES__&select=content").then(d=>{
       if(d&&d.length&&d[0].content){try{setDowNames(p=>({...p,...JSON.parse(d[0].content)}));}catch{}}
+    });
+    sbGet("feature_flags","id=eq.1&select=wellness_enabled").then(d=>{
+      if(d&&d.length)setWellnessEnabled(d[0].wellness_enabled!==false);
     });
   },[]);
   // Fetch dynamic class limits when week changes
@@ -294,12 +298,12 @@ function BookingWidget(){
     step===0&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"w-title"},"BOOK A SESSION"),
       React.createElement("div",{className:"w-sub"},"WHAT WOULD YOU LIKE TO BOOK?"),
-      React.createElement("div",{className:"type-grid"},
+      React.createElement("div",{className:"type-grid",style:wellnessEnabled?{}:{gridTemplateColumns:"1fr"}},
         React.createElement("div",{className:"type-card",style:{textAlign:"center"},onClick:()=>goType("class")},
           React.createElement("div",{className:"type-label"},"BOOK A CLASS"),
           React.createElement("div",{className:"type-desc",style:{marginTop:8}},"MONDAY – SUNDAY")
         ),
-        React.createElement("div",{className:"type-card",style:{textAlign:"center"},onClick:()=>goType("wellness")},
+        wellnessEnabled&&React.createElement("div",{className:"type-card",style:{textAlign:"center"},onClick:()=>goType("wellness")},
           React.createElement("div",{className:"type-label"},"SAUNA + COLD PLUNGE"),
           React.createElement("div",{className:"type-desc",style:{marginTop:8}},"MONDAY – SATURDAY")
         )
