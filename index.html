@@ -1096,11 +1096,9 @@ function MilestoneAdminPanel({milestoneConfig,saveMilestoneConfig,showToast}){
   const [specialDraft,setSpecialDraft]=React.useState({classes:"",label:"",emoji:"🏆"});
   const [editingSpecialIdx,setEditingSpecialIdx]=React.useState(null);
   const [saving,setSaving]=React.useState(false);
-
   React.useEffect(()=>{
     setSpecials(milestoneConfig.specials||[]);
   },[milestoneConfig]);
-
   async function saveSpecials(newSpecials){
     setSaving(true);
     const cfg={...milestoneConfig,specials:newSpecials};
@@ -1127,13 +1125,10 @@ function MilestoneAdminPanel({milestoneConfig,saveMilestoneConfig,showToast}){
     if(!window.confirm("Remove this milestone?"))return;
     saveSpecials(specials.filter((_,i)=>i!==idx));
   }
-
   const inputStyle={width:"100%",background:"#0a0a0a",border:"1px solid #888",borderRadius:5,color:"#fff",padding:"7px 10px",fontFamily:"'DM Sans',sans-serif",fontSize:13,boxSizing:"border-box"};
   const labelStyle={fontSize:9,color:"#888",letterSpacing:"0.1em",marginBottom:4};
-
   return React.createElement(React.Fragment,null,
     React.createElement("div",{className:"adm-section-hdr",style:{marginTop:8}},"MILESTONE SETTINGS"),
-
     // ── Custom milestones list ────────────────────────────────────────────────
     React.createElement("div",{style:{background:"#141414",border:"1px solid #888",borderRadius:8,padding:"14px 16px",marginBottom:10}},
       React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}},
@@ -1141,7 +1136,6 @@ function MilestoneAdminPanel({milestoneConfig,saveMilestoneConfig,showToast}){
         React.createElement("span",{style:{fontSize:20}},"🏆")
       ),
       specials.length===0&&!addingSpecial&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.08em",marginBottom:10,lineHeight:1.7}},"No milestones yet. Tap the button below to add one — e.g. 25 classes, 50 classes, 100 classes."),
-
       specials.map((s,idx)=>
         editingSpecialIdx===idx
           ?React.createElement("div",{key:idx,style:{borderTop:idx>0?"1px solid #1f1f1f":"none",paddingTop:idx>0?10:0,marginTop:idx>0?10:0}},
@@ -1174,7 +1168,6 @@ function MilestoneAdminPanel({milestoneConfig,saveMilestoneConfig,showToast}){
               React.createElement("button",{onClick:()=>removeSpecial(idx),style:{background:"none",border:"1px solid #3a1a1a",color:"#e06040",borderRadius:4,padding:"4px 8px",fontFamily:"'Bebas Neue',sans-serif",fontSize:11,cursor:"pointer"}},"✕")
             )
       ),
-
       addingSpecial
         ?React.createElement("div",{style:{borderTop:specials.length>0?"1px solid #1f1f1f":"none",paddingTop:specials.length>0?10:0,marginTop:specials.length>0?10:0}},
             React.createElement("div",{style:{display:"flex",gap:8,marginBottom:8}},
@@ -1202,7 +1195,6 @@ function MilestoneAdminPanel({milestoneConfig,saveMilestoneConfig,showToast}){
     )
   );
 }
-
 function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,dowNames,saveDowName,slotNames,saveSlotName,milestoneConfig,saveMilestoneConfig}){
   const [admSeg,setAdmSeg]=useState(()=>lsGet("t365-admseg","members"));
   useEffect(()=>{lsSet("t365-admseg",admSeg);},[admSeg]);
@@ -2233,7 +2225,7 @@ function CoachingView({showToast}){
   );
 }
 // ── Progress Tab ──────────────────────────────────────────────────────────────
-function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig}){
+function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}){
   const [exercises,setExercises]=useState([]);
   const [myPBs,setMyPBs]=useState({});
   const [communityBests,setCommunityBests]=useState({});
@@ -2255,9 +2247,7 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
   const [showMilSection,setShowMilSection]=useState(true);
   const [showPBSection,setShowPBSection]=useState(true);
   const [showCBSection,setShowCBSection]=useState(true);
-
   useEffect(()=>{loadAll();},[]);
-
   async function loadAll(){
     setLoading(true);
     const[exData,myPBData,cbData,allPBData]=await Promise.all([
@@ -2301,13 +2291,11 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
     }
     setLoading(false);
   }
-
   function fmtDate(dateStr){
     if(!dateStr)return"—";
     const d=new Date(dateStr+"T12:00:00");
     return`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
   }
-
   async function savePB(exerciseId){
     if(!session||!pbDraft.weight_kg)return;
     setSavingPB(true);
@@ -2343,7 +2331,6 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
     }else showToast("Save failed — try again");
     setSavingPB(false);
   }
-
   async function deletePB(exerciseId){
     if(!session)return;
     if(!window.confirm("Remove this personal best? This cannot be undone."))return;
@@ -2371,7 +2358,6 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
     }else showToast("Remove failed — try again");
     setSavingPB(false);
   }
-
   async function saveCB(exerciseId){
     if(!isAdmin)return;
     setSavingCB(true);
@@ -2387,7 +2373,6 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
     else showToast("Save failed — try again");
     setSavingCB(false);
   }
-
   async function addExercise(){
     const name=newExName.trim().toUpperCase();
     if(!name)return;
@@ -2398,14 +2383,12 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
     else showToast("Failed to add exercise");
     setSavingNewEx(false);
   }
-
   async function toggleExercise(ex){
     const newEnabled=!ex.enabled;
     await sbPatch("exercises",`id=eq.${ex.id}`,{enabled:newEnabled});
     setExercises(prev=>prev.map(e=>e.id===ex.id?{...e,enabled:newEnabled}:e));
     showToast(newEnabled?`${ex.name} enabled`:`${ex.name} hidden`);
   }
-
   async function deleteExercise(ex){
     if(!window.confirm(`Delete "${ex.name}"? All personal bests for this exercise will also be removed.`))return;
     const ok=await sbDelete("exercises",`id=eq.${ex.id}`);
@@ -2416,7 +2399,6 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
       showToast(`${ex.name} deleted`);
     }
   }
-
   async function moveExercise(ex,dir){
     const idx=exercises.findIndex(e=>e.id===ex.id);
     const swapIdx=idx+dir;
@@ -2432,7 +2414,6 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
       sbPatch("exercises",`id=eq.${swap.id}`,{order_num:ex.order_num})
     ]);
   }
-
   async function saveExName(ex){
     const name=exNameDraft.trim().toUpperCase();
     if(!name)return;
@@ -2441,7 +2422,6 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
     showToast("Exercise name updated ✓");
     setEditingExName(null);
   }
-
   const enabledExercises=exercises.filter(e=>e.enabled);
   const CS={
     card:{background:"#141414",border:"1px solid #888",borderRadius:7,padding:"12px 14px",marginBottom:7},
@@ -2452,14 +2432,11 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
     cancelBtn:{background:"none",border:"1px solid #333",color:"#666",borderRadius:3,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",padding:"9px 14px",cursor:"pointer"},
     editBtn:{background:"none",border:"1px solid #333",color:"#888",fontSize:9,letterSpacing:"0.12em",padding:"4px 10px",borderRadius:3,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600,flexShrink:0,whiteSpace:"nowrap"}
   };
-
   if(loading)return React.createElement("div",{className:"sp-loading"},"LOADING...");
-
   return React.createElement("div",{style:{padding:"14px 16px 80px",overflowY:"auto",flex:1}},
     React.createElement("div",{className:"well-hdr",style:{padding:"0 0 4px"}},
       React.createElement("div",{className:"well-title"},"PROGRESS")
     ),
-
     // ── Admin: Milestone Settings ─────────────────────────────────────────────
     isAdmin&&React.createElement("div",{style:{marginBottom:16}},
       React.createElement("button",{
@@ -2473,14 +2450,13 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
         React.createElement(MilestoneAdminPanel,{milestoneConfig,saveMilestoneConfig,showToast})
       )
     ),
-
     // ── Milestones ───────────────────────────────────────────────────────────
     (()=>{
       if(!session)return null;
       const checkedInSorted=(bookings||[]).filter(b=>b.email===session.email&&b.checked_in&&b.date_key).sort((a,b)=>a.date_key.localeCompare(b.date_key));
       const attended=checkedInSorted.length;
       if(attended===0)return null;
-      const specials=((milestoneConfig||{}).specials||[]).filter(s=>attended>=parseInt(s.classes));
+      const specials=((milestoneConfig||{}).specials||[]).filter(s=>{const cls=s.classes?.toString().toLowerCase();return cls==="first"?attended>=1:attended>=parseInt(s.classes);});
       const sorted=[...specials].sort((a,b)=>a.classes-b.classes);
       return React.createElement("div",{style:{marginBottom:4}},
         React.createElement("div",{style:{...CS.sectionHdr,cursor:"pointer",userSelect:"none",display:"flex",alignItems:"center",justifyContent:"space-between"},onClick:()=>setShowMilSection(v=>!v)},
@@ -2491,24 +2467,38 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
           React.createElement("span",{style:{color:"#444",fontSize:13,transform:showMilSection?"rotate(180deg)":"none",transition:"transform .2s",lineHeight:1}},"▾")
         ),
         showMilSection&&React.createElement(React.Fragment,null,...sorted.map((e,i)=>{
-          const achievedDate=checkedInSorted[parseInt(e.classes)-1]?.date_key||null;
+          const isFirstClass=e.classes.toString().toLowerCase()==="first";
+          const firstBooking=isFirstClass?checkedInSorted[0]:null;
+          const firstClassDOW=firstBooking?new Date(firstBooking.date_key+"T00:00:00").getDay():0;
+          const firstClassName=firstBooking?(dowNames?.[firstClassDOW]||["SUN","RISE UP","STRENGTH LOWER","ASCEND","STRENGTH UPPER","ELEVATE","SUMMIT"][firstClassDOW]||"CLASS"):"FIRST CLASS";
+          const valueDisplay=isFirstClass?firstClassName.toUpperCase():e.classes+" CLASSES";
+          const achievedDate=isFirstClass?checkedInSorted[0]?.date_key||null:checkedInSorted[parseInt(e.classes)-1]?.date_key||null;
+          const milestoneMemberPhoto=memberData?.photo||"";
+          const milestoneMemberInit=session?initials(session.name):"?";
           return React.createElement("div",{key:i,style:{...CS.card,borderColor:"#888"}},
             React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
               React.createElement("div",{style:{flex:1,minWidth:0}},
-                React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",marginBottom:4}},"MILESTONE"),
-                React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8}},
-                  React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:22,color:"#1d9bf0",lineHeight:1}},e.classes+" CLASSES"),
-                  achievedDate&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.08em"}},fmtDate(achievedDate))
-                ),
-                e.label&&React.createElement("div",{style:{fontSize:9,color:"#888",letterSpacing:"0.08em",marginTop:3}},e.label.toUpperCase())
+                React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",marginBottom:4}},isFirstClass?"FIRST CLASS":"MILESTONE"),
+                React.createElement("div",null,
+                  React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8,marginBottom:4}},
+                    React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:24,color:"#1d9bf0",lineHeight:1}},valueDisplay),
+                    achievedDate&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.08em"}},fmtDate(achievedDate))
+                  ),
+                  React.createElement("div",{style:{fontSize:10,letterSpacing:"0.08em",color:"#ffffff"}},session.name),
+                  e.label&&React.createElement("div",{style:{fontSize:9,color:"#888",letterSpacing:"0.08em",marginTop:3}},e.label.toUpperCase())
+                )
               ),
-              React.createElement("span",{style:{fontSize:22,lineHeight:1}},e.emoji||"🏆")
+              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginLeft:8,flexShrink:0}},
+                milestoneMemberPhoto
+                  ?React.createElement("img",{src:milestoneMemberPhoto,style:{width:40,height:40,borderRadius:"50%",objectFit:"cover",border:"2px solid #333"},alt:""})
+                  :React.createElement("div",{style:{width:40,height:40,borderRadius:"50%",background:"#1e1e1e",border:"2px solid #333",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#aaa",flexShrink:0}},milestoneMemberInit),
+                React.createElement("span",{style:{fontSize:22,lineHeight:1}},"🏆")
+              )
             )
           );
         }))
       );
     })(),
-
     // ── Admin: Manage Exercises ──────────────────────────────────────────────
     isAdmin&&React.createElement("div",{style:{marginBottom:16}},
       React.createElement("button",{
@@ -2565,7 +2555,6 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
             )
       )
     ),
-
     // ── My Personal Bests ────────────────────────────────────────────────────
     React.createElement("div",{style:{...CS.sectionHdr,cursor:"pointer",userSelect:"none",display:"flex",alignItems:"center",justifyContent:"space-between"},onClick:()=>setShowPBSection(v=>!v)},
       "MY PERSONAL BESTS",
@@ -2619,7 +2608,6 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
                 )
           );
         })),
-
     // ── Community Personal Bests ─────────────────────────────────────────────
     React.createElement("div",{style:{...CS.sectionHdr,cursor:"pointer",userSelect:"none",display:"flex",alignItems:"center",justifyContent:"space-between"},onClick:()=>setShowCBSection(v=>!v)},
       "COMMUNITY PERSONAL BESTS",
@@ -2668,7 +2656,7 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
                             React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:24,color:"#1d9bf0",lineHeight:1}},`${cb.weight_kg}kg`),
                             React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.08em"}},fmtDate(cb.achieved_date))
                           ),
-                          cb.holder_name&&React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.06em",color:"#aaa"}},cb.holder_name)
+                          cb.holder_name&&React.createElement("div",{style:{fontSize:10,letterSpacing:"0.08em",color:"#ffffff"}},cb.holder_name)
                         )
                       :React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",marginTop:2}},"NO RECORD SET")
                   ),
@@ -2687,7 +2675,6 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
         }))
   );
 }
-
 // ── Strength Program Tab ──────────────────────────────────────────────────────
 function getNZDate(){
   try{return new Date(new Date().toLocaleString("en-US",{timeZone:"Pacific/Auckland"}));}
@@ -3338,7 +3325,7 @@ function App(){
     React.createElement("div",{style:{marginTop:120,textAlign:"center"}},
       React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION."),
       React.createElement("div",{style:{marginTop:2,paddingBottom:20,fontSize:"7px",letterSpacing:"0.06em",color:"#999"}},
-        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"WWW.LAMONTCOLLECTIVE.COM")
+        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"[WWW.LAMONTCOLLECTIVE.COM](https://WWW.LAMONTCOLLECTIVE.COM)")
       )
     )
   );
@@ -3445,7 +3432,6 @@ function App(){
     ),
     tab==="my"&&React.createElement("div",{className:"my-wrap"},
       React.createElement("div",{className:"my-hdr"},"MY BOOKINGS"),
-
       // ── Stats row ──────────────────────────────────────────────────────────
       React.createElement("div",{className:"adm-stats-row",style:{marginBottom:18}},
         React.createElement("div",{className:"adm-stat"},
@@ -3465,7 +3451,6 @@ function App(){
           React.createElement("div",{className:"adm-stat-lbl"},"UPCOMING")
         )
       ),
-
             // ── Upcoming Classes ───────────────────────────────────────────────────
       React.createElement("div",{className:"day-hdr",style:{marginBottom:10}},React.createElement("span",null,"UPCOMING CLASSES")),
       myUpcoming.length===0?React.createElement("div",{className:"no-bk",style:{padding:"16px 0 24px"}},"No upcoming classes")
@@ -3497,7 +3482,6 @@ function App(){
         });
         return items;
       })(),
-
       // ── Wellness (when enabled) ────────────────────────────────────────────
       wellnessEnabled&&React.createElement(React.Fragment,null,
         React.createElement("div",{className:"day-hdr",style:{marginTop:20,marginBottom:10}},React.createElement("span",null,"WELLNESS")),
@@ -3534,7 +3518,7 @@ function App(){
     tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
     tab==="wellness"&&wellnessEnabled&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin,memberData}),
     tab==="strength"&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast,bookings,memberData})),
-    tab==="progress"&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig}),
+    tab==="progress"&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}),
     tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,dowNames,saveDowName,slotNames,saveSlotName,milestoneConfig,saveMilestoneConfig}),
     React.createElement("div",{className:"tab-bar"},
       React.createElement("button",{className:`tab-btn${tab==="community"?" ta":""}`,style:{position:"relative"},onClick:()=>{setTab("community");lsSet("t365-last-read",Date.now());}},
@@ -3551,7 +3535,7 @@ function App(){
     React.createElement("div",{style:{textAlign:"center"}},
       React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION."),
       React.createElement("div",{style:{marginTop:2,paddingBottom:20,fontSize:"7px",letterSpacing:"0.06em",color:"#999"}},
-        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"WWW.LAMONTCOLLECTIVE.COM")
+        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"[WWW.LAMONTCOLLECTIVE.COM](https://WWW.LAMONTCOLLECTIVE.COM)")
       )
     ),
     React.createElement("div",{className:`toast${toast.show?" show":""}`},toast.msg),
