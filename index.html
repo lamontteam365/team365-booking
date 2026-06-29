@@ -1319,8 +1319,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
       React.createElement("button",{className:`adm-seg-btn${admSeg==="classes"?" aas":""}`,onClick:()=>setAdmSeg("classes")},"CLASSES"),
       React.createElement("button",{className:`adm-seg-btn${admSeg==="wellness"?" aas":""}`,onClick:()=>setAdmSeg("wellness")},"WELLNESS"),
       React.createElement("button",{className:`adm-seg-btn${admSeg==="onboarding"?" aas":""}`,onClick:()=>setAdmSeg("onboarding")},"ONBOARDING"),
-      React.createElement("button",{className:`adm-seg-btn${admSeg==="coaching"?" aas":""}`,onClick:()=>setAdmSeg("coaching")},"DETAILS"),
-      React.createElement("button",{className:`adm-seg-btn${admSeg==="milestones"?" aas":""}`,onClick:()=>setAdmSeg("milestones")},"MILESTONES")
+      React.createElement("button",{className:`adm-seg-btn${admSeg==="coaching"?" aas":""}`,onClick:()=>setAdmSeg("coaching")},"DETAILS")
     ),
     admSeg==="members"&&(!membersLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
     :React.createElement(React.Fragment,null,
@@ -1621,8 +1620,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
       )
     ),
   admSeg==="onboarding"&&React.createElement(OnboardingView,{showToast}),
-  admSeg==="coaching"&&React.createElement(CoachingView,{showToast}),
-    admSeg==="milestones"&&React.createElement(MilestoneAdminPanel,{milestoneConfig,saveMilestoneConfig,showToast})
+  admSeg==="coaching"&&React.createElement(CoachingView,{showToast})
   );
 }
 // ── Onboarding View ──────────────────────────────────────────────────────────
@@ -2259,7 +2257,7 @@ function CoachingView({showToast}){
   );
 }
 // ── Progress Tab ──────────────────────────────────────────────────────────────
-function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings}){
+function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig}){
   const [exercises,setExercises]=useState([]);
   const [myPBs,setMyPBs]=useState({});
   const [communityBests,setCommunityBests]=useState({});
@@ -2458,7 +2456,7 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings}){
   const enabledExercises=exercises.filter(e=>e.enabled);
   const CS={
     card:{background:"#141414",border:"1px solid #888",borderRadius:7,padding:"12px 14px",marginBottom:7},
-    sectionHdr:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.1em",color:"#fff",marginBottom:12,paddingTop:14,borderTop:"1px solid #333"},
+    sectionHdr:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.1em",color:"#fff",marginBottom:12,paddingTop:28,marginTop:10,borderTop:"1px solid #333"},
     label:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,display:"block",marginBottom:4},
     input:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:4,padding:"9px 10px",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:14,outline:"none",boxSizing:"border-box",marginBottom:8},
     saveBtn:{background:"#fff",color:"#000",border:"none",borderRadius:3,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",padding:"9px 18px",cursor:"pointer"},
@@ -2473,25 +2471,38 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings}){
       React.createElement("div",{className:"well-title"},"PROGRESS")
     ),
 
+    // ── Admin: Manage Milestones ──────────────────────────────────────────────
+    isAdmin&&React.createElement("div",{style:{marginBottom:16}},
+      React.createElement(MilestoneAdminPanel,{milestoneConfig,saveMilestoneConfig,showToast})
+    ),
+
     // ── Milestones ───────────────────────────────────────────────────────────
     (()=>{
       if(!session)return null;
-      const attended=(bookings||[]).filter(b=>b.email===session.email&&b.checked_in).length;
+      const checkedInSorted=(bookings||[]).filter(b=>b.email===session.email&&b.checked_in&&b.date_key).sort((a,b)=>a.date_key.localeCompare(b.date_key));
+      const attended=checkedInSorted.length;
       if(attended===0)return null;
       const specials=((milestoneConfig||{}).specials||[]).filter(s=>attended>=parseInt(s.classes));
       if(specials.length===0)return null;
       const sorted=[...specials].sort((a,b)=>a.classes-b.classes);
-      return React.createElement("div",{style:{marginBottom:16}},
+      return React.createElement("div",{style:{marginBottom:4}},
         React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.1em",color:"#fff",marginBottom:8}},React.createElement("span",null,"MILESTONES")),
-        React.createElement(React.Fragment,null,...sorted.map((e,i)=>
-          React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:"#141414",border:"1px solid #888",borderRadius:8,marginBottom:6}},
-            React.createElement("div",null,
-              React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:"#fff",letterSpacing:"0.06em",lineHeight:1}},e.classes+" CLASSES"),
-              e.label&&React.createElement("div",{style:{fontSize:10,color:"#888",letterSpacing:"0.1em",marginTop:3}},e.label.toUpperCase())
-            ),
-            React.createElement("span",{style:{fontSize:22,lineHeight:1}},e.emoji||"🏆")
-          )
-        ))
+        React.createElement(React.Fragment,null,...sorted.map((e,i)=>{
+          const achievedDate=checkedInSorted[parseInt(e.classes)-1]?.date_key||null;
+          return React.createElement("div",{key:i,style:{...CS.card,borderColor:"#888"}},
+            React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
+              React.createElement("div",{style:{flex:1,minWidth:0}},
+                React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",marginBottom:4}},"MILESTONE"),
+                React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8}},
+                  React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:22,color:"#1d9bf0",lineHeight:1}},e.classes+" CLASSES"),
+                  achievedDate&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.08em"}},fmtDate(achievedDate))
+                ),
+                e.label&&React.createElement("div",{style:{fontSize:9,color:"#888",letterSpacing:"0.08em",marginTop:3}},e.label.toUpperCase())
+              ),
+              React.createElement("span",{style:{fontSize:22,lineHeight:1}},e.emoji||"🏆")
+            )
+          );
+        }))
       );
     })(),
 
@@ -2641,16 +2652,18 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings}){
                 )
               :React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
                   React.createElement("div",{style:{flex:1,minWidth:0}},
-                    React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",marginBottom:cb&&cb.weight_kg?4:0}},ex.name),
+                    React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",marginBottom:4}},ex.name),
                     cb&&cb.weight_kg
                       ?React.createElement("div",null,
+                          cb.holder_name&&React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",marginBottom:4}},cb.holder_name),
                           React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8}},
                             React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:24,color:"#1d9bf0",lineHeight:1}},`${cb.weight_kg}kg`),
                             React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.08em"}},fmtDate(cb.achieved_date))
-                          ),
-                          cb.holder_name&&React.createElement("div",{style:{fontSize:10,color:"#888",letterSpacing:"0.08em",marginTop:2}},"🏆 "+cb.holder_name)
+                          )
                         )
                       :React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",marginTop:2}},"NO RECORD SET")
+                  ),
+                  cb&&cb.weight_kg&&React.createElement("span",{style:{fontSize:22,lineHeight:1,marginRight:8}},"🏆")
                   ),
                   isAdmin&&React.createElement("button",{
                     onClick:()=>{setCBDraft({weight_kg:cb?.weight_kg||"",holder_name:cb?.holder_name||"",holder_email:cb?.holder_email||"",achieved_date:cb?.achieved_date||toDS(new Date())});setEditingCB(ex.id);},
@@ -3508,7 +3521,7 @@ function App(){
     tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
     tab==="wellness"&&wellnessEnabled&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin,memberData}),
     tab==="strength"&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast,bookings,memberData})),
-    tab==="progress"&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings}),
+    tab==="progress"&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig}),
     tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,dowNames,saveDowName,slotNames,saveSlotName,milestoneConfig,saveMilestoneConfig}),
     React.createElement("div",{className:"tab-bar"},
       React.createElement("button",{className:`tab-btn${tab==="community"?" ta":""}`,style:{position:"relative"},onClick:()=>{setTab("community");lsSet("t365-last-read",Date.now());}},
