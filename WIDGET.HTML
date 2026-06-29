@@ -218,6 +218,7 @@ function BookingWidget(){
   const[err,setErr]=useState("");
   const[conf,setConf]=useState(null);
   const[classLimits,setClassLimits]=useState([]);
+  const[dowNames,setDowNames]=useState({1:"Rise Up",2:"Strength Lower",3:"Ascend",4:"Strength Upper",5:"Elevate",6:"Summit"});
   const weekDates=Array.from({length:6},(_,i)=>addDays(weekStart,i));
   const isThisWeek=toDS(weekStart)===toDS(mondayOf(new Date()));
   const selDate=weekDates[selDay];
@@ -234,10 +235,15 @@ function BookingWidget(){
     }
   },[bookType,weekStart]);
   useEffect(()=>{setSelTime(null);},[selDay]);
+  useEffect(()=>{
+    sbGet("coaching_notes","class_name=eq.__DOW_NAMES__&select=content").then(d=>{
+      if(d&&d.length&&d[0].content){try{setDowNames(p=>({...p,...JSON.parse(d[0].content)}));}catch{}}
+    });
+  },[]);
   // Fetch dynamic class limits when week changes
   useEffect(()=>{
     const keys=weekDates.map(toDS).filter(Boolean);
-    sbGet("class_limits",`date_key=in.(${keys.join(",")})&select=time_slot,date_key,max_spots`).then(d=>setClassLimits(d||[]));
+    sbGet("class_limits",`date_key=in.(${keys.join(",")})&select=time_slot,date_key,max_spots,name`).then(d=>setClassLimits(d||[]));
   },[weekStart]);
   function getMaxSpots(time,dateKey){
     const cl=classLimits.find(l=>l.time_slot===time&&l.date_key===dateKey);
@@ -257,12 +263,11 @@ function BookingWidget(){
     if(!ok){setErr("Booking failed — please try again.");setBusy(false);return;}
     const dateLabel=`${DAY_LONG[selDay]} ${selDate.getDate()} ${MONTHS[selDate.getMonth()]}`;
     const timeLabel=fmt12(selTime);
-    const sessName=bookType==="class"?DAY_SESS[selDay]:null;
     // Notify admin + send guest confirmation
     const bookingData={guestName:nm,guestEmail:em,guestPhone:ph||"N/A",bookingType:bookType==="class"?`Class – ${sessName}`:"Sauna + Cold Plunge",dateLabel,timeLabel,bookingRef:ref,payment:payment==="gym"?"Pay at gym":"Online"};
     notifyAdmin(bookingData);
     notifyGuest(bookingData);
-    setConf({ref,nm,em,type:bookType,dateLabel,timeLabel,sessName});
+    setConf({ref,nm,em,type:bookType,dateLabel,timeLabel,sessName:bookType==="class"?sessName:null});
     setStep(3);setBusy(false);
   }
   function reset(){
@@ -273,7 +278,13 @@ function BookingWidget(){
   }
   function goType(type){setBookType(type);setStep(1);}
   function goBack(){setStep(s=>s-1);setSelTime(null);setErr("");}
-  const curTimes=bookType==="class"?(selDate.getDay()===6?SAT_TIMES:WD_TIMES):WELL_TIMES;
+  const selDOW=selDate.getDay();
+  const sessName=dowNames[selDOW]||DAY_SESS[selDay];
+  function getSlotName(time,dk){const cl=classLimits.find(l=>l.time_slot===time&&l.date_key===dk);return cl?cl.name||null:null;}
+  const baseTimes=selDate.getDay()===6?SAT_TIMES:WD_TIMES;
+  const extraTimes=bookType==="class"?classLimits.filter(l=>l.date_key===selDK&&!baseTimes.includes(l.time_slot)&&l.max_spots>0).map(l=>l.time_slot):[];
+  const hiddenTimes=bookType==="class"?classLimits.filter(l=>l.date_key===selDK&&l.max_spots===0).map(l=>l.time_slot):[];
+  const curTimes=bookType==="class"?[...baseTimes,...extraTimes].sort().filter(t=>!hiddenTimes.includes(t)):WELL_TIMES;
   return React.createElement("div",{className:"widget"},
     // ── Progress dots (steps 1–2) ───────────────────────────────────────────────
     step>0&&step<3&&React.createElement("div",{className:"w-dots"},
@@ -322,7 +333,7 @@ function BookingWidget(){
       ),
       // Session label (classes only)
       bookType==="class"&&React.createElement("div",{className:"sess-lbl"},
-        `${DAY_LONG[selDay].toUpperCase()} · ${curTimes.length} CLASSES`
+        `${DAY_LONG[selDay].toUpperCase()} · ${sessName.toUpperCase()} · ${curTimes.length} CLASSES`
       ),
       bookType==="wellness"&&React.createElement("div",{className:"sess-lbl"},
         `${DAY_LONG[selDay].toUpperCase()} · ${curTimes.length} SESSIONS`
@@ -339,7 +350,10 @@ function BookingWidget(){
               return React.createElement("div",{key:time,
                 className:`slot-row${selTime===time?" sel":""}${full?" full":""}`,
                 onClick:()=>{if(!full)setSelTime(time);}},
-                React.createElement("div",{className:"slot-time"},fmt12(time)),
+                React.createElement("div",{style:{display:"flex",flexDirection:"column",minWidth:72}},
+                  React.createElement("div",{className:"slot-time",style:{minWidth:"unset"}},fmt12(time)),
+                  getSlotName(time,selDK)&&React.createElement("div",{style:{fontSize:7,letterSpacing:"0.12em",color:"#555",fontWeight:600,marginTop:1}},getSlotName(time,selDK).toUpperCase())
+                ),
                 React.createElement("div",{className:"slot-mid"},
                   React.createElement("div",{className:"slot-bars"},
                     Array.from({length:Math.min(maxSp,20)}).map((_,i)=>React.createElement("div",{key:i,className:`slot-bar${i<taken?" t":""}`}))
@@ -381,7 +395,7 @@ function BookingWidget(){
       React.createElement("div",{className:"summ"},
         React.createElement("div",{className:"summ-row"},
           React.createElement("div",{className:"summ-lbl"},"SESSION"),
-          React.createElement("div",{className:"summ-val"},bookType==="class"?DAY_SESS[selDay].toUpperCase():"SAUNA + COLD PLUNGE")
+          React.createElement("div",{className:"summ-val"},bookType==="class"?sessName.toUpperCase():"SAUNA + COLD PLUNGE")
         ),
         React.createElement("div",{className:"summ-row"},
           React.createElement("div",{className:"summ-lbl"},"DATE"),
