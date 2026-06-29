@@ -2450,54 +2450,6 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
         React.createElement(MilestoneAdminPanel,{milestoneConfig,saveMilestoneConfig,showToast})
       )
     ),
-    // ── Milestones ───────────────────────────────────────────────────────────
-    (()=>{
-      if(!session)return null;
-      const checkedInSorted=(bookings||[]).filter(b=>b.email===session.email&&b.checked_in&&b.date_key).sort((a,b)=>a.date_key.localeCompare(b.date_key));
-      const attended=checkedInSorted.length;
-      if(attended===0)return null;
-      const specials=((milestoneConfig||{}).specials||[]).filter(s=>{const cls=s.classes?.toString().toLowerCase();return cls==="first"?attended>=1:attended>=parseInt(s.classes);});
-      const sorted=[...specials].sort((a,b)=>a.classes-b.classes);
-      return React.createElement("div",{style:{marginBottom:4}},
-        React.createElement("div",{style:{...CS.sectionHdr,cursor:"pointer",userSelect:"none",display:"flex",alignItems:"center",justifyContent:"space-between"},onClick:()=>setShowMilSection(v=>!v)},
-          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
-            React.createElement("span",null,"MILESTONES"),
-            specials.length===0&&React.createElement("span",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:11,color:"#888",letterSpacing:"0.04em",textTransform:"none"}},"Well done — you've completed your first class! 🎉")
-          ),
-          React.createElement("span",{style:{color:"#444",fontSize:13,transform:showMilSection?"rotate(180deg)":"none",transition:"transform .2s",lineHeight:1}},"▾")
-        ),
-        showMilSection&&React.createElement(React.Fragment,null,...sorted.map((e,i)=>{
-          const isFirstClass=e.classes.toString().toLowerCase()==="first";
-          const firstBooking=isFirstClass?checkedInSorted[0]:null;
-          const firstClassDOW=firstBooking?new Date(firstBooking.date_key+"T00:00:00").getDay():0;
-          const firstClassName=firstBooking?(dowNames?.[firstClassDOW]||["SUN","RISE UP","STRENGTH LOWER","ASCEND","STRENGTH UPPER","ELEVATE","SUMMIT"][firstClassDOW]||"CLASS"):"FIRST CLASS";
-          const valueDisplay=isFirstClass?firstClassName.toUpperCase():e.classes+" CLASSES";
-          const achievedDate=isFirstClass?checkedInSorted[0]?.date_key||null:checkedInSorted[parseInt(e.classes)-1]?.date_key||null;
-          const milestoneMemberPhoto=memberData?.photo||"";
-          const milestoneMemberInit=session?initials(session.name):"?";
-          return React.createElement("div",{key:i,style:{...CS.card,borderColor:"#888"}},
-            React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
-              React.createElement("div",{style:{flex:1,minWidth:0}},
-                React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",marginBottom:4}},isFirstClass?"FIRST CLASS":"MILESTONE"),
-                React.createElement("div",null,
-                  React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8,marginBottom:4}},
-                    React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:18,color:"#1d9bf0",lineHeight:1}},valueDisplay),
-                    achievedDate&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.08em"}},fmtDate(achievedDate))
-                  ),
-                  e.label&&React.createElement("div",{style:{fontSize:10,letterSpacing:"0.08em",color:"#ffffff"}},e.label.toUpperCase())
-                )
-              ),
-              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginLeft:8,flexShrink:0}},
-                milestoneMemberPhoto
-                  ?React.createElement("img",{src:milestoneMemberPhoto,style:{width:40,height:40,borderRadius:"50%",objectFit:"cover",border:"2px solid #333"},alt:""})
-                  :React.createElement("div",{style:{width:40,height:40,borderRadius:"50%",background:"#1e1e1e",border:"2px solid #333",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#aaa",flexShrink:0}},milestoneMemberInit),
-                React.createElement("span",{style:{fontSize:22,lineHeight:1}},"🏆")
-              )
-            )
-          );
-        }))
-      );
-    })(),
     // ── Admin: Manage Exercises ──────────────────────────────────────────────
     isAdmin&&React.createElement("div",{style:{marginBottom:16}},
       React.createElement("button",{
@@ -2648,22 +2600,21 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
                 )
               :React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
                   React.createElement("div",{style:{flex:1,minWidth:0}},
-                    React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",marginBottom:4}},ex.name),
+                    React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",marginBottom:4,display:"flex",alignItems:"center",gap:4}},ex.name,cb&&cb.weight_kg&&React.createElement("span",{style:{fontSize:12,lineHeight:1}},"🏆")),
                     cb&&cb.weight_kg
                       ?React.createElement("div",null,
                           React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8,marginBottom:4}},
                             React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:18,color:"#1d9bf0",lineHeight:1}},`${cb.weight_kg}kg`),
                             React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.08em"}},fmtDate(cb.achieved_date))
                           ),
-                          cb.holder_name&&React.createElement("div",{style:{fontSize:10,letterSpacing:"0.08em",color:"#ffffff"}},cb.holder_name)
+                          cb.holder_name&&React.createElement("div",{style:{fontSize:10,letterSpacing:"0.08em",color:"#ffffff"}},cb.holder_name.toUpperCase())
                         )
                       :React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",marginTop:2}},"NO RECORD SET")
                   ),
                   cb&&cb.weight_kg&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginLeft:8,flexShrink:0}},
                     holderPhotos[cb.holder_email]
                       ?React.createElement("img",{src:holderPhotos[cb.holder_email],style:{width:40,height:40,borderRadius:"50%",objectFit:"cover",border:"2px solid #333"},alt:""})
-                      :React.createElement("div",{style:{width:40,height:40,borderRadius:"50%",background:"#1e1e1e",border:"2px solid #333",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#aaa",flexShrink:0}},cb.holder_name?(cb.holder_name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()):"?"),
-                    React.createElement("span",{style:{fontSize:22,lineHeight:1}},"🏆")
+                      :React.createElement("div",{style:{width:40,height:40,borderRadius:"50%",background:"#1e1e1e",border:"2px solid #333",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#aaa",flexShrink:0}},cb.holder_name?(cb.holder_name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()):"?")
                   ),
                   isAdmin&&React.createElement("button",{
                     onClick:()=>{setCBDraft({weight_kg:cb?.weight_kg||"",holder_name:cb?.holder_name||"",holder_email:cb?.holder_email||"",achieved_date:cb?.achieved_date||toDS(new Date())});setEditingCB(ex.id);},
@@ -2672,6 +2623,53 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
                 )
           );
         }))
+    // ── Milestones ───────────────────────────────────────────────────────────
+    (()=>{
+      if(!session)return null;
+      const checkedInSorted=(bookings||[]).filter(b=>b.email===session.email&&b.checked_in&&b.date_key).sort((a,b)=>a.date_key.localeCompare(b.date_key));
+      const attended=checkedInSorted.length;
+      if(attended===0)return null;
+      const specials=((milestoneConfig||{}).specials||[]).filter(s=>{const cls=s.classes?.toString().toLowerCase();return cls==="first"?attended>=1:attended>=parseInt(s.classes);});
+      const sorted=[...specials].sort((a,b)=>a.classes-b.classes);
+      return React.createElement("div",{style:{marginBottom:4}},
+        React.createElement("div",{style:{...CS.sectionHdr,cursor:"pointer",userSelect:"none",display:"flex",alignItems:"center",justifyContent:"space-between"},onClick:()=>setShowMilSection(v=>!v)},
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
+            React.createElement("span",null,"MILESTONES"),
+            specials.length===0&&React.createElement("span",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:11,color:"#888",letterSpacing:"0.04em",textTransform:"none"}},"Well done — you've completed your first class! 🎉")
+          ),
+          React.createElement("span",{style:{color:"#444",fontSize:13,transform:showMilSection?"rotate(180deg)":"none",transition:"transform .2s",lineHeight:1}},"▾")
+        ),
+        showMilSection&&React.createElement(React.Fragment,null,...sorted.map((e,i)=>{
+          const isFirstClass=e.classes.toString().toLowerCase()==="first";
+          const firstBooking=isFirstClass?checkedInSorted[0]:null;
+          const firstClassDOW=firstBooking?new Date(firstBooking.date_key+"T00:00:00").getDay():0;
+          const firstClassName=firstBooking?(dowNames?.[firstClassDOW]||["SUN","RISE UP","STRENGTH LOWER","ASCEND","STRENGTH UPPER","ELEVATE","SUMMIT"][firstClassDOW]||"CLASS"):"FIRST CLASS";
+          const valueDisplay=isFirstClass?firstClassName.toUpperCase():e.classes+" CLASSES";
+          const achievedDate=isFirstClass?checkedInSorted[0]?.date_key||null:checkedInSorted[parseInt(e.classes)-1]?.date_key||null;
+          const milestoneMemberPhoto=memberData?.photo||"";
+          const milestoneMemberInit=session?initials(session.name):"?";
+          return React.createElement("div",{key:i,style:{...CS.card,borderColor:"#888"}},
+            React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
+              React.createElement("div",{style:{flex:1,minWidth:0}},
+                React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",marginBottom:4,display:"flex",alignItems:"center",gap:4}},isFirstClass?"FIRST CLASS":"MILESTONE",React.createElement("span",{style:{fontSize:12,lineHeight:1}},"🏆")),
+                React.createElement("div",null,
+                  React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8,marginBottom:4}},
+                    React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:18,color:"#1d9bf0",lineHeight:1}},valueDisplay),
+                    achievedDate&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.08em"}},fmtDate(achievedDate))
+                  ),
+                  e.label&&React.createElement("div",{style:{fontSize:10,letterSpacing:"0.08em",color:"#ffffff"}},e.label.toUpperCase())
+                )
+              ),
+              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginLeft:8,flexShrink:0}},
+                milestoneMemberPhoto
+                  ?React.createElement("img",{src:milestoneMemberPhoto,style:{width:40,height:40,borderRadius:"50%",objectFit:"cover",border:"2px solid #333"},alt:""})
+                  :React.createElement("div",{style:{width:40,height:40,borderRadius:"50%",background:"#1e1e1e",border:"2px solid #333",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#aaa",flexShrink:0}},milestoneMemberInit)
+              )
+            )
+          );
+        }))
+      );
+    })(),
   );
 }
 // ── Strength Program Tab ──────────────────────────────────────────────────────
@@ -3324,7 +3322,7 @@ function App(){
     React.createElement("div",{style:{marginTop:120,textAlign:"center"}},
       React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION."),
       React.createElement("div",{style:{marginTop:2,paddingBottom:20,fontSize:"7px",letterSpacing:"0.06em",color:"#999"}},
-        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"[WWW.LAMONTCOLLECTIVE.COM](https://WWW.LAMONTCOLLECTIVE.COM)")
+        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"WWW.LAMONTCOLLECTIVE.COM")
       )
     )
   );
@@ -3534,7 +3532,7 @@ function App(){
     React.createElement("div",{style:{textAlign:"center"}},
       React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION."),
       React.createElement("div",{style:{marginTop:2,paddingBottom:20,fontSize:"7px",letterSpacing:"0.06em",color:"#999"}},
-        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"[WWW.LAMONTCOLLECTIVE.COM](https://WWW.LAMONTCOLLECTIVE.COM)")
+        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"WWW.LAMONTCOLLECTIVE.COM")
       )
     ),
     React.createElement("div",{className:`toast${toast.show?" show":""}`},toast.msg),
