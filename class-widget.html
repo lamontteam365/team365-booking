@@ -61,12 +61,13 @@ html,body{background:#080808;color:#fff;font-family:'DM Sans',sans-serif}
 .slot-row.sel{border-color:#fff;background:#111}
 .slot-row.full{opacity:0.3;cursor:default}
 .slot-row.past{opacity:0.2;cursor:default;pointer-events:none}
-.slot-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;min-width:72px}
+.slot-time-wrap{display:flex;flex-direction:column;min-width:72px}
+.slot-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;line-height:1}
+.slot-class{font-size:8px;letter-spacing:0.14em;color:#555;font-weight:600;margin-top:3px}
 .slot-mid{flex:1}
-.slot-bars{display:flex;gap:2px;margin-bottom:4px}
+.slot-bars{display:flex;gap:2px;margin-bottom:5px}
 .slot-bar{flex:1;height:2px;border-radius:1px;background:#222;transition:background .3s}
 .slot-bar.t{background:#fff}
-.slot-class{font-size:8px;letter-spacing:0.14em;color:#555;font-weight:600;margin-bottom:4px}
 .slot-info{font-size:10px;letter-spacing:0.1em;font-weight:500}
 .slot-info.av{color:#aaa}.slot-info.lo{color:#e06040}.slot-info.fl{color:#444}.slot-info.ok{color:#4aaa66}
 .slot-radio{width:18px;height:18px;border-radius:50%;border:1.5px solid #2a2a2a;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
@@ -76,12 +77,13 @@ html,body{background:#080808;color:#fff;font-family:'DM Sans',sans-serif}
 .c-row{display:flex;align-items:center;gap:10px;padding:10px 13px;background:#141414;border:1px solid #666;border-radius:7px;transition:border-color .15s}
 .c-row.cb{border-color:#333}
 .c-row.cp{opacity:0.3;pointer-events:none}
-.c-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;min-width:72px}
+.c-time-wrap{display:flex;flex-direction:column;min-width:72px}
+.c-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;line-height:1}
+.c-class{font-size:8px;letter-spacing:0.14em;color:#555;font-weight:600;margin-top:3px}
 .c-mid{flex:1}
-.c-bars{display:flex;gap:2px;margin-bottom:4px}
+.c-bars{display:flex;gap:2px;margin-bottom:5px}
 .c-bar{flex:1;height:2px;border-radius:1px;background:#222;transition:background .3s}
 .c-bar.ct{background:#fff}
-.c-class{font-size:8px;letter-spacing:0.14em;color:#555;font-weight:600;margin-bottom:4px}
 .c-sub{font-size:10px;letter-spacing:0.1em;font-weight:500}
 .co{color:#999}.cl{color:#e06040}.cf{color:#444}.cg{color:#4aaa66}
 .c-btn{border:none;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:0.1em;padding:8px 14px;border-radius:3px;cursor:pointer;transition:all .15s;white-space:nowrap}
@@ -351,11 +353,6 @@ function ClassWidget(){
         ),
         loginErr&&React.createElement("div",{className:"err-msg"},loginErr),
         React.createElement("button",{className:"btn-p",onClick:handleLogin,disabled:loginBusy},loginBusy?"CHECKING…":"LOG IN")
-      ),
-      React.createElement("div",{className:"guest-notice"},
-        "Not a member yet? ",
-        React.createElement("a",{href:"https://team365-booking.vercel.app/register.html",target:"_blank"},"Register here"),
-        " to get full access to bookings, your profile, and class history."
       )
     ),
     // ── MEMBER VIEW ───────────────────────────────────────────────────────────
@@ -386,10 +383,12 @@ function ClassWidget(){
             const subText=booked?"Booked ✓":full?"Full":`${left} ${left===1?"Spot":"Spots"} Available`;
             const subCls=booked?"cg":full?"cf":left<=3?"cl":"co";
             return React.createElement("div",{key:time,className:`c-row${booked?" cb":""}${past?" cp":""}`},
-              React.createElement("div",{className:"c-time"},fmt12(time)),
+              React.createElement("div",{className:"c-time-wrap"},
+                React.createElement("div",{className:"c-time"},fmt12(time)),
+                React.createElement("div",{className:"c-class"},getSlotName(time,selDK))
+              ),
               React.createElement("div",{className:"c-mid"},
                 React.createElement("div",{className:"c-bars"},Array.from({length:Math.min(maxSp,20)}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}`}))),
-                React.createElement("div",{className:"c-class"},getSlotName(time,selDK)),
                 React.createElement("div",{className:`c-sub ${subCls}`},subText)
               ),
               !past&&(booked
@@ -429,10 +428,12 @@ function ClassWidget(){
               return React.createElement("div",{key:time,
                 className:`slot-row${selTime===time?" sel":""}${full?" full":""}${past?" past":""}`,
                 onClick:()=>{if(!full&&!past)setSelTime(time);}},
-                React.createElement("div",{className:"slot-time"},fmt12(time)),
+                React.createElement("div",{className:"slot-time-wrap"},
+                  React.createElement("div",{className:"slot-time"},fmt12(time)),
+                  React.createElement("div",{className:"slot-class"},getSlotName(time,selDK))
+                ),
                 React.createElement("div",{className:"slot-mid"},
                   React.createElement("div",{className:"slot-bars"},Array.from({length:Math.min(maxSp,20)}).map((_,i)=>React.createElement("div",{key:i,className:`slot-bar${i<taken?" t":""}`}))),
-                  React.createElement("div",{className:"slot-class"},getSlotName(time,selDK)),
                   React.createElement("div",{className:`slot-info ${full?"fl":low?"lo":"av"}`},full?"Full":`${left} spot${left===1?"":"s"} available`)
                 ),
                 !full&&!past&&React.createElement("div",{className:"slot-radio"},selTime===time&&React.createElement("div",{className:"slot-radio-dot"}))
@@ -441,7 +442,7 @@ function ClassWidget(){
           ),
         React.createElement("button",{className:"btn-p",onClick:()=>setStep(2),disabled:!selTime},"CONTINUE"),
         React.createElement("div",{className:"guest-notice"},
-          "Already a member? ",React.createElement("button",{onClick:()=>setMode("login"),style:{background:"none",border:"none",color:"#888",cursor:"pointer",fontFamily:"inherit",fontSize:"inherit",textDecoration:"underline",textUnderlineOffset:"3px",padding:0}},"Log in"),
+          "Already a member? ",React.createElement("a",{href:"https://team365-booking.vercel.app",style:{color:"#888",textDecoration:"underline",textUnderlineOffset:"3px"}},"Log in"),
           " for full access to your bookings and history."
         )
       ),
