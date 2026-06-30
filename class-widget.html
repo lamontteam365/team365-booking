@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <title>Team 365 · Book a Class</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Syncopate:wght@700&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{background:#080808;color:#fff;font-family:'DM Sans',sans-serif}
@@ -63,9 +63,10 @@ html,body{background:#080808;color:#fff;font-family:'DM Sans',sans-serif}
 .slot-row.past{opacity:0.2;cursor:default;pointer-events:none}
 .slot-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;min-width:72px}
 .slot-mid{flex:1}
-.slot-bars{display:flex;gap:2px;margin-bottom:5px}
+.slot-bars{display:flex;gap:2px;margin-bottom:4px}
 .slot-bar{flex:1;height:2px;border-radius:1px;background:#222;transition:background .3s}
 .slot-bar.t{background:#fff}
+.slot-class{font-size:8px;letter-spacing:0.14em;color:#555;font-weight:600;margin-bottom:4px}
 .slot-info{font-size:10px;letter-spacing:0.1em;font-weight:500}
 .slot-info.av{color:#aaa}.slot-info.lo{color:#e06040}.slot-info.fl{color:#444}.slot-info.ok{color:#4aaa66}
 .slot-radio{width:18px;height:18px;border-radius:50%;border:1.5px solid #2a2a2a;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
@@ -77,9 +78,10 @@ html,body{background:#080808;color:#fff;font-family:'DM Sans',sans-serif}
 .c-row.cp{opacity:0.3;pointer-events:none}
 .c-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;min-width:72px}
 .c-mid{flex:1}
-.c-bars{display:flex;gap:2px;margin-bottom:5px}
+.c-bars{display:flex;gap:2px;margin-bottom:4px}
 .c-bar{flex:1;height:2px;border-radius:1px;background:#222;transition:background .3s}
 .c-bar.ct{background:#fff}
+.c-class{font-size:8px;letter-spacing:0.14em;color:#555;font-weight:600;margin-bottom:4px}
 .c-sub{font-size:10px;letter-spacing:0.1em;font-weight:500}
 .co{color:#999}.cl{color:#e06040}.cf{color:#444}.cg{color:#4aaa66}
 .c-btn{border:none;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:0.1em;padding:8px 14px;border-radius:3px;cursor:pointer;transition:all .15s;white-space:nowrap}
@@ -149,7 +151,6 @@ const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"]
 const SAT_TIMES=["06:30","07:30","08:30","09:30"];
 const DAY_SHORT=["Mon","Tue","Wed","Thu","Fri","Sat"];
 const DAY_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-const DAY_SESS=["Rise Up","Strength Lower","Ascend","Strength Upper","Elevate","Summit"];
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const mondayOf=d=>{const x=new Date(d);x.setHours(0,0,0,0);const day=x.getDay();x.setDate(x.getDate()-(day===0?6:day-1));return x;};
@@ -204,29 +205,64 @@ function ClassWidget(){
   // Member state
   const[bkBusy,setBkBusy]=useState({});
   const[classLimits,setClassLimits]=useState([]);
+  // Dynamic class names from DB
+  const[dowNames,setDowNames]=useState({1:"RISE UP",2:"STRENGTH LOWER",3:"ASCEND",4:"STRENGTH UPPER",5:"ELEVATE",6:"SUMMIT"});
+
   const weekDates=Array.from({length:6},(_,i)=>addDays(weekStart,i));
   const isThisWeek=toDS(weekStart)===toDS(mondayOf(new Date()));
   const selDate=weekDates[selDay];
   const selDK=toDS(selDate);
-  const curTimes=selDate.getDay()===6?SAT_TIMES:WD_TIMES;
+
   // Load bookings
   useEffect(()=>{
     setLoading(true);setSelTime(null);
     const keys=weekDates.map(toDS);
     sbGet("bookings",`date_key=in.(${keys.join(",")})&select=date_key,time,email,name`).then(d=>{setBookings(d||[]);setLoading(false);});
   },[weekStart]);
+
   useEffect(()=>{setSelTime(null);},[selDay]);
-  // Fetch dynamic class limits when week changes
+
+  // Fetch dynamic class limits (including name column for slot name overrides)
   useEffect(()=>{
     const keys=weekDates.map(toDS);
-    sbGet("class_limits",`date_key=in.(${keys.join(",")})&select=time_slot,date_key,max_spots`).then(d=>setClassLimits(d||[]));
+    sbGet("class_limits",`date_key=in.(${keys.join(",")})&select=time_slot,date_key,max_spots,name`).then(d=>setClassLimits(d||[]));
   },[weekStart]);
+
+  // Fetch dynamic day-of-week class names once on mount
+  useEffect(()=>{
+    sbGet("coaching_notes","class_name=eq.__DOW_NAMES__&select=content").then(data=>{
+      if(data&&data.length&&data[0].content){
+        try{const dn=JSON.parse(data[0].content);setDowNames(p=>({...p,...dn}));}catch{}
+      }
+    });
+  },[]);
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
   function getMaxSpots(time,dateKey){
     const cl=classLimits.find(l=>l.time_slot===time&&l.date_key===dateKey);
-    return cl?cl.max_spots:MAX_SPOTS;
+    return cl!==undefined?cl.max_spots:MAX_SPOTS;
   }
+
+  // Returns per-slot name override if set, otherwise falls back to day-of-week class name
+  function getSlotName(time,dateKey){
+    const cl=classLimits.find(l=>l.time_slot===time&&l.date_key===dateKey);
+    if(cl&&cl.name)return cl.name;
+    const dow=new Date(dateKey+"T00:00:00").getDay();
+    return dowNames[dow]||"";
+  }
+
+  // Visible times for selected day: base times + any extras added in class_limits, filtered to exclude hidden (max_spots=0)
+  const baseTimes=selDate.getDay()===6?SAT_TIMES:WD_TIMES;
+  const extraTimesForDay=classLimits
+    .filter(l=>l.date_key===selDK&&!baseTimes.includes(l.time_slot)&&l.max_spots>0)
+    .map(l=>l.time_slot);
+  const visibleTimes=[...baseTimes,...extraTimesForDay]
+    .sort()
+    .filter(t=>getMaxSpots(t,selDK)!==0);
+
   const getBksFor=(dk,t)=>bookings.filter(b=>b.date_key===dk&&b.time===t);
   const userBooked=(dk,t)=>session&&getBksFor(dk,t).some(b=>b.email===session.email);
+
   // Login
   async function handleLogin(){
     const em=loginForm.email.trim().toLowerCase();
@@ -241,26 +277,25 @@ function ClassWidget(){
     lsSet("t365-cw-session",s);setSession(s);setMode("member");setLoginBusy(false);
   }
   function handleLogout(){lsSet("t365-cw-session",null);setSession(null);setMode("guest");setStep(1);setSelTime(null);setConf(null);}
+
   // Member book
   async function handleMemberBook(time){
     const lk=`${selDK}-${time}`;
     setBkBusy(b=>({...b,[lk]:true}));
     const ok=await sbPost("bookings",{email:session.email,name:session.name,date_key:selDK,time,created_at:Date.now()});
-    if(ok){
-      setBookings(prev=>[...prev,{email:session.email,name:session.name,date_key:selDK,time}]);
-    }
+    if(ok){setBookings(prev=>[...prev,{email:session.email,name:session.name,date_key:selDK,time}]);}
     setBkBusy(b=>({...b,[lk]:false}));
   }
+
   // Member cancel
   async function handleMemberCancel(time){
     const lk=`${selDK}-${time}`;
     setBkBusy(b=>({...b,[lk]:true}));
     const ok=await sbDelete("bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=eq.${selDK}&time=eq.${encodeURIComponent(time)}`);
-    if(ok){
-      setBookings(prev=>prev.filter(b=>!(b.email===session.email&&b.date_key===selDK&&b.time===time)));
-    }
+    if(ok){setBookings(prev=>prev.filter(b=>!(b.email===session.email&&b.date_key===selDK&&b.time===time)));}
     setBkBusy(b=>({...b,[lk]:false}));
   }
+
   // Guest book
   async function submitBooking(payMethod){
     const nm=form.name.trim(),em=form.email.trim().toLowerCase(),ph=form.phone.trim();
@@ -270,7 +305,7 @@ function ClassWidget(){
     const ref=genRef();
     const dateLabel=`${DAY_LONG[selDay]} ${selDate.getDate()} ${MONTHS[selDate.getMonth()]}`;
     const timeLabel=fmt12(selTime);
-    const sessName=DAY_SESS[selDay];
+    const sessName=getSlotName(selTime,selDK);
     const row={email:em,name:nm,date_key:selDK,time:selTime,is_guest:true,booking_ref:ref,phone:ph,created_at:Date.now()};
     const ok=await sbPost("bookings",row);
     if(!ok){setErr("Booking failed — please try again.");setBusy(false);return;}
@@ -282,9 +317,18 @@ function ClassWidget(){
   }
   function handleGuestBook(){submitBooking(payment);}
   function resetGuest(){setStep(1);setSelTime(null);setForm({name:"",email:"",phone:""});setPayment("gym");setConf(null);setErr("");}
+
   // ── Render ──────────────────────────────────────────────────────────────────
   return React.createElement("div",{className:"widget"},
-    // Mode bar
+    // ── HERO ─────────────────────────────────────────────────────────────────
+    React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",padding:"28px 0 24px"}},
+      React.createElement("div",{style:{width:62,height:62,borderRadius:"50%",border:"2px solid #2a2a2a",marginBottom:10,overflow:"hidden"}},
+        React.createElement("img",{src:"icon-192.png",style:{width:"100%",height:"100%",objectFit:"cover"},alt:"Team 365"})
+      ),
+      React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:11,fontWeight:700,color:"#fff",textAlign:"center",letterSpacing:"0.1em",lineHeight:1.3,whiteSpace:"nowrap"}},"LAMONT TEAM 365"),
+      React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:6,fontWeight:700,color:"#444",textAlign:"center",marginTop:4,letterSpacing:"0.12em",whiteSpace:"nowrap"}},"EVERYDAY. ALL YEAR ROUND.")
+    ),
+    // ── MODE BAR ─────────────────────────────────────────────────────────────
     React.createElement("div",{className:"mode-bar"},
       React.createElement("div",null,
         React.createElement("div",{className:"mode-title"},"BOOK A CLASS"),
@@ -320,24 +364,22 @@ function ClassWidget(){
         React.createElement("div",{className:"member-name"},session.name.toUpperCase()),
         React.createElement("button",{className:"logout-btn",onClick:handleLogout},"LOG OUT")
       ),
-      // Week nav
       React.createElement("div",{className:"week-nav"},
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"‹"),
         React.createElement("div",{className:"wk-label"},`${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} – ${MONTHS[weekDates[5].getMonth()]} ${weekDates[5].getDate()} ${weekDates[0].getFullYear()}`),
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,7))},"›")
       ),
-      // Day strip
       React.createElement("div",{className:"day-strip"},
         weekDates.map((d,i)=>React.createElement("button",{key:i,className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}`,onClick:()=>setSelDay(i)},
           React.createElement("div",{className:"d-name"},DAY_SHORT[i]),
           React.createElement("div",{className:"d-num"},d.getDate())
         ))
       ),
-      React.createElement("div",{className:"sess-lbl"},`${DAY_LONG[selDay].toUpperCase()} · ${curTimes.length} CLASSES`),
+      React.createElement("div",{className:"sess-lbl"},`${DAY_LONG[selDay].toUpperCase()} · ${visibleTimes.length} CLASSES`),
       loading
         ?React.createElement("div",{className:"loading"},"CHECKING AVAILABILITY…",React.createElement("div",{className:"load-bar"},React.createElement("div",{className:"load-fill"})))
         :React.createElement("div",{className:"slot-list"},
-          curTimes.map(time=>{
+          visibleTimes.map(time=>{
             const list=getBksFor(selDK,time);const taken=list.length;const maxSp=getMaxSpots(time,selDK);const left=maxSp-taken;
             const booked=userBooked(selDK,time);const full=left===0&&!booked;
             const past=isPastSlot(selDate,time);const lk=`${selDK}-${time}`;const isBusy=!!bkBusy[lk];
@@ -347,6 +389,7 @@ function ClassWidget(){
               React.createElement("div",{className:"c-time"},fmt12(time)),
               React.createElement("div",{className:"c-mid"},
                 React.createElement("div",{className:"c-bars"},Array.from({length:Math.min(maxSp,20)}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}`}))),
+                React.createElement("div",{className:"c-class"},getSlotName(time,selDK)),
                 React.createElement("div",{className:`c-sub ${subCls}`},subText)
               ),
               !past&&(booked
@@ -360,7 +403,6 @@ function ClassWidget(){
     ),
     // ── GUEST VIEW ────────────────────────────────────────────────────────────
     mode==="guest"&&React.createElement("div",null,
-      // Progress dots
       step<3&&React.createElement("div",{className:"w-dots"},
         [0,1].map(i=>React.createElement("div",{key:i,className:`w-dot${step-1===i?" active":step-1>i?" done":""}`}))
       ),
@@ -377,11 +419,11 @@ function ClassWidget(){
             React.createElement("div",{className:"d-num"},d.getDate())
           ))
         ),
-        React.createElement("div",{className:"sess-lbl"},`${DAY_LONG[selDay].toUpperCase()} · ${curTimes.length} CLASSES`),
+        React.createElement("div",{className:"sess-lbl"},`${DAY_LONG[selDay].toUpperCase()} · ${visibleTimes.length} CLASSES`),
         loading
           ?React.createElement("div",{className:"loading"},"CHECKING AVAILABILITY…",React.createElement("div",{className:"load-bar"},React.createElement("div",{className:"load-fill"})))
           :React.createElement("div",{className:"slot-list"},
-            curTimes.map(time=>{
+            visibleTimes.map(time=>{
               const taken=bookings.filter(b=>b.date_key===selDK&&b.time===time).length;const maxSp=getMaxSpots(time,selDK);const left=maxSp-taken;
               const full=left===0;const low=left<=3&&left>0;const past=isPastSlot(selDate,time);
               return React.createElement("div",{key:time,
@@ -390,6 +432,7 @@ function ClassWidget(){
                 React.createElement("div",{className:"slot-time"},fmt12(time)),
                 React.createElement("div",{className:"slot-mid"},
                   React.createElement("div",{className:"slot-bars"},Array.from({length:Math.min(maxSp,20)}).map((_,i)=>React.createElement("div",{key:i,className:`slot-bar${i<taken?" t":""}`}))),
+                  React.createElement("div",{className:"slot-class"},getSlotName(time,selDK)),
                   React.createElement("div",{className:`slot-info ${full?"fl":low?"lo":"av"}`},full?"Full":`${left} spot${left===1?"":"s"} available`)
                 ),
                 !full&&!past&&React.createElement("div",{className:"slot-radio"},selTime===time&&React.createElement("div",{className:"slot-radio-dot"}))
@@ -406,7 +449,7 @@ function ClassWidget(){
       step===2&&React.createElement("div",null,
         React.createElement("div",{className:"w-sub"},"YOUR DETAILS · ALMOST THERE"),
         React.createElement("div",{className:"summ"},
-          React.createElement("div",{className:"summ-row"},React.createElement("div",{className:"summ-lbl"},"SESSION"),React.createElement("div",{className:"summ-val"},DAY_SESS[selDay].toUpperCase())),
+          React.createElement("div",{className:"summ-row"},React.createElement("div",{className:"summ-lbl"},"SESSION"),React.createElement("div",{className:"summ-val"},selTime?getSlotName(selTime,selDK).toUpperCase():"")),
           React.createElement("div",{className:"summ-row"},React.createElement("div",{className:"summ-lbl"},"DATE"),React.createElement("div",{className:"summ-val"},`${DAY_LONG[selDay].toUpperCase()} ${selDate.getDate()} ${MONTHS[selDate.getMonth()].toUpperCase()}`)),
           React.createElement("div",{className:"summ-row"},React.createElement("div",{className:"summ-lbl"},"TIME"),React.createElement("div",{className:"summ-val"},fmt12(selTime)))
         ),
