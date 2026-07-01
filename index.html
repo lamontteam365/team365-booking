@@ -3315,11 +3315,7 @@ React.createElement("div",{style:{display:"flex",flexDirection:"column",alignIte
         fpMsg?React.createElement("div",{className:"fp-msg"},fpMsg)
         :React.createElement("button",{className:"auth-btn",onClick:handleForgotPw,disabled:fpBusy,style:{fontSize:14,padding:14,marginTop:8}},fpBusy?"SENDING...":"SEND RESET LINK")
       ),
-      React.createElement("div",{className:"auth-sw"},
-        authMode==="login"
-          ?React.createElement(React.Fragment,null,"New member? ",React.createElement("button",{onClick:()=>{setAuthMode("signup");setAuthErr("");setShowForgotPw(false);}},"Create an account"))
-          :React.createElement(React.Fragment,null,"Already a member? ",React.createElement("button",{onClick:()=>{setAuthMode("login");setAuthErr("");}},"Log in"))                        
-      ),
+ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a member? ",React.createElement("a",{href:"/WIDGET.HTML",target:"_blank"},"Book as a guest"))
       React.createElement("div",{className:"auth-guest-divider"},React.createElement("span",null,"OR")),
       React.createElement("div",{className:"auth-guest"},"Not a member? ",React.createElement("a",{href:"/WIDGET.HTML",target:"_blank"},"Book as a guest"))
     ),
