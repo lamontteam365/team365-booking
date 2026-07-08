@@ -1205,9 +1205,7 @@ function MilestoneAdminPanel({milestoneConfig,saveMilestoneConfig,showToast}){
     )
   );
 }
-function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,dowNames,saveDowName,slotNames,saveSlotName,milestoneConfig,saveMilestoneConfig}){
-  const [admSeg,setAdmSeg]=useState(()=>lsGet("t365-admseg","members"));
-  useEffect(()=>{lsSet("t365-admseg",admSeg);},[admSeg]);
+function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,dowNames,saveDowName,slotNames,saveSlotName,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg}){
   const [expandedTier,setExpandedTier]=useState(null);
   const [admDate,setAdmDate]=useState(new Date());
   const [expanded,setExpanded]=useState({});
@@ -1298,12 +1296,12 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
       React.createElement("span",{style:{color:"#666",fontSize:11,lineHeight:1}},"›")
     ),
     React.createElement("div",{className:"adm-seg"},
-      React.createElement("button",{className:`adm-seg-btn${admSeg==="members"?" aas":""}`,onClick:()=>setAdmSeg("members")},"MEMBERS"),
-      React.createElement("button",{className:`adm-seg-btn${admSeg==="classes"?" aas":""}`,onClick:()=>setAdmSeg("classes")},"CLASSES"),
-      React.createElement("button",{className:`adm-seg-btn${admSeg==="wellness"?" aas":""}`,onClick:()=>setAdmSeg("wellness")},"WELLNESS"),
-      React.createElement("button",{className:`adm-seg-btn${admSeg==="sections"?" aas":""}`,onClick:()=>setAdmSeg("sections")},"SECTIONS"),
-      React.createElement("button",{className:`adm-seg-btn${admSeg==="onboarding"?" aas":""}`,onClick:()=>setAdmSeg("onboarding")},"ONBOARDING"),
-      React.createElement("button",{className:`adm-seg-btn${admSeg==="coaching"?" aas":""}`,onClick:()=>setAdmSeg("coaching")},"DETAILS")
+      React.createElement("button",{"data-adm":"members",className:`adm-seg-btn${admSeg==="members"?" aas":""}`,onClick:()=>setAdmSeg("members")},"MEMBERS"),
+      React.createElement("button",{"data-adm":"classes",className:`adm-seg-btn${admSeg==="classes"?" aas":""}`,onClick:()=>setAdmSeg("classes")},"CLASSES"),
+      React.createElement("button",{"data-adm":"wellness",className:`adm-seg-btn${admSeg==="wellness"?" aas":""}`,onClick:()=>setAdmSeg("wellness")},"WELLNESS"),
+      React.createElement("button",{"data-adm":"sections",className:`adm-seg-btn${admSeg==="sections"?" aas":""}`,onClick:()=>setAdmSeg("sections")},"SECTIONS"),
+      React.createElement("button",{"data-adm":"onboarding",className:`adm-seg-btn${admSeg==="onboarding"?" aas":""}`,onClick:()=>setAdmSeg("onboarding")},"ONBOARDING"),
+      React.createElement("button",{"data-adm":"coaching",className:`adm-seg-btn${admSeg==="coaching"?" aas":""}`,onClick:()=>setAdmSeg("coaching")},"DETAILS")
     ),
     admSeg==="members"&&(!membersLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
     :React.createElement(React.Fragment,null,
@@ -3319,6 +3317,29 @@ function App(){
   const [selDay,setSelDay]=useState(getInitDay);
   const [tab,setTab]=useState(()=>ssGet("t365-tab","community"));
   useEffect(()=>{ssSet("t365-tab",tab);},[tab]);
+  // Keep the active tab scrolled into view in both nav bars whenever the tab changes
+  useEffect(()=>{
+    try{
+      document.querySelectorAll('[data-tab="'+tab+'"]').forEach(el=>{
+        const c=el.parentElement;if(!c)return;
+        const er=el.getBoundingClientRect(),cr=c.getBoundingClientRect();
+        c.scrollTo({left:c.scrollLeft+(er.left-cr.left)-(cr.width/2)+(er.width/2),behavior:"smooth"});
+      });
+    }catch(e){}
+  },[tab]);
+  const ADMIN_SEG_ORDER=["members","classes","wellness","sections","onboarding","coaching"];
+  const [admSeg,setAdmSeg]=useState(()=>lsGet("t365-admseg","members"));
+  useEffect(()=>{lsSet("t365-admseg",admSeg);},[admSeg]);
+  // Keep the active admin sub-section scrolled into view when it changes
+  useEffect(()=>{
+    try{
+      document.querySelectorAll('[data-adm="'+admSeg+'"]').forEach(el=>{
+        const c=el.parentElement;if(!c)return;
+        const er=el.getBoundingClientRect(),cr=c.getBoundingClientRect();
+        c.scrollTo({left:c.scrollLeft+(er.left-cr.left)-(cr.width/2)+(er.width/2),behavior:"smooth"});
+      });
+    }catch(e){}
+  },[admSeg]);
   useEffect(()=>{if(tab==="book"){sbGet("class_limits","select=time_slot,date_key,max_spots,name").then(data=>{const lm={};const sn={};(data||[]).forEach(r=>{lm[`${r.date_key}:${r.time_slot}`]=r.max_spots;if(r.name)sn[`${r.date_key}:${r.time_slot}`]=r.name;});setClassLimits(lm);setSlotNames(sn);});}},[tab]);
   const [authMode,setAuthMode]=useState("login");
   const [authForm,setAuthForm]=useState({name:"",email:"",phone:"",password:""});
@@ -3434,6 +3455,12 @@ function App(){
     const dy=e.changedTouches[0].clientY-touchStartY.current;
     touchStartX.current=null;touchStartY.current=null;
     if(Math.abs(dx)<50||Math.abs(dx)<Math.abs(dy)*1.5)return;
+    if(tab==="admin"){
+      const ai=ADMIN_SEG_ORDER.indexOf(admSeg);
+      if(dx<0&&ai<ADMIN_SEG_ORDER.length-1)setAdmSeg(ADMIN_SEG_ORDER[ai+1]);
+      else if(dx>0&&ai>0)setAdmSeg(ADMIN_SEG_ORDER[ai-1]);
+      return;
+    }
     const idx=TAB_ORDER.indexOf(tab);
     if(dx<0&&idx<TAB_ORDER.length-1)setTab(TAB_ORDER[idx+1]);
     else if(dx>0&&idx>0)setTab(TAB_ORDER[idx-1]);
@@ -3706,7 +3733,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       ),
       React.createElement("div",{className:"no-sb",style:{display:"flex",marginLeft:-20,marginRight:-20,width:"calc(100% + 40px)",borderTop:"1px solid #444",borderBottom:"1px solid #444",background:"#141414",overflowX:"auto"},onClick:e=>e.stopPropagation()},
         NAV_TABS.map((t,ti)=>React.createElement(React.Fragment,{key:t.id},
-          React.createElement("button",{
+          React.createElement("button",{"data-tab":t.id,
             style:{flex:"1 0 auto",minWidth:56,padding:"10px 10px",background:tab===t.id?"#222":"none",border:"none",borderTop:`1px solid ${tab===t.id?"#fff":"transparent"}`,borderBottom:`1px solid ${tab===t.id?"#fff":"transparent"}`,borderLeft:"1px solid transparent",borderRight:"1px solid transparent",marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8.5px",letterSpacing:"0.1em",color:tab===t.id?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap",position:"relative"},
             onClick:()=>{setTab(t.id);if(t.id==="community")lsSet("t365-last-read",Date.now());}},
             t.label,
@@ -3867,7 +3894,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     tab==="strength"&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast,bookings,memberData})),
     tab==="workouts"&&workoutsEnabled&&React.createElement(MemberWorkoutsView,{session,memberData}),
     tab==="progress"&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}),
-    tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,dowNames,saveDowName,slotNames,saveSlotName,milestoneConfig,saveMilestoneConfig}),
+    tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,dowNames,saveDowName,slotNames,saveSlotName,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg}),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:"auto"}},
       React.createElement("span",{style:{color:"#666",fontSize:11,lineHeight:1}},"‹"),
       React.createElement("span",{style:{color:"#555",fontSize:7,letterSpacing:"0.22em",fontWeight:600}},"SWIPE FOR MORE"),
@@ -3875,7 +3902,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     ),
     React.createElement("div",{className:"tab-bar no-sb",style:{marginTop:0}},
       NAV_TABS.map((t,ti)=>React.createElement(React.Fragment,{key:t.id},
-        React.createElement("button",{className:`tab-btn${tab===t.id?" ta":""}`,style:t.dot?{position:"relative"}:undefined,
+        React.createElement("button",{"data-tab":t.id,className:`tab-btn${tab===t.id?" ta":""}`,style:t.dot?{position:"relative"}:undefined,
           onClick:()=>{setTab(t.id);if(t.id==="community")lsSet("t365-last-read",Date.now());}},
           t.label,
           t.dot&&unreadPosts>0&&tab!=="community"&&React.createElement("div",{className:"tab-dot"})
