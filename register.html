@@ -7,11 +7,34 @@
 <meta name="theme-color" content="#080808"/>
 <title>Team 365 · Health Screening Form</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Syncopate:wght@700&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{background:#080808;min-height:100vh}
 body{font-family:'DM Sans',sans-serif;color:#fff;padding:0}
+/* ── Hero header ── */
+.hero{
+  background-image:linear-gradient(rgba(8,8,8,0.72),rgba(8,8,8,0.88)),
+    url("https://raw.githubusercontent.com/lamontteam365/team365-booking/main/images/671a9a90865c3673c895b473f6d1feed.jpg");
+  background-size:cover;
+  background-position:center top;
+  padding:36px 28px 28px;
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  border-bottom:1px solid #1a1a1a;
+}
+.hero-circle{
+  width:88px;height:88px;border-radius:50%;
+  border:2px solid #333;background:#111;
+  overflow:hidden;margin-bottom:16px;
+  display:flex;align-items:center;justify-content:center;
+}
+.hero-circle img{width:100%;height:100%;object-fit:cover;}
+.hero-name{font-family:'Syncopate',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.18em;color:#fff;margin-bottom:5px}
+.hero-tag{font-family:'Syncopate',sans-serif;font-size:6px;font-weight:700;letter-spacing:0.2em;color:#555;margin-bottom:14px}
+.hero-badge{font-size:9px;letter-spacing:0.18em;color:#1d9bf0;background:#0a1a2a;border:1px solid #1d3a5a;border-radius:3px;padding:4px 14px}
 .wrap{max-width:480px;margin:0 auto;padding:32px 20px 60px}
 .logo-area{text-align:center;margin-bottom:36px}
 .logo-sub{font-size:9px;letter-spacing:0.22em;color:#777;font-weight:500;margin-bottom:4px}
@@ -75,35 +98,28 @@ select.fi option{background:#0e0e0e;color:#fff}
 </head>
 <body>
 <div id="root"><div class="loading-screen"><div style="font-family:'DM Sans',sans-serif">TEAM 365</div><div class="loading-bar"><div class="loading-fill"></div></div></div></div>
-
 <script>
 const SB_URL = "https://xczwmexavysvljmobbgv.supabase.co";
 const SB_KEY = "sb_publishable_tujGGhPRUimflq1-IFzuvA_Crw6knMO";
 const SB_HDR = {"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return=minimal"};
-
 async function sbGet(t,q=""){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
 async function sbPost(t,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
-
 const hashPw = s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)^s.charCodeAt(i);return(h>>>0).toString(36);};
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const today = ()=>{const d=new Date();return`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;};
-
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz5cruljVDUVScwm14Sj1z5_6cRrNK9cgOaq7Tx8P9LfPAEI7p_kx8ZJnaghF_SmU46Fw/exec";
-
 async function sendWelcomeEmailViaScript(to, firstName, tempPassword) {
   try {
     const params = new URLSearchParams({action:"welcome",to,firstName,tempPassword});
     await fetch(APPS_SCRIPT_URL + "?" + params.toString(), {method:"GET",mode:"no-cors"});
   } catch(e) {}
 }
-
 async function logHealthToSheets(data) {
   try {
     const params = new URLSearchParams({action:"logHealth",...data});
     await fetch(APPS_SCRIPT_URL + "?" + params.toString(), {method:"GET",mode:"no-cors"});
   } catch(e) {}
 }
-
 const PARQ = [
   "Has your doctor ever said that you have a heart condition and that you should only do physical activity recommended by a doctor?",
   "Do you feel pain in your chest when you do physical activity?",
@@ -113,7 +129,6 @@ const PARQ = [
   "Is your doctor currently prescribing drugs for your blood pressure or heart condition?",
   "Do you know of any other reason why you should not do physical activity? (e.g. pregnancy, recent surgery, diabetes)"
 ];
-
 // State
 let parqAnswers = {};
 let fitnessLevel = "";
@@ -121,7 +136,6 @@ let healthDeclaration = "";
 let mediaConsent = "";
 let sigCanvas, sigCtx, drawing = false, hasSig = false;
 let errEl;
-
 function initCanvas(){
   sigCanvas = document.getElementById("sig-canvas");
   if(!sigCanvas) return;
@@ -133,13 +147,11 @@ function initCanvas(){
   sigCtx.lineWidth = 2;
   sigCtx.lineCap = "round";
   sigCtx.lineJoin = "round";
-
   function getPos(e){
     const r = sigCanvas.getBoundingClientRect();
     const src = e.touches ? e.touches[0] : e;
     return {x: src.clientX - r.left, y: src.clientY - r.top};
   }
-
   sigCanvas.addEventListener("mousedown", e=>{drawing=true;const p=getPos(e);sigCtx.beginPath();sigCtx.moveTo(p.x,p.y);hasSig=true;document.querySelector(".sig-hint").style.display="none";});
   sigCanvas.addEventListener("mousemove", e=>{if(!drawing)return;const p=getPos(e);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();sigCtx.beginPath();sigCtx.moveTo(p.x,p.y);});
   sigCanvas.addEventListener("mouseup", ()=>{drawing=false;});
@@ -148,13 +160,11 @@ function initCanvas(){
   sigCanvas.addEventListener("touchmove", e=>{e.preventDefault();if(!drawing)return;const p=getPos(e);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();sigCtx.beginPath();sigCtx.moveTo(p.x,p.y);},{passive:false});
   sigCanvas.addEventListener("touchend", ()=>{drawing=false;});
 }
-
 function clearSig(){
   if(sigCtx) sigCtx.clearRect(0,0,sigCanvas.offsetWidth*2,sigCanvas.offsetHeight*2);
   hasSig=false;
   document.querySelector(".sig-hint").style.display="block";
 }
-
 function selectParq(idx, val){
   parqAnswers[idx] = val;
   document.querySelectorAll(`.parq-${idx} .parq-btn`).forEach(b=>{
@@ -162,14 +172,12 @@ function selectParq(idx, val){
     if(b.dataset.val===val) b.classList.add(val==="Yes"?"sel-yes":"sel-no");
   });
 }
-
 function selectFitness(val){
   fitnessLevel = val;
   document.querySelectorAll(".fitness-btn").forEach(b=>{
     b.classList.toggle("sel", b.dataset.val===val);
   });
 }
-
 function selectConsent(field, val){
   if(field==="health") healthDeclaration=val;
   else mediaConsent=val;
@@ -178,11 +186,9 @@ function selectConsent(field, val){
     if(b.dataset.val===val) b.classList.add(val==="Yes"?"sel-yes":"sel-no");
   });
 }
-
 async function handleSubmit(){
   errEl = document.getElementById("err-msg");
   errEl.textContent = "";
-
   const firstName = document.getElementById("fname").value.trim();
   const lastName  = document.getElementById("lname").value.trim();
   const dob       = document.getElementById("dob").value.trim();
@@ -192,7 +198,6 @@ async function handleSubmit(){
   const ePhone    = document.getElementById("ephone").value.trim();
   const medCond   = document.getElementById("med-cond").value.trim();
   const meds      = document.getElementById("meds").value.trim();
-
   if(!firstName||!lastName){errEl.textContent="Please enter your full name.";return;}
   if(!dob){errEl.textContent="Please enter your date of birth.";return;}
   if(!phone){errEl.textContent="Please enter your phone number.";return;}
@@ -204,17 +209,13 @@ async function handleSubmit(){
   if(!healthDeclaration){errEl.textContent="Please confirm the health declaration.";return;}
   if(!mediaConsent){errEl.textContent="Please confirm your media consent preference.";return;}
   if(!hasSig){errEl.textContent="Please sign the form.";return;}
-
   const existing = await sbGet("members",`email=eq.${encodeURIComponent(email)}`);
   const isExisting = existing.length > 0;
-
   const btn = document.getElementById("submit-btn");
   btn.disabled=true; btn.textContent="SUBMITTING...";
-
   const sigData = sigCanvas.toDataURL("image/png",0.7);
   const regDate = today();
   const name = `${firstName} ${lastName}`;
-
   const regData = {
     name, phone, dob,
     emergency_name:      eName,
@@ -234,7 +235,6 @@ async function handleSubmit(){
     signature:           sigData,
     registration_date:   regDate
   };
-
   const healthData = {
     name, email, phone, dob,
     emergencyName: eName, emergencyPhone: ePhone,
@@ -246,10 +246,8 @@ async function handleSubmit(){
     fitnessLevel, healthDeclaration, mediaConsent,
     registrationDate: regDate
   };
-
   let ok = false;
   let tempPw = "";
-
   if(isExisting){
     const patchRes = await fetch(`${SB_URL}/rest/v1/members?email=eq.${encodeURIComponent(email)}`,{
       method:"PATCH", headers:SB_HDR, body:JSON.stringify(regData)
@@ -264,13 +262,11 @@ async function handleSubmit(){
       logHealthToSheets(healthData);
     }
   }
-
   if(!ok){
     errEl.textContent="Something went wrong. Please try again.";
     btn.disabled=false; btn.textContent="SUBMIT";
     return;
   }
-
   document.getElementById("root").innerHTML = `
     <div class="success-page">
       <div class="success-icon">✓</div>
@@ -284,19 +280,19 @@ async function handleSubmit(){
       <a href="https://team365-booking.vercel.app" class="success-link">OPEN BOOKING APP</a>
     </div>`;
 }
-
 // Render form
 document.getElementById("root").innerHTML = `
-<div class="wrap">
-  <div class="logo-area">
-    <div class="logo-sub">LAMONT</div>
-    <div class="logo">TEAM 365</div>
-    <div class="logo-tag">EVERYDAY. ALL YEAR ROUND.</div>
+<div class="hero">
+  <div class="hero-circle">
+    <img src="https://raw.githubusercontent.com/lamontteam365/team365-booking/main/icon-192.png" onerror="this.style.display='none'" alt="Team 365"/>
   </div>
-
+  <div class="hero-name">LAMONT TEAM 365</div>
+  <div class="hero-tag">EVERYDAY. ALL YEAR ROUND.</div>
+  <div class="hero-badge">HEALTH SCREENING</div>
+</div>
+<div class="wrap">
   <div class="form-title">Health Screening Form</div>
   <div class="form-sub">COMPLETE BEFORE YOUR FIRST SESSION</div>
-
   <div class="section">
     <div class="section-label">PERSONAL DETAILS</div>
     <div class="row2">
@@ -316,7 +312,6 @@ document.getElementById("root").innerHTML = `
     <label class="fl" for="email">EMAIL ADDRESS</label>
     <input class="fi" id="email" type="email" placeholder="your@email.com" autocomplete="email"/>
   </div>
-
   <div class="section">
     <div class="section-label">EMERGENCY CONTACT</div>
     <div class="row2">
@@ -330,7 +325,6 @@ document.getElementById("root").innerHTML = `
       </div>
     </div>
   </div>
-
   <div class="section">
     <div class="section-label">HEALTH SCREENING · PAR-Q</div>
     ${PARQ.map((q,i)=>`
@@ -342,7 +336,6 @@ document.getElementById("root").innerHTML = `
         </div>
       </div>`).join("")}
   </div>
-
   <div class="section">
     <div class="section-label">MEDICAL INFORMATION</div>
     <label class="fl" for="med-cond">INJURIES OR CONDITIONS WE SHOULD KNOW ABOUT</label>
@@ -350,7 +343,6 @@ document.getElementById("root").innerHTML = `
     <label class="fl" for="meds">CURRENT MEDICATIONS</label>
     <textarea class="fi" id="meds" placeholder="List any current medications, or write 'None'"></textarea>
   </div>
-
   <div class="section">
     <div class="section-label">STARTING LEVEL</div>
     <div class="fitness-opts">
@@ -368,7 +360,6 @@ document.getElementById("root").innerHTML = `
       </button>
     </div>
   </div>
-
   <div class="section">
     <div class="section-label">DECLARATIONS</div>
     <div class="consent-item consent-health">
@@ -388,7 +379,6 @@ document.getElementById("root").innerHTML = `
       </div>
     </div>
   </div>
-
   <div class="section">
     <div class="section-label">SIGNATURE</div>
     <div class="sig-wrap">
@@ -397,47 +387,37 @@ document.getElementById("root").innerHTML = `
       <div class="sig-hint">Sign here with your finger</div>
     </div>
   </div>
-
   <div id="err-msg" class="err-msg"></div>
   <button id="submit-btn" class="submit-btn" onclick="handleSubmit()">SUBMIT</button>
 </div>`;
-
 // Pre-fill form if member is already logged in
 async function prefillForm() {
   try {
     const session = JSON.parse(localStorage.getItem("t365-session"));
     if(!session || !session.email) return;
-
     const rows = await sbGet("members", `email=eq.${encodeURIComponent(session.email)}`);
     if(!rows.length) return;
     const mb = rows[0];
-
     const nameParts = (mb.name||"").split(" ");
     if(document.getElementById("fname")) document.getElementById("fname").value = nameParts[0]||"";
     if(document.getElementById("lname")) document.getElementById("lname").value = nameParts.slice(1).join(" ")||"";
     if(document.getElementById("dob"))   document.getElementById("dob").value   = mb.dob||"";
     if(document.getElementById("phone")) document.getElementById("phone").value = mb.phone||"";
     if(document.getElementById("email")) document.getElementById("email").value = mb.email||"";
-
     if(document.getElementById("ename"))  document.getElementById("ename").value  = mb.emergency_name||"";
     if(document.getElementById("ephone")) document.getElementById("ephone").value = mb.emergency_phone||"";
-
     const parqMap = {
       0:mb.parq_heart, 1:mb.parq_chest_activity, 2:mb.parq_chest_rest,
       3:mb.parq_dizziness, 4:mb.parq_joint, 5:mb.parq_blood_pressure, 6:mb.parq_other
     };
     Object.entries(parqMap).forEach(([idx,val])=>{ if(val) selectParq(parseInt(idx),val); });
-
     if(mb.fitness_level)      selectFitness(mb.fitness_level);
     if(mb.health_declaration) selectConsent("health", mb.health_declaration);
     if(mb.media_consent)      selectConsent("media",  mb.media_consent);
-
     if(document.getElementById("med-cond")) document.getElementById("med-cond").value = mb.medical_conditions||"";
     if(document.getElementById("meds"))     document.getElementById("meds").value     = mb.medications||"";
-
   } catch(e) {}
 }
-
 setTimeout(()=>{ initCanvas(); prefillForm(); }, 100);
 </script>
 </body>
