@@ -3234,11 +3234,14 @@ function MemberWorkoutsView({session,memberData}){
             out.push(React.createElement("div",{key:ex.id,className:"sp-ex"},
               React.createElement("div",{className:"sp-ex-top",style:{cursor:"default"}},
                 React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-ex-name"},(ex.name||"").toUpperCase()),meta&&React.createElement("div",{className:"sp-ex-meta"},meta),notesEl),
-                React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",justifyContent:"flex-end",alignSelf:"center"}},
-                  Array.from({length:setCount}).map((_,idx)=>{
-                    const base=`${dk}__${ex.id}__s${idx+1}`;const done=!!ticks[base];
-                    return React.createElement("button",{key:idx,className:`sp-tick${done?" sptd":""}`,style:{width:24,height:24,fontSize:12},onClick:()=>toggleTick(dk,ex.id,idx+1,!done)},"✓");
-                  })
+                React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,flexShrink:0,alignSelf:"center"}},
+                  React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}},
+                    Array.from({length:setCount}).map((_,idx)=>{
+                      const base=`${dk}__${ex.id}__s${idx+1}`;const done=!!ticks[base];
+                      return React.createElement("button",{key:idx,className:`sp-tick${done?" sptd":""}`,style:{width:22,height:22,fontSize:11},onClick:()=>toggleTick(dk,ex.id,idx+1,!done)},"✓");
+                    })
+                  ),
+                  React.createElement("div",{style:{color:"transparent",fontSize:13,lineHeight:1,pointerEvents:"none"}},"▾")
                 )
               )
             ));
