@@ -820,6 +820,9 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
             await sbDelete("members",`email=eq.${encodeURIComponent(member.email)}`);
             await sbDelete("bookings",`email=eq.${encodeURIComponent(member.email)}`);
             await sbDelete("wellness_bookings",`email=eq.${encodeURIComponent(member.email)}`);
+            await sbDelete("personal_bests",`email=eq.${encodeURIComponent(member.email)}`);
+            await sbDelete("member_weights",`email=eq.${encodeURIComponent(member.email)}`);
+            await sbDelete("community_bests",`holder_email=eq.${encodeURIComponent(member.email)}`);
             onClose();
           },
           style:{width:"100%",background:"transparent",border:"1px solid #3a1008",color:"#8a2515",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.15em",padding:"14px",borderRadius:3,cursor:"pointer"}
@@ -847,7 +850,7 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData}){
   const weekDates=Array.from({length:6},(_,i)=>addDays(weekStart,i));
   const isThisWeek=toDS(weekStart)===toDS(mondayOf(new Date()));
   const dayBks=wellBks.filter(b=>b.date_key===selDK);
-  const weekDots=weekDates.map(d=>isAdmin?(wellBks.some(b=>b.date_key===toDS(d))||(bookings||[]).some(b=>b.date_key===toDS(d))):session&&(wellBks.some(b=>b.date_key===toDS(d)&&b.email===session.email)||(bookings||[]).some(b=>b.date_key===toDS(d)&&b.email===session.email)));
+  const weekDots=weekDates.map(d=>isAdmin?wellBks.some(b=>b.date_key===toDS(d)):session&&wellBks.some(b=>b.date_key===toDS(d)&&b.email===session.email));
   const [expandedWell,setExpandedWell]=useState(null);
   function isPastSlot(time){
     if(isPastD(selDate))return true;if(!isToday(selDate))return false;
@@ -2252,20 +2255,34 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
   useEffect(()=>{loadAll();},[]);
   async function loadAll(){
     setLoading(true);
-    const[exData,myPBData,cbData,allPBData]=await Promise.all([
+    const[exData,myPBData,cbData,allPBData,memData]=await Promise.all([
       sbGet("exercises","order=order_num.asc,created_at.asc"),
       session?sbGet("personal_bests",`email=eq.${encodeURIComponent(session.email)}&select=*`):Promise.resolve([]),
       sbGet("community_bests","select=*"),
-      sbGet("personal_bests","select=email,exercise_id,weight_kg,achieved_date")
+      sbGet("personal_bests","select=email,exercise_id,weight_kg,achieved_date"),
+      sbGet("members","select=email")
     ]);
     setExercises(exData||[]);
     const pbMap={};
     (myPBData||[]).forEach(pb=>{pbMap[pb.exercise_id]=pb;});
     setMyPBs(pbMap);
+    // Self-heal: purge Progress records left behind by removed members
+    const memberEmails=new Set((memData||[]).map(m=>m.email));
+    const haveMembers=memberEmails.size>0;
+    const orphanEmails=haveMembers?[...new Set((allPBData||[]).filter(r=>!memberEmails.has(r.email)).map(r=>r.email))]:[];
+    for(const em of orphanEmails){await sbDelete("personal_bests",`email=eq.${encodeURIComponent(em)}`);}
     const cbMap={};
     (cbData||[]).forEach(cb=>{cbMap[cb.exercise_id]=cb;});
+    if(haveMembers){
+      for(const cb of (cbData||[])){
+        if(cb.holder_email&&!memberEmails.has(cb.holder_email)){
+          await sbDelete("community_bests",`exercise_id=eq.${cb.exercise_id}`);
+          delete cbMap[cb.exercise_id];
+        }
+      }
+    }
     const topPerEx={};
-    (allPBData||[]).forEach(r=>{
+    (allPBData||[]).filter(r=>!haveMembers||memberEmails.has(r.email)).forEach(r=>{
       const w=parseFloat(r.weight_kg)||0;
       if(!topPerEx[r.exercise_id]||w>parseFloat(topPerEx[r.exercise_id].weight_kg)){topPerEx[r.exercise_id]=r;}
     });
@@ -2974,10 +2991,19 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
 const MW_DAYS=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 const MW_DAY_FULL={Mon:"MONDAY",Tue:"TUESDAY",Wed:"WEDNESDAY",Thu:"THURSDAY",Fri:"FRIDAY",Sat:"SATURDAY",Sun:"SUNDAY"};
 const mwKey=(email,weekStart)=>"__MW__"+email+"__"+toDS(weekStart);
+// A day can be: undefined, a plain string (legacy), or an array of {title,body} blocks. Normalize to array.
+function mwNormDay(v){
+  if(!v)return[];
+  if(typeof v==="string")return v.trim()?[{title:"",body:v}]:[];
+  if(Array.isArray(v))return v.map(it=>typeof it==="string"?{title:"",body:it}:{title:(it&&it.title)||"",body:(it&&it.body)||""});
+  return [];
+}
+function mwCleanDay(items){return (items||[]).map(it=>({title:(it.title||"").trim(),body:(it.body||"").trim()})).filter(it=>it.title||it.body);}
 function MemberWorkoutAdmin({member}){
   const [enabled,setEnabled]=useState(member.workouts_enabled===true);
   const [weekStart,setWeekStart]=useState(()=>mondayOf(new Date()));
-  const [draft,setDraft]=useState({});
+  const [draft,setDraft]=useState({});     // {Mon:[{title,body},...],...}
+  const [repeats,setRepeats]=useState({}); // {Mon:1,...} transient, applied on save
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
   const [savedMsg,setSavedMsg]=useState("");
@@ -2989,15 +3015,36 @@ function MemberWorkoutAdmin({member}){
     const data=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(key)}&select=content`);
     let obj={};
     if(data&&data.length&&data[0].content){try{obj=JSON.parse(data[0].content)||{};}catch{obj={};}}
-    setDraft(obj);setLoading(false);
+    const d={};const rp={};
+    MW_DAYS.forEach(dk=>{d[dk]=mwNormDay(obj[dk]);rp[dk]=1;});
+    setDraft(d);setRepeats(rp);setLoading(false);
+  }
+  function setItem(dk,idx,field,val){setDraft(p=>({...p,[dk]:(p[dk]||[]).map((it,i)=>i===idx?{...it,[field]:val}:it)}));}
+  function addItem(dk){setDraft(p=>({...p,[dk]:[...(p[dk]||[]),{title:"",body:""}]}));}
+  function removeItem(dk,idx){setDraft(p=>({...p,[dk]:(p[dk]||[]).filter((_,i)=>i!==idx)}));}
+  async function upsertWeek(k,contentObj){
+    const json=JSON.stringify(contentObj);
+    const existing=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(k)}&select=id`);
+    if(existing&&existing.length){await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(k)}`,{content:json,updated_at:Date.now()});}
+    else{await sbPost("coaching_notes",{class_name:k,content:json,updated_at:Date.now()});}
   }
   async function saveWeek(){
     setSaving(true);
-    const json=JSON.stringify(draft);
-    const existing=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(key)}&select=id`);
-    if(existing&&existing.length){await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(key)}`,{content:json,updated_at:Date.now()});}
-    else{await sbPost("coaching_notes",{class_name:key,content:json,updated_at:Date.now()});}
-    setSaving(false);setSavedMsg("Week saved ✓");setTimeout(()=>setSavedMsg(""),2000);
+    const cur={};MW_DAYS.forEach(dk=>{cur[dk]=mwCleanDay(draft[dk]);});
+    await upsertWeek(key,cur);
+    // Propagate any day whose repeat is >1 to the same weekday of future weeks
+    const maxRep=Math.max(1,...MW_DAYS.map(dk=>parseInt(repeats[dk])||1));
+    for(let wk=1;wk<maxRep;wk++){
+      const tKey=mwKey(member.email,addDays(weekStart,7*wk));
+      const tData=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(tKey)}&select=content`);
+      let tObj={};
+      if(tData&&tData.length&&tData[0].content){try{tObj=JSON.parse(tData[0].content)||{};}catch{tObj={};}}
+      MW_DAYS.forEach(dk=>{tObj[dk]=mwNormDay(tObj[dk]);});
+      let changed=false;
+      MW_DAYS.forEach(dk=>{if((parseInt(repeats[dk])||1)>wk){tObj[dk]=cur[dk];changed=true;}});
+      if(changed)await upsertWeek(tKey,tObj);
+    }
+    setSaving(false);setSavedMsg("Saved ✓");setTimeout(()=>setSavedMsg(""),2500);
   }
   async function toggleEnabled(){
     setTogglingEnable(true);
@@ -3008,6 +3055,7 @@ function MemberWorkoutAdmin({member}){
   }
   const weekEnd=addDays(weekStart,6);
   const weekLabel=`${MONTHS[weekStart.getMonth()]} ${weekStart.getDate()} – ${MONTHS[weekEnd.getMonth()]} ${weekEnd.getDate()}`;
+  const repChoices=[1,2,3,4,5,6,7,8,10,12];
   return React.createElement(React.Fragment,null,
     React.createElement("div",{className:"mp-section",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
       React.createElement("span",null,"WORKOUT PROGRAM"),
@@ -3023,16 +3071,32 @@ function MemberWorkoutAdmin({member}){
     ),
     loading?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"10px 0"}},"LOADING...")
     :React.createElement(React.Fragment,null,
-      ...MW_DAYS.map(dk=>React.createElement("div",{key:dk,style:{marginBottom:10}},
-        React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#666",fontWeight:600,marginBottom:5}},MW_DAY_FULL[dk]),
-        React.createElement("textarea",{
-          value:draft[dk]||"",
-          onChange:e=>setDraft(p=>({...p,[dk]:e.target.value})),
-          placeholder:"Rest day / no workout. Wrap text in **stars** to bold it for the member.",
-          rows:3,
-          style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:4,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",lineHeight:1.6,padding:"9px 10px",resize:"vertical",boxSizing:"border-box",outline:"none"}
-        })
-      )),
+      ...MW_DAYS.map(dk=>{
+        const items=draft[dk]||[];
+        return React.createElement("div",{key:dk,style:{marginBottom:14,paddingBottom:14,borderBottom:"1px solid #1a1a1a"}},
+          React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}},
+            React.createElement("div",{style:{fontSize:10,letterSpacing:"0.14em",color:"#888",fontWeight:700}},MW_DAY_FULL[dk]),
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+              React.createElement("span",{style:{fontSize:9,letterSpacing:"0.1em",color:"#555",fontWeight:600}},"REPEAT"),
+              React.createElement("select",{value:repeats[dk]||1,onChange:e=>setRepeats(p=>({...p,[dk]:parseInt(e.target.value)})),
+                style:{background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:4,color:"#ddd",fontSize:12,padding:"4px 6px",fontFamily:"'DM Sans',sans-serif",outline:"none",cursor:"pointer"}},
+                repChoices.map(n=>React.createElement("option",{key:n,value:n},n===1?"1 week":n+" weeks")))
+            )
+          ),
+          items.length===0&&React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.08em",marginBottom:8}},"No workout — rest day."),
+          ...items.map((it,idx)=>React.createElement("div",{key:idx,style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:6,padding:"10px",marginBottom:8}},
+            React.createElement("div",{style:{display:"flex",gap:8,marginBottom:6}},
+              React.createElement("input",{value:it.title,onChange:e=>setItem(dk,idx,"title",e.target.value),placeholder:"Title (optional) e.g. STRENGTH",
+                style:{flex:1,background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#fff",fontSize:12,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.06em",padding:"7px 9px",outline:"none"}}),
+              React.createElement("button",{onClick:()=>removeItem(dk,idx),style:{background:"none",border:"1px solid #2a2a2a",borderRadius:4,color:"#8a2515",fontSize:12,padding:"4px 9px",cursor:"pointer",flexShrink:0}},"✕")
+            ),
+            React.createElement("textarea",{value:it.body,onChange:e=>setItem(dk,idx,"body",e.target.value),
+              placeholder:"Workout details. Wrap text in **stars** to bold it.",rows:3,
+              style:{width:"100%",background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",lineHeight:1.6,padding:"8px 10px",resize:"vertical",boxSizing:"border-box",outline:"none"}})
+          )),
+          React.createElement("button",{onClick:()=>addItem(dk),style:{width:"100%",background:"none",border:"1px dashed #2a2a2a",borderRadius:5,color:"#666",fontSize:10,letterSpacing:"0.12em",padding:"7px",cursor:"pointer"}},"+ ADD WORKOUT")
+        );
+      }),
       React.createElement("button",{onClick:saveWeek,disabled:saving,
         style:{width:"100%",background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.15em",padding:"13px",borderRadius:3,cursor:"pointer",marginTop:4}},
         saving?"SAVING...":"SAVE WEEK"),
@@ -3058,7 +3122,7 @@ function MemberWorkoutsView({session,memberData}){
   const weekEnd=addDays(weekStart,6);
   const weekLabel=`${MONTHS[weekStart.getMonth()]} ${weekStart.getDate()} – ${MONTHS[weekEnd.getMonth()]} ${weekEnd.getDate()}  ${weekStart.getFullYear()}`;
   const dayDates=MW_DAYS.map((_,i)=>addDays(weekStart,i));
-  const selText=content[MW_DAYS[selDay]]||"";
+  const selItems=mwNormDay(content[MW_DAYS[selDay]]);
   return React.createElement("div",{className:"well-wrap"},
     React.createElement("div",{className:"well-hdr"},React.createElement("div",{className:"well-title"},"WORKOUTS")),
     React.createElement("div",{className:"week-nav",style:{paddingTop:0}},
@@ -3067,7 +3131,7 @@ function MemberWorkoutsView({session,memberData}){
       React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,7))},"›")
     ),
     React.createElement("div",{className:"day-strip"},
-      dayDates.map((d,i)=>React.createElement("button",{key:i,onClick:()=>setSelDay(i),className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}${(content[MW_DAYS[i]]||"").trim()?" dhb":""}`},
+      dayDates.map((d,i)=>React.createElement("button",{key:i,onClick:()=>setSelDay(i),className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}${mwNormDay(content[MW_DAYS[i]]).length?" dhb":""}`},
         React.createElement("div",{className:"d-name"},MW_DAYS[i]),
         React.createElement("div",{className:"d-num"},d.getDate()),
         React.createElement("div",{className:"d-dot"})
@@ -3076,9 +3140,12 @@ function MemberWorkoutsView({session,memberData}){
     React.createElement("div",{className:"cls-wrap"},
       React.createElement("div",{className:"day-hdr",style:{textAlign:"center"}},React.createElement("span",null,MW_DAY_FULL[MW_DAYS[selDay]])),
       loading?React.createElement("div",{className:"sp-loading"},"LOADING...")
-      :selText.trim()
-        ?React.createElement("div",{style:{background:"#141414",border:"1px solid #888",borderRadius:8,padding:"14px 16px",whiteSpace:"pre-wrap",fontSize:14,color:"#ddd",lineHeight:1.75,fontFamily:"'DM Sans',sans-serif",fontWeight:300}},
-           ...selText.split("\n").flatMap((line,i,arr)=>[...renderBoldText(line),(i<arr.length-1?React.createElement("br",{key:"br"+i}):null)]).filter(Boolean))
+      :selItems.length
+        ?React.createElement(React.Fragment,null,...selItems.map((it,idx)=>React.createElement("div",{key:idx,style:{background:"#141414",border:"1px solid #888",borderRadius:8,padding:"14px 16px",marginBottom:8}},
+            it.title&&React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.08em",color:"#fff",marginBottom:8}},it.title),
+            React.createElement("div",{style:{whiteSpace:"pre-wrap",fontSize:14,color:"#ddd",lineHeight:1.75,fontFamily:"'DM Sans',sans-serif",fontWeight:300}},
+              ...(it.body||"").split("\n").flatMap((line,i,arr)=>[...renderBoldText(line),(i<arr.length-1?React.createElement("br",{key:"br"+i}):null)]).filter(Boolean))
+          )))
         :React.createElement("div",{className:"no-bk"},"No workout set for this day")
     )
   );
