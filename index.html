@@ -1707,6 +1707,14 @@ function InviteForm(props){
   async function send(){
     if(!email.trim())return;
     setSending(true);setMsg("");
+    if(p.appsScript){
+      try{
+        const params=new URLSearchParams({action:p.action||"healthInvite",to:email.trim(),firstName:""});
+        await fetch(url+"?"+params.toString(),{method:"GET",mode:"no-cors"});
+        setMsg("✓ Sent to "+email.trim());setEmail("");
+      }catch(e){setMsg("Error: "+e.message);}
+      setSending(false);return;
+    }
     try{
       const res=await fetch(url,{
         method:"POST",
@@ -1841,8 +1849,10 @@ function OnboardingView({showToast}){
     ),
     React.createElement(OnboardingPanel,{id:"health",title:"SEND HEALTH SCREENING FORM",openPanel,setOpenPanel},
       React.createElement(InviteForm,{
-        endpoint:"https://xczwmexavysvljmobbgv.supabase.co/functions/v1/send-health-screening-invite",
-        desc:"For personal-training clients only. Enter the client's email to send them the health screening form (no membership or direct debit). On submit it creates their booking-app account, same as onboarding.",
+        appsScript:true,
+        endpoint:APPS_SCRIPT_URL,
+        action:"healthInvite",
+        desc:"Enter a personal-training client's email address to send them the health screening form.",
         btnLabel:"SEND HEALTH SCREENING FORM"
       })
     )
