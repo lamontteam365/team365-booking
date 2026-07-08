@@ -1845,7 +1845,12 @@ function OnboardingView({showToast}){
       React.createElement(TierEditor,{showToast})
     ),
     React.createElement(OnboardingPanel,{id:"invite",title:"SEND REGISTRATION FORM",openPanel,setOpenPanel},
-      React.createElement(InviteForm,null)
+      React.createElement(InviteForm,{
+        appsScript:true,
+        endpoint:APPS_SCRIPT_URL,
+        action:"registrationInvite",
+        btnLabel:"SEND REGISTRATION FORM"
+      })
     ),
     React.createElement(OnboardingPanel,{id:"health",title:"SEND HEALTH SCREENING FORM",openPanel,setOpenPanel},
       React.createElement(InviteForm,{
