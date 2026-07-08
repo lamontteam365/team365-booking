@@ -1696,7 +1696,11 @@ function MemberJourneyEditor({showToast}){
   ];
   return React.createElement(StepListEditor,{storageKey:"__MEMBER_JOURNEY__",defaultSteps:DEFAULTS,toastMsg:"Member journey saved ✓",showToast});
 }
-function InviteForm(){
+function InviteForm(props){
+  const p=props||{};
+  const url=p.endpoint||"https://xczwmexavysvljmobbgv.supabase.co/functions/v1/send-onboarding-invite";
+  const description=p.desc||"Enter a new member's email address to send them the Team 365 registration form.";
+  const buttonLabel=p.btnLabel||"SEND REGISTRATION FORM";
   const [email,setEmail]=useState("");
   const [sending,setSending]=useState(false);
   const [msg,setMsg]=useState("");
@@ -1704,21 +1708,21 @@ function InviteForm(){
     if(!email.trim())return;
     setSending(true);setMsg("");
     try{
-      const res=await fetch("https://xczwmexavysvljmobbgv.supabase.co/functions/v1/send-onboarding-invite",{
+      const res=await fetch(url,{
         method:"POST",
         headers:{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhjendtZXhhdnlzdmxqbW9iYmd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzOTI5NDIsImV4cCI6MjA5NTk2ODk0Mn0.xhB8SYiJ9CJZE5OC1cCIbS2xNPZ4f76pZaRoTsLb0Gs"},
-        body:JSON.stringify({email:email.trim()})
+        body:JSON.stringify({email:email.trim(),...(p.extra||{})})
       });
       const json=await res.json();
-      if(json.ok){setMsg("✓ Invite sent to "+email.trim());setEmail("");}
+      if(json.ok){setMsg("✓ Sent to "+email.trim());setEmail("");}
       else{setMsg("Error: "+(json.error||"Could not send"));}
     }catch(e){setMsg("Error: "+e.message);}
     setSending(false);
   }
   return React.createElement("div",null,
-    React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.1em",marginBottom:12,lineHeight:1.7}},"Enter a new member's email address to send them the Team 365 registration form."),
+    React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.1em",marginBottom:12,lineHeight:1.7}},description),
     React.createElement("input",{type:"email",placeholder:"member@email.com",value:email,onChange:e=>setEmail(e.target.value),onKeyDown:e=>{if(e.key==="Enter")send();},style:{width:"100%",background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#ccc",fontSize:13,padding:"10px 12px",fontFamily:"'DM Sans',sans-serif",letterSpacing:"0.02em",boxSizing:"border-box",marginBottom:10,outline:"none"}}),
-    React.createElement("button",{onClick:send,disabled:sending||!email.trim(),style:{width:"100%",background:email.trim()?"#1d9bf0":"#1a1a1a",border:"none",borderRadius:4,padding:"11px",color:email.trim()?"#fff":"#444",fontSize:10,letterSpacing:"0.14em",fontWeight:600,cursor:email.trim()?"pointer":"default",fontFamily:"'DM Sans',sans-serif",transition:"all .15s"}},sending?"SENDING...":"SEND REGISTRATION FORM"),
+    React.createElement("button",{onClick:send,disabled:sending||!email.trim(),style:{width:"100%",background:email.trim()?"#1d9bf0":"#1a1a1a",border:"none",borderRadius:4,padding:"11px",color:email.trim()?"#fff":"#444",fontSize:10,letterSpacing:"0.14em",fontWeight:600,cursor:email.trim()?"pointer":"default",fontFamily:"'DM Sans',sans-serif",transition:"all .15s"}},sending?"SENDING...":buttonLabel),
     msg&&React.createElement("div",{style:{marginTop:10,fontSize:10,letterSpacing:"0.1em",color:msg.startsWith("✓")?"#4aaa66":"#e05",textAlign:"center"}},msg)
   );
 }
@@ -1834,6 +1838,13 @@ function OnboardingView({showToast}){
     ),
     React.createElement(OnboardingPanel,{id:"invite",title:"SEND REGISTRATION FORM",openPanel,setOpenPanel},
       React.createElement(InviteForm,null)
+    ),
+    React.createElement(OnboardingPanel,{id:"health",title:"SEND HEALTH SCREENING FORM",openPanel,setOpenPanel},
+      React.createElement(InviteForm,{
+        endpoint:"https://xczwmexavysvljmobbgv.supabase.co/functions/v1/send-health-screening-invite",
+        desc:"For personal-training clients only. Enter the client's email to send them the health screening form (no membership or direct debit). On submit it creates their booking-app account, same as onboarding.",
+        btnLabel:"SEND HEALTH SCREENING FORM"
+      })
     )
   );
 }
