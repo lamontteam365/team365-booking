@@ -3244,10 +3244,14 @@ function MemberWorkoutsView({session,memberData}){
             ));
           }else{
             const isExpanded=expanded.has(ex.id);
+            const filled=Array.from({length:setCount}).some((_,idx)=>((weights[`${dk}__${ex.id}__s${idx+1}`]||"")+"").trim()!=="");
             out.push(React.createElement("div",{key:ex.id,className:"sp-ex"},
               React.createElement("div",{className:"sp-ex-top",style:{cursor:"pointer"},onClick:()=>toggleEx(ex.id)},
                 React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-ex-name"},(ex.name||"").toUpperCase()),meta&&React.createElement("div",{className:"sp-ex-meta"},meta),notesEl),
-                React.createElement("div",{style:{color:"#444",fontSize:13,transition:"transform .2s",transform:isExpanded?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
+                React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,flexShrink:0}},
+                  filled&&React.createElement("div",{className:"sp-tick sptd",style:{width:26,height:26,fontSize:13,pointerEvents:"none"}},"✓"),
+                  React.createElement("div",{style:{color:"#444",fontSize:13,transition:"transform .2s",transform:isExpanded?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
+                )
               ),
               isExpanded&&React.createElement("div",{className:"sp-sets-col"},
                 Array.from({length:setCount}).map((_,idx)=>{
@@ -3378,7 +3382,8 @@ function App(){
   }
   const NAV_TABS=[
     {id:"community",label:"NOTICE BOARD",dot:true},
-    ...(classesEnabled?[{id:"my",label:"MY BOOKINGS"},{id:"book",label:"CLASSES"}]:[]),
+    {id:"my",label:"MY BOOKINGS"},
+    ...(classesEnabled?[{id:"book",label:"CLASSES"}]:[]),
     ...(strengthEnabled?[{id:"strength",label:"STRENGTH"}]:[]),
     ...(wellnessEnabled?[{id:"wellness",label:"WELLNESS"}]:[]),
     {id:"progress",label:"PROGRESS"},
@@ -3532,7 +3537,7 @@ function App(){
   async function saveClassesSetting(enabled){
     await sbPatch("feature_flags","id=eq.1",{classes_enabled:enabled});
     setClassesEnabled(enabled);
-    if(!enabled&&(tab==="book"||tab==="my"))setTab("community");
+    if(!enabled&&tab==="book")setTab("community");
   }
   async function saveStrengthSetting(enabled){
     await sbPatch("feature_flags","id=eq.1",{strength_enabled:enabled});
@@ -3731,6 +3736,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     ),
     tab==="my"&&React.createElement("div",{className:"my-wrap"},
       React.createElement("div",{className:"my-hdr"},"MY BOOKINGS"),
+      classesEnabled&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"adm-stats-row",style:{marginBottom:18}},
         React.createElement("div",{className:"adm-stat"},
           React.createElement("div",{className:"adm-stat-num"},
@@ -3778,7 +3784,8 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
           ));
         });
         return items;
-      })(),
+      })()
+      ),
       wellnessEnabled&&React.createElement(React.Fragment,null,
         React.createElement("div",{className:"day-hdr",style:{marginTop:20,marginBottom:10}},React.createElement("span",null,"WELLNESS")),
         myWellness.length===0?React.createElement("div",{className:"no-bk",style:{padding:"16px 0 24px"}},"No upcoming wellness sessions")
