@@ -153,8 +153,8 @@ html,body{background:#080808;min-height:100vh}
 .post-pin-btn{background:none;border:none;color:#444;cursor:pointer;font-size:10px;font-family:'DM Sans',sans-serif;letter-spacing:0.06em;transition:color .15s;font-weight:500}
 .post-pin-btn:hover{color:#aaa}
 .post-pin-btn.pinned{color:#888}
-.tab-bar{display:flex;border-top:1px solid #444;border-bottom:1px solid #444;margin-top:auto;background:#141414}
-.tab-btn{flex:1;padding:12px 2px;background:none;border:1px solid transparent;margin:-1px 0;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:8.5px;letter-spacing:0.12em;color:#777;font-weight:600;transition:color .15s;white-space:nowrap;position:relative}
+.tab-bar{display:flex;border-top:1px solid #444;border-bottom:1px solid #444;margin-top:auto;background:#141414;overflow-x:auto}
+.tab-btn{flex:1 0 auto;min-width:64px;padding:12px 10px;background:none;border:1px solid transparent;margin:-1px 0;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:8.5px;letter-spacing:0.1em;color:#777;font-weight:600;transition:color .15s;white-space:nowrap;position:relative}
 .tab-btn.ta{color:#fff;background:#1e1e1e;border:1px solid #fff}
 .tab-btn:hover:not(.ta){color:#bbb}
 .tab-dot{position:absolute;top:8px;right:calc(50% - 14px);width:7px;height:7px;background:#e06040;border-radius:50%;border:1px solid #080808}
@@ -956,7 +956,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
   const MAX_CHARS=300;
   useEffect(()=>{loadPosts();const id=setInterval(loadPosts,30000);return()=>clearInterval(id);},[]);
   async function loadPosts(){
-    const data=await sbGet("posts","select=id,author_email,author_name,content,created_at,likes,pinned,reply_to,reply_to_name&order=pinned.desc,created_at.desc&limit=80");
+    const data=await sbGet("posts","select=id,author_email,author_name,content,created_at,likes,pinned,reply_to,reply_to_name&order=pinned.desc.nullslast,created_at.desc&limit=80");
     setPosts(data||[]);setLoading(false);
   }
   function handleTextChange(e,setter){
@@ -3017,7 +3017,7 @@ function mwNormDay(v){
     };
   });
 }
-function mwCleanDay(items){return (items||[]).map(it=>({id:it.id||mwGenId(),name:(it.name||"").trim(),section:MW_SECTIONS.includes(it.section)?it.section:"Main",sets:(it.sets==null?"":String(it.sets)).trim(),reps:(it.reps||"").trim(),duration:(it.duration||"").trim(),notes:(it.notes||"").trim(),log:["kg","km","tick"].includes(it.log)?it.log:"kg"})).filter(it=>it.name);}
+function mwCleanDay(items){return (items||[]).map(it=>({id:it.id||mwGenId(),name:(it.name||"").trim().toUpperCase(),section:MW_SECTIONS.includes(it.section)?it.section:"Main",sets:(it.sets==null?"":String(it.sets)).trim(),reps:(it.reps||"").trim(),duration:(it.duration||"").trim(),notes:(it.notes||"").trim(),log:["kg","km","tick"].includes(it.log)?it.log:"kg"})).filter(it=>it.name);}
 function MemberWorkoutAdmin({member}){
   const [enabled,setEnabled]=useState(member.workouts_enabled===true);
   const [weekStart,setWeekStart]=useState(()=>mondayOf(new Date()));
@@ -3106,7 +3106,7 @@ function MemberWorkoutAdmin({member}){
           items.length===0&&React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.08em",marginBottom:8}},"No workout — rest day."),
           ...items.map((it,idx)=>React.createElement("div",{key:it.id||idx,style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:6,padding:"10px",marginBottom:8}},
             React.createElement("div",{style:{display:"flex",gap:8,marginBottom:6,alignItems:"center"}},
-              React.createElement("input",{value:it.name,onChange:e=>setItem(dk,idx,"name",e.target.value),placeholder:"Exercise name e.g. BACK SQUAT",
+              React.createElement("input",{value:it.name,onChange:e=>setItem(dk,idx,"name",e.target.value.toUpperCase()),placeholder:"Exercise name e.g. BACK SQUAT",
                 style:{...inS,flex:1,color:"#fff",fontSize:14,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.06em"}}),
               React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:1,flexShrink:0}},
                 React.createElement("button",{onClick:()=>moveItem(dk,idx,-1),disabled:idx===0,style:{background:"none",border:"none",color:idx===0?"#252525":"#666",cursor:idx===0?"default":"pointer",fontSize:10,padding:"1px 6px",lineHeight:1}},"▲"),
@@ -3233,11 +3233,11 @@ function MemberWorkoutsView({session,memberData}){
           if(ex.log==="tick"){
             out.push(React.createElement("div",{key:ex.id,className:"sp-ex"},
               React.createElement("div",{className:"sp-ex-top",style:{cursor:"default"}},
-                React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-ex-name"},ex.name),meta&&React.createElement("div",{className:"sp-ex-meta"},meta),notesEl),
+                React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-ex-name"},(ex.name||"").toUpperCase()),meta&&React.createElement("div",{className:"sp-ex-meta"},meta),notesEl),
                 React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}},
                   Array.from({length:setCount}).map((_,idx)=>{
                     const base=`${dk}__${ex.id}__s${idx+1}`;const done=!!ticks[base];
-                    return React.createElement("button",{key:idx,className:`sp-tick${done?" sptd":""}`,style:{width:30,height:30,fontSize:13},onClick:()=>toggleTick(dk,ex.id,idx+1,!done)},done?"✓":`${idx+1}`);
+                    return React.createElement("button",{key:idx,className:`sp-tick${done?" sptd":""}`,style:{width:30,height:30,fontSize:13},onClick:()=>toggleTick(dk,ex.id,idx+1,!done)},"✓");
                   })
                 )
               )
@@ -3246,7 +3246,7 @@ function MemberWorkoutsView({session,memberData}){
             const isExpanded=expanded.has(ex.id);
             out.push(React.createElement("div",{key:ex.id,className:"sp-ex"},
               React.createElement("div",{className:"sp-ex-top",style:{cursor:"pointer"},onClick:()=>toggleEx(ex.id)},
-                React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-ex-name"},ex.name),meta&&React.createElement("div",{className:"sp-ex-meta"},meta),notesEl),
+                React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-ex-name"},(ex.name||"").toUpperCase()),meta&&React.createElement("div",{className:"sp-ex-meta"},meta),notesEl),
                 React.createElement("div",{style:{color:"#444",fontSize:13,transition:"transform .2s",transform:isExpanded?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
               ),
               isExpanded&&React.createElement("div",{className:"sp-sets-col"},
@@ -3376,7 +3376,16 @@ function App(){
     const data=await sbGet("bookings",`date_key=in.(${keys.join(",")})&select=email,name,date_key,time,session_type,checked_in`);
     setBookings(data||[]);
   }
-  const TAB_ORDER=["community",...(classesEnabled?["my","book"]:[]),...(strengthEnabled?["strength"]:[]),...(workoutsEnabled?["workouts"]:[]),"progress",...(wellnessEnabled?["wellness"]:[]),...(isAdmin?["admin"]:[])];
+  const NAV_TABS=[
+    {id:"community",label:"NOTICE BOARD",dot:true},
+    ...(classesEnabled?[{id:"my",label:"MY BOOKINGS"},{id:"book",label:"CLASSES"}]:[]),
+    ...(strengthEnabled?[{id:"strength",label:"STRENGTH"}]:[]),
+    ...(wellnessEnabled?[{id:"wellness",label:"WELLNESS"}]:[]),
+    {id:"progress",label:"PROGRESS"},
+    ...(workoutsEnabled?[{id:"workouts",label:"WORKOUTS"}]:[]),
+    ...(isAdmin?[{id:"admin",label:"ADMIN"}]:[])
+  ];
+  const TAB_ORDER=NAV_TABS.map(t=>t.id);
   function handleTouchStart(e){touchStartX.current=e.touches[0].clientX;touchStartY.current=e.touches[0].clientY;}
   function handleTouchEnd(e){
     if(touchStartX.current===null)return;
@@ -3619,7 +3628,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     React.createElement("div",{style:{marginTop:120,textAlign:"center"}},
       React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION."),
       React.createElement("div",{style:{marginTop:2,paddingBottom:20,fontSize:"7px",letterSpacing:"0.06em",color:"#999"}},
-        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"[WWW.LAMONTCOLLECTIVE.COM](https://WWW.LAMONTCOLLECTIVE.COM)")
+        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"WWW.LAMONTCOLLECTIVE.COM")
       )
     )
   );
@@ -3649,18 +3658,13 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
           )
         )
       ),
-      React.createElement("div",{style:{display:"flex",marginTop:10,marginLeft:-20,marginRight:-20,width:"calc(100% + 40px)",borderTop:"1px solid #444",borderBottom:"1px solid #444",background:"#141414"},onClick:e=>e.stopPropagation()},
-        React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="community"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="community"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="community"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="community"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="community"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="community"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap",position:"relative"},onClick:()=>{setTab("community");lsSet("t365-last-read",Date.now());}},
-          "NOTICE BOARD",
-          unreadPosts>0&&tab!=="community"&&React.createElement("div",{className:"tab-dot"})
-        ),
-        classesEnabled&&React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="my"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="my"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="my"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="my"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="my"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="my"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("my")},"MY BOOKINGS"),
-        classesEnabled&&React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="book"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="book"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="book"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="book"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="book"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="book"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("book")},"CLASSES"),
-        strengthEnabled&&React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="strength"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="strength"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="strength"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="strength"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="strength"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="strength"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("strength")},"STRENGTH"),
-        workoutsEnabled&&React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="workouts"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="workouts"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="workouts"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="workouts"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="workouts"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="workouts"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("workouts")},"WORKOUTS"),
-        React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="progress"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="progress"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="progress"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="progress"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="progress"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="progress"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("progress")},"PROGRESS"),
-        wellnessEnabled&&React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="wellness"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="wellness"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="wellness"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="wellness"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="wellness"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="wellness"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("wellness")},"WELLNESS"),
-        isAdmin&&React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="admin"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="admin"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="admin"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="admin"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="admin"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="admin"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("admin")},"ADMIN")
+      React.createElement("div",{className:"no-sb",style:{display:"flex",marginTop:10,marginLeft:-20,marginRight:-20,width:"calc(100% + 40px)",borderTop:"1px solid #444",borderBottom:"1px solid #444",background:"#141414",overflowX:"auto"},onClick:e=>e.stopPropagation()},
+        NAV_TABS.map(t=>React.createElement("button",{key:t.id,
+          style:{flex:"1 0 auto",minWidth:56,padding:"10px 10px",background:tab===t.id?"#222":"none",border:"none",borderTop:`1px solid ${tab===t.id?"#fff":"transparent"}`,borderBottom:`1px solid ${tab===t.id?"#fff":"transparent"}`,borderLeft:`1px solid ${tab===t.id?"#fff":"transparent"}`,borderRight:`1px solid ${tab===t.id?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8.5px",letterSpacing:"0.1em",color:tab===t.id?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap",position:"relative"},
+          onClick:()=>{setTab(t.id);if(t.id==="community")lsSet("t365-last-read",Date.now());}},
+          t.label,
+          t.dot&&unreadPosts>0&&tab!=="community"&&React.createElement("div",{className:"tab-dot"})
+        ))
       )
     ),
     tab==="book"&&React.createElement(React.Fragment,null,
@@ -3813,23 +3817,17 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     tab==="workouts"&&workoutsEnabled&&React.createElement(MemberWorkoutsView,{session,memberData}),
     tab==="progress"&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}),
     tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,dowNames,saveDowName,slotNames,saveSlotName,milestoneConfig,saveMilestoneConfig}),
-    React.createElement("div",{className:"tab-bar"},
-      React.createElement("button",{className:`tab-btn${tab==="community"?" ta":""}`,style:{position:"relative"},onClick:()=>{setTab("community");lsSet("t365-last-read",Date.now());}},
-        "NOTICE BOARD",
-        unreadPosts>0&&tab!=="community"&&React.createElement("div",{className:"tab-dot"})
-      ),
-      classesEnabled&&React.createElement("button",{className:`tab-btn${tab==="my"?" ta":""}`,onClick:()=>setTab("my")},"MY BOOKINGS"),
-      classesEnabled&&React.createElement("button",{className:`tab-btn${tab==="book"?" ta":""}`,onClick:()=>setTab("book")},"CLASSES"),
-      strengthEnabled&&React.createElement("button",{className:`tab-btn${tab==="strength"?" ta":""}`,onClick:()=>setTab("strength")},"STRENGTH"),
-      workoutsEnabled&&React.createElement("button",{className:`tab-btn${tab==="workouts"?" ta":""}`,onClick:()=>setTab("workouts")},"WORKOUTS"),
-      React.createElement("button",{className:`tab-btn${tab==="progress"?" ta":""}`,onClick:()=>setTab("progress")},"PROGRESS"),
-      wellnessEnabled&&React.createElement("button",{className:`tab-btn${tab==="wellness"?" ta":""}`,onClick:()=>setTab("wellness")},"WELLNESS"),
-      isAdmin&&React.createElement("button",{className:`tab-btn${tab==="admin"?" ta":""}`,onClick:()=>setTab("admin")},"ADMIN")
+    React.createElement("div",{className:"tab-bar no-sb"},
+      NAV_TABS.map(t=>React.createElement("button",{key:t.id,className:`tab-btn${tab===t.id?" ta":""}`,style:t.dot?{position:"relative"}:undefined,
+        onClick:()=>{setTab(t.id);if(t.id==="community")lsSet("t365-last-read",Date.now());}},
+        t.label,
+        t.dot&&unreadPosts>0&&tab!=="community"&&React.createElement("div",{className:"tab-dot"})
+      ))
     ),
     React.createElement("div",{style:{textAlign:"center"}},
       React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"COMMITMENT. CONSISTENCY. DETERMINATION."),
       React.createElement("div",{style:{marginTop:2,paddingBottom:20,fontSize:"7px",letterSpacing:"0.06em",color:"#999"}},
-        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"[WWW.LAMONTCOLLECTIVE.COM](https://WWW.LAMONTCOLLECTIVE.COM)")
+        React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"WWW.LAMONTCOLLECTIVE.COM")
       )
     ),
     React.createElement("div",{className:`toast${toast.show?" show":""}`},toast.msg),
