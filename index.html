@@ -3234,10 +3234,10 @@ function MemberWorkoutsView({session,memberData}){
             out.push(React.createElement("div",{key:ex.id,className:"sp-ex"},
               React.createElement("div",{className:"sp-ex-top",style:{cursor:"default"}},
                 React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-ex-name"},(ex.name||"").toUpperCase()),meta&&React.createElement("div",{className:"sp-ex-meta"},meta),notesEl),
-                React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}},
+                React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",justifyContent:"flex-end",alignSelf:"center"}},
                   Array.from({length:setCount}).map((_,idx)=>{
                     const base=`${dk}__${ex.id}__s${idx+1}`;const done=!!ticks[base];
-                    return React.createElement("button",{key:idx,className:`sp-tick${done?" sptd":""}`,style:{width:30,height:30,fontSize:13},onClick:()=>toggleTick(dk,ex.id,idx+1,!done)},"✓");
+                    return React.createElement("button",{key:idx,className:`sp-tick${done?" sptd":""}`,style:{width:24,height:24,fontSize:12},onClick:()=>toggleTick(dk,ex.id,idx+1,!done)},"✓");
                   })
                 )
               )
@@ -3248,8 +3248,8 @@ function MemberWorkoutsView({session,memberData}){
             out.push(React.createElement("div",{key:ex.id,className:"sp-ex"},
               React.createElement("div",{className:"sp-ex-top",style:{cursor:"pointer"},onClick:()=>toggleEx(ex.id)},
                 React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-ex-name"},(ex.name||"").toUpperCase()),meta&&React.createElement("div",{className:"sp-ex-meta"},meta),notesEl),
-                React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,flexShrink:0}},
-                  filled&&React.createElement("div",{className:"sp-tick sptd",style:{width:26,height:26,fontSize:13,pointerEvents:"none"}},"✓"),
+                React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,flexShrink:0,alignSelf:"center"}},
+                  filled&&React.createElement("div",{className:"sp-tick sptd",style:{width:22,height:22,fontSize:11,pointerEvents:"none"}},"✓"),
                   React.createElement("div",{style:{color:"#444",fontSize:13,transition:"transform .2s",transform:isExpanded?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
                 )
               ),
