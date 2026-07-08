@@ -244,8 +244,10 @@ html,body{background:#080808;min-height:100vh}
 @keyframes ld{0%{width:0}50%{width:100%}100%{width:0}}
 .adm-wrap{padding:16px;flex:1;overflow-y:auto}
 .adm-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.15em;color:#fff;margin-bottom:16px}
-.adm-seg{display:flex;border-top:1px solid #444;border-bottom:1px solid #444;margin-bottom:16px;background:#141414}
-.adm-seg-btn{flex:1;padding:9px 4px;background:none;border:1px solid transparent;margin:-1px 0;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.14em;color:#666;font-weight:600;transition:all .15s;white-space:nowrap}
+.adm-seg{display:flex;border-top:1px solid #444;border-bottom:1px solid #444;margin-bottom:16px;background:#141414;overflow-x:auto;scrollbar-width:none}
+.adm-seg::-webkit-scrollbar{display:none}
+.adm-seg-btn{flex:1 0 auto;min-width:76px;padding:9px 12px;background:none;border:1px solid transparent;border-right:1px solid #2a2a2a;margin:-1px 0;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.14em;color:#666;font-weight:600;transition:all .15s;white-space:nowrap}
+.adm-seg-btn:last-child{border-right-color:transparent}
 .adm-seg-btn.aas{color:#fff;border-color:#fff;background:#222}
 .adm-seg-btn:hover:not(.aas){color:#bbb}
 .adm-day-nav{display:flex;align-items:center;gap:8px;margin-bottom:14px}
@@ -1290,6 +1292,11 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
   return React.createElement("div",{className:"adm-wrap"},
     selectedMember&&React.createElement(MemberProfileOverlay,{member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin}),
     React.createElement("div",{className:"adm-title"},"ADMIN"),
+    React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"0 0 6px"}},
+      React.createElement("span",{style:{color:"#666",fontSize:11,lineHeight:1}},"‹"),
+      React.createElement("span",{style:{color:"#555",fontSize:7,letterSpacing:"0.22em",fontWeight:600}},"SWIPE FOR MORE"),
+      React.createElement("span",{style:{color:"#666",fontSize:11,lineHeight:1}},"›")
+    ),
     React.createElement("div",{className:"adm-seg"},
       React.createElement("button",{className:`adm-seg-btn${admSeg==="members"?" aas":""}`,onClick:()=>setAdmSeg("members")},"MEMBERS"),
       React.createElement("button",{className:`adm-seg-btn${admSeg==="classes"?" aas":""}`,onClick:()=>setAdmSeg("classes")},"CLASSES"),
@@ -3692,12 +3699,20 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
           )
         )
       ),
-      React.createElement("div",{className:"no-sb",style:{display:"flex",marginTop:10,marginLeft:-20,marginRight:-20,width:"calc(100% + 40px)",borderTop:"1px solid #444",borderBottom:"1px solid #444",background:"#141414",overflowX:"auto"},onClick:e=>e.stopPropagation()},
-        NAV_TABS.map(t=>React.createElement("button",{key:t.id,
-          style:{flex:"1 0 auto",minWidth:56,padding:"10px 10px",background:tab===t.id?"#222":"none",border:"none",borderTop:`1px solid ${tab===t.id?"#fff":"transparent"}`,borderBottom:`1px solid ${tab===t.id?"#fff":"transparent"}`,borderLeft:`1px solid ${tab===t.id?"#fff":"transparent"}`,borderRight:`1px solid ${tab===t.id?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8.5px",letterSpacing:"0.1em",color:tab===t.id?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap",position:"relative"},
-          onClick:()=>{setTab(t.id);if(t.id==="community")lsSet("t365-last-read",Date.now());}},
-          t.label,
-          t.dot&&unreadPosts>0&&tab!=="community"&&React.createElement("div",{className:"tab-dot"})
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:10,marginLeft:-20,marginRight:-20,width:"calc(100% + 40px)",padding:"5px 0 4px",background:"#141414",borderTop:"1px solid #444"},onClick:e=>e.stopPropagation()},
+        React.createElement("span",{style:{color:"#666",fontSize:11,lineHeight:1}},"‹"),
+        React.createElement("span",{style:{color:"#555",fontSize:7,letterSpacing:"0.22em",fontWeight:600}},"SWIPE FOR MORE"),
+        React.createElement("span",{style:{color:"#666",fontSize:11,lineHeight:1}},"›")
+      ),
+      React.createElement("div",{className:"no-sb",style:{display:"flex",marginLeft:-20,marginRight:-20,width:"calc(100% + 40px)",borderBottom:"1px solid #444",background:"#141414",overflowX:"auto"},onClick:e=>e.stopPropagation()},
+        NAV_TABS.map((t,ti)=>React.createElement(React.Fragment,{key:t.id},
+          React.createElement("button",{
+            style:{flex:"1 0 auto",minWidth:56,padding:"10px 10px",background:tab===t.id?"#222":"none",border:"none",borderTop:`1px solid ${tab===t.id?"#fff":"transparent"}`,borderBottom:`1px solid ${tab===t.id?"#fff":"transparent"}`,borderLeft:`1px solid ${tab===t.id?"#fff":"transparent"}`,borderRight:`1px solid ${tab===t.id?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8.5px",letterSpacing:"0.1em",color:tab===t.id?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap",position:"relative"},
+            onClick:()=>{setTab(t.id);if(t.id==="community")lsSet("t365-last-read",Date.now());}},
+            t.label,
+            t.dot&&unreadPosts>0&&tab!=="community"&&React.createElement("div",{className:"tab-dot"})
+          ),
+          ti<NAV_TABS.length-1&&React.createElement("div",{style:{width:1,flexShrink:0,background:"#2a2a2a"}})
         ))
       )
     ),
@@ -3853,11 +3868,19 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     tab==="workouts"&&workoutsEnabled&&React.createElement(MemberWorkoutsView,{session,memberData}),
     tab==="progress"&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}),
     tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,dowNames,saveDowName,slotNames,saveSlotName,milestoneConfig,saveMilestoneConfig}),
-    React.createElement("div",{className:"tab-bar no-sb"},
-      NAV_TABS.map(t=>React.createElement("button",{key:t.id,className:`tab-btn${tab===t.id?" ta":""}`,style:t.dot?{position:"relative"}:undefined,
-        onClick:()=>{setTab(t.id);if(t.id==="community")lsSet("t365-last-read",Date.now());}},
-        t.label,
-        t.dot&&unreadPosts>0&&tab!=="community"&&React.createElement("div",{className:"tab-dot"})
+    React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#141414",borderTop:"1px solid #444",marginTop:"auto"}},
+      React.createElement("span",{style:{color:"#666",fontSize:11,lineHeight:1}},"‹"),
+      React.createElement("span",{style:{color:"#555",fontSize:7,letterSpacing:"0.22em",fontWeight:600}},"SWIPE FOR MORE"),
+      React.createElement("span",{style:{color:"#666",fontSize:11,lineHeight:1}},"›")
+    ),
+    React.createElement("div",{className:"tab-bar no-sb",style:{marginTop:0}},
+      NAV_TABS.map((t,ti)=>React.createElement(React.Fragment,{key:t.id},
+        React.createElement("button",{className:`tab-btn${tab===t.id?" ta":""}`,style:t.dot?{position:"relative"}:undefined,
+          onClick:()=>{setTab(t.id);if(t.id==="community")lsSet("t365-last-read",Date.now());}},
+          t.label,
+          t.dot&&unreadPosts>0&&tab!=="community"&&React.createElement("div",{className:"tab-dot"})
+        ),
+        ti<NAV_TABS.length-1&&React.createElement("div",{style:{width:1,flexShrink:0,background:"#2a2a2a"}})
       ))
     ),
     React.createElement("div",{style:{textAlign:"center"}},
