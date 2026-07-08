@@ -2991,28 +2991,33 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
 const MW_DAYS=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 const MW_DAY_FULL={Mon:"MONDAY",Tue:"TUESDAY",Wed:"WEDNESDAY",Thu:"THURSDAY",Fri:"FRIDAY",Sat:"SATURDAY",Sun:"SUNDAY"};
 const mwKey=(email,weekStart)=>"__MW__"+email+"__"+toDS(weekStart);
-const MW_SECTIONS=["Core","Main","Mobility","Accessories"];
+const MW_SECTIONS=["Warm Up","Core","Main","Mobility","Accessories","Warm Down"];
+const MW_LOG=[["kg","Weight (kg)"],["km","Distance (km)"],["tick","Tick only"]];
 function mwGenId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
-// A day is an array of exercises {id,name,section,sets,reps,notes}. Handles legacy string / {title,body} blocks.
+// A day is an ordered array of exercises {id,name,section,sets,reps,duration,notes,log}. Handles legacy string / {title,body}.
 function mwNormDay(v){
   if(!v)return[];
   let arr;
   if(typeof v==="string")arr=v.trim()?[{name:"Workout",section:"Main",notes:v}]:[];
   else if(Array.isArray(v))arr=v;else arr=[];
   return arr.map(it=>{
-    if(typeof it==="string")return{id:mwGenId(),name:"Workout",section:"Main",sets:"",reps:"",notes:it};
+    if(typeof it==="string")return{id:mwGenId(),name:"Workout",section:"Main",sets:"",reps:"",duration:"",notes:it,log:"tick"};
     const legacy=(it&&it.body!==undefined&&it.body!==null)?it.body:"";
+    const section=(it&&it.section&&MW_SECTIONS.includes(it.section))?it.section:"Main";
+    const log=(it&&["kg","km","tick"].includes(it.log))?it.log:((section==="Core"||section==="Mobility")?"tick":"kg");
     return{
       id:(it&&it.id)||mwGenId(),
       name:(it&&(it.name||it.title))||"",
-      section:(it&&it.section&&MW_SECTIONS.includes(it.section))?it.section:"Main",
+      section,
       sets:(it&&it.sets!==undefined&&it.sets!==null)?String(it.sets):"",
       reps:(it&&it.reps)||"",
-      notes:(it&&it.notes!==undefined&&it.notes!==null)?it.notes:legacy
+      duration:(it&&it.duration)||"",
+      notes:(it&&it.notes!==undefined&&it.notes!==null)?it.notes:legacy,
+      log
     };
   });
 }
-function mwCleanDay(items){return (items||[]).map(it=>({id:it.id||mwGenId(),name:(it.name||"").trim(),section:MW_SECTIONS.includes(it.section)?it.section:"Main",sets:(it.sets==null?"":String(it.sets)).trim(),reps:(it.reps||"").trim(),notes:(it.notes||"").trim()})).filter(it=>it.name);}
+function mwCleanDay(items){return (items||[]).map(it=>({id:it.id||mwGenId(),name:(it.name||"").trim(),section:MW_SECTIONS.includes(it.section)?it.section:"Main",sets:(it.sets==null?"":String(it.sets)).trim(),reps:(it.reps||"").trim(),duration:(it.duration||"").trim(),notes:(it.notes||"").trim(),log:["kg","km","tick"].includes(it.log)?it.log:"kg"})).filter(it=>it.name);}
 function MemberWorkoutAdmin({member}){
   const [enabled,setEnabled]=useState(member.workouts_enabled===true);
   const [weekStart,setWeekStart]=useState(()=>mondayOf(new Date()));
@@ -3033,8 +3038,9 @@ function MemberWorkoutAdmin({member}){
     setDraft(d);setLoading(false);
   }
   function setItem(dk,idx,field,val){setDraft(p=>({...p,[dk]:(p[dk]||[]).map((it,i)=>i===idx?{...it,[field]:val}:it)}));}
-  function addItem(dk){setDraft(p=>({...p,[dk]:[...(p[dk]||[]),{id:mwGenId(),name:"",section:"Main",sets:"",reps:"",notes:"",repeat:1}]}));}
+  function addItem(dk){setDraft(p=>({...p,[dk]:[...(p[dk]||[]),{id:mwGenId(),name:"",section:"Main",sets:"",reps:"",duration:"",notes:"",log:"kg",repeat:1}]}));}
   function removeItem(dk,idx){setDraft(p=>({...p,[dk]:(p[dk]||[]).filter((_,i)=>i!==idx)}));}
+  function moveItem(dk,idx,dir){setDraft(p=>{const a=[...(p[dk]||[])];const j=idx+dir;if(j<0||j>=a.length)return p;[a[idx],a[j]]=[a[j],a[idx]];return{...p,[dk]:a};});}
   async function upsertWeek(k,contentObj){
     const json=JSON.stringify(contentObj);
     const existing=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(k)}&select=id`);
@@ -3085,7 +3091,7 @@ function MemberWorkoutAdmin({member}){
         togglingEnable?"...":(enabled?"ON":"OFF"))
     ),
     React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:4}},enabled?"This member can see their Workouts tab.":"Turn on to give this member a Workouts tab."),
-    React.createElement("div",{style:{fontSize:9,color:"#444",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:12}},"Main & Accessories exercises let the member log weight per set. Core & Mobility show tick-off buttons."),
+    React.createElement("div",{style:{fontSize:9,color:"#444",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:12}},"Set each exercise to log Weight (kg), Distance (km), or just a Tick. Reorder with the ▲▼ arrows — section headings follow the order you set."),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}},
       React.createElement("button",{onClick:()=>setWeekStart(w=>addDays(w,-7)),style:{background:"none",border:"none",color:"#888",fontSize:22,cursor:"pointer",lineHeight:1,padding:"0 8px"}},"‹"),
       React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.1em",color:"#fff"}},weekLabel),
@@ -3099,16 +3105,25 @@ function MemberWorkoutAdmin({member}){
           React.createElement("div",{style:{fontSize:10,letterSpacing:"0.14em",color:"#888",fontWeight:700,marginBottom:8}},MW_DAY_FULL[dk]),
           items.length===0&&React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.08em",marginBottom:8}},"No workout — rest day."),
           ...items.map((it,idx)=>React.createElement("div",{key:it.id||idx,style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:6,padding:"10px",marginBottom:8}},
-            React.createElement("div",{style:{display:"flex",gap:8,marginBottom:6}},
+            React.createElement("div",{style:{display:"flex",gap:8,marginBottom:6,alignItems:"center"}},
               React.createElement("input",{value:it.name,onChange:e=>setItem(dk,idx,"name",e.target.value),placeholder:"Exercise name e.g. BACK SQUAT",
                 style:{...inS,flex:1,color:"#fff",fontSize:14,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.06em"}}),
+              React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:1,flexShrink:0}},
+                React.createElement("button",{onClick:()=>moveItem(dk,idx,-1),disabled:idx===0,style:{background:"none",border:"none",color:idx===0?"#252525":"#666",cursor:idx===0?"default":"pointer",fontSize:10,padding:"1px 6px",lineHeight:1}},"▲"),
+                React.createElement("button",{onClick:()=>moveItem(dk,idx,1),disabled:idx===items.length-1,style:{background:"none",border:"none",color:idx===items.length-1?"#252525":"#666",cursor:idx===items.length-1?"default":"pointer",fontSize:10,padding:"1px 6px",lineHeight:1}},"▼")
+              ),
               React.createElement("button",{onClick:()=>removeItem(dk,idx),style:{background:"none",border:"1px solid #2a2a2a",borderRadius:4,color:"#8a2515",fontSize:12,padding:"4px 9px",cursor:"pointer",flexShrink:0}},"✕")
             ),
             React.createElement("div",{style:{display:"flex",gap:6,marginBottom:6}},
               React.createElement("select",{value:it.section,onChange:e=>setItem(dk,idx,"section",e.target.value),style:{...inS,flex:1,cursor:"pointer"}},
                 MW_SECTIONS.map(s=>React.createElement("option",{key:s,value:s},s))),
+              React.createElement("select",{value:it.log||"kg",onChange:e=>setItem(dk,idx,"log",e.target.value),style:{...inS,flex:1,cursor:"pointer"}},
+                MW_LOG.map(o=>React.createElement("option",{key:o[0],value:o[0]},o[1])))
+            ),
+            React.createElement("div",{style:{display:"flex",gap:6,marginBottom:6}},
               React.createElement("input",{value:it.sets,onChange:e=>setItem(dk,idx,"sets",e.target.value),placeholder:"Sets",style:{...inS,width:60,textAlign:"center"}}),
-              React.createElement("input",{value:it.reps,onChange:e=>setItem(dk,idx,"reps",e.target.value),placeholder:"Reps",style:{...inS,width:74,textAlign:"center"}})
+              React.createElement("input",{value:it.reps,onChange:e=>setItem(dk,idx,"reps",e.target.value),placeholder:"Reps",style:{...inS,width:74,textAlign:"center"}}),
+              React.createElement("input",{value:it.duration,onChange:e=>setItem(dk,idx,"duration",e.target.value),placeholder:"Duration e.g. 5 km / 45 sec",style:{...inS,flex:1}})
             ),
             React.createElement("textarea",{value:it.notes,onChange:e=>setItem(dk,idx,"notes",e.target.value),placeholder:"Notes (optional) e.g. tempo, RPE, cues. **stars** = bold.",rows:2,
               style:{...inS,width:"100%",lineHeight:1.6,resize:"vertical",marginBottom:6}}),
@@ -3201,32 +3216,35 @@ function MemberWorkoutsView({session,memberData}){
       React.createElement("div",{className:"day-hdr",style:{textAlign:"center",marginBottom:12}},React.createElement("span",null,MW_DAY_FULL[dk])),
       loading?React.createElement("div",{className:"sp-loading"},"LOADING...")
       :exercises.length===0?React.createElement("div",{className:"no-bk"},"No workout set for this day")
-      :MW_SECTIONS.filter(s=>sections[s]&&sections[s].length).map((s,si)=>
-        React.createElement(React.Fragment,{key:s},
-          React.createElement("div",{className:`sp-section-hdr${si===0?" spsh-first":""}`},s.toUpperCase()),
-          ...sections[s].map(ex=>{
-            const isCore=ex.section==="Core";const isMob=ex.section==="Mobility";
-            const setCount=Math.max(1,parseInt(ex.sets)||1);
-            const repsList=ex.reps?ex.reps.split(",").map(r=>r.trim()):[];
-            const metaParts=[];if(ex.sets)metaParts.push(`${ex.sets} sets`);if(ex.reps&&repsList.length===1)metaParts.push(`${ex.reps} reps`);
-            const meta=metaParts.join(" · ");
-            const notesEl=ex.notes?React.createElement("div",{className:"sp-ex-meta",style:{whiteSpace:"pre-wrap",color:"#999",marginTop:4}},
-              ...ex.notes.split("\n").flatMap((line,i,arr)=>[...renderBoldText(line),(i<arr.length-1?React.createElement("br",{key:"n"+i}):null)]).filter(Boolean)):null;
-            if(isCore||isMob){
-              return React.createElement("div",{key:ex.id,className:"sp-ex"},
-                React.createElement("div",{className:"sp-ex-top",style:{cursor:"default"}},
-                  React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-ex-name"},ex.name),meta&&React.createElement("div",{className:"sp-ex-meta"},meta),notesEl),
-                  React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}},
-                    Array.from({length:setCount}).map((_,idx)=>{
-                      const base=`${dk}__${ex.id}__s${idx+1}`;const done=!!ticks[base];
-                      return React.createElement("button",{key:idx,className:`sp-tick${done?" sptd":""}`,style:{width:30,height:30,fontSize:13},onClick:()=>toggleTick(dk,ex.id,idx+1,!done)},isMob?"✓":(done?"✓":`${idx+1}`));
-                    })
-                  )
+      :(()=>{
+        const out=[];let lastSec=null;
+        exercises.forEach((ex,exIdx)=>{
+          if((ex.section||"")!==lastSec){
+            out.push(React.createElement("div",{key:"h"+exIdx,className:`sp-section-hdr${out.length===0?" spsh-first":""}`},(ex.section||"").toUpperCase()));
+            lastSec=ex.section||"";
+          }
+          const unit=ex.log==="km"?"km":"kg";
+          const setCount=Math.max(1,parseInt(ex.sets)||1);
+          const repsList=ex.reps?ex.reps.split(",").map(r=>r.trim()):[];
+          const metaParts=[];if(ex.sets)metaParts.push(`${ex.sets} sets`);if(ex.reps&&repsList.length===1)metaParts.push(`${ex.reps} reps`);if(ex.duration)metaParts.push(ex.duration);
+          const meta=metaParts.join(" · ");
+          const notesEl=ex.notes?React.createElement("div",{className:"sp-ex-meta",style:{whiteSpace:"pre-wrap",color:"#999",marginTop:4}},
+            ...ex.notes.split("\n").flatMap((line,i,arr)=>[...renderBoldText(line),(i<arr.length-1?React.createElement("br",{key:"n"+i}):null)]).filter(Boolean)):null;
+          if(ex.log==="tick"){
+            out.push(React.createElement("div",{key:ex.id,className:"sp-ex"},
+              React.createElement("div",{className:"sp-ex-top",style:{cursor:"default"}},
+                React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-ex-name"},ex.name),meta&&React.createElement("div",{className:"sp-ex-meta"},meta),notesEl),
+                React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}},
+                  Array.from({length:setCount}).map((_,idx)=>{
+                    const base=`${dk}__${ex.id}__s${idx+1}`;const done=!!ticks[base];
+                    return React.createElement("button",{key:idx,className:`sp-tick${done?" sptd":""}`,style:{width:30,height:30,fontSize:13},onClick:()=>toggleTick(dk,ex.id,idx+1,!done)},done?"✓":`${idx+1}`);
+                  })
                 )
-              );
-            }
+              )
+            ));
+          }else{
             const isExpanded=expanded.has(ex.id);
-            return React.createElement("div",{key:ex.id,className:"sp-ex"},
+            out.push(React.createElement("div",{key:ex.id,className:"sp-ex"},
               React.createElement("div",{className:"sp-ex-top",style:{cursor:"pointer"},onClick:()=>toggleEx(ex.id)},
                 React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-ex-name"},ex.name),meta&&React.createElement("div",{className:"sp-ex-meta"},meta),notesEl),
                 React.createElement("div",{style:{color:"#444",fontSize:13,transition:"transform .2s",transform:isExpanded?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
@@ -3237,16 +3255,17 @@ function MemberWorkoutsView({session,memberData}){
                   const repTarget=repsList.length>1?(repsList[idx]||repsList[repsList.length-1]):null;
                   return React.createElement("div",{key:`${ex.id}_${idx}_${saved}`,className:"sp-set-row"},
                     React.createElement("span",{className:"sp-set-lbl"},`S${idx+1}`),
-                    React.createElement("input",{className:"sp-set-input",type:"text",inputMode:"numeric",pattern:"[0-9]*",defaultValue:saved,placeholder:"—",onBlur:e=>saveSetWeight(dk,ex.id,idx+1,e.target.value)}),
-                    React.createElement("span",{className:"sp-set-kg"},"kg"),
+                    React.createElement("input",{className:"sp-set-input",type:"text",inputMode:"decimal",defaultValue:saved,placeholder:"—",onBlur:e=>saveSetWeight(dk,ex.id,idx+1,e.target.value)}),
+                    React.createElement("span",{className:"sp-set-kg"},unit),
                     repTarget&&React.createElement("span",{className:"sp-set-reps"},`· ${repTarget} reps`)
                   );
                 })
               )
-            );
-          })
-        )
-      )
+            ));
+          }
+        });
+        return out;
+      })()
     )
   );
 }
