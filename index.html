@@ -792,6 +792,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
         React.createElement("div",{className:"mp-section"},"SIGNATURE"),
         React.createElement("img",{src:member.signature,className:"sig-preview",alt:"signature"})
       ),
+      currentUserIsAdmin&&React.createElement(MemberWorkoutAdmin,{member}),
       currentUserIsAdmin&&React.createElement(React.Fragment,null,
         React.createElement("div",{className:"mp-section"},"ADMIN CONTROLS"),
         React.createElement("button",{
@@ -891,6 +892,10 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData}){
       React.createElement("div",{className:"day-hdr",style:{textAlign:"center"}},
         React.createElement("span",null,DAY_LONG[selDay].toUpperCase()),
         React.createElement("em",null,` · ${WELL_TIMES.length} SESSIONS`)
+      ),
+      isAdmin&&React.createElement("div",{className:"adm-stats-row",style:{marginBottom:10}},
+        React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},dayBks.filter(b=>WELL_TIMES.includes(b.time)).length),React.createElement("div",{className:"adm-stat-lbl"},"BOOKED")),
+        React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},WELL_TIMES.length-dayBks.filter(b=>WELL_TIMES.includes(b.time)).length),React.createElement("div",{className:"adm-stat-lbl"},"AVAILABLE"))
       ),
       WELL_TIMES.map(time=>{
         const bk=dayBks.find(b=>b.time===time);
@@ -1550,10 +1555,6 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
       ),
       !wellAdmLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
       :React.createElement(React.Fragment,null,
-        React.createElement("div",{className:"adm-stats-row"},
-          React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},wellAdmBks.filter(b=>b.date_key===admDK&&WELL_TIMES.includes(b.time)).length),React.createElement("div",{className:"adm-stat-lbl"},"BOOKED TODAY")),
-          React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},WELL_TIMES.length-wellAdmBks.filter(b=>b.date_key===admDK&&WELL_TIMES.includes(b.time)).length),React.createElement("div",{className:"adm-stat-lbl"},"AVAILABLE"))
-        ),
         admDOW===0?React.createElement("div",{className:"adm-no-classes"},"No wellness on Sunday")
         :wellAdmBks.filter(b=>b.date_key===admDK).length===0
           ?React.createElement("div",{className:"adm-no-classes"},"No wellness bookings today")
@@ -2969,6 +2970,119 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
     )
   );
 }
+// ── Per-Member Workout Program (Admin editor, lives in member profile) ────────
+const MW_DAYS=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const MW_DAY_FULL={Mon:"MONDAY",Tue:"TUESDAY",Wed:"WEDNESDAY",Thu:"THURSDAY",Fri:"FRIDAY",Sat:"SATURDAY",Sun:"SUNDAY"};
+const mwKey=(email,weekStart)=>"__MW__"+email+"__"+toDS(weekStart);
+function MemberWorkoutAdmin({member}){
+  const [enabled,setEnabled]=useState(member.workouts_enabled===true);
+  const [weekStart,setWeekStart]=useState(()=>mondayOf(new Date()));
+  const [draft,setDraft]=useState({});
+  const [loading,setLoading]=useState(true);
+  const [saving,setSaving]=useState(false);
+  const [savedMsg,setSavedMsg]=useState("");
+  const [togglingEnable,setTogglingEnable]=useState(false);
+  const key=mwKey(member.email,weekStart);
+  useEffect(()=>{load();},[weekStart]);
+  async function load(){
+    setLoading(true);
+    const data=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(key)}&select=content`);
+    let obj={};
+    if(data&&data.length&&data[0].content){try{obj=JSON.parse(data[0].content)||{};}catch{obj={};}}
+    setDraft(obj);setLoading(false);
+  }
+  async function saveWeek(){
+    setSaving(true);
+    const json=JSON.stringify(draft);
+    const existing=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(key)}&select=id`);
+    if(existing&&existing.length){await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(key)}`,{content:json,updated_at:Date.now()});}
+    else{await sbPost("coaching_notes",{class_name:key,content:json,updated_at:Date.now()});}
+    setSaving(false);setSavedMsg("Week saved ✓");setTimeout(()=>setSavedMsg(""),2000);
+  }
+  async function toggleEnabled(){
+    setTogglingEnable(true);
+    const nv=!enabled;
+    await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,{workouts_enabled:nv});
+    member.workouts_enabled=nv;
+    setEnabled(nv);setTogglingEnable(false);
+  }
+  const weekEnd=addDays(weekStart,6);
+  const weekLabel=`${MONTHS[weekStart.getMonth()]} ${weekStart.getDate()} – ${MONTHS[weekEnd.getMonth()]} ${weekEnd.getDate()}`;
+  return React.createElement(React.Fragment,null,
+    React.createElement("div",{className:"mp-section",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
+      React.createElement("span",null,"WORKOUT PROGRAM"),
+      React.createElement("button",{onClick:toggleEnabled,disabled:togglingEnable,
+        style:{background:enabled?"#fff":"#222",color:enabled?"#000":"#555",border:`1px solid ${enabled?"#fff":"#333"}`,borderRadius:20,padding:"5px 16px",fontSize:9,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},
+        togglingEnable?"...":(enabled?"ON":"OFF"))
+    ),
+    React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:12}},enabled?"This member can see their Workouts tab.":"Turn on to give this member a Workouts tab."),
+    React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}},
+      React.createElement("button",{onClick:()=>setWeekStart(w=>addDays(w,-7)),style:{background:"none",border:"none",color:"#888",fontSize:22,cursor:"pointer",lineHeight:1,padding:"0 8px"}},"‹"),
+      React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.1em",color:"#fff"}},weekLabel),
+      React.createElement("button",{onClick:()=>setWeekStart(w=>addDays(w,7)),style:{background:"none",border:"none",color:"#888",fontSize:22,cursor:"pointer",lineHeight:1,padding:"0 8px"}},"›")
+    ),
+    loading?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"10px 0"}},"LOADING...")
+    :React.createElement(React.Fragment,null,
+      ...MW_DAYS.map(dk=>React.createElement("div",{key:dk,style:{marginBottom:10}},
+        React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#666",fontWeight:600,marginBottom:5}},MW_DAY_FULL[dk]),
+        React.createElement("textarea",{
+          value:draft[dk]||"",
+          onChange:e=>setDraft(p=>({...p,[dk]:e.target.value})),
+          placeholder:"Rest day / no workout. Wrap text in **stars** to bold it for the member.",
+          rows:3,
+          style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:4,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",lineHeight:1.6,padding:"9px 10px",resize:"vertical",boxSizing:"border-box",outline:"none"}
+        })
+      )),
+      React.createElement("button",{onClick:saveWeek,disabled:saving,
+        style:{width:"100%",background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.15em",padding:"13px",borderRadius:3,cursor:"pointer",marginTop:4}},
+        saving?"SAVING...":"SAVE WEEK"),
+      savedMsg&&React.createElement("div",{style:{fontSize:11,color:"#4aaa88",textAlign:"center",marginTop:8}},savedMsg)
+    )
+  );
+}
+// ── Member Workouts Tab (read-only, member-facing) ────────────────────────────
+function MemberWorkoutsView({session,memberData}){
+  const [weekStart,setWeekStart]=useState(()=>mondayOf(new Date()));
+  const [selDay,setSelDay]=useState(()=>{const d=new Date().getDay();return d===0?6:d-1;});
+  const [content,setContent]=useState({});
+  const [loading,setLoading]=useState(true);
+  const key=mwKey(session.email,weekStart);
+  useEffect(()=>{load();},[weekStart]);
+  async function load(){
+    setLoading(true);
+    const data=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(key)}&select=content`);
+    let obj={};
+    if(data&&data.length&&data[0].content){try{obj=JSON.parse(data[0].content)||{};}catch{obj={};}}
+    setContent(obj);setLoading(false);
+  }
+  const weekEnd=addDays(weekStart,6);
+  const weekLabel=`${MONTHS[weekStart.getMonth()]} ${weekStart.getDate()} – ${MONTHS[weekEnd.getMonth()]} ${weekEnd.getDate()}  ${weekStart.getFullYear()}`;
+  const dayDates=MW_DAYS.map((_,i)=>addDays(weekStart,i));
+  const selText=content[MW_DAYS[selDay]]||"";
+  return React.createElement("div",{className:"well-wrap"},
+    React.createElement("div",{className:"well-hdr"},React.createElement("div",{className:"well-title"},"WORKOUTS")),
+    React.createElement("div",{className:"week-nav",style:{paddingTop:0}},
+      React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7))},"‹"),
+      React.createElement("div",{className:"wk-label"},weekLabel),
+      React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,7))},"›")
+    ),
+    React.createElement("div",{className:"day-strip"},
+      dayDates.map((d,i)=>React.createElement("button",{key:i,onClick:()=>setSelDay(i),className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}${(content[MW_DAYS[i]]||"").trim()?" dhb":""}`},
+        React.createElement("div",{className:"d-name"},MW_DAYS[i]),
+        React.createElement("div",{className:"d-num"},d.getDate()),
+        React.createElement("div",{className:"d-dot"})
+      ))
+    ),
+    React.createElement("div",{className:"cls-wrap"},
+      React.createElement("div",{className:"day-hdr",style:{textAlign:"center"}},React.createElement("span",null,MW_DAY_FULL[MW_DAYS[selDay]])),
+      loading?React.createElement("div",{className:"sp-loading"},"LOADING...")
+      :selText.trim()
+        ?React.createElement("div",{style:{background:"#141414",border:"1px solid #888",borderRadius:8,padding:"14px 16px",whiteSpace:"pre-wrap",fontSize:14,color:"#ddd",lineHeight:1.75,fontFamily:"'DM Sans',sans-serif",fontWeight:300}},
+           ...selText.split("\n").flatMap((line,i,arr)=>[...renderBoldText(line),(i<arr.length-1?React.createElement("br",{key:"br"+i}):null)]).filter(Boolean))
+        :React.createElement("div",{className:"no-bk"},"No workout set for this day")
+    )
+  );
+}
 // ── Main App ──────────────────────────────────────────────────────────────────
 function App(){
   const [ready,setReady]=useState(false);
@@ -3015,6 +3129,7 @@ function App(){
   const touchStartX=useRef(null);
   const touchStartY=useRef(null);
   const isAdmin=session?.email===ADMIN_EMAIL||memberData?.is_admin===true;
+  const workoutsEnabled=memberData?.workouts_enabled===true;
   useEffect(()=>{
     (async()=>{
       let joinedAt=0;
@@ -3075,7 +3190,7 @@ function App(){
     const data=await sbGet("bookings",`date_key=in.(${keys.join(",")})&select=email,name,date_key,time,session_type,checked_in`);
     setBookings(data||[]);
   }
-  const TAB_ORDER=["community","my",...(classesEnabled?["book"]:[]),...(strengthEnabled?["strength"]:[]),"progress",...(wellnessEnabled?["wellness"]:[]),...(isAdmin?["admin"]:[])];
+  const TAB_ORDER=["community",...(classesEnabled?["my","book"]:[]),...(strengthEnabled?["strength"]:[]),...(workoutsEnabled?["workouts"]:[]),"progress",...(wellnessEnabled?["wellness"]:[]),...(isAdmin?["admin"]:[])];
   function handleTouchStart(e){touchStartX.current=e.touches[0].clientX;touchStartY.current=e.touches[0].clientY;}
   function handleTouchEnd(e){
     if(touchStartX.current===null)return;
@@ -3222,7 +3337,7 @@ function App(){
   async function saveClassesSetting(enabled){
     await sbPatch("feature_flags","id=eq.1",{classes_enabled:enabled});
     setClassesEnabled(enabled);
-    if(!enabled&&tab==="book")setTab("community");
+    if(!enabled&&(tab==="book"||tab==="my"))setTab("community");
   }
   async function saveStrengthSetting(enabled){
     await sbPatch("feature_flags","id=eq.1",{strength_enabled:enabled});
@@ -3353,9 +3468,10 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
           "NOTICE BOARD",
           unreadPosts>0&&tab!=="community"&&React.createElement("div",{className:"tab-dot"})
         ),
-        React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="my"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="my"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="my"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="my"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="my"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="my"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("my")},"MY BOOKINGS"),
+        classesEnabled&&React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="my"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="my"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="my"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="my"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="my"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="my"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("my")},"MY BOOKINGS"),
         classesEnabled&&React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="book"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="book"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="book"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="book"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="book"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="book"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("book")},"CLASSES"),
         strengthEnabled&&React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="strength"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="strength"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="strength"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="strength"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="strength"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="strength"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("strength")},"STRENGTH"),
+        workoutsEnabled&&React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="workouts"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="workouts"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="workouts"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="workouts"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="workouts"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="workouts"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("workouts")},"WORKOUTS"),
         React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="progress"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="progress"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="progress"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="progress"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="progress"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="progress"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("progress")},"PROGRESS"),
         wellnessEnabled&&React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="wellness"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="wellness"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="wellness"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="wellness"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="wellness"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="wellness"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("wellness")},"WELLNESS"),
         isAdmin&&React.createElement("button",{style:{flex:1,padding:"10px 2px",background:tab==="admin"?"#222":"none",border:"none",borderTop:`1px solid ${tab==="admin"?"#fff":"transparent"}`,borderBottom:`1px solid ${tab==="admin"?"#fff":"transparent"}`,borderLeft:`1px solid ${tab==="admin"?"#fff":"transparent"}`,borderRight:`1px solid ${tab==="admin"?"#fff":"transparent"}`,marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8px",letterSpacing:"0.12em",color:tab==="admin"?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap"},onClick:()=>setTab("admin")},"ADMIN")
@@ -3508,6 +3624,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
     tab==="wellness"&&wellnessEnabled&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin,memberData}),
     tab==="strength"&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast,bookings,memberData})),
+    tab==="workouts"&&workoutsEnabled&&React.createElement(MemberWorkoutsView,{session,memberData}),
     tab==="progress"&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}),
     tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,dowNames,saveDowName,slotNames,saveSlotName,milestoneConfig,saveMilestoneConfig}),
     React.createElement("div",{className:"tab-bar"},
@@ -3515,9 +3632,10 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         "NOTICE BOARD",
         unreadPosts>0&&tab!=="community"&&React.createElement("div",{className:"tab-dot"})
       ),
-      React.createElement("button",{className:`tab-btn${tab==="my"?" ta":""}`,onClick:()=>setTab("my")},"MY BOOKINGS"),
+      classesEnabled&&React.createElement("button",{className:`tab-btn${tab==="my"?" ta":""}`,onClick:()=>setTab("my")},"MY BOOKINGS"),
       classesEnabled&&React.createElement("button",{className:`tab-btn${tab==="book"?" ta":""}`,onClick:()=>setTab("book")},"CLASSES"),
       strengthEnabled&&React.createElement("button",{className:`tab-btn${tab==="strength"?" ta":""}`,onClick:()=>setTab("strength")},"STRENGTH"),
+      workoutsEnabled&&React.createElement("button",{className:`tab-btn${tab==="workouts"?" ta":""}`,onClick:()=>setTab("workouts")},"WORKOUTS"),
       React.createElement("button",{className:`tab-btn${tab==="progress"?" ta":""}`,onClick:()=>setTab("progress")},"PROGRESS"),
       wellnessEnabled&&React.createElement("button",{className:`tab-btn${tab==="wellness"?" ta":""}`,onClick:()=>setTab("wellness")},"WELLNESS"),
       isAdmin&&React.createElement("button",{className:`tab-btn${tab==="admin"?" ta":""}`,onClick:()=>setTab("admin")},"ADMIN")
@@ -3574,6 +3692,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     )
   );
 }
+/* Team 365 — section toggles + per-member workouts */
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
 if("serviceWorker"in navigator){
   window.addEventListener("load",()=>{navigator.serviceWorker.register("/sw.js");});
