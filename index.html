@@ -438,6 +438,13 @@ const MAX_SPOTS=16;
 const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
 const SAT_TIMES=["06:30","07:30","08:30","09:30"];
 const WELL_TIMES=["06:00","08:00","10:00","12:00","14:00","16:00","18:00"];
+// Per-date wellness slot overrides live in coaching_notes row __WELL_SLOTS__
+// content = { "<date_key>": { hide:["06:00",...], add:["19:30",...] } }
+function wellTimesFor(dk,wellSlots){
+  const o=(wellSlots&&wellSlots[dk])||{};
+  const hide=o.hide||[];const add=o.add||[];
+  return [...new Set([...WELL_TIMES,...add])].filter(t=>!hide.includes(t)).sort();
+}
 const DAY_SHORT=["Mon","Tue","Wed","Thu","Fri","Sat"];
 const DAY_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const DAY_SESS=["Rise Up","Strength Lower","Ascend","Strength Upper","Elevate","Summit"];
@@ -834,7 +841,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
   );
 }
 // ── Wellness View ─────────────────────────────────────────────────────────────
-function WellnessView({session,showToast,bookings,isAdmin,memberData}){
+function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots}){
   const [wellBks,setWellBks]=useState([]);
   const [weekStart,setWeekStart]=useState(getWeekStart);
   const [selDay,setSelDay]=useState(getInitDay);
@@ -849,6 +856,7 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData}){
   }
   const selDate=addDays(weekStart,selDay);
   const selDK=toDS(selDate);
+  const wellTimes=wellTimesFor(selDK,wellSlots);
   const weekDates=Array.from({length:6},(_,i)=>addDays(weekStart,i));
   const isThisWeek=toDS(weekStart)===toDS(mondayOf(new Date()));
   const dayBks=wellBks.filter(b=>b.date_key===selDK);
@@ -896,13 +904,13 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData}){
     React.createElement("div",{className:"cls-wrap"},
       React.createElement("div",{className:"day-hdr",style:{textAlign:"center"}},
         React.createElement("span",null,DAY_LONG[selDay].toUpperCase()),
-        React.createElement("em",null,` · ${WELL_TIMES.length} SESSIONS`)
+        React.createElement("em",null,` · ${wellTimes.length} SESSIONS`)
       ),
       isAdmin&&React.createElement("div",{className:"adm-stats-row",style:{marginBottom:10}},
-        React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},dayBks.filter(b=>WELL_TIMES.includes(b.time)).length),React.createElement("div",{className:"adm-stat-lbl"},"BOOKED")),
-        React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},WELL_TIMES.length-dayBks.filter(b=>WELL_TIMES.includes(b.time)).length),React.createElement("div",{className:"adm-stat-lbl"},"AVAILABLE"))
+        React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},dayBks.filter(b=>wellTimes.includes(b.time)).length),React.createElement("div",{className:"adm-stat-lbl"},"BOOKED")),
+        React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},wellTimes.length-dayBks.filter(b=>wellTimes.includes(b.time)).length),React.createElement("div",{className:"adm-stat-lbl"},"AVAILABLE"))
       ),
-      WELL_TIMES.map(time=>{
+      wellTimes.map(time=>{
         const bk=dayBks.find(b=>b.time===time);
         const ismine=bk&&bk.email===session?.email;
         const taken=!!bk&&!ismine;
@@ -1205,7 +1213,7 @@ function MilestoneAdminPanel({milestoneConfig,saveMilestoneConfig,showToast}){
     )
   );
 }
-function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,dowNames,saveDowName,slotNames,saveSlotName,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg}){
+function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,dowNames,saveDowName,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg}){
   const [expandedTier,setExpandedTier]=useState(null);
   const [admDate,setAdmDate]=useState(new Date());
   const [expanded,setExpanded]=useState({});
@@ -1227,6 +1235,27 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
   const undoTimerRef=useRef(null);
   const [editingClassName,setEditingClassName]=useState(false);
   const [classNameInput,setClassNameInput]=useState("");
+  const [addingWell,setAddingWell]=useState(false);
+  const [wellNewTime,setWellNewTime]=useState("");
+  function wsToggleHide(time){
+    const cur=wellSlots||{};const o={...(cur[admDK]||{})};
+    const hide=new Set(o.hide||[]);
+    hide.has(time)?hide.delete(time):hide.add(time);
+    if(saveWellSlots)saveWellSlots({...cur,[admDK]:{...o,hide:[...hide],add:o.add||[]}});
+  }
+  function wsAddCustom(time){
+    if(!time)return;
+    const cur=wellSlots||{};const o={...(cur[admDK]||{})};
+    const add=new Set(o.add||[]);add.add(time);
+    const hide=(o.hide||[]).filter(t=>t!==time);
+    if(saveWellSlots)saveWellSlots({...cur,[admDK]:{...o,add:[...add],hide}});
+  }
+  function wsRemoveCustom(time){
+    const cur=wellSlots||{};const o={...(cur[admDK]||{})};
+    const add=(o.add||[]).filter(t=>t!==time);
+    const hide=(o.hide||[]).filter(t=>t!==time);
+    if(saveWellSlots)saveWellSlots({...cur,[admDK]:{...o,add,hide}});
+  }
   function scheduleUndoClear(){
     if(undoTimerRef.current)clearTimeout(undoTimerRef.current);
     undoTimerRef.current=setTimeout(()=>setUndoData(null),6000);
@@ -1562,28 +1591,54 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
         React.createElement("button",{className:"adm-arrow",onClick:()=>changeDay(1)},"›")
       ),
       !wellAdmLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
-      :React.createElement(React.Fragment,null,
-        admDOW===0?React.createElement("div",{className:"adm-no-classes"},"No wellness on Sunday")
-        :wellAdmBks.filter(b=>b.date_key===admDK).length===0
-          ?React.createElement("div",{className:"adm-no-classes"},"No wellness bookings today")
-          :WELL_TIMES.filter(time=>wellAdmBks.find(b=>b.date_key===admDK&&b.time===time)).map(time=>{
-            const bk=wellAdmBks.find(b=>b.date_key===admDK&&b.time===time);
-            return React.createElement("div",{key:time,className:"adm-class-card"},
-              React.createElement("div",{className:"adm-class-hdr",style:{cursor:"default"}},
-                React.createElement("div",{className:"adm-class-time"},fmt12(time)),
-                React.createElement("div",{className:"adm-class-mid"},
-                  React.createElement("div",{className:"adm-class-count",style:{color:"#1d9bf0"}},"Booked ✓"),
-                  React.createElement("div",{className:"adm-member-email",style:{marginTop:4,color:"#1d9bf0"}},bk.name+" · "+bk.email)
-                ),
-                React.createElement("button",{className:"adm-remove-btn",style:{fontSize:11},onClick:async()=>{
-                  setWellAdmBks(prev=>prev.filter(b=>!(b.date_key===admDK&&b.time===time)));
-                  await sbDelete("wellness_bookings",`email=eq.${encodeURIComponent(bk.email)}&date_key=eq.${admDK}&time=eq.${encodeURIComponent(time)}`);
-                  showToast("Wellness booking removed");
-                }},"Remove")
-              )
+      :admDOW===0?React.createElement("div",{className:"adm-no-classes"},"No wellness on Sunday")
+      :(()=>{
+        const wsO=(wellSlots&&wellSlots[admDK])||{};
+        const wsHide=wsO.hide||[];const wsAdd=wsO.add||[];
+        const allWellTimes=[...new Set([...WELL_TIMES,...wsAdd])].sort();
+        const dayWellBks=wellAdmBks.filter(b=>b.date_key===admDK).slice().sort((a,b)=>a.time<b.time?-1:a.time>b.time?1:0);
+        return React.createElement(React.Fragment,null,
+          React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,margin:"4px 0 10px"}},"SESSION TIMES"),
+          ...allWellTimes.map(time=>{
+            const hidden=wsHide.includes(time);
+            const custom=!WELL_TIMES.includes(time);
+            const booked=dayWellBks.some(b=>b.time===time);
+            return React.createElement("div",{key:time,style:{display:"flex",alignItems:"center",gap:10,background:"#141414",border:"1px solid "+(hidden?"#222":"#2e2e2e"),borderRadius:7,padding:"11px 14px",marginBottom:7,opacity:hidden?0.55:1}},
+              React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:19,color:hidden?"#666":"#fff",minWidth:76}},fmt12(time)),
+              React.createElement("div",{style:{flex:1,fontSize:9,letterSpacing:"0.12em",fontWeight:600,color:hidden?"#555":booked?"#1d9bf0":"#4aaa66"}},(hidden?"HIDDEN":booked?"BOOKED":"AVAILABLE")+(custom?" · CUSTOM":"")),
+              React.createElement("button",{onClick:()=>wsToggleHide(time),style:{background:hidden?"#fff":"transparent",color:hidden?"#000":"#888",border:"1px solid "+(hidden?"#fff":"#333"),borderRadius:4,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",padding:"7px 14px",cursor:"pointer",flexShrink:0}},hidden?"SHOW":"HIDE"),
+              custom&&React.createElement("button",{onClick:()=>wsRemoveCustom(time),title:"Remove custom time",style:{background:"none",border:"1px solid #2a2a2a",borderRadius:4,color:"#8a2515",fontSize:12,padding:"6px 10px",cursor:"pointer",flexShrink:0}},"✕")
             );
-          })
-      )
+          }),
+          !addingWell
+            ?React.createElement("button",{onClick:()=>{setAddingWell(true);setWellNewTime("");},style:{width:"100%",background:"none",border:"1px dashed #2a2a2a",borderRadius:6,padding:"11px",color:"#555",fontSize:10,letterSpacing:"0.14em",cursor:"pointer",marginTop:2}},"+ ADD CUSTOM TIME")
+            :React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:6,padding:"14px",marginTop:2}},
+                React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,marginBottom:10}},"NEW TIME · "+admDateLabel.toUpperCase()),
+                React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center"}},
+                  React.createElement("input",{type:"time",value:wellNewTime,onChange:e=>setWellNewTime(e.target.value),style:{flex:1,background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#ccc",fontSize:14,padding:"8px 10px",fontFamily:"'DM Sans',sans-serif",outline:"none",boxSizing:"border-box"}}),
+                  React.createElement("button",{onClick:()=>setAddingWell(false),style:{background:"none",border:"1px solid #333",borderRadius:4,padding:"9px 12px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
+                  React.createElement("button",{disabled:!wellNewTime,onClick:()=>{if(!wellNewTime)return;wsAddCustom(wellNewTime);setAddingWell(false);showToast("Time added ✓");},style:{background:wellNewTime?"#fff":"#1a1a1a",color:wellNewTime?"#000":"#444",border:"none",borderRadius:4,padding:"9px 16px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:wellNewTime?"pointer":"default"}},"ADD")
+                )
+            ),
+          React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,margin:"20px 0 10px"}},"BOOKINGS"),
+          dayWellBks.length===0
+            ?React.createElement("div",{className:"adm-no-classes"},"No wellness bookings today")
+            :React.createElement(React.Fragment,null,...dayWellBks.map((bk,i)=>React.createElement("div",{key:i,className:"adm-class-card"},
+                React.createElement("div",{className:"adm-class-hdr",style:{cursor:"default"}},
+                  React.createElement("div",{className:"adm-class-time"},fmt12(bk.time)),
+                  React.createElement("div",{className:"adm-class-mid"},
+                    React.createElement("div",{className:"adm-class-count",style:{color:"#1d9bf0"}},"Booked ✓"),
+                    React.createElement("div",{className:"adm-member-email",style:{marginTop:4,color:"#1d9bf0"}},bk.name+" · "+bk.email)
+                  ),
+                  React.createElement("button",{className:"adm-remove-btn",style:{fontSize:11},onClick:async()=>{
+                    setWellAdmBks(prev=>prev.filter(b=>!(b.date_key===admDK&&b.time===bk.time&&b.email===bk.email)));
+                    await sbDelete("wellness_bookings",`email=eq.${encodeURIComponent(bk.email)}&date_key=eq.${admDK}&time=eq.${encodeURIComponent(bk.time)}`);
+                    showToast("Wellness booking removed");
+                  }},"Remove")
+                )
+              )))
+        );
+      })()
     ),
     admSeg==="sections"&&React.createElement(React.Fragment,null,
       React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,margin:"16px 0 10px"}},"SECTION VISIBILITY"),
@@ -3412,6 +3467,7 @@ function App(){
   const [classesEnabled,setClassesEnabled]=useState(true);
   const [strengthEnabled,setStrengthEnabled]=useState(true);
   const [dowNames,setDowNames]=useState({1:"RISE UP",2:"STRENGTH LOWER",3:"ASCEND",4:"STRENGTH UPPER",5:"ELEVATE",6:"SUMMIT"});
+  const [wellSlots,setWellSlots]=useState({});
   const [milestoneConfig,setMilestoneConfig]=useState({interval:25,label:"classes completed — keep it up!"});
   const photoRef=useRef(null);
   const touchStartX=useRef(null);
@@ -3447,6 +3503,8 @@ function App(){
       }
       const dnData=await sbGet("coaching_notes","class_name=eq.__DOW_NAMES__&select=content");
       if(dnData&&dnData.length){try{const dn=JSON.parse(dnData[0].content);setDowNames(p=>({...p,...dn}));}catch{}}
+      const wsData=await sbGet("coaching_notes","class_name=eq.__WELL_SLOTS__&select=content");
+      if(wsData&&wsData.length){try{const ws=JSON.parse(wsData[0].content);if(ws&&typeof ws==="object")setWellSlots(ws);}catch{}}
       const mcData=await sbGet("coaching_notes","class_name=eq.__MILESTONE_CONFIG__&select=content");
       if(mcData&&mcData.length){try{const mc=JSON.parse(mcData[0].content);setMilestoneConfig(p=>({...p,...mc}));}catch{}}
       setReady(true);
@@ -3658,6 +3716,18 @@ function App(){
     const existing=await sbGet("coaching_notes","class_name=eq.__DOW_NAMES__&select=id");
     if(existing&&existing.length){await sbPatch("coaching_notes","class_name=eq.__DOW_NAMES__",{content:JSON.stringify(newDn),updated_at:Date.now()});}
     else{await sbPost("coaching_notes",{class_name:"__DOW_NAMES__",content:JSON.stringify(newDn),updated_at:Date.now()});}
+  }
+  async function saveWellSlots(next){
+    // next: full overrides object keyed by date_key. Prune empty entries.
+    const clean={};
+    Object.keys(next||{}).forEach(dk=>{
+      const o=next[dk]||{};const hide=(o.hide||[]).filter(Boolean);const add=(o.add||[]).filter(Boolean);
+      if(hide.length||add.length)clean[dk]={hide,add};
+    });
+    setWellSlots(clean);
+    const existing=await sbGet("coaching_notes","class_name=eq.__WELL_SLOTS__&select=id");
+    if(existing&&existing.length){await sbPatch("coaching_notes","class_name=eq.__WELL_SLOTS__",{content:JSON.stringify(clean),updated_at:Date.now()});}
+    else{await sbPost("coaching_notes",{class_name:"__WELL_SLOTS__",content:JSON.stringify(clean),updated_at:Date.now()});}
   }
   async function saveMilestoneConfig(cfg){
     setMilestoneConfig(cfg);
@@ -3931,11 +4001,11 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       ),
     ),
     tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
-    tab==="wellness"&&wellnessEnabled&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin,memberData}),
+    tab==="wellness"&&wellnessEnabled&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin,memberData,wellSlots}),
     tab==="strength"&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast,bookings,memberData})),
     tab==="workouts"&&workoutsEnabled&&React.createElement(MemberWorkoutsView,{session,memberData}),
     tab==="progress"&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}),
-    tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,dowNames,saveDowName,slotNames,saveSlotName,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg}),
+    tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,dowNames,saveDowName,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg}),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:"auto"}},
       React.createElement("span",{style:{color:"#666",fontSize:11,lineHeight:1}},"‹"),
       React.createElement("span",{style:{color:"#555",fontSize:7,letterSpacing:"0.22em",fontWeight:600}},"SWIPE FOR MORE"),
