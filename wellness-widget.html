@@ -111,6 +111,12 @@ const SB_HDR={"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":
 const APPS_URL="https://script.google.com/macros/s/AKfycbz5cruljVDUVScwm14Sj1z5_6cRrNK9cgOaq7Tx8P9LfPAEI7p_kx8ZJnaghF_SmU46Fw/exec";
 const SHOPIFY_PAY_URL="https://www.lamontcollective.com/products/sauna-cold-plunge";
 const WELL_TIMES=["06:00","08:00","10:00","12:00","14:00","16:00","18:00"];
+// Per-date overrides from coaching_notes __WELL_SLOTS__ (set by admin)
+function wellTimesFor(dk,wellSlots){
+  const o=(wellSlots&&wellSlots[dk])||{};
+  const hide=o.hide||[];const add=o.add||[];
+  return [...new Set([...WELL_TIMES,...add])].filter(t=>!hide.includes(t)).sort();
+}
 const DAY_SHORT=["Mon","Tue","Wed","Thu","Fri","Sat"];
 const DAY_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -154,10 +160,12 @@ function WellnessWidget(){
   const[conf,setConf]=useState(null);
   const[wellnessEnabled,setWellnessEnabled]=useState(true);
   const[flagLoaded,setFlagLoaded]=useState(false);
+  const[wellSlots,setWellSlots]=useState({});
   const weekDates=Array.from({length:6},(_,i)=>addDays(weekStart,i));
   const isThisWeek=toDS(weekStart)===toDS(mondayOf(new Date()));
   const selDate=weekDates[selDay];
   const selDK=toDS(selDate);
+  const wellTimes=wellTimesFor(selDK,wellSlots);
   // Load wellness bookings for this week
   useEffect(()=>{
     setLoading(true);setSelTime(null);
@@ -170,6 +178,9 @@ function WellnessWidget(){
     sbGet("feature_flags","id=eq.1&select=wellness_enabled").then(d=>{
       if(d&&d.length)setWellnessEnabled(d[0].wellness_enabled!==false);
       setFlagLoaded(true);
+    });
+    sbGet("coaching_notes","class_name=eq.__WELL_SLOTS__&select=content").then(d=>{
+      if(d&&d.length&&d[0].content){try{const ws=JSON.parse(d[0].content);if(ws&&typeof ws==="object")setWellSlots(ws);}catch{}}
     });
   },[]);
   // Capacity = 1 per slot
@@ -239,11 +250,11 @@ function WellnessWidget(){
           React.createElement("div",{className:"d-num"},d.getDate())
         ))
       ),
-      React.createElement("div",{className:"sess-lbl"},`${DAY_LONG[selDay].toUpperCase()} · ${WELL_TIMES.length} SESSIONS`),
+      React.createElement("div",{className:"sess-lbl"},`${DAY_LONG[selDay].toUpperCase()} · ${wellTimes.length} SESSIONS`),
       loading
         ?React.createElement("div",{className:"loading"},"CHECKING AVAILABILITY…",React.createElement("div",{className:"load-bar"},React.createElement("div",{className:"load-fill"})))
         :React.createElement("div",{className:"slot-list"},
-          WELL_TIMES.map(time=>{
+          wellTimes.map(time=>{
             const taken=!!getSlotBooking(selDK,time);
             const past=isPastSlot(selDate,time);
             return React.createElement("div",{key:time,className:`slot-row${selTime===time?" sel":""}${taken?" unavail":""}${past?" past":""}`,onClick:()=>{if(!taken&&!past)setSelTime(time);}},
