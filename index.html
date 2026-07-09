@@ -3496,6 +3496,7 @@ function App(){
   const [strengthEnabled,setStrengthEnabled]=useState(true);
   const [dowNames,setDowNames]=useState({1:"RISE UP",2:"STRENGTH LOWER",3:"ASCEND",4:"STRENGTH UPPER",5:"ELEVATE",6:"SUMMIT"});
   const [wellSlots,setWellSlots]=useState({});
+  const [repeatWeeks,setRepeatWeeks]=useState(1);
   const [milestoneConfig,setMilestoneConfig]=useState({interval:25,label:"classes completed — keep it up!"});
   const photoRef=useRef(null);
   const touchStartX=useRef(null);
@@ -3678,6 +3679,37 @@ function App(){
     const ok=await sbPost("bookings",newBk);
     if(!ok){setBookings(prev=>prev.filter(b=>!(b.email===session.email&&b.date_key===selDK&&b.time===time)));showToast("Booking failed — try again");}
     else showToast("Spot reserved ✓");
+    setBkBusy(p=>({...p,[lk]:false}));
+  }
+  // Book the same weekday+time for N consecutive weeks. Skips full/unavailable/limit weeks, reports a summary.
+  async function handleBookRecurring(time,weeks){
+    if(!session)return;
+    const lk=`${selDK}-${time}`;setBkBusy(p=>({...p,[lk]:true}));
+    const sessionType=isStrengthDay(selDK)?"Strength":"HIIT";
+    const limits=getTierLimits(memberData?.membership_type);
+    const typeLimit=sessionType==="Strength"?limits.strength:limits.hiit;
+    if(!isAdmin&&typeLimit===0){showToast("No membership — contact admin");setBkBusy(p=>({...p,[lk]:false}));return;}
+    const added=[];const skipped=[];
+    for(let i=0;i<weeks;i++){
+      const d=addDays(selDate,i*7);const dk=toDS(d);
+      if(isPastD(d))continue;
+      const freshLimitData=await sbGet("class_limits",`time_slot=eq.${encodeURIComponent(time)}&date_key=eq.${dk}&select=max_spots`);
+      const freshMax=freshLimitData&&freshLimitData.length?freshLimitData[0].max_spots:MAX_SPOTS;
+      if(freshMax===0){skipped.push(d);continue;}
+      const list=getBksFor(dk,time);
+      const maxSp=Math.min(getMaxSpots(time,dk),freshMax);
+      if(list.some(b=>b.email===session.email))continue;
+      if(list.length>=maxSp){skipped.push(d);continue;}
+      if(!isAdmin&&typeLimit!==null&&weeklyClassCount(session.email,sessionType,dk)>=typeLimit){skipped.push(d);continue;}
+      const newBk={email:session.email,name:session.name,date_key:dk,time,session_type:sessionType};
+      const ok=await sbPost("bookings",newBk);
+      if(ok)added.push(newBk);else skipped.push(d);
+    }
+    if(added.length)setBookings(prev=>[...prev,...added]);
+    const n=added.length;
+    if(n===0)showToast("Those weeks are full — nothing booked");
+    else if(skipped.length===0)showToast(`Booked ${n} week${n>1?"s":""} ✓`);
+    else showToast(`Booked ${n} of ${weeks} — ${skipped.map(d=>d.getDate()+" "+MONTHS[d.getMonth()]).join(", ")} full`);
     setBkBusy(p=>({...p,[lk]:false}));
   }
   async function handleCancel(time,dk){
@@ -3900,6 +3932,15 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       ),
       React.createElement("div",{className:"cls-wrap"},
         React.createElement("div",{className:"day-hdr",style:{textAlign:"center"}},React.createElement("span",null,DAY_LONG[selDay].toUpperCase()),React.createElement("em",null,` · ${times.length} CLASSES`)),
+        !isAdmin&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,margin:"0 0 12px"}},
+          React.createElement("span",{style:{fontSize:9,letterSpacing:"0.12em",color:"#555",fontWeight:600,flexShrink:0}},"REPEAT WEEKLY"),
+          React.createElement("select",{value:repeatWeeks,onChange:e=>setRepeatWeeks(parseInt(e.target.value)),style:{flex:1,background:"#141414",border:"1px solid "+(repeatWeeks>1?"#1d3a5a":"#2a2a2a"),borderRadius:4,color:repeatWeeks>1?"#1d9bf0":"#ccc",fontSize:12,padding:"7px 8px",fontFamily:"'DM Sans',sans-serif",outline:"none",cursor:"pointer"}},
+            React.createElement("option",{value:1},"This class only"),
+            React.createElement("option",{value:2},"2 weeks"),
+            React.createElement("option",{value:3},"3 weeks"),
+            React.createElement("option",{value:4},"4 weeks")
+          )
+        ),
         times.map(time=>{
           const list=getBksFor(selDK,time);const taken=list.length;const maxSp=getMaxSpots(time,selDK);const left=maxSp-taken;
           const userBkd=userBooked(selDK,time);const full=left===0&&!userBkd;
@@ -3927,7 +3968,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
                 ?React.createElement("button",{className:"c-btn bc",onClick:e=>{e.stopPropagation();handleCancel(time,selDK);}},"Cancel")
                 :full?React.createElement("button",{className:"c-btn bf",disabled:true},"Full")
                 :atLimit?React.createElement("button",{className:"c-btn bf",disabled:true},typeLimit===0?"No Plan":"Limit")
-                :React.createElement("button",{className:"c-btn bb",onClick:e=>{e.stopPropagation();handleBook(time);},disabled:busy},busy?"...":"Book")
+                :React.createElement("button",{className:"c-btn bb",onClick:e=>{e.stopPropagation();(!isAdmin&&repeatWeeks>1)?handleBookRecurring(time,repeatWeeks):handleBook(time);},disabled:busy},busy?"...":((!isAdmin&&repeatWeeks>1)?`Book ×${repeatWeeks}`:"Book"))
               )
             ),
             isAdmin&&isExpanded&&React.createElement("div",{className:"adm-members-list",style:{borderTop:"1px solid #222"}},
