@@ -3153,8 +3153,43 @@ function MemberWorkoutAdmin({member}){
   const [saving,setSaving]=useState(false);
   const [savedMsg,setSavedMsg]=useState("");
   const [togglingEnable,setTogglingEnable]=useState(false);
+  const [showImport,setShowImport]=useState(false);
+  const [importText,setImportText]=useState("");
+  const [importErr,setImportErr]=useState("");
   const key=mwKey(member.email,weekStart);
   useEffect(()=>{load();},[weekStart]);
+  // Parse an AI-generated JSON week and replace the whole week's draft. Does not save — admin reviews then hits Save.
+  function importFromAI(){
+    let raw=(importText||"").trim();
+    if(!raw){setImportErr("Paste the AI output first.");return;}
+    raw=raw.replace(/^```(?:json)?/i,"").replace(/```$/,"").trim();
+    const first=raw.indexOf("{"),last=raw.lastIndexOf("}");
+    if(first>=0&&last>first)raw=raw.slice(first,last+1);
+    let parsed;
+    try{parsed=JSON.parse(raw);}catch(e){setImportErr("Couldn't read that. Make sure you pasted the whole block including the { } brackets.");return;}
+    const validSec=s=>MW_SECTIONS.includes(s)?s:"Main";
+    const validLog=l=>["kg","km","tick"].includes(l)?l:"kg";
+    const d={};
+    MW_DAYS.forEach(dk=>{
+      const arr=Array.isArray(parsed[dk])?parsed[dk]:[];
+      d[dk]=arr.map(it=>({
+        id:mwGenId(),
+        name:((it.name||it.exercise||"")+"").trim().toUpperCase(),
+        section:validSec(it.section),
+        sets:(it.sets==null?"":String(it.sets)).trim(),
+        reps:((it.reps||"")+"").trim(),
+        duration:((it.duration||"")+"").trim(),
+        notes:((it.notes||"")+"").trim(),
+        log:validLog(it.log),
+        workout:parseInt(it.workout)||1,
+        workoutName:((it.workoutName||"")+"").trim(),
+        repeat:parseInt(it.repeat)||1
+      })).filter(it=>it.name);
+    });
+    setDraft(d);
+    setImportText("");setImportErr("");setShowImport(false);
+    setSavedMsg("Imported — review & Save ✓");setTimeout(()=>setSavedMsg(""),3500);
+  }
   async function load(){
     setLoading(true);
     const data=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(key)}&select=content`);
@@ -3226,6 +3261,18 @@ function MemberWorkoutAdmin({member}){
       React.createElement("button",{onClick:()=>setWeekStart(w=>addDays(w,-7)),style:{background:"none",border:"none",color:"#888",fontSize:22,cursor:"pointer",lineHeight:1,padding:"0 8px"}},"‹"),
       React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.1em",color:"#fff"}},weekLabel),
       React.createElement("button",{onClick:()=>setWeekStart(w=>addDays(w,7)),style:{background:"none",border:"none",color:"#888",fontSize:22,cursor:"pointer",lineHeight:1,padding:"0 8px"}},"›")
+    ),
+    React.createElement("div",{style:{marginBottom:14}},
+      React.createElement("button",{onClick:()=>{setShowImport(s=>!s);setImportErr("");},style:{width:"100%",background:showImport?"#0a1a2a":"none",border:"1px dashed "+(showImport?"#1d3a5a":"#2a2a2a"),borderRadius:6,color:"#1d9bf0",fontSize:10,letterSpacing:"0.12em",padding:"9px",cursor:"pointer"}},showImport?"✕ CLOSE IMPORT":"⤵ PASTE FROM AI"),
+      showImport&&React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1d3a5a",borderRadius:6,padding:"12px",marginTop:8}},
+        React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#89a",lineHeight:1.7,marginBottom:8}},"Paste the AI's workout block below and press Import. It replaces this whole week — you can then edit anything before you Save. Building by hand instead? Just ignore this and use the days below."),
+        React.createElement("textarea",{value:importText,onChange:e=>{setImportText(e.target.value);setImportErr("");},placeholder:"Paste the { ... } block from Claude here",rows:5,style:{...inS,width:"100%",fontFamily:"monospace",fontSize:11,lineHeight:1.5,resize:"vertical"}}),
+        importErr&&React.createElement("div",{style:{color:"#e06040",fontSize:11,marginTop:6,lineHeight:1.4}},importErr),
+        React.createElement("div",{style:{display:"flex",gap:8,marginTop:8}},
+          React.createElement("button",{onClick:()=>{setShowImport(false);setImportText("");setImportErr("");},style:{flex:1,background:"none",border:"1px solid #333",borderRadius:4,padding:"9px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
+          React.createElement("button",{onClick:importFromAI,disabled:!importText.trim(),style:{flex:2,background:importText.trim()?"#1d9bf0":"#1a1a1a",color:importText.trim()?"#fff":"#444",border:"none",borderRadius:4,padding:"9px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:importText.trim()?"pointer":"default"}},"IMPORT & REPLACE WEEK")
+        )
+      )
     ),
     loading?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"10px 0"}},"LOADING...")
     :React.createElement(React.Fragment,null,
