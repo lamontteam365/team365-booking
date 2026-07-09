@@ -3433,7 +3433,7 @@ function MemberWorkoutsView({session,memberData}){
         });
         body.push(React.createElement("div",{key:`note_${dk}_${w.num}_${weekDS}`,style:{marginTop:14}},
           React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#666",fontWeight:600,marginBottom:6}},"MY NOTES"),
-          React.createElement("textarea",{defaultValue:wNotes[`${dk}__w${w.num}`]||"",placeholder:"How did it feel? Add anything not tracked above — e.g. swim time, cardio, energy, soreness.",rows:3,
+          React.createElement("textarea",{defaultValue:wNotes[`${dk}__w${w.num}`]||"",placeholder:"Add anything not tracked above — e.g. how did it feel? time, energy, soreness, weather, etc.",rows:3,
             onBlur:e=>saveNote(dk,w.num,e.target.value),
             style:{width:"100%",background:"#141414",border:"1px solid #262626",borderRadius:6,color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:13,lineHeight:1.6,padding:"10px 12px",outline:"none",resize:"vertical",boxSizing:"border-box"}})
         ));
