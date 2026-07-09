@@ -256,8 +256,10 @@ async function handleSubmit(){
     if(ok) logHealthToSheets(healthData);
   } else {
     tempPw = Math.random().toString(36).slice(2,10);
-    ok = await sbPost("members", {email,photo:"",password:hashPw(tempPw),joined_at:Date.now(),...regData});
+    ok = await sbPost("members", {email,photo:"",password:hashPw(tempPw),joined_at:Date.now(),workouts_enabled:true,...regData});
     if(ok){
+      // New health-screening signups start with Notice Board + Workouts; admin grants the rest from their profile.
+      sbPost("coaching_notes",{class_name:"__ACCESS__"+email,content:JSON.stringify({tabs:["community","workouts"]}),updated_at:Date.now()});
       sendWelcomeEmailViaScript(email, firstName, tempPw);
       logHealthToSheets(healthData);
     }
