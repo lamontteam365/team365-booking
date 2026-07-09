@@ -172,6 +172,12 @@ function wellTimesFor(dk,wellSlots){
   const hide=o.hide||[];const add=o.add||[];
   return [...new Set([...WELL_TIMES,...add])].filter(t=>!hide.includes(t)).sort();
 }
+// Sauna slots must be booked at least 24h ahead
+function within24h(dateKey,time){
+  const p=(time||"0:0").split(":").map(Number);
+  const start=new Date(dateKey+"T00:00:00");start.setHours(p[0]||0,p[1]||0,0,0);
+  return (start.getTime()-Date.now())<86400000;
+}
 const DAY_SHORT=["Mon","Tue","Wed","Thu","Fri","Sat"];
 const DAY_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const DAY_SESS=["Rise Up","Strength Lower","Ascend","Strength Upper","Elevate","Summit"];
@@ -386,16 +392,18 @@ function BookingWidget(){
               );
             }else{
               const taken=wellSlotTaken(time);
+              const tooSoon=within24h(selDK,time);
+              const blk=taken||tooSoon;
               return React.createElement("div",{key:time,
-                className:`slot-row${selTime===time?" sel":""}${taken?" full":""}`,
-                onClick:()=>{if(!taken)setSelTime(time);}},
+                className:`slot-row${selTime===time?" sel":""}${blk?" full":""}`,
+                onClick:()=>{if(!blk)setSelTime(time);}},
                 React.createElement("div",{className:"slot-time"},fmt12(time)),
                 React.createElement("div",{className:"slot-mid"},
-                  React.createElement("div",{className:`slot-info ${taken?"fl":"ok"}`},
-                    taken?"Unavailable":"Available"
+                  React.createElement("div",{className:`slot-info ${blk?"fl":"ok"}`},
+                    taken?"Unavailable":tooSoon?"Closed · book 24h ahead":"Available"
                   )
                 ),
-                !taken&&React.createElement("div",{className:"slot-radio"},
+                !blk&&React.createElement("div",{className:"slot-radio"},
                   selTime===time&&React.createElement("div",{className:"slot-radio-dot"})
                 )
               );
