@@ -526,8 +526,9 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
   const [memberIsAdmin,setMemberIsAdmin]=useState(member.is_admin||false);
   const [resettingPw,setResettingPw]=useState(false);
   const [pwResetOk,setPwResetOk]=useState("");
-  const ACCESS_TABS=[{id:"community",label:"Notice Board"},{id:"book",label:"Classes"},{id:"strength",label:"Strength"},{id:"wellness",label:"Wellness"},{id:"progress",label:"Progress"},{id:"workouts",label:"Workouts"}];
-  const [accTabs,setAccTabs]=useState(null); // null = full access; array = restricted set
+  const ACCESS_TABS=[{id:"community",label:"Notice Board"},{id:"book",label:"Classes"},{id:"strength",label:"Strength"},{id:"wellness",label:"Wellness"},{id:"progress",label:"Progress"}];
+  const [accTabs,setAccTabs]=useState(null); // null = Studio (all studio sections); array = restricted set. Workouts is separate.
+  const [wkEnabled,setWkEnabled]=useState(member.workouts_enabled===true); // Workouts add-on (separate cost)
   const [savingAcc,setSavingAcc]=useState(false);
   const [accMsg,setAccMsg]=useState("");
   useEffect(()=>{
@@ -550,11 +551,16 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
       if(existing&&existing.length)await sbPatch("coaching_notes",q,body);
       else await sbPost("coaching_notes",{class_name:"__ACCESS__"+member.email,...body});
       setAccTabs(nextTabs);
-      const wantWk=nextTabs.includes("workouts");
-      if((member.workouts_enabled===true)!==wantWk){await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,{workouts_enabled:wantWk});member.workouts_enabled=wantWk;}
     }
     setSavingAcc(false);setAccMsg("Access updated ✓");setTimeout(()=>setAccMsg(""),2500);
   }
+  async function setWorkoutsFlag(v){
+    setSavingAcc(true);
+    await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,{workouts_enabled:v});
+    member.workouts_enabled=v;setWkEnabled(v);
+    setSavingAcc(false);setAccMsg("Access updated ✓");setTimeout(()=>setAccMsg(""),2500);
+  }
+  async function setNoAccess(){await saveAccess([]);await setWorkoutsFlag(false);}
   function toggleAccTab(id){
     const base=accTabs===null?ACCESS_TABS.map(t=>t.id):[...accTabs];
     const set=new Set(base);set.has(id)?set.delete(id):set.add(id);
@@ -845,22 +851,30 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
       currentUserIsAdmin&&React.createElement(React.Fragment,null,
         React.createElement("div",{className:"mp-section",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
           React.createElement("span",null,"SECTION ACCESS"),
-          React.createElement("span",{style:{fontSize:9,letterSpacing:"0.06em",color:accTabs===null?"#4aaa66":accTabs.length===0?"#e06040":"#1d9bf0",fontWeight:700}},accTabs===null?"FULL":accTabs.length===0?"NONE":accTabs.length+"/"+ACCESS_TABS.length)
+          React.createElement("span",{style:{fontSize:9,letterSpacing:"0.06em",color:accTabs===null?"#4aaa66":accTabs.length===0?"#e06040":"#1d9bf0",fontWeight:700}},accTabs===null?"STUDIO":accTabs.length===0?"NONE":accTabs.length+"/"+ACCESS_TABS.length)
         ),
-        React.createElement("div",{style:{fontSize:10,color:"#666",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:8}},"Which tabs this member can see. Use a preset, or tap sections to customise. My Bookings appears automatically when a bookable section is on. Your global Section toggles still apply on top."),
+        React.createElement("div",{style:{fontSize:10,color:"#666",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:8}},"Which tabs this member can see. STUDIO = everything except Workouts. Workouts is a separate add-on you switch on below. My Bookings appears automatically when a bookable section is on. Your global Section toggles still apply on top."),
         React.createElement("div",{style:{display:"flex",gap:6,marginBottom:10}},
-          React.createElement("button",{onClick:()=>saveAccess(null),disabled:savingAcc,style:accSegBtn(accTabs===null)},"FULL ACCESS"),
-          React.createElement("button",{onClick:()=>saveAccess(["workouts"]),disabled:savingAcc,style:accSegBtn(accTabs!==null&&accTabs.length===1&&accTabs[0]==="workouts")},"WORKOUTS ONLY"),
-          React.createElement("button",{onClick:()=>saveAccess([]),disabled:savingAcc,style:accSegBtn(accTabs!==null&&accTabs.length===0)},"NO ACCESS")
+          React.createElement("button",{onClick:()=>saveAccess(null),disabled:savingAcc,style:accSegBtn(accTabs===null)},"STUDIO MEMBER"),
+          React.createElement("button",{onClick:setNoAccess,disabled:savingAcc,style:accSegBtn(accTabs!==null&&accTabs.length===0&&!wkEnabled)},"NO ACCESS")
         ),
         React.createElement("div",{style:{fontSize:9,letterSpacing:"0.1em",color:"#555",fontWeight:600,marginBottom:6}},"OR PICK SECTIONS"),
-        React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:6}},
+        React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}},
           ACCESS_TABS.map(t=>{
             const on=accTabs===null||accTabs.includes(t.id);
             return React.createElement("button",{key:t.id,onClick:()=>toggleAccTab(t.id),disabled:savingAcc,
               style:{background:on?"#0a1a2a":"transparent",color:on?"#1d9bf0":"#666",border:"1px solid "+(on?"#1d3a5a":"#2a2a2a"),borderRadius:14,fontSize:10,letterSpacing:"0.04em",padding:"6px 12px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600}},
               (on?"✓ ":"")+t.label);
           })
+        ),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(wkEnabled?"#1d3a5a":"#222"),borderRadius:8,padding:"11px 14px",marginBottom:6}},
+          React.createElement("div",null,
+            React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"WORKOUTS"),
+            React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"Add-on · personal training programs")
+          ),
+          React.createElement("button",{onClick:()=>setWorkoutsFlag(!wkEnabled),disabled:savingAcc,
+            style:{background:wkEnabled?"#fff":"#222",color:wkEnabled?"#000":"#555",border:"1px solid "+(wkEnabled?"#fff":"#333"),borderRadius:20,padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},
+            wkEnabled?"ON":"OFF")
         ),
         accMsg&&React.createElement("div",{style:{fontSize:10,color:"#4aaa88",letterSpacing:"0.04em",marginBottom:4}},accMsg)
       ),
@@ -3306,13 +3320,8 @@ function MemberWorkoutAdmin({member}){
   const workChoices=[1,2,3,4,5,6];
   const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",padding:"7px 9px",outline:"none",boxSizing:"border-box"};
   return React.createElement(React.Fragment,null,
-    React.createElement("div",{className:"mp-section",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
-      React.createElement("span",null,"WORKOUT PROGRAM"),
-      React.createElement("button",{onClick:toggleEnabled,disabled:togglingEnable,
-        style:{background:enabled?"#fff":"#222",color:enabled?"#000":"#555",border:`1px solid ${enabled?"#fff":"#333"}`,borderRadius:20,padding:"5px 16px",fontSize:9,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},
-        togglingEnable?"...":(enabled?"ON":"OFF"))
-    ),
-    React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:4}},enabled?"This member can see their Workouts tab.":"Turn on to give this member a Workouts tab."),
+    React.createElement("div",{className:"mp-section"},"WORKOUT PROGRAM"),
+    React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:4}},"Build this member's weekly program below. Turn the Workouts add-on on in Section Access above to give them the Workouts tab."),
     React.createElement("div",{style:{fontSize:9,color:"#444",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:12}},"Group exercises into separate workouts (W1, W2…) with + ADD WORKOUT — each shows as its own block for the member. Set each to log Weight (kg), Distance (km) or a Tick; reorder within a workout with ▲▼."),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}},
       React.createElement("button",{onClick:()=>setWeekStart(w=>addDays(w,-7)),style:{background:"none",border:"none",color:"#888",fontSize:22,cursor:"pointer",lineHeight:1,padding:"0 8px"}},"‹"),
@@ -3705,7 +3714,7 @@ function App(){
     ...(strengthEnabled&&acc("strength")?[{id:"strength",label:"STRENGTH"}]:[]),
     ...(wellnessEnabled&&acc("wellness")?[{id:"wellness",label:"WELLNESS"}]:[]),
     ...(acc("progress")?[{id:"progress",label:"PROGRESS"}]:[]),
-    ...(workoutsEnabled&&acc("workouts")?[{id:"workouts",label:"WORKOUTS"}]:[]),
+    ...(workoutsEnabled?[{id:"workouts",label:"WORKOUTS"}]:[]),
     ...(isAdmin?[{id:"admin",label:"ADMIN"}]:[])
   ];
   const TAB_ORDER=NAV_TABS.map(t=>t.id);
@@ -4209,12 +4218,12 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     ),
     (!isAdmin&&TAB_ORDER.length===0)&&React.createElement("div",{style:{textAlign:"center",padding:"70px 28px",color:"#777"}},
       React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:"0.1em",color:"#fff",marginBottom:10}},"WELCOME TO TEAM 365"),
-      React.createElement("div",{style:{fontSize:12,letterSpacing:"0.04em",lineHeight:1.9}},"Your account is set up. Your coach will switch on your sections shortly — check back soon, or get in touch with the gym.")
+      React.createElement("div",{style:{fontSize:12,letterSpacing:"0.04em",lineHeight:1.9}},"Your account is set up. You will have access shortly — check back soon, or get in touch with Team 365.")
     ),
     tab==="community"&&acc("community")&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
     tab==="wellness"&&wellnessEnabled&&acc("wellness")&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin,memberData,wellSlots}),
     tab==="strength"&&acc("strength")&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast,bookings,memberData})),
-    tab==="workouts"&&workoutsEnabled&&acc("workouts")&&React.createElement(MemberWorkoutsView,{session,memberData}),
+    tab==="workouts"&&workoutsEnabled&&React.createElement(MemberWorkoutsView,{session,memberData}),
     tab==="progress"&&acc("progress")&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}),
     tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,dowNames,saveDowName,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg}),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:"auto"}},
