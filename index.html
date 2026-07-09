@@ -445,6 +445,12 @@ function wellTimesFor(dk,wellSlots){
   const hide=o.hide||[];const add=o.add||[];
   return [...new Set([...WELL_TIMES,...add])].filter(t=>!hide.includes(t)).sort();
 }
+// True when a slot (date_key + time) starts less than 24h from now.
+function within24h(dateKey,time){
+  const p=(time||"0:0").split(":").map(Number);
+  const start=new Date(dateKey+"T00:00:00");start.setHours(p[0]||0,p[1]||0,0,0);
+  return (start.getTime()-Date.now())<86400000;
+}
 const DAY_SHORT=["Mon","Tue","Wed","Thu","Fri","Sat"];
 const DAY_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const DAY_SESS=["Rise Up","Strength Lower","Ascend","Strength Upper","Elevate","Summit"];
@@ -869,6 +875,7 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots})
   }
   async function handleBook(time){
     if(!session)return;
+    if(!isAdmin&&within24h(selDK,time)){showToast("Sauna must be booked 24h ahead");return;}
     const lk=`${selDK}-${time}`;setBusy(p=>({...p,[lk]:true}));
     const existing=dayBks.find(b=>b.time===time);
     if(existing){showToast("Slot already booked");setBusy(p=>({...p,[lk]:false}));return;}
@@ -915,6 +922,7 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots})
         const ismine=bk&&bk.email===session?.email;
         const taken=!!bk&&!ismine;
         const past=isPastSlot(time);
+        const tooSoon=!isAdmin&&!past&&within24h(selDK,time);
         const lk=`${selDK}-${time}`;const isBusy=!!busy[lk];
         const wellLimit=isAdmin?null:getTierLimits(memberData?.membership_type).wellness;
         const weekMonday=toDS(mondayOf(new Date(selDK+"T00:00:00")));
@@ -928,12 +936,13 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots})
             React.createElement("div",{className:"well-slot-time"},fmt12(time)),
             React.createElement("div",{className:"well-slot-mid"},
               React.createElement("div",{className:"well-slot-name"},"SAUNA + COLD PLUNGE"),
-              React.createElement("div",{className:`well-slot-status${ismine?" wss-mine":taken?" wss-taken":""}`},ismine?"Your booking ✓":taken?"Booked":"Available")
+              React.createElement("div",{className:`well-slot-status${ismine?" wss-mine":taken?" wss-taken":""}`},ismine?"Your booking ✓":taken?"Booked":tooSoon?"Closes 24h before":"Available")
             ),
             isAdmin&&React.createElement("div",{style:{fontSize:10,color:"#555",marginRight:4,flexShrink:0}},isExpanded?"▴":"▾"),
             !past&&(ismine
               ?React.createElement("button",{className:"well-btn wb-cancel",onClick:e=>{e.stopPropagation();handleCancel(time);}},"Cancel")
               :taken?React.createElement("button",{className:"well-btn wb-taken",disabled:true},"Booked")
+              :tooSoon?React.createElement("button",{className:"well-btn wb-taken",disabled:true},"Closed")
               :wellAtLimit?React.createElement("button",{className:"well-btn wb-taken",disabled:true},wellLimit===0?"No Plan":"Limit")
               :React.createElement("button",{className:"well-btn wb-book",onClick:e=>{e.stopPropagation();handleBook(time);},disabled:isBusy},isBusy?"...":"Book")
             )
@@ -1237,24 +1246,33 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
   const [classNameInput,setClassNameInput]=useState("");
   const [addingWell,setAddingWell]=useState(false);
   const [wellNewTime,setWellNewTime]=useState("");
-  function wsToggleHide(time){
-    const cur=wellSlots||{};const o={...(cur[admDK]||{})};
-    const hide=new Set(o.hide||[]);
-    hide.has(time)?hide.delete(time):hide.add(time);
-    if(saveWellSlots)saveWellSlots({...cur,[admDK]:{...o,hide:[...hide],add:o.add||[]}});
+  const [wellScope,setWellScope]=useState(1);
+  function wsTargetDates(){const a=[];for(let i=0;i<wellScope;i++)a.push(toDS(addDays(admDate,i*7)));return a;}
+  function wsSetHide(time,hide){
+    const cur={...(wellSlots||{})};
+    wsTargetDates().forEach(dk=>{
+      const o={...(cur[dk]||{})};const h=new Set(o.hide||[]);
+      hide?h.add(time):h.delete(time);
+      cur[dk]={...o,hide:[...h],add:o.add||[]};
+    });
+    if(saveWellSlots)saveWellSlots(cur);
   }
   function wsAddCustom(time){
     if(!time)return;
-    const cur=wellSlots||{};const o={...(cur[admDK]||{})};
-    const add=new Set(o.add||[]);add.add(time);
-    const hide=(o.hide||[]).filter(t=>t!==time);
-    if(saveWellSlots)saveWellSlots({...cur,[admDK]:{...o,add:[...add],hide}});
+    const cur={...(wellSlots||{})};
+    wsTargetDates().forEach(dk=>{
+      const o={...(cur[dk]||{})};const add=new Set(o.add||[]);add.add(time);
+      cur[dk]={...o,add:[...add],hide:(o.hide||[]).filter(t=>t!==time)};
+    });
+    if(saveWellSlots)saveWellSlots(cur);
   }
   function wsRemoveCustom(time){
-    const cur=wellSlots||{};const o={...(cur[admDK]||{})};
-    const add=(o.add||[]).filter(t=>t!==time);
-    const hide=(o.hide||[]).filter(t=>t!==time);
-    if(saveWellSlots)saveWellSlots({...cur,[admDK]:{...o,add,hide}});
+    const cur={...(wellSlots||{})};
+    wsTargetDates().forEach(dk=>{
+      const o={...(cur[dk]||{})};
+      cur[dk]={...o,add:(o.add||[]).filter(t=>t!==time),hide:(o.hide||[]).filter(t=>t!==time)};
+    });
+    if(saveWellSlots)saveWellSlots(cur);
   }
   function scheduleUndoClear(){
     if(undoTimerRef.current)clearTimeout(undoTimerRef.current);
@@ -1598,7 +1616,17 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
         const allWellTimes=[...new Set([...WELL_TIMES,...wsAdd])].sort();
         const dayWellBks=wellAdmBks.filter(b=>b.date_key===admDK).slice().sort((a,b)=>a.time<b.time?-1:a.time>b.time?1:0);
         return React.createElement(React.Fragment,null,
-          React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,margin:"4px 0 10px"}},"SESSION TIMES"),
+          React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,margin:"4px 0 8px"}},"SESSION TIMES"),
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:12}},
+            React.createElement("span",{style:{fontSize:9,letterSpacing:"0.12em",color:"#555",fontWeight:600,flexShrink:0}},"APPLIES TO"),
+            React.createElement("select",{value:wellScope,onChange:e=>setWellScope(parseInt(e.target.value)),style:{flex:1,background:"#141414",border:"1px solid "+(wellScope>1?"#1d3a5a":"#2a2a2a"),borderRadius:4,color:wellScope>1?"#1d9bf0":"#ccc",fontSize:12,padding:"7px 8px",fontFamily:"'DM Sans',sans-serif",outline:"none",cursor:"pointer"}},
+              React.createElement("option",{value:1},"This date only"),
+              React.createElement("option",{value:2},"This + next week (2 total)"),
+              React.createElement("option",{value:4},"This + next 3 weeks (4 total)"),
+              React.createElement("option",{value:8},"This + next 7 weeks (8 total)"),
+              React.createElement("option",{value:12},"This + next 11 weeks (12 total)")
+            )
+          ),
           ...allWellTimes.map(time=>{
             const hidden=wsHide.includes(time);
             const custom=!WELL_TIMES.includes(time);
@@ -1606,7 +1634,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
             return React.createElement("div",{key:time,style:{display:"flex",alignItems:"center",gap:10,background:"#141414",border:"1px solid "+(hidden?"#222":"#2e2e2e"),borderRadius:7,padding:"11px 14px",marginBottom:7,opacity:hidden?0.55:1}},
               React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:19,color:hidden?"#666":"#fff",minWidth:76}},fmt12(time)),
               React.createElement("div",{style:{flex:1,fontSize:9,letterSpacing:"0.12em",fontWeight:600,color:hidden?"#555":booked?"#1d9bf0":"#4aaa66"}},(hidden?"HIDDEN":booked?"BOOKED":"AVAILABLE")+(custom?" · CUSTOM":"")),
-              React.createElement("button",{onClick:()=>wsToggleHide(time),style:{background:hidden?"#fff":"transparent",color:hidden?"#000":"#888",border:"1px solid "+(hidden?"#fff":"#333"),borderRadius:4,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",padding:"7px 14px",cursor:"pointer",flexShrink:0}},hidden?"SHOW":"HIDE"),
+              React.createElement("button",{onClick:()=>wsSetHide(time,!hidden),style:{background:hidden?"#fff":"transparent",color:hidden?"#000":"#888",border:"1px solid "+(hidden?"#fff":"#333"),borderRadius:4,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",padding:"7px 14px",cursor:"pointer",flexShrink:0}},hidden?"SHOW":"HIDE"),
               custom&&React.createElement("button",{onClick:()=>wsRemoveCustom(time),title:"Remove custom time",style:{background:"none",border:"1px solid #2a2a2a",borderRadius:4,color:"#8a2515",fontSize:12,padding:"6px 10px",cursor:"pointer",flexShrink:0}},"✕")
             );
           }),
