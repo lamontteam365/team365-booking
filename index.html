@@ -526,6 +526,41 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
   const [memberIsAdmin,setMemberIsAdmin]=useState(member.is_admin||false);
   const [resettingPw,setResettingPw]=useState(false);
   const [pwResetOk,setPwResetOk]=useState("");
+  const ACCESS_TABS=[{id:"community",label:"Notice Board"},{id:"book",label:"Classes"},{id:"strength",label:"Strength"},{id:"wellness",label:"Wellness"},{id:"progress",label:"Progress"},{id:"workouts",label:"Workouts"}];
+  const [accTabs,setAccTabs]=useState(null); // null = full access; array = restricted set
+  const [savingAcc,setSavingAcc]=useState(false);
+  const [accMsg,setAccMsg]=useState("");
+  useEffect(()=>{
+    if(!currentUserIsAdmin)return;
+    (async()=>{
+      const r=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__ACCESS__"+member.email)}&select=content`);
+      if(r&&r.length&&r[0].content){try{const a=JSON.parse(r[0].content);setAccTabs(Array.isArray(a.tabs)?a.tabs:null);}catch{setAccTabs(null);}}
+      else setAccTabs(null);
+    })();
+  },[]);
+  async function saveAccess(nextTabs){
+    setSavingAcc(true);
+    const q=`class_name=eq.${encodeURIComponent("__ACCESS__"+member.email)}`;
+    if(nextTabs===null){
+      await sbDelete("coaching_notes",q);
+      setAccTabs(null);
+    }else{
+      const existing=await sbGet("coaching_notes",q+"&select=id");
+      const body={content:JSON.stringify({tabs:nextTabs}),updated_at:Date.now()};
+      if(existing&&existing.length)await sbPatch("coaching_notes",q,body);
+      else await sbPost("coaching_notes",{class_name:"__ACCESS__"+member.email,...body});
+      setAccTabs(nextTabs);
+      const wantWk=nextTabs.includes("workouts");
+      if((member.workouts_enabled===true)!==wantWk){await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,{workouts_enabled:wantWk});member.workouts_enabled=wantWk;}
+    }
+    setSavingAcc(false);setAccMsg("Access updated ✓");setTimeout(()=>setAccMsg(""),2500);
+  }
+  function toggleAccTab(id){
+    const base=accTabs===null?ACCESS_TABS.map(t=>t.id):[...accTabs];
+    const set=new Set(base);set.has(id)?set.delete(id):set.add(id);
+    saveAccess([...set]);
+  }
+  const accSegBtn=active=>({flex:1,background:active?"#1d9bf0":"transparent",color:active?"#fff":"#888",border:"1px solid "+(active?"#1d9bf0":"#333"),borderRadius:4,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.06em",padding:"9px 4px",cursor:"pointer"});
   const [editingEmergency,setEditingEmergency]=useState(false);
   const [emergencyEdits,setEmergencyEdits]=useState({emergency_name:"",emergency_phone:""});
   const [editingMembership,setEditingMembership]=useState(false);
@@ -806,6 +841,28 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
       member.signature&&React.createElement(React.Fragment,null,
         React.createElement("div",{className:"mp-section"},"SIGNATURE"),
         React.createElement("img",{src:member.signature,className:"sig-preview",alt:"signature"})
+      ),
+      currentUserIsAdmin&&React.createElement(React.Fragment,null,
+        React.createElement("div",{className:"mp-section",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
+          React.createElement("span",null,"SECTION ACCESS"),
+          React.createElement("span",{style:{fontSize:9,letterSpacing:"0.06em",color:accTabs===null?"#4aaa66":accTabs.length===0?"#e06040":"#1d9bf0",fontWeight:700}},accTabs===null?"FULL":accTabs.length===0?"NONE":accTabs.length+"/"+ACCESS_TABS.length)
+        ),
+        React.createElement("div",{style:{fontSize:10,color:"#666",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:8}},"Which tabs this member can see. Use a preset, or tap sections to customise. My Bookings appears automatically when a bookable section is on. Your global Section toggles still apply on top."),
+        React.createElement("div",{style:{display:"flex",gap:6,marginBottom:10}},
+          React.createElement("button",{onClick:()=>saveAccess(null),disabled:savingAcc,style:accSegBtn(accTabs===null)},"FULL ACCESS"),
+          React.createElement("button",{onClick:()=>saveAccess(["workouts"]),disabled:savingAcc,style:accSegBtn(accTabs!==null&&accTabs.length===1&&accTabs[0]==="workouts")},"WORKOUTS ONLY"),
+          React.createElement("button",{onClick:()=>saveAccess([]),disabled:savingAcc,style:accSegBtn(accTabs!==null&&accTabs.length===0)},"NO ACCESS")
+        ),
+        React.createElement("div",{style:{fontSize:9,letterSpacing:"0.1em",color:"#555",fontWeight:600,marginBottom:6}},"OR PICK SECTIONS"),
+        React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:6}},
+          ACCESS_TABS.map(t=>{
+            const on=accTabs===null||accTabs.includes(t.id);
+            return React.createElement("button",{key:t.id,onClick:()=>toggleAccTab(t.id),disabled:savingAcc,
+              style:{background:on?"#0a1a2a":"transparent",color:on?"#1d9bf0":"#666",border:"1px solid "+(on?"#1d3a5a":"#2a2a2a"),borderRadius:14,fontSize:10,letterSpacing:"0.04em",padding:"6px 12px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600}},
+              (on?"✓ ":"")+t.label);
+          })
+        ),
+        accMsg&&React.createElement("div",{style:{fontSize:10,color:"#4aaa88",letterSpacing:"0.04em",marginBottom:4}},accMsg)
       ),
       currentUserIsAdmin&&React.createElement(MemberWorkoutAdmin,{member}),
       currentUserIsAdmin&&React.createElement(React.Fragment,null,
@@ -3504,6 +3561,7 @@ function App(){
   const [ready,setReady]=useState(false);
   const [session,setSession]=useState(null);
   const [bookings,setBookings]=useState([]);
+  const [memberAccess,setMemberAccess]=useState(null); // null = full access (legacy); else array of allowed tab ids
   const [memberPhotos,setMemberPhotos]=useState({});
   const [weekStart,setWeekStart]=useState(getWeekStart);
   const [selDay,setSelDay]=useState(getInitDay);
@@ -3577,7 +3635,10 @@ function App(){
       const s=lsGet("t365-session",null);
       if(s){
         const mb=await sbGet("members",`email=eq.${encodeURIComponent(s.email)}`);
-        if(mb.length){setSession(s);setMemberData(mb[0]);joinedAt=mb[0].joined_at||0;}
+        if(mb.length){setSession(s);setMemberData(mb[0]);joinedAt=mb[0].joined_at||0;
+          const accRow=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__ACCESS__"+s.email)}&select=content`);
+          if(accRow&&accRow.length&&accRow[0].content){try{const a=JSON.parse(accRow[0].content);if(a&&Array.isArray(a.tabs))setMemberAccess(a.tabs);}catch{}}
+        }
         else{lsSet("t365-session",null);}
       }
       await refreshBookings();
@@ -3633,17 +3694,23 @@ function App(){
     const data=await sbGet("bookings",`date_key=in.(${keys.join(",")})&select=email,name,date_key,time,session_type,checked_in`);
     setBookings(data||[]);
   }
+  // Per-member access: admins see all; null = full/legacy; else only tabs listed are visible.
+  const acc=id=>isAdmin||memberAccess===null||memberAccess.includes(id);
+  // My Bookings appears automatically whenever the member can access any bookable section.
+  const canBook=(classesEnabled&&acc("book"))||(strengthEnabled&&acc("strength"))||(wellnessEnabled&&acc("wellness"));
   const NAV_TABS=[
-    {id:"community",label:"NOTICE BOARD",dot:true},
-    {id:"my",label:"MY BOOKINGS"},
-    ...(classesEnabled?[{id:"book",label:"CLASSES"}]:[]),
-    ...(strengthEnabled?[{id:"strength",label:"STRENGTH"}]:[]),
-    ...(wellnessEnabled?[{id:"wellness",label:"WELLNESS"}]:[]),
-    {id:"progress",label:"PROGRESS"},
-    ...(workoutsEnabled?[{id:"workouts",label:"WORKOUTS"}]:[]),
+    ...(acc("community")?[{id:"community",label:"NOTICE BOARD",dot:true}]:[]),
+    ...(canBook?[{id:"my",label:"MY BOOKINGS"}]:[]),
+    ...(classesEnabled&&acc("book")?[{id:"book",label:"CLASSES"}]:[]),
+    ...(strengthEnabled&&acc("strength")?[{id:"strength",label:"STRENGTH"}]:[]),
+    ...(wellnessEnabled&&acc("wellness")?[{id:"wellness",label:"WELLNESS"}]:[]),
+    ...(acc("progress")?[{id:"progress",label:"PROGRESS"}]:[]),
+    ...(workoutsEnabled&&acc("workouts")?[{id:"workouts",label:"WORKOUTS"}]:[]),
     ...(isAdmin?[{id:"admin",label:"ADMIN"}]:[])
   ];
   const TAB_ORDER=NAV_TABS.map(t=>t.id);
+  // If the current tab isn't available to this member, snap to the first available one.
+  useEffect(()=>{if(ready&&TAB_ORDER.length&&!TAB_ORDER.includes(tab))setTab(TAB_ORDER[0]);},[memberAccess,classesEnabled,strengthEnabled,wellnessEnabled,workoutsEnabled,ready]);
   function handleTouchStart(e){touchStartX.current=e.touches[0].clientX;touchStartY.current=e.touches[0].clientY;}
   function handleTouchEnd(e){
     if(touchStartX.current===null)return;
@@ -3687,6 +3754,9 @@ function App(){
       if(mb.password!==hashPw(password)){setAuthErr("Incorrect password.");setAuthBusy(false);return;}
       const s={email:em,name:mb.name};lsSet("t365-session",s);setSession(s);setMemberData(mb);
       if(mb.photo)setMemberPhotos(p=>({...p,[em]:mb.photo}));
+      const accRow=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__ACCESS__"+em)}&select=content`);
+      if(accRow&&accRow.length&&accRow[0].content){try{const a=JSON.parse(accRow[0].content);if(a&&Array.isArray(a.tabs))setMemberAccess(a.tabs);else setMemberAccess(null);}catch{setMemberAccess(null);}}
+      else setMemberAccess(null);
     }else{
       const existing=await sbGet("members",`email=eq.${encodeURIComponent(em)}`);
       if(existing.length){setAuthErr("An account already exists with this email.");setAuthBusy(false);return;}
@@ -3697,7 +3767,7 @@ function App(){
     }
     setAuthBusy(false);
   }
-  function handleLogout(){lsSet("t365-session",null);setSession(null);setMemberData(null);setShowProf(false);}
+  function handleLogout(){lsSet("t365-session",null);setSession(null);setMemberData(null);setMemberAccess(null);setShowProf(false);}
   async function handleForgotPw(){
     const em=fpEmail.toLowerCase().trim();
     if(!em||!/\S+@\S+\.\S+/.test(em)){setFpErr("Please enter a valid email address.");return;}
@@ -3982,7 +4052,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         ))
       )
     ),
-    tab==="book"&&React.createElement(React.Fragment,null,
+    tab==="book"&&acc("book")&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"well-hdr"},
         React.createElement("div",{className:"well-title"},"CLASSES")
       ),
@@ -4053,7 +4123,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         })
       )
     ),
-    tab==="my"&&React.createElement("div",{className:"my-wrap"},
+    tab==="my"&&canBook&&React.createElement("div",{className:"my-wrap"},
       React.createElement("div",{className:"my-hdr"},"MY BOOKINGS"),
       classesEnabled&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"adm-stats-row",style:{marginBottom:18}},
@@ -4137,11 +4207,15 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         })()
       ),
     ),
-    tab==="community"&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
-    tab==="wellness"&&wellnessEnabled&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin,memberData,wellSlots}),
-    tab==="strength"&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast,bookings,memberData})),
-    tab==="workouts"&&workoutsEnabled&&React.createElement(MemberWorkoutsView,{session,memberData}),
-    tab==="progress"&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}),
+    (!isAdmin&&TAB_ORDER.length===0)&&React.createElement("div",{style:{textAlign:"center",padding:"70px 28px",color:"#777"}},
+      React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:"0.1em",color:"#fff",marginBottom:10}},"WELCOME TO TEAM 365"),
+      React.createElement("div",{style:{fontSize:12,letterSpacing:"0.04em",lineHeight:1.9}},"Your account is set up. Your coach will switch on your sections shortly — check back soon, or get in touch with the gym.")
+    ),
+    tab==="community"&&acc("community")&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
+    tab==="wellness"&&wellnessEnabled&&acc("wellness")&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin,memberData,wellSlots}),
+    tab==="strength"&&acc("strength")&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast,bookings,memberData})),
+    tab==="workouts"&&workoutsEnabled&&acc("workouts")&&React.createElement(MemberWorkoutsView,{session,memberData}),
+    tab==="progress"&&acc("progress")&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}),
     tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,dowNames,saveDowName,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg}),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:"auto"}},
       React.createElement("span",{style:{color:"#666",fontSize:11,lineHeight:1}},"‹"),
