@@ -2108,6 +2108,7 @@ function WorkoutDetailsEditor({className,showToast}){
   const [legacy,setLegacy]=useState("");
   const [loaded,setLoaded]=useState(false);
   const [saving,setSaving]=useState(false);
+  const [editing,setEditing]=useState(false);
   const wdGenId=()=>Math.random().toString(36).slice(2,9);
   function mapRow(r){
     if(r.t==="h"||r.hdr!=null)return {id:wdGenId(),hdr:((r.label!=null?r.label:r.hdr)||"")};
@@ -2132,7 +2133,7 @@ function WorkoutDetailsEditor({className,showToast}){
       if(Array.isArray(p)&&p.length)rws=p.map(mapRow);
       else{if(!Array.isArray(p))leg=c;rws=seed?seed.map(mapRow):[];}
     }else{rws=seed?seed.map(mapRow):[];}
-    setRows(rws);setLegacy(leg);setLoaded(true);
+    setRows(rws);setLegacy(leg);setEditing(rws.length===0);setLoaded(true);
   })();},[className]);
   function autofill(row){
     const exU=(row.exercise||"").trim().toUpperCase();
@@ -2175,9 +2176,33 @@ function WorkoutDetailsEditor({className,showToast}){
       if(l0&&l0.length)await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent(LIB_KEY),lb);
       else await sbPost("coaching_notes",{class_name:LIB_KEY,...lb});
     }
-    setLegacy("");setSaving(false);showToast("Workout saved ✓");
+    setLegacy("");setSaving(false);setEditing(false);showToast("Workout saved ✓");
   }
   if(!loaded)return React.createElement("div",{style:{color:"#444",fontSize:11,padding:"12px 0"}},"Loading...");
+  if(!editing){
+    return React.createElement("div",null,
+      legacy&&React.createElement("div",{style:{whiteSpace:"pre-wrap",fontSize:12,color:"#aaa",lineHeight:1.6,marginBottom:12}},legacy),
+      rows.length===0&&!legacy&&React.createElement("div",{style:{fontSize:11,color:"#444",letterSpacing:"0.1em",padding:"16px 0",textAlign:"center"}},"NO WORKOUT YET · TAP EDIT TO BUILD IT"),
+      ...rows.map(r=>r.hdr!=null
+        ? React.createElement("div",{key:r.id,style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.12em",color:"#1d9bf0",borderBottom:"1px solid #1d3a5a",padding:"10px 0 5px",marginTop:8,marginBottom:6}},r.hdr)
+        : React.createElement("div",{key:r.id,style:{background:"#0e0e0e",border:"1px solid #1a1a1a",borderRadius:8,padding:"10px 12px",marginBottom:7}},
+            React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap",marginBottom:(r.c||r.o||r.d)?8:0}},
+              r.duration&&React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:"#fff",background:"#1a1a1a",borderRadius:4,padding:"1px 7px",flexShrink:0}},r.duration),
+              React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.04em",color:"#fff"}},r.exercise),
+              r.maori&&React.createElement("span",{style:{fontSize:11,fontStyle:"italic",color:"#1d9bf0"}},r.maori)
+            ),
+            (r.c||r.o||r.d)&&React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}},
+              [["COMMITMENT",r.c],["CONSISTENCY",r.o],["DETERMINATION",r.d]].map(lv=>React.createElement("div",{key:lv[0],style:{background:"#141414",border:"1px solid #1e1e1e",borderRadius:5,padding:"6px 5px",textAlign:"center"}},
+                React.createElement("div",{style:{fontSize:7,letterSpacing:"0.06em",color:"#555",fontWeight:600,marginBottom:3}},lv[0]),
+                React.createElement("div",{style:{fontSize:11,color:"#ddd",lineHeight:1.35,whiteSpace:"pre-wrap"}},lv[1]||"—")
+              ))
+            ),
+            r.notes&&React.createElement("div",{style:{fontSize:10,color:"#777",marginTop:6,lineHeight:1.5}},r.notes)
+          )
+      ),
+      React.createElement("button",{onClick:()=>setEditing(true),style:{marginTop:12,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:6,padding:"9px 22px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"EDIT")
+    );
+  }
   const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",padding:"7px 9px",outline:"none",boxSizing:"border-box"};
   const exNames=Object.keys(lib.maori).sort();
   const listId="exlist-"+className.replace(/[^A-Za-z0-9]/g,"");
