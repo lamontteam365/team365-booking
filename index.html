@@ -3292,19 +3292,25 @@ function MemberWorkoutsView({session,memberData}){
   const [ticks,setTicks]=useState({});
   const [expanded,setExpanded]=useState(new Set());
   const [openW,setOpenW]=useState(new Set());
+  const [wNotes,setWNotes]=useState({});
   const [loading,setLoading]=useState(true);
   const weekDS=toDS(weekStart);
   const key=mwKey(session.email,weekStart);
+  const notesKey="__MWN__"+session.email+"__"+weekDS;
   useEffect(()=>{load();},[weekStart]);
   async function load(){
     setLoading(true);
-    const[pData,logs]=await Promise.all([
+    const[pData,logs,nData]=await Promise.all([
       sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(key)}&select=content`),
-      sbGet("member_weights",`email=eq.${encodeURIComponent(session.email)}&session_type=eq.PW&month_year=eq.${weekDS}&select=exercise,weight`)
+      sbGet("member_weights",`email=eq.${encodeURIComponent(session.email)}&session_type=eq.PW&month_year=eq.${weekDS}&select=exercise,weight`),
+      sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(notesKey)}&select=content`)
     ]);
     let obj={};
     if(pData&&pData.length&&pData[0].content){try{obj=JSON.parse(pData[0].content)||{};}catch{obj={};}}
     setProgram(obj);
+    let notesObj={};
+    if(nData&&nData.length&&nData[0].content){try{notesObj=JSON.parse(nData[0].content)||{};}catch{notesObj={};}}
+    setWNotes(notesObj);
     const wm={};const tk={};
     (logs||[]).forEach(w=>{
       if(w.exercise.endsWith("__tick")){if(w.weight==="1")tk[w.exercise.slice(0,-6)]=true;}
@@ -3334,6 +3340,15 @@ function MemberWorkoutsView({session,memberData}){
   }
   function toggleEx(id){setExpanded(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});}
   function toggleW(wk){setOpenW(prev=>{const n=new Set(prev);n.has(wk)?n.delete(wk):n.add(wk);return n;});}
+  async function saveNote(day,wnum,text){
+    const nk=`${day}__w${wnum}`;const v=(text||"").trim();
+    const next={...wNotes};if(v)next[nk]=v;else delete next[nk];
+    setWNotes(next);
+    const q=`class_name=eq.${encodeURIComponent(notesKey)}`;
+    const existing=await sbGet("coaching_notes",q+"&select=id");
+    if(existing&&existing.length){await sbPatch("coaching_notes",q,{content:JSON.stringify(next),updated_at:Date.now()});}
+    else{await sbPost("coaching_notes",{class_name:notesKey,content:JSON.stringify(next),updated_at:Date.now()});}
+  }
   const weekEnd=addDays(weekStart,6);
   const weekLabel=`${MONTHS[weekStart.getMonth()]} ${weekStart.getDate()} – ${MONTHS[weekEnd.getMonth()]} ${weekEnd.getDate()}  ${weekStart.getFullYear()}`;
   const dayDates=MW_DAYS.map((_,i)=>addDays(weekStart,i));
@@ -3416,6 +3431,12 @@ function MemberWorkoutsView({session,memberData}){
           }
           body.push(renderEx(ex));
         });
+        body.push(React.createElement("div",{key:`note_${dk}_${w.num}_${weekDS}`,style:{marginTop:14}},
+          React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#666",fontWeight:600,marginBottom:6}},"MY NOTES"),
+          React.createElement("textarea",{defaultValue:wNotes[`${dk}__w${w.num}`]||"",placeholder:"How did it feel? Add anything not tracked above — e.g. swim time, cardio, energy, soreness.",rows:3,
+            onBlur:e=>saveNote(dk,w.num,e.target.value),
+            style:{width:"100%",background:"#141414",border:"1px solid #262626",borderRadius:6,color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:13,lineHeight:1.6,padding:"10px 12px",outline:"none",resize:"vertical",boxSizing:"border-box"}})
+        ));
         const isOpen=openW.has(dk+"_"+w.num);
         return React.createElement("div",{key:"w"+w.num,style:multiW?{border:"1px solid #333",borderRadius:12,background:"#0d0d0d",padding:"0 14px",marginBottom:14,overflow:"hidden"}:null},
           multiW&&React.createElement("div",{onClick:()=>toggleW(dk+"_"+w.num),style:{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",padding:"14px 0",borderBottom:isOpen?"1px solid #222":"none"}},
