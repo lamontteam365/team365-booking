@@ -117,6 +117,12 @@ function wellTimesFor(dk,wellSlots){
   const hide=o.hide||[];const add=o.add||[];
   return [...new Set([...WELL_TIMES,...add])].filter(t=>!hide.includes(t)).sort();
 }
+// Slots must be booked at least 24h ahead
+function within24h(dateKey,time){
+  const p=(time||"0:0").split(":").map(Number);
+  const start=new Date(dateKey+"T00:00:00");start.setHours(p[0]||0,p[1]||0,0,0);
+  return (start.getTime()-Date.now())<86400000;
+}
 const DAY_SHORT=["Mon","Tue","Wed","Thu","Fri","Sat"];
 const DAY_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -257,10 +263,12 @@ function WellnessWidget(){
           wellTimes.map(time=>{
             const taken=!!getSlotBooking(selDK,time);
             const past=isPastSlot(selDate,time);
-            return React.createElement("div",{key:time,className:`slot-row${selTime===time?" sel":""}${taken?" unavail":""}${past?" past":""}`,onClick:()=>{if(!taken&&!past)setSelTime(time);}},
+            const tooSoon=!past&&within24h(selDK,time);
+            const blocked=taken||past||tooSoon;
+            return React.createElement("div",{key:time,className:`slot-row${selTime===time?" sel":""}${(taken||tooSoon)?" unavail":""}${past?" past":""}`,onClick:()=>{if(!blocked)setSelTime(time);}},
               React.createElement("div",{className:"slot-time"},fmt12(time)),
-              React.createElement("div",{className:`slot-avail ${taken?"un":"av"}`},taken?"Unavailable":"Available"),
-              !taken&&!past&&React.createElement("div",{className:"slot-radio"},selTime===time&&React.createElement("div",{className:"slot-radio-dot"}))
+              React.createElement("div",{className:`slot-avail ${blocked?"un":"av"}`},taken?"Unavailable":tooSoon?"Closed · book 24h ahead":"Available"),
+              !blocked&&React.createElement("div",{className:"slot-radio"},selTime===time&&React.createElement("div",{className:"slot-radio-dot"}))
             );
           })
         ),
