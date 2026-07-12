@@ -2110,6 +2110,8 @@ function WorkoutDetailsEditor({className,showToast}){
   const [saving,setSaving]=useState(false);
   const [editing,setEditing]=useState(false);
   const [collapsed,setCollapsed]=useState(new Set());
+  const [dragId,setDragId]=useState(null);
+  const [dragOverId,setDragOverId]=useState(null);
   const wdGenId=()=>Math.random().toString(36).slice(2,9);
   function mapRow(r){
     if(r.t==="h"||r.hdr!=null)return {id:wdGenId(),hdr:((r.label!=null?r.label:r.hdr)||"")};
@@ -2172,6 +2174,10 @@ function WorkoutDetailsEditor({className,showToast}){
   function addSection(){setRows(rs=>[...rs,{id:wdGenId(),hdr:""}]);}
   function removeRow(id){setRows(rs=>rs.filter(r=>r.id!==id));}
   function moveRow(id,dir){setRows(rs=>{const a=[...rs];const i=a.findIndex(r=>r.id===id);const j=i+dir;if(i<0||j<0||j>=a.length)return rs;[a[i],a[j]]=[a[j],a[i]];return a;});}
+  function reorderRows(fromId,toId){setRows(rs=>{const a=[...rs];const f=a.findIndex(r=>r.id===fromId);const t=a.findIndex(r=>r.id===toId);if(f<0||t<0||f===t)return rs;const m=a.splice(f,1)[0];a.splice(t,0,m);return a;});}
+  function finishDrag(){if(dragId&&dragOverId&&dragId!==dragOverId)reorderRows(dragId,dragOverId);setDragId(null);setDragOverId(null);}
+  function dragHandleProps(id){return {draggable:true,onDragStart:e=>{setDragId(id);try{e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",id);}catch(_){ }},onDragEnd:()=>{setDragId(null);setDragOverId(null);},onTouchStart:()=>setDragId(id),onTouchMove:e=>{const t=e.touches&&e.touches[0];if(!t)return;const el=document.elementFromPoint(t.clientX,t.clientY);const row=el&&el.closest?el.closest("[data-rowid]"):null;if(row)setDragOverId(row.getAttribute("data-rowid"));},onTouchEnd:()=>finishDrag(),style:{cursor:"grab",touchAction:"none",color:"#666",fontSize:15,lineHeight:1,padding:"0 6px",userSelect:"none",flexShrink:0}};}
+  function dropProps(id){return {"data-rowid":id,onDragOver:e=>{e.preventDefault();if(dragId&&dragId!==id)setDragOverId(id);},onDrop:e=>{e.preventDefault();finishDrag();}};}
   async function save(){
     setSaving(true);
     const clean=rows.map(r=>r.hdr!=null?{hdr:(r.hdr||"").trim().toUpperCase()}:{duration:r.duration,exercise:(r.exercise||"").trim().toUpperCase(),maori:(r.maori||"").trim(),reps:(r.reps||"").trim(),c:(r.c||"").trim(),o:(r.o||"").trim(),d:(r.d||"").trim(),notes:(r.notes||"").trim(),station:(r.station||"").trim()}).filter(r=>r.hdr!=null?r.hdr!=="":r.exercise!=="");
@@ -2232,7 +2238,8 @@ function WorkoutDetailsEditor({className,showToast}){
           ),
           r.notes&&React.createElement("div",{style:{fontSize:10,color:"#777",marginTop:6,lineHeight:1.5}},r.notes)
         );
-      })
+      }),
+      rows.length>0&&React.createElement("button",{onClick:()=>setEditing(true),style:{width:"100%",marginTop:12,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:6,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.14em",cursor:"pointer"}},"✎ EDIT WORKOUT")
     );
   }
   const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",padding:"7px 9px",outline:"none",boxSizing:"border-box"};
@@ -2241,14 +2248,20 @@ function WorkoutDetailsEditor({className,showToast}){
   const durOpts=[...new Set([...DUR_CHOICES])];
   return React.createElement("div",null,
     React.createElement("datalist",{id:listId},exNames.map(n=>React.createElement("option",{key:n,value:n}))),
-    React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:10}},"Pick a duration and an exercise — the Māori name and the three levels fill in from your library. New exercise or new duration? Type it in and it's saved to the library when you Save."),
+    React.createElement("button",{onClick:save,disabled:saving,style:{width:"100%",background:"#fff",color:"#000",border:"none",borderRadius:6,padding:"11px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",cursor:"pointer",marginBottom:8}},saving?"SAVING...":"SAVE WORKOUT"),
+    React.createElement("div",{style:{display:"flex",gap:8,marginBottom:10}},
+      React.createElement("button",{onClick:addRow,style:{flex:2,background:"none",border:"1px dashed #2a2a2a",borderRadius:6,color:"#666",fontSize:10,letterSpacing:"0.1em",padding:"9px",cursor:"pointer"}},"+ ADD EXERCISE"),
+      React.createElement("button",{onClick:addSection,style:{flex:1,background:"none",border:"1px dashed #1d3a5a",borderRadius:6,color:"#1d9bf0",fontSize:10,letterSpacing:"0.08em",padding:"9px",cursor:"pointer"}},"+ SECTION")
+    ),
+    React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:10}},"Pick a duration and an exercise — the Māori name and the three levels fill in from your library. Drag the ⠿ handle (or use ▲▼) to reorder. New exercise or duration? Type it in and it's saved to the library when you Save."),
     legacy&&React.createElement("div",{style:{background:"#1a1208",border:"1px solid #3a2a10",borderRadius:6,padding:"10px 12px",marginBottom:12}},
       React.createElement("div",{style:{fontSize:9,letterSpacing:"0.12em",color:"#a80",fontWeight:600,marginBottom:6}},"PREVIOUS (TEXT) — kept until you save"),
       React.createElement("div",{style:{whiteSpace:"pre-wrap",fontSize:12,color:"#aaa",lineHeight:1.6}},legacy)
     ),
     rows.length===0&&React.createElement("div",{style:{fontSize:11,color:"#444",letterSpacing:"0.06em",padding:"6px 0 12px",textAlign:"center"}},"No exercises yet — add your first below."),
     ...rows.map((r,idx)=> r.hdr!=null
-      ? React.createElement("div",{key:r.id,style:{display:"flex",gap:6,alignItems:"center",marginTop:6,marginBottom:6}},
+      ? React.createElement("div",{key:r.id,style:{display:"flex",gap:6,alignItems:"center",marginTop:6,marginBottom:6,outline:dragOverId===r.id?"2px solid #1d9bf0":"none",borderRadius:4},...dropProps(r.id)},
+          React.createElement("span",{...dragHandleProps(r.id)},"⠿"),
           React.createElement("input",{value:r.hdr,onChange:e=>setRow(r.id,"hdr",e.target.value.toUpperCase()),placeholder:"SECTION (e.g. ROUND 1, WARM UP)",style:{...inS,flex:1,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.12em",fontSize:14,color:"#1d9bf0",background:"#0a1a2a",borderColor:"#1d3a5a"}}),
           React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:1}},
             React.createElement("button",{onClick:()=>moveRow(r.id,-1),disabled:idx===0,style:{background:"none",border:"none",color:idx===0?"#252525":"#666",cursor:idx===0?"default":"pointer",fontSize:10,lineHeight:1,padding:"0 4px"}},"▲"),
@@ -2256,13 +2269,14 @@ function WorkoutDetailsEditor({className,showToast}){
           ),
           React.createElement("button",{onClick:()=>removeRow(r.id),style:{background:"none",border:"1px solid #2a2a2a",borderRadius:4,color:"#8a2515",fontSize:12,padding:"4px 8px",cursor:"pointer"}},"✕")
         )
-      : React.createElement("div",{key:r.id,style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:8,padding:"10px",marginBottom:8}},
+      : React.createElement("div",{key:r.id,style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:8,padding:"10px",marginBottom:8,outline:dragOverId===r.id?"2px solid #1d9bf0":"none"},...dropProps(r.id)},
       React.createElement("input",{value:r.station||"",onChange:e=>setRow(r.id,"station",e.target.value.toUpperCase()),placeholder:"Station (optional) e.g. STATION 1",style:{...inS,width:"100%",marginBottom:6,fontSize:11,color:"#1d9bf0",letterSpacing:"0.08em"}}),
       React.createElement("div",{style:{display:"flex",gap:6,alignItems:"center",marginBottom:6}},
         React.createElement("select",{value:r.duration,onChange:e=>setRow(r.id,"duration",e.target.value),style:{...inS,width:74,cursor:"pointer"}},
           durOpts.map(o=>React.createElement("option",{key:o,value:o},o))),
         React.createElement("input",{list:listId,value:r.exercise,onChange:e=>setRow(r.id,"exercise",e.target.value.toUpperCase()),placeholder:"Exercise",style:{...inS,flex:1,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.05em",fontSize:14,color:"#fff"}}),
-        React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:1}},
+        React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:1,alignItems:"center"}},
+          React.createElement("span",{...dragHandleProps(r.id)},"⠿"),
           React.createElement("button",{onClick:()=>moveRow(r.id,-1),disabled:idx===0,style:{background:"none",border:"none",color:idx===0?"#252525":"#666",cursor:idx===0?"default":"pointer",fontSize:10,lineHeight:1,padding:"0 4px"}},"▲"),
           React.createElement("button",{onClick:()=>moveRow(r.id,1),disabled:idx===rows.length-1,style:{background:"none",border:"none",color:idx===rows.length-1?"#252525":"#666",cursor:idx===rows.length-1?"default":"pointer",fontSize:10,lineHeight:1,padding:"0 4px"}},"▼")
         ),
