@@ -2113,8 +2113,11 @@ function WorkoutDetailsEditor({className,showToast}){
   const wdGenId=()=>Math.random().toString(36).slice(2,9);
   function mapRow(r){
     if(r.t==="h"||r.hdr!=null)return {id:wdGenId(),hdr:((r.label!=null?r.label:r.hdr)||"")};
-    return {id:wdGenId(),duration:r.duration||"1:00",exercise:r.exercise||"",maori:r.maori||"",c:r.c||"",o:r.o||"",d:r.d||"",notes:r.notes||"",station:r.station||""};
+    if(r.reps!=null)return {id:wdGenId(),duration:r.duration||"1:00",exercise:r.exercise||"",maori:r.maori||"",reps:r.reps||"",c:r.c||"",o:r.o||"",d:r.d||"",notes:r.notes||"",station:r.station||""};
+    const sc=splitReps(r.c||""),so=splitReps(r.o||""),sd=splitReps(r.d||"");
+    return {id:wdGenId(),duration:r.duration||"1:00",exercise:r.exercise||"",maori:r.maori||"",reps:(sc.reps||so.reps||sd.reps||""),c:sc.weight,o:so.weight,d:sd.weight,notes:r.notes||"",station:r.station||""};
   }
+  function recomb(reps,wt){reps=(reps||"").trim();wt=(wt||"").trim();return reps&&wt?reps+" / "+wt:(reps||wt);}
   // Auto-number stations down each ROUND (Station 1..N), only where none set yet.
   function numberStations(list){
     let lbl="",n=0;
@@ -2151,7 +2154,10 @@ function WorkoutDetailsEditor({className,showToast}){
     const p=lib.presc[exU+"|"+row.duration];
     const next={...row};
     if(mao)next.maori=mao;
-    if(exU){ if(p){next.c=p.c;next.o=p.o;next.d=p.d;} else {next.c="";next.o="";next.d="";} }
+    if(exU){
+      if(p){const sc=splitReps(p.c),so=splitReps(p.o),sd=splitReps(p.d);next.reps=(sc.reps||so.reps||sd.reps||"");next.c=sc.weight;next.o=so.weight;next.d=sd.weight;}
+      else{next.reps="";next.c="";next.o="";next.d="";}
+    }
     return next;
   }
   function setRow(id,field,val){
@@ -2162,22 +2168,24 @@ function WorkoutDetailsEditor({className,showToast}){
       return nr;
     }));
   }
-  function addRow(){setRows(rs=>[...rs,{id:wdGenId(),duration:"1:00",exercise:"",maori:"",c:"",o:"",d:"",notes:"",station:""}]);}
+  function addRow(){setRows(rs=>[...rs,{id:wdGenId(),duration:"1:00",exercise:"",maori:"",reps:"",c:"",o:"",d:"",notes:"",station:""}]);}
   function addSection(){setRows(rs=>[...rs,{id:wdGenId(),hdr:""}]);}
   function removeRow(id){setRows(rs=>rs.filter(r=>r.id!==id));}
   function moveRow(id,dir){setRows(rs=>{const a=[...rs];const i=a.findIndex(r=>r.id===id);const j=i+dir;if(i<0||j<0||j>=a.length)return rs;[a[i],a[j]]=[a[j],a[i]];return a;});}
   async function save(){
     setSaving(true);
-    const clean=rows.map(r=>r.hdr!=null?{hdr:(r.hdr||"").trim().toUpperCase()}:{duration:r.duration,exercise:(r.exercise||"").trim().toUpperCase(),maori:(r.maori||"").trim(),c:(r.c||"").trim(),o:(r.o||"").trim(),d:(r.d||"").trim(),notes:(r.notes||"").trim(),station:(r.station||"").trim()}).filter(r=>r.hdr!=null?r.hdr!=="":r.exercise!=="");
+    const clean=rows.map(r=>r.hdr!=null?{hdr:(r.hdr||"").trim().toUpperCase()}:{duration:r.duration,exercise:(r.exercise||"").trim().toUpperCase(),maori:(r.maori||"").trim(),reps:(r.reps||"").trim(),c:(r.c||"").trim(),o:(r.o||"").trim(),d:(r.d||"").trim(),notes:(r.notes||"").trim(),station:(r.station||"").trim()}).filter(r=>r.hdr!=null?r.hdr!=="":r.exercise!=="");
     const ex0=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(storageKey)+"&select=id");
     const body={content:JSON.stringify(clean),updated_at:Date.now()};
     if(ex0&&ex0.length)await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent(storageKey),body);
     else await sbPost("coaching_notes",{class_name:storageKey,...body});
     const nm={...lib.maori},np={...lib.presc};let changed=false;
     clean.forEach(r=>{
+      if(r.hdr!=null)return;
       if(r.exercise&&r.maori&&!nm[r.exercise]){nm[r.exercise]=r.maori;changed=true;}
       const key=r.exercise+"|"+r.duration;
-      if(r.exercise&&(r.c||r.o||r.d)&&!np[key]){np[key]={c:r.c,o:r.o,d:r.d};changed=true;}
+      const cc=recomb(r.reps,r.c),oo=recomb(r.reps,r.o),dd=recomb(r.reps,r.d);
+      if(r.exercise&&(cc||oo||dd)&&!np[key]){np[key]={c:cc,o:oo,d:dd};changed=true;}
     });
     if(changed){
       const nl={maori:nm,presc:np};setLib(nl);
@@ -2192,6 +2200,7 @@ function WorkoutDetailsEditor({className,showToast}){
   if(!editing){
     let curSec=null;
     return React.createElement("div",null,
+      React.createElement("button",{onClick:()=>setEditing(true),style:{width:"100%",marginBottom:12,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:6,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.14em",cursor:"pointer"}},"✎ EDIT WORKOUT"),
       legacy&&React.createElement("div",{style:{whiteSpace:"pre-wrap",fontSize:12,color:"#aaa",lineHeight:1.6,marginBottom:12}},legacy),
       rows.length===0&&!legacy&&React.createElement("div",{style:{fontSize:11,color:"#444",letterSpacing:"0.1em",padding:"16px 0",textAlign:"center"}},"NO WORKOUT YET · TAP EDIT TO BUILD IT"),
       ...rows.map(r=>{
@@ -2203,9 +2212,8 @@ function WorkoutDetailsEditor({className,showToast}){
           );
         }
         if(curSec&&collapsed.has(curSec))return null;
-        const rc=splitReps(r.c),ro=splitReps(r.o),rd=splitReps(r.d);
-        const repsBox=rc.reps||ro.reps||rd.reps;
-        const hasW=rc.weight||ro.weight||rd.weight;
+        const repsBox=r.reps||"";
+        const hasW=r.c||r.o||r.d;
         return React.createElement("div",{key:r.id,style:{background:"#0e0e0e",border:"1px solid #1a1a1a",borderRadius:8,padding:"10px 12px",marginBottom:7}},
           r.station&&React.createElement("div",{style:{fontSize:8,letterSpacing:"0.14em",color:"#555",fontWeight:700,marginBottom:5}},r.station),
           React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:hasW?8:0}},
@@ -2217,15 +2225,14 @@ function WorkoutDetailsEditor({className,showToast}){
             repsBox&&React.createElement("span",{style:{fontSize:11,color:"#fff",border:"1px solid #3a3a3a",borderRadius:5,padding:"3px 10px",flexShrink:0,whiteSpace:"nowrap",fontWeight:600}},repsBox)
           ),
           hasW&&React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}},
-            [["COMMITMENT",rc.weight],["CONSISTENCY",ro.weight],["DETERMINATION",rd.weight]].map(lv=>React.createElement("div",{key:lv[0],style:{background:"#141414",border:"1px solid #1e1e1e",borderRadius:5,padding:"6px 5px",textAlign:"center"}},
+            [["COMMITMENT",r.c],["CONSISTENCY",r.o],["DETERMINATION",r.d]].map(lv=>React.createElement("div",{key:lv[0],style:{background:"#141414",border:"1px solid #1e1e1e",borderRadius:5,padding:"6px 5px",textAlign:"center"}},
               React.createElement("div",{style:{fontSize:7,letterSpacing:"0.06em",color:"#555",fontWeight:600,marginBottom:3}},lv[0]),
               React.createElement("div",{style:{fontSize:11,color:"#ddd",lineHeight:1.35,whiteSpace:"pre-wrap"}},lv[1]||"—")
             ))
           ),
           r.notes&&React.createElement("div",{style:{fontSize:10,color:"#777",marginTop:6,lineHeight:1.5}},r.notes)
         );
-      }),
-      React.createElement("button",{onClick:()=>setEditing(true),style:{marginTop:12,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:6,padding:"9px 22px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"EDIT")
+      })
     );
   }
   const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",padding:"7px 9px",outline:"none",boxSizing:"border-box"};
@@ -2262,6 +2269,8 @@ function WorkoutDetailsEditor({className,showToast}){
         React.createElement("button",{onClick:()=>removeRow(r.id),style:{background:"none",border:"1px solid #2a2a2a",borderRadius:4,color:"#8a2515",fontSize:12,padding:"4px 8px",cursor:"pointer"}},"✕")
       ),
       React.createElement("input",{value:r.maori,onChange:e=>setRow(r.id,"maori",e.target.value),placeholder:"Māori name (auto-fills)",style:{...inS,width:"100%",marginBottom:6,color:"#1d9bf0",fontStyle:"italic"}}),
+      React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3}},"REPS"),
+      React.createElement("input",{value:r.reps||"",onChange:e=>setRow(r.id,"reps",e.target.value),placeholder:"e.g. 20 reps or x 4 — leave blank if different per level",style:{...inS,width:"100%",marginBottom:8,fontSize:12}}),
       React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}},
         ["c","o","d"].map((k,i)=>React.createElement("div",{key:k},
           React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3,textAlign:"center"}},["COMMITMENT","CONSISTENCY","DETERMINATION"][i]),
