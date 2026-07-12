@@ -2109,11 +2109,20 @@ function WorkoutDetailsEditor({className,showToast}){
   const [loaded,setLoaded]=useState(false);
   const [saving,setSaving]=useState(false);
   const [editing,setEditing]=useState(false);
+  const [collapsed,setCollapsed]=useState(new Set());
   const wdGenId=()=>Math.random().toString(36).slice(2,9);
   function mapRow(r){
     if(r.t==="h"||r.hdr!=null)return {id:wdGenId(),hdr:((r.label!=null?r.label:r.hdr)||"")};
-    return {id:wdGenId(),duration:r.duration||"1:00",exercise:r.exercise||"",maori:r.maori||"",c:r.c||"",o:r.o||"",d:r.d||"",notes:r.notes||""};
+    return {id:wdGenId(),duration:r.duration||"1:00",exercise:r.exercise||"",maori:r.maori||"",c:r.c||"",o:r.o||"",d:r.d||"",notes:r.notes||"",station:r.station||""};
   }
+  // Auto-number stations down each ROUND (Station 1..N), only where none set yet.
+  function numberStations(list){
+    let lbl="",n=0;
+    list.forEach(r=>{ if(r.hdr!=null){lbl=r.hdr;n=0;} else {n++; if(/round/i.test(lbl)&&!r.station)r.station="STATION "+n;} });
+    return list;
+  }
+  // Split a level like "20 reps / 4-16 kgs" into {reps:"20 reps", weight:"4-16 kgs"}. No match -> reps blank, weight = original.
+  function splitReps(v){const m=(v||"").match(/^\s*(\d+(?:\s*-\s*\d+)?\s*reps?)\s*\/\s*(.+)$/i);return m?{reps:m[1].trim(),weight:m[2].trim()}:{reps:"",weight:(v||"")};}
   useEffect(()=>{(async()=>{
     setLoaded(false);
     let L=null;
@@ -2133,6 +2142,7 @@ function WorkoutDetailsEditor({className,showToast}){
       if(Array.isArray(p)&&p.length)rws=p.map(mapRow);
       else{if(!Array.isArray(p))leg=c;rws=seed?seed.map(mapRow):[];}
     }else{rws=seed?seed.map(mapRow):[];}
+    numberStations(rws);
     setRows(rws);setLegacy(leg);setEditing(rws.length===0);setLoaded(true);
   })();},[className]);
   function autofill(row){
@@ -2152,13 +2162,13 @@ function WorkoutDetailsEditor({className,showToast}){
       return nr;
     }));
   }
-  function addRow(){setRows(rs=>[...rs,{id:wdGenId(),duration:"1:00",exercise:"",maori:"",c:"",o:"",d:"",notes:""}]);}
+  function addRow(){setRows(rs=>[...rs,{id:wdGenId(),duration:"1:00",exercise:"",maori:"",c:"",o:"",d:"",notes:"",station:""}]);}
   function addSection(){setRows(rs=>[...rs,{id:wdGenId(),hdr:""}]);}
   function removeRow(id){setRows(rs=>rs.filter(r=>r.id!==id));}
   function moveRow(id,dir){setRows(rs=>{const a=[...rs];const i=a.findIndex(r=>r.id===id);const j=i+dir;if(i<0||j<0||j>=a.length)return rs;[a[i],a[j]]=[a[j],a[i]];return a;});}
   async function save(){
     setSaving(true);
-    const clean=rows.map(r=>r.hdr!=null?{hdr:(r.hdr||"").trim().toUpperCase()}:{duration:r.duration,exercise:(r.exercise||"").trim().toUpperCase(),maori:(r.maori||"").trim(),c:(r.c||"").trim(),o:(r.o||"").trim(),d:(r.d||"").trim(),notes:(r.notes||"").trim()}).filter(r=>r.hdr!=null?r.hdr!=="":r.exercise!=="");
+    const clean=rows.map(r=>r.hdr!=null?{hdr:(r.hdr||"").trim().toUpperCase()}:{duration:r.duration,exercise:(r.exercise||"").trim().toUpperCase(),maori:(r.maori||"").trim(),c:(r.c||"").trim(),o:(r.o||"").trim(),d:(r.d||"").trim(),notes:(r.notes||"").trim(),station:(r.station||"").trim()}).filter(r=>r.hdr!=null?r.hdr!=="":r.exercise!=="");
     const ex0=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(storageKey)+"&select=id");
     const body={content:JSON.stringify(clean),updated_at:Date.now()};
     if(ex0&&ex0.length)await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent(storageKey),body);
@@ -2180,26 +2190,41 @@ function WorkoutDetailsEditor({className,showToast}){
   }
   if(!loaded)return React.createElement("div",{style:{color:"#444",fontSize:11,padding:"12px 0"}},"Loading...");
   if(!editing){
+    let curSec=null;
     return React.createElement("div",null,
       legacy&&React.createElement("div",{style:{whiteSpace:"pre-wrap",fontSize:12,color:"#aaa",lineHeight:1.6,marginBottom:12}},legacy),
       rows.length===0&&!legacy&&React.createElement("div",{style:{fontSize:11,color:"#444",letterSpacing:"0.1em",padding:"16px 0",textAlign:"center"}},"NO WORKOUT YET · TAP EDIT TO BUILD IT"),
-      ...rows.map(r=>r.hdr!=null
-        ? React.createElement("div",{key:r.id,style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.12em",color:"#1d9bf0",borderBottom:"1px solid #1d3a5a",padding:"10px 0 5px",marginTop:8,marginBottom:6}},r.hdr)
-        : React.createElement("div",{key:r.id,style:{background:"#0e0e0e",border:"1px solid #1a1a1a",borderRadius:8,padding:"10px 12px",marginBottom:7}},
-            React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap",marginBottom:(r.c||r.o||r.d)?8:0}},
-              r.duration&&React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:"#fff",background:"#1a1a1a",borderRadius:4,padding:"1px 7px",flexShrink:0}},r.duration),
+      ...rows.map(r=>{
+        if(r.hdr!=null){
+          curSec=r.id;const isC=collapsed.has(r.id);
+          return React.createElement("div",{key:r.id,onClick:()=>setCollapsed(p=>{const n=new Set(p);n.has(r.id)?n.delete(r.id):n.add(r.id);return n;}),style:{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.12em",color:"#1d9bf0",borderBottom:"1px solid #1d3a5a",padding:"10px 0 5px",marginTop:8,marginBottom:6}},
+            React.createElement("span",null,r.hdr),
+            React.createElement("span",{style:{fontSize:12,color:"#666",transition:"transform .2s",transform:isC?"rotate(-90deg)":"rotate(0deg)"}},"▾")
+          );
+        }
+        if(curSec&&collapsed.has(curSec))return null;
+        const rc=splitReps(r.c),ro=splitReps(r.o),rd=splitReps(r.d);
+        const repsBox=rc.reps||ro.reps||rd.reps;
+        const hasW=rc.weight||ro.weight||rd.weight;
+        return React.createElement("div",{key:r.id,style:{background:"#0e0e0e",border:"1px solid #1a1a1a",borderRadius:8,padding:"10px 12px",marginBottom:7}},
+          r.station&&React.createElement("div",{style:{fontSize:8,letterSpacing:"0.14em",color:"#555",fontWeight:700,marginBottom:5}},r.station),
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:hasW?8:0}},
+            r.duration&&React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:"#fff",background:"#1a1a1a",borderRadius:4,padding:"1px 7px",flexShrink:0}},r.duration),
+            React.createElement("div",{style:{flex:1,minWidth:0}},
               React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.04em",color:"#fff"}},r.exercise),
-              r.maori&&React.createElement("span",{style:{fontSize:11,fontStyle:"italic",color:"#1d9bf0"}},r.maori)
+              r.maori&&React.createElement("span",{style:{fontSize:11,fontStyle:"italic",color:"#1d9bf0",marginLeft:8}},r.maori)
             ),
-            (r.c||r.o||r.d)&&React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}},
-              [["COMMITMENT",r.c],["CONSISTENCY",r.o],["DETERMINATION",r.d]].map(lv=>React.createElement("div",{key:lv[0],style:{background:"#141414",border:"1px solid #1e1e1e",borderRadius:5,padding:"6px 5px",textAlign:"center"}},
-                React.createElement("div",{style:{fontSize:7,letterSpacing:"0.06em",color:"#555",fontWeight:600,marginBottom:3}},lv[0]),
-                React.createElement("div",{style:{fontSize:11,color:"#ddd",lineHeight:1.35,whiteSpace:"pre-wrap"}},lv[1]||"—")
-              ))
-            ),
-            r.notes&&React.createElement("div",{style:{fontSize:10,color:"#777",marginTop:6,lineHeight:1.5}},r.notes)
-          )
-      ),
+            repsBox&&React.createElement("span",{style:{fontSize:11,color:"#fff",border:"1px solid #3a3a3a",borderRadius:5,padding:"3px 10px",flexShrink:0,whiteSpace:"nowrap",fontWeight:600}},repsBox)
+          ),
+          hasW&&React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}},
+            [["COMMITMENT",rc.weight],["CONSISTENCY",ro.weight],["DETERMINATION",rd.weight]].map(lv=>React.createElement("div",{key:lv[0],style:{background:"#141414",border:"1px solid #1e1e1e",borderRadius:5,padding:"6px 5px",textAlign:"center"}},
+              React.createElement("div",{style:{fontSize:7,letterSpacing:"0.06em",color:"#555",fontWeight:600,marginBottom:3}},lv[0]),
+              React.createElement("div",{style:{fontSize:11,color:"#ddd",lineHeight:1.35,whiteSpace:"pre-wrap"}},lv[1]||"—")
+            ))
+          ),
+          r.notes&&React.createElement("div",{style:{fontSize:10,color:"#777",marginTop:6,lineHeight:1.5}},r.notes)
+        );
+      }),
       React.createElement("button",{onClick:()=>setEditing(true),style:{marginTop:12,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:6,padding:"9px 22px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"EDIT")
     );
   }
@@ -2225,6 +2250,7 @@ function WorkoutDetailsEditor({className,showToast}){
           React.createElement("button",{onClick:()=>removeRow(r.id),style:{background:"none",border:"1px solid #2a2a2a",borderRadius:4,color:"#8a2515",fontSize:12,padding:"4px 8px",cursor:"pointer"}},"✕")
         )
       : React.createElement("div",{key:r.id,style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:8,padding:"10px",marginBottom:8}},
+      React.createElement("input",{value:r.station||"",onChange:e=>setRow(r.id,"station",e.target.value.toUpperCase()),placeholder:"Station (optional) e.g. STATION 1",style:{...inS,width:"100%",marginBottom:6,fontSize:11,color:"#1d9bf0",letterSpacing:"0.08em"}}),
       React.createElement("div",{style:{display:"flex",gap:6,alignItems:"center",marginBottom:6}},
         React.createElement("select",{value:r.duration,onChange:e=>setRow(r.id,"duration",e.target.value),style:{...inS,width:74,cursor:"pointer"}},
           durOpts.map(o=>React.createElement("option",{key:o,value:o},o))),
