@@ -2178,6 +2178,19 @@ function WorkoutDetailsEditor({className,showToast}){
   function finishDrag(){if(dragId&&dragOverId&&dragId!==dragOverId)reorderRows(dragId,dragOverId);setDragId(null);setDragOverId(null);}
   function dragHandleProps(id){return {draggable:true,onDragStart:e=>{setDragId(id);try{e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",id);}catch(_){ }},onDragEnd:()=>{setDragId(null);setDragOverId(null);},onTouchStart:()=>setDragId(id),onTouchMove:e=>{const t=e.touches&&e.touches[0];if(!t)return;const el=document.elementFromPoint(t.clientX,t.clientY);const row=el&&el.closest?el.closest("[data-rowid]"):null;if(row)setDragOverId(row.getAttribute("data-rowid"));},onTouchEnd:()=>finishDrag(),style:{cursor:"grab",touchAction:"none",color:"#666",fontSize:15,lineHeight:1,padding:"0 6px",userSelect:"none",flexShrink:0}};}
   function dropProps(id){return {"data-rowid":id,onDragOver:e=>{e.preventDefault();if(dragId&&dragId!==id)setDragOverId(id);},onDrop:e=>{e.preventDefault();finishDrag();}};}
+  function displayEsc(s){return (s==null?"":String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+  function openDisplay(){
+    const parts=rows.map(r=>{
+      if(r.hdr!=null)return `<div class="sec">${displayEsc(r.hdr)}</div>`;
+      const reps=displayEsc(r.reps);
+      const hasW=r.c||r.o||r.d;
+      const lv=hasW?`<div class="lv"><div><span>COMMITMENT</span>${displayEsc(r.c)||"—"}</div><div><span>CONSISTENCY</span>${displayEsc(r.o)||"—"}</div><div><span>DETERMINATION</span>${displayEsc(r.d)||"—"}</div></div>`:"";
+      return `<div class="st">${r.station?`<div class="stn">${displayEsc(r.station)}</div>`:""}<div class="hd">${r.duration?`<span class="dur">${displayEsc(r.duration)}</span>`:""}<span class="ex">${displayEsc(r.exercise)}</span>${r.maori?`<span class="mao">${displayEsc(r.maori)}</span>`:""}${reps?`<span class="reps">${reps}</span>`:""}</div>${lv}</div>`;
+    }).join("");
+    const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${displayEsc(className)}</title><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,600&display=swap" rel="stylesheet"><style>*{box-sizing:border-box;margin:0;padding:0}body{background:#080808;color:#fff;font-family:'DM Sans',sans-serif;padding:26px 34px}h1{font-family:'Bebas Neue',sans-serif;font-size:46px;letter-spacing:0.1em;text-align:center;margin-bottom:18px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px;align-items:start}.sec{grid-column:1/-1;font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:0.1em;color:#1d9bf0;border-bottom:2px solid #1d3a5a;padding:16px 0 6px;margin-top:8px}.st{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:10px;padding:14px 16px}.stn{font-size:12px;letter-spacing:0.16em;color:#666;font-weight:700;margin-bottom:7px}.hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}.dur{font-family:'Bebas Neue',sans-serif;font-size:22px;background:#1a1a1a;border-radius:5px;padding:2px 10px}.ex{font-family:'Bebas Neue',sans-serif;font-size:27px;letter-spacing:0.04em}.mao{font-size:16px;font-style:italic;color:#1d9bf0}.reps{margin-left:auto;font-size:19px;font-weight:600;border:1px solid #3a3a3a;border-radius:6px;padding:4px 14px;white-space:nowrap}.lv{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.lv>div{background:#141414;border:1px solid #1e1e1e;border-radius:6px;padding:10px 6px;text-align:center;font-size:18px;color:#eee;line-height:1.3}.lv>div>span{display:block;font-size:10px;letter-spacing:0.08em;color:#666;font-weight:600;margin-bottom:4px}.foot{text-align:center;color:#2a2a2a;font-size:9px;letter-spacing:0.2em;margin-top:26px}</style></head><body><h1>${displayEsc(className)}</h1><div class="grid">${parts}</div><div class="foot">COMMITMENT · CONSISTENCY · DETERMINATION</div></body></html>`;
+    const w=window.open("","_blank");
+    if(w){w.document.open();w.document.write(html);w.document.close();}
+  }
   async function save(){
     setSaving(true);
     const clean=rows.map(r=>r.hdr!=null?{hdr:(r.hdr||"").trim().toUpperCase()}:{duration:r.duration,exercise:(r.exercise||"").trim().toUpperCase(),maori:(r.maori||"").trim(),reps:(r.reps||"").trim(),c:(r.c||"").trim(),o:(r.o||"").trim(),d:(r.d||"").trim(),notes:(r.notes||"").trim(),station:(r.station||"").trim()}).filter(r=>r.hdr!=null?r.hdr!=="":r.exercise!=="");
@@ -2206,7 +2219,10 @@ function WorkoutDetailsEditor({className,showToast}){
   if(!editing){
     let curSec=null;
     return React.createElement("div",null,
-      React.createElement("button",{onClick:()=>setEditing(true),style:{width:"100%",marginBottom:12,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:6,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.14em",cursor:"pointer"}},"✎ EDIT WORKOUT"),
+      React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}},
+        React.createElement("button",{onClick:()=>setEditing(true),style:{flex:1,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:6,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"✎ EDIT WORKOUT"),
+        rows.length>0&&React.createElement("button",{onClick:openDisplay,style:{flex:1,background:"#0a1a2a",color:"#1d9bf0",border:"1px solid #1d3a5a",borderRadius:6,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"📺 TV VIEW")
+      ),
       legacy&&React.createElement("div",{style:{whiteSpace:"pre-wrap",fontSize:12,color:"#aaa",lineHeight:1.6,marginBottom:12}},legacy),
       rows.length===0&&!legacy&&React.createElement("div",{style:{fontSize:11,color:"#444",letterSpacing:"0.1em",padding:"16px 0",textAlign:"center"}},"NO WORKOUT YET · TAP EDIT TO BUILD IT"),
       ...rows.map(r=>{
@@ -2239,37 +2255,46 @@ function WorkoutDetailsEditor({className,showToast}){
           r.notes&&React.createElement("div",{style:{fontSize:10,color:"#777",marginTop:6,lineHeight:1.5}},r.notes)
         );
       }),
-      rows.length>0&&React.createElement("button",{onClick:()=>setEditing(true),style:{width:"100%",marginTop:12,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:6,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.14em",cursor:"pointer"}},"✎ EDIT WORKOUT")
+      rows.length>0&&React.createElement("div",{style:{display:"flex",gap:8,marginTop:12}},
+        React.createElement("button",{onClick:()=>setEditing(true),style:{flex:1,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:6,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"✎ EDIT WORKOUT"),
+        React.createElement("button",{onClick:openDisplay,style:{flex:1,background:"#0a1a2a",color:"#1d9bf0",border:"1px solid #1d3a5a",borderRadius:6,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"📺 TV VIEW")
+      )
     );
   }
   const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",padding:"7px 9px",outline:"none",boxSizing:"border-box"};
   const exNames=Object.keys(lib.maori).sort();
   const listId="exlist-"+className.replace(/[^A-Za-z0-9]/g,"");
   const durOpts=[...new Set([...DUR_CHOICES])];
+  const hdrIds=rows.filter(r=>r.hdr!=null).map(r=>r.id);
+  let editSec=null;
   return React.createElement("div",null,
     React.createElement("datalist",{id:listId},exNames.map(n=>React.createElement("option",{key:n,value:n}))),
     React.createElement("button",{onClick:save,disabled:saving,style:{width:"100%",background:"#fff",color:"#000",border:"none",borderRadius:6,padding:"11px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",cursor:"pointer",marginBottom:8}},saving?"SAVING...":"SAVE WORKOUT"),
-    React.createElement("div",{style:{display:"flex",gap:8,marginBottom:10}},
+    React.createElement("div",{style:{display:"flex",gap:8,marginBottom:8}},
       React.createElement("button",{onClick:addRow,style:{flex:2,background:"none",border:"1px dashed #2a2a2a",borderRadius:6,color:"#666",fontSize:10,letterSpacing:"0.1em",padding:"9px",cursor:"pointer"}},"+ ADD EXERCISE"),
       React.createElement("button",{onClick:addSection,style:{flex:1,background:"none",border:"1px dashed #1d3a5a",borderRadius:6,color:"#1d9bf0",fontSize:10,letterSpacing:"0.08em",padding:"9px",cursor:"pointer"}},"+ SECTION")
     ),
+    hdrIds.length>0&&React.createElement("button",{onClick:()=>{const anyOpen=hdrIds.some(id=>!collapsed.has(id));setCollapsed(anyOpen?new Set(hdrIds):new Set());},style:{width:"100%",background:"none",border:"1px solid #222",borderRadius:6,color:"#777",fontSize:9,letterSpacing:"0.12em",padding:"7px",cursor:"pointer",marginBottom:10}},"COLLAPSE / EXPAND ALL ROUNDS"),
     React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:10}},"Pick a duration and an exercise — the Māori name and the three levels fill in from your library. Drag the ⠿ handle (or use ▲▼) to reorder. New exercise or duration? Type it in and it's saved to the library when you Save."),
     legacy&&React.createElement("div",{style:{background:"#1a1208",border:"1px solid #3a2a10",borderRadius:6,padding:"10px 12px",marginBottom:12}},
       React.createElement("div",{style:{fontSize:9,letterSpacing:"0.12em",color:"#a80",fontWeight:600,marginBottom:6}},"PREVIOUS (TEXT) — kept until you save"),
       React.createElement("div",{style:{whiteSpace:"pre-wrap",fontSize:12,color:"#aaa",lineHeight:1.6}},legacy)
     ),
     rows.length===0&&React.createElement("div",{style:{fontSize:11,color:"#444",letterSpacing:"0.06em",padding:"6px 0 12px",textAlign:"center"}},"No exercises yet — add your first below."),
-    ...rows.map((r,idx)=> r.hdr!=null
-      ? React.createElement("div",{key:r.id,style:{display:"flex",gap:6,alignItems:"center",marginTop:6,marginBottom:6,outline:dragOverId===r.id?"2px solid #1d9bf0":"none",borderRadius:4},...dropProps(r.id)},
+    ...rows.map((r,idx)=>{
+      if(r.hdr!=null){editSec=r.id;const isC=collapsed.has(r.id);
+      return React.createElement("div",{key:r.id,style:{display:"flex",gap:6,alignItems:"center",marginTop:6,marginBottom:6,outline:dragOverId===r.id?"2px solid #1d9bf0":"none",borderRadius:4},...dropProps(r.id)},
           React.createElement("span",{...dragHandleProps(r.id)},"⠿"),
+          React.createElement("button",{onClick:()=>setCollapsed(p=>{const n=new Set(p);n.has(r.id)?n.delete(r.id):n.add(r.id);return n;}),style:{background:"none",border:"none",color:"#888",fontSize:14,cursor:"pointer",transition:"transform .2s",transform:isC?"rotate(-90deg)":"rotate(0deg)",padding:"0 2px",flexShrink:0}},"▾"),
           React.createElement("input",{value:r.hdr,onChange:e=>setRow(r.id,"hdr",e.target.value.toUpperCase()),placeholder:"SECTION (e.g. ROUND 1, WARM UP)",style:{...inS,flex:1,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.12em",fontSize:14,color:"#1d9bf0",background:"#0a1a2a",borderColor:"#1d3a5a"}}),
           React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:1}},
             React.createElement("button",{onClick:()=>moveRow(r.id,-1),disabled:idx===0,style:{background:"none",border:"none",color:idx===0?"#252525":"#666",cursor:idx===0?"default":"pointer",fontSize:10,lineHeight:1,padding:"0 4px"}},"▲"),
             React.createElement("button",{onClick:()=>moveRow(r.id,1),disabled:idx===rows.length-1,style:{background:"none",border:"none",color:idx===rows.length-1?"#252525":"#666",cursor:idx===rows.length-1?"default":"pointer",fontSize:10,lineHeight:1,padding:"0 4px"}},"▼")
           ),
           React.createElement("button",{onClick:()=>removeRow(r.id),style:{background:"none",border:"1px solid #2a2a2a",borderRadius:4,color:"#8a2515",fontSize:12,padding:"4px 8px",cursor:"pointer"}},"✕")
-        )
-      : React.createElement("div",{key:r.id,style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:8,padding:"10px",marginBottom:8,outline:dragOverId===r.id?"2px solid #1d9bf0":"none"},...dropProps(r.id)},
+        );}
+      if(editSec&&collapsed.has(editSec))return null;
+      return React.createElement("div",{key:r.id,style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:8,padding:"10px",marginBottom:8,outline:dragOverId===r.id?"2px solid #1d9bf0":"none"},...dropProps(r.id)},
       React.createElement("input",{value:r.station||"",onChange:e=>setRow(r.id,"station",e.target.value.toUpperCase()),placeholder:"Station (optional) e.g. STATION 1",style:{...inS,width:"100%",marginBottom:6,fontSize:11,color:"#1d9bf0",letterSpacing:"0.08em"}}),
       React.createElement("div",{style:{display:"flex",gap:6,alignItems:"center",marginBottom:6}},
         React.createElement("select",{value:r.duration,onChange:e=>setRow(r.id,"duration",e.target.value),style:{...inS,width:74,cursor:"pointer"}},
@@ -2292,7 +2317,8 @@ function WorkoutDetailsEditor({className,showToast}){
         ))
       ),
       React.createElement("input",{value:r.notes,onChange:e=>setRow(r.id,"notes",e.target.value),placeholder:"Notes (optional)",style:{...inS,width:"100%",marginTop:6,fontSize:11}})
-    )),
+    );
+    }),
     React.createElement("div",{style:{display:"flex",gap:8,marginBottom:8}},
       React.createElement("button",{onClick:addRow,style:{flex:2,background:"none",border:"1px dashed #2a2a2a",borderRadius:6,color:"#666",fontSize:10,letterSpacing:"0.1em",padding:"9px",cursor:"pointer"}},"+ ADD EXERCISE"),
       React.createElement("button",{onClick:addSection,style:{flex:1,background:"none",border:"1px dashed #1d3a5a",borderRadius:6,color:"#1d9bf0",fontSize:10,letterSpacing:"0.08em",padding:"9px",cursor:"pointer"}},"+ SECTION")
