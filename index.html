@@ -2121,8 +2121,8 @@ function WorkoutDetailsEditor({className,showToast}){
     list.forEach(r=>{ if(r.hdr!=null){lbl=r.hdr;n=0;} else {n++; if(/round/i.test(lbl)&&!r.station)r.station="STATION "+n;} });
     return list;
   }
-  // Split a level like "20 reps / 4-16 kgs" into {reps:"20 reps", weight:"4-16 kgs"}. No match -> reps blank, weight = original.
-  function splitReps(v){const m=(v||"").match(/^\s*(\d+(?:\s*-\s*\d+)?\s*reps?)\s*\/\s*(.+)$/i);return m?{reps:m[1].trim(),weight:m[2].trim()}:{reps:"",weight:(v||"")};}
+  // Split a level like "20 reps / 4-16 kgs" or "x 4 / 2-10 kgs" into {reps, weight}. No match -> reps blank, weight = original.
+  function splitReps(v){const m=(v||"").match(/^\s*((?:\d+(?:\s*-\s*\d+)?\s*reps?)|(?:x\s*\d+))\s*\/\s*(.+)$/i);return m?{reps:m[1].trim(),weight:m[2].trim()}:{reps:"",weight:(v||"")};}
   useEffect(()=>{(async()=>{
     setLoaded(false);
     let L=null;
