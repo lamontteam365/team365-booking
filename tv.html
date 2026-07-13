@@ -33,6 +33,15 @@ h1{font-family:'Syncopate',sans-serif;font-weight:700;font-size:22px;letter-spac
 .lvc{display:flex;flex-direction:column}
 .lvn{font-size:9px;letter-spacing:0.02em;color:#fff;font-weight:600;text-align:center;margin-bottom:3px}
 .lvb{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;background:#0a1a2a;border:1px solid #565656;border-radius:5px;padding:5px 3px;font-size:14px;color:#fff;line-height:1.15;min-height:24px}
+#fit.solo .st{padding:14px 12px}
+#fit.solo .top{margin-bottom:5px}
+#fit.solo .stn,#fit.solo .sdur{font-size:13px}
+#fit.solo .trep{font-size:16px}
+#fit.solo .ex{font-size:22px;margin-bottom:6px}
+#fit.solo .mao{font-size:15px;margin-bottom:14px}
+#fit.solo .lv{gap:8px}
+#fit.solo .lvn{font-size:12px;margin-bottom:5px}
+#fit.solo .lvb{min-height:56px;font-size:20px}
 </style>
 </head>
 <body>
@@ -47,6 +56,7 @@ var WK_SEED={"RISE UP 1":[{"t":"h","label":"5 MINS WARM UP"},{"t":"h","label":"R
 var SB_URL="https://xczwmexavysvljmobbgv.supabase.co";
 var SB_KEY="sb_publishable_tujGGhPRUimflq1-IFzuvA_Crw6knMO";
 var HDR={apikey:SB_KEY,Authorization:"Bearer "+SB_KEY};
+var castConn=null,curRound=-1,isReceiver=!!(navigator.presentation&&navigator.presentation.receiver);
 function sbGet(t,q){return fetch(SB_URL+"/rest/v1/"+t+"?"+q,{headers:HDR}).then(function(r){return r.ok?r.json():[];}).catch(function(){return [];});}
 function esc(s){return (s==null?"":String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 function splitReps(v){var m=(v||"").match(/^\s*((?:\d+(?:\s*-\s*\d+)?\s*reps?)|(?:x\s*\d+))\s*\/\s*(.+)$/i);return m?{reps:m[1].trim(),weight:m[2].trim()}:{reps:"",weight:(v||"")};}
@@ -76,22 +86,26 @@ function render(name,rows){
   document.getElementById("err").style.display="none";
   var ctrl=document.getElementById("ctrl");
   ctrl.innerHTML="";
-  if(groups.length>1){
-    var mk=function(label,idx){var b=document.createElement("button");b.className="rbtn";b.textContent=label;b.onclick=function(){setRound(idx);};return b;};
+  var visible=[];groups.forEach(function(g,i){if(!g.hideTv)visible.push(i);});
+  if(visible.length>1&&!isReceiver){
+    var mk=function(label,idx){var b=document.createElement("button");b.className="rbtn";b.setAttribute("data-i",idx);b.textContent=label;b.onclick=function(){setRound(idx);};return b;};
     ctrl.appendChild(mk("ALL",-1));
-    groups.forEach(function(g,i){var m=(g.hdr||"").match(/(\d+)/);ctrl.appendChild(mk(m?("R"+m[1]):("R"+(i+1)),i));});
+    visible.forEach(function(i){var g=groups[i];var m=(g.hdr||"").match(/(\d+)/);ctrl.appendChild(mk(m?("R"+m[1]):("R"+(i+1)),i));});
     ctrl.style.display="flex";
-    setRound(-1);
-  }else{ctrl.style.display="none";doFit();}
+  }else{ctrl.style.display="none";}
+  setRound(-1);
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(doFit);
   setTimeout(doFit,300);
 }
 function setRound(i){
+  curRound=i;
+  var fit=document.getElementById("fit");if(fit)fit.className=(i>=0?"solo":"");
   var rds=document.querySelectorAll("#fit .rd");
   for(var k=0;k<rds.length;k++){rds[k].style.display=(i<0||k===i)?"":"none";}
   var bs=document.querySelectorAll("#ctrl .rbtn");
-  for(var j=0;j<bs.length;j++){bs[j].className="rbtn"+((j===i+1)?" active":"");}
+  for(var j=0;j<bs.length;j++){bs[j].className="rbtn"+((bs[j].getAttribute("data-i")==String(i))?" active":"");}
   doFit();
+  if(castConn){try{castConn.send(JSON.stringify({round:i}));}catch(e){}}
 }
 function doFit(){var f=document.getElementById("fit");if(!f)return;var vw=window.innerWidth,vh=window.innerHeight;var portrait=vh>vw;var lng=Math.max(vw,vh),sht=Math.min(vw,vh);f.style.transform="none";f.style.width=lng+"px";var w=f.offsetWidth,h=f.offsetHeight;var s=Math.min(lng/w,sht/h);f.style.transform=(portrait?"rotate(90deg) ":"")+"scale("+s+")";}
 window.addEventListener("resize",doFit);
@@ -108,7 +122,13 @@ window.addEventListener("orientationchange",function(){setTimeout(doFit,100);});
       btn.onclick=function(){
         try{
           var pr=req.start();
-          if(pr&&pr.then){pr.then(function(){}).catch(function(err){
+          if(pr&&pr.then){pr.then(function(conn){
+            castConn=conn;
+            var snd=function(){try{conn.send(JSON.stringify({round:curRound}));}catch(e){}};
+            try{conn.addEventListener("connect",snd);}catch(e){}
+            snd();
+            try{conn.addEventListener("close",function(){castConn=null;});conn.addEventListener("terminate",function(){castConn=null;});}catch(e){}
+          }).catch(function(err){
             alert("Couldn't start casting from this button"+(isMobile?" (Android doesn't support it here)":"")+".\n\nTo cast: open the Chrome menu (⋮) at the top-right, tap \"Cast\", and pick your TV. That mirrors this page to the screen.");
           });}
         }catch(e){
@@ -136,7 +156,16 @@ else{
     render(wname,normalize(rows));
   });
 }
-
+// receiver side: when this page is the cast target, obey round messages from the controller
+if(isReceiver){
+  try{
+    navigator.presentation.receiver.connectionList.then(function(list){
+      function add(conn){conn.addEventListener("message",function(e){try{var m=JSON.parse(e.data);if(m&&m.round!==undefined)setRound(m.round);}catch(_){}});}
+      list.connections.forEach(add);
+      list.addEventListener("connectionavailable",function(e){add(e.connection);});
+    }).catch(function(){});
+  }catch(e){}
+}
 </script>
 </body>
 </html>
