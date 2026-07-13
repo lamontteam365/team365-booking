@@ -2190,7 +2190,7 @@ function WorkoutDetailsEditor({className,showToast}){
     const fmtDur=d=>{const p=(d||"").split(":");if(p.length!==2)return displayEsc(d||"");const m=parseInt(p[0])||0,s=parseInt(p[1])||0;if(s===0)return m+(m===1?" MINUTE":" MINUTES");return m+":"+String(s).padStart(2,"0")+" MINUTES";};
     const stCard=r=>{
       let reps=(r.reps||"").toUpperCase();if(reps&&!/REP/.test(reps))reps+=" REPS";reps=displayEsc(reps);
-      const lvc=(name,val)=>`<div class="lvc"><div class="lvn">${name}</div><div class="lvb">${displayEsc(val)||"—"}</div></div>`;
+      const lvc=(name,val)=>`<div class="lvc"><div class="lvn">${name}</div><div class="lvb">${displayEsc(val)}</div></div>`;
       return `<div class="cell"><div class="top"><span class="stn">${r.station?displayEsc(r.station):"&nbsp;"}</span><span class="sdur">${r.duration?fmtDur(r.duration):"&nbsp;"}</span></div><div class="st"><div class="hd"><span class="ex">${displayEsc(r.exercise)}</span>${r.maori?`<span class="mao">${displayEsc(r.maori)}</span>`:""}</div><div class="reps">${reps||"&nbsp;"}</div><div class="lv">${lvc("COMMITMENT",r.c)}${lvc("CONSISTENCY",r.o)}${lvc("DETERMINATION",r.d)}</div></div></div>`;
     };
     const parts=groups.map(g=>`<div class="rd">${g.hideTv?"":`<div class="sec"><span class="rnm">${displayEsc(g.hdr)}</span><span class="rtot">${fmtSecs(roundSecs(g.sts))}</span></div>`}<div class="sts">${g.sts.map(stCard).join("")}</div></div>`).join("");
@@ -2235,7 +2235,8 @@ function WorkoutDetailsEditor({className,showToast}){
     return React.createElement("div",null,
       React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}},
         React.createElement("button",{onClick:()=>setEditing(true),style:{flex:1,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:6,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"✎ EDIT WORKOUT"),
-        rows.length>0&&React.createElement("button",{onClick:openDisplay,style:{flex:1,background:"#0a1a2a",color:"#1d9bf0",border:"1px solid #1d3a5a",borderRadius:6,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"📺 TV VIEW")
+        rows.length>0&&React.createElement("button",{onClick:openDisplay,style:{flex:1,background:"#0a1a2a",color:"#1d9bf0",border:"1px solid #1d3a5a",borderRadius:6,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"📺 TV VIEW"),
+        rows.length>0&&React.createElement("button",{onClick:()=>{const u="tv.html?w="+encodeURIComponent(className);const w=window.open(u,"_blank");if(!w)window.location.href=u;},title:"Opens the full-screen TV page with a Cast button (uses the last SAVED version)",style:{flex:1,background:"#12331a",color:"#3ddc84",border:"1px solid #1d5a34",borderRadius:6,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"▸ CAST TO TV")
       ),
       legacy&&React.createElement("div",{style:{whiteSpace:"pre-wrap",fontSize:12,color:"#aaa",lineHeight:1.6,marginBottom:12}},legacy),
       rows.length===0&&!legacy&&React.createElement("div",{style:{fontSize:11,color:"#444",letterSpacing:"0.1em",padding:"16px 0",textAlign:"center"}},"NO WORKOUT YET · TAP EDIT TO BUILD IT"),
@@ -2263,7 +2264,7 @@ function WorkoutDetailsEditor({className,showToast}){
           hasW&&React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}},
             [["COMMITMENT",r.c],["CONSISTENCY",r.o],["DETERMINATION",r.d]].map(lv=>React.createElement("div",{key:lv[0],style:{background:"#141414",border:"1px solid #1e1e1e",borderRadius:5,padding:"6px 5px",textAlign:"center"}},
               React.createElement("div",{style:{fontSize:7,letterSpacing:"0.06em",color:"#555",fontWeight:600,marginBottom:3}},lv[0]),
-              React.createElement("div",{style:{fontSize:11,color:"#ddd",lineHeight:1.35,whiteSpace:"pre-wrap"}},lv[1]||"—")
+              React.createElement("div",{style:{fontSize:11,color:"#ddd",lineHeight:1.35,whiteSpace:"pre-wrap"}},lv[1]||"")
             ))
           ),
           r.notes&&React.createElement("div",{style:{fontSize:10,color:"#777",marginTop:6,lineHeight:1.5}},r.notes)
@@ -2341,6 +2342,116 @@ function WorkoutDetailsEditor({className,showToast}){
     React.createElement("button",{onClick:save,disabled:saving,style:{width:"100%",background:"#fff",color:"#000",border:"none",borderRadius:6,padding:"11px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",cursor:"pointer"}},saving?"SAVING...":"SAVE WORKOUT")
   );
 }
+function LibraryDetailsEditor({showToast,allWorkoutNames}){
+  const LIB_KEY="__HIIT_LIB__";
+  const [items,setItems]=useState(null);
+  const [loaded,setLoaded]=useState(false);
+  const [saving,setSaving]=useState(false);
+  const [q,setQ]=useState("");
+  const [open,setOpen]=useState({});
+  function splitReps(v){const m=(v||"").match(/^\s*((?:\d+(?:\s*-\s*\d+)?\s*reps?)|(?:x\s*\d+))\s*\/\s*(.+)$/i);return m?{reps:m[1].trim(),weight:m[2].trim()}:{reps:"",weight:(v||"")};}
+  function recomb(reps,wt){reps=(reps||"").trim();wt=(wt||"").trim();return reps&&wt?reps+" / "+wt:(reps||wt);}
+  function durVal(s){const p=(s||"").split(":");return (parseInt(p[0])||0)*60+(parseInt(p[1])||0);}
+  useEffect(()=>{(async()=>{
+    setLoaded(false);
+    let L=null;
+    const lr=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(LIB_KEY)+"&select=content");
+    if(lr&&lr.length&&lr[0].content){try{L=JSON.parse(lr[0].content);}catch{L=null;}}
+    if(!L||!L.maori)L=(typeof window!=="undefined"&&window.T365_HIIT_SEED)?window.T365_HIIT_SEED:{maori:{},presc:{}};
+    const maori=L.maori||{},presc=L.presc||{};
+    const map={};
+    Object.keys(maori).forEach(ex=>{map[ex]=map[ex]||{ex,maori:maori[ex]||"",durs:[]};});
+    Object.keys(presc).forEach(k=>{
+      const idx=k.lastIndexOf("|");if(idx<0)return;
+      const ex=k.slice(0,idx),dur=k.slice(idx+1),p=presc[k]||{};
+      const sc=splitReps(p.c),so=splitReps(p.o),sd=splitReps(p.d);
+      map[ex]=map[ex]||{ex,maori:maori[ex]||"",durs:[]};
+      map[ex].durs.push({dur,reps:(sc.reps||so.reps||sd.reps||""),c:sc.weight,o:so.weight,d:sd.weight});
+    });
+    const arr=Object.values(map).sort((a,b)=>a.ex.localeCompare(b.ex));
+    arr.forEach(it=>it.durs.sort((a,b)=>durVal(a.dur)-durVal(b.dur)));
+    setItems(arr);setLoaded(true);
+  })();},[]);
+  function setField(ex,field,val){setItems(its=>its.map(it=>it.ex===ex?{...it,[field]:val}:it));}
+  function setDur(ex,dur,field,val){setItems(its=>its.map(it=>it.ex!==ex?it:{...it,durs:it.durs.map(d=>d.dur===dur?{...d,[field]:val}:d)}));}
+  async function save(){
+    setSaving(true);
+    const maori={},presc={};
+    items.forEach(it=>{
+      if(it.maori&&it.maori.trim())maori[it.ex]=it.maori.trim();
+      it.durs.forEach(d=>{presc[it.ex+"|"+d.dur]={c:recomb(d.reps,d.c),o:recomb(d.reps,d.o),d:recomb(d.reps,d.d)};});
+    });
+    const newLib={maori,presc};
+    const ex=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(LIB_KEY)+"&select=id");
+    if(ex&&ex.length)await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent(LIB_KEY),{content:JSON.stringify(newLib),updated_at:Date.now()});
+    else await sbPost("coaching_notes",{class_name:LIB_KEY,content:JSON.stringify(newLib),updated_at:Date.now()});
+    let updated=0;
+    for(const name of (allWorkoutNames||[])){
+      const key="__WORKOUT__"+name;
+      const wr=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(key)+"&select=content");
+      if(!wr||!wr.length||!wr[0].content)continue;
+      let p;try{p=JSON.parse(wr[0].content);}catch{continue;}
+      if(!Array.isArray(p))continue;
+      let changed=false;
+      p.forEach(r=>{
+        if(r.hdr!=null)return;
+        const exU=(r.exercise||"").trim().toUpperCase();if(!exU)return;
+        const mao=maori[exU];
+        if(mao!=null&&r.maori!==mao){r.maori=mao;changed=true;}
+        const pr=presc[exU+"|"+(r.duration||"")];
+        if(pr){
+          const sc=splitReps(pr.c),so=splitReps(pr.o),sd=splitReps(pr.d);
+          const nr=(sc.reps||so.reps||sd.reps||"");
+          if(r.reps!==nr){r.reps=nr;changed=true;}
+          if(r.c!==sc.weight){r.c=sc.weight;changed=true;}
+          if(r.o!==so.weight){r.o=so.weight;changed=true;}
+          if(r.d!==sd.weight){r.d=sd.weight;changed=true;}
+        }
+      });
+      if(changed){await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent(key),{content:JSON.stringify(p),updated_at:Date.now()});updated++;}
+    }
+    setSaving(false);
+    showToast("Library saved · "+updated+" workout"+(updated===1?"":"s")+" updated ✓");
+  }
+  if(!loaded)return React.createElement("div",{style:{color:"#444",fontSize:11,padding:"12px 0"}},"Loading library…");
+  const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:5,color:"#fff",fontSize:12,padding:"7px 9px",outline:"none",fontFamily:"inherit"};
+  const ql=q.trim().toUpperCase();
+  const filtered=(items||[]).filter(it=>!ql||it.ex.includes(ql)||(it.maori||"").toUpperCase().includes(ql));
+  return React.createElement("div",null,
+    React.createElement("div",{style:{fontSize:11,color:"#777",lineHeight:1.5,marginBottom:10}},"Edit the master exercise library. Saving updates every SAVED workout that uses each exercise + duration."),
+    React.createElement("input",{value:q,onChange:e=>setQ(e.target.value),placeholder:"Search exercise…",style:{...inS,width:"100%",marginBottom:12}}),
+    filtered.length===0&&React.createElement("div",{style:{fontSize:11,color:"#444",textAlign:"center",padding:"16px 0"}},"No exercises match."),
+    filtered.map(it=>{
+      const isOpen=!!open[it.ex];
+      return React.createElement("div",{key:it.ex,style:{border:"1px solid #1e1e1e",borderRadius:8,marginBottom:8,overflow:"hidden"}},
+        React.createElement("button",{onClick:()=>setOpen(o=>({...o,[it.ex]:!o[it.ex]})),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,background:isOpen?"#141414":"#0e0e0e",border:"none",padding:"11px 12px",cursor:"pointer",textAlign:"left"}},
+          React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.05em",color:"#fff"}},it.ex),
+          React.createElement("span",{style:{display:"flex",alignItems:"center",gap:8,flexShrink:0}},
+            it.maori&&React.createElement("span",{style:{fontSize:11,fontStyle:"italic",color:"#1d9bf0"}},it.maori),
+            React.createElement("span",{style:{color:"#555",fontSize:10}},isOpen?"▲":"▼")
+          )
+        ),
+        isOpen&&React.createElement("div",{style:{padding:"12px",background:"#0b0b0b"}},
+          React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3}},"MĀORI NAME"),
+          React.createElement("input",{value:it.maori,onChange:e=>setField(it.ex,"maori",e.target.value),placeholder:"—",style:{...inS,width:"100%",marginBottom:12,color:"#1d9bf0",fontStyle:"italic"}}),
+          it.durs.length===0&&React.createElement("div",{style:{fontSize:10,color:"#444"}},"No prescriptions yet — set values on a workout to add one."),
+          it.durs.map(d=>React.createElement("div",{key:d.dur,style:{marginBottom:12,paddingBottom:12,borderBottom:"1px solid #161616"}},
+            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.1em",color:"#888",marginBottom:6}},d.dur),
+            React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3}},"REPS"),
+            React.createElement("input",{value:d.reps,onChange:e=>setDur(it.ex,d.dur,"reps",e.target.value),placeholder:"e.g. 20 reps or x 4",style:{...inS,width:"100%",marginBottom:8,fontSize:12}}),
+            React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}},
+              ["c","o","d"].map((k,i)=>React.createElement("div",{key:k},
+                React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3,textAlign:"center"}},["COMMITMENT","CONSISTENCY","DETERMINATION"][i]),
+                React.createElement("input",{value:d[k],onChange:e=>setDur(it.ex,d.dur,k,e.target.value),placeholder:"—",style:{...inS,width:"100%",textAlign:"center",fontSize:11}})
+              ))
+            )
+          ))
+        )
+      );
+    }),
+    React.createElement("button",{onClick:save,disabled:saving,style:{width:"100%",marginTop:8,background:"#fff",color:"#000",border:"none",borderRadius:6,padding:"12px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",cursor:"pointer"}},saving?"SAVING & UPDATING…":"SAVE LIBRARY")
+  );
+}
 function CoachingView({showToast}){
   const BASE_GROUPS=[
     {label:"RISE UP",base:["RISE UP 1","RISE UP 2","RISE UP 3","RISE UP 4"]},
@@ -2359,6 +2470,7 @@ function CoachingView({showToast}){
   const [newRowName,setNewRowName]=useState("");
   const [savingRow,setSavingRow]=useState(false);
   const [removingGroup,setRemovingGroup]=useState(null);
+  const [showLib,setShowLib]=useState(false);
   useEffect(()=>{
     [...BASE_GROUPS.map(g=>g.label)].forEach(label=>{
       sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__EXTRA__"+label)+"&select=content")
@@ -2543,9 +2655,21 @@ function CoachingView({showToast}){
       )
     );
   }
+  const allWorkoutNames=[
+    ...BASE_GROUPS.flatMap(g=>[...(g.base||[]),...(extras[g.label]||[])]),
+    ...customGroups.flatMap(l=>(extras[l]||[]))
+  ];
   return React.createElement("div",{style:{marginTop:16}},
-    React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},
-      "COACHING NOTES & WORKOUTS"),
+    React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:16}},
+      React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600}},
+        "COACHING NOTES & WORKOUTS"),
+      React.createElement("button",{onClick:()=>setShowLib(v=>!v),
+        style:{background:showLib?"#0a1a2a":"none",border:"1px solid "+(showLib?"#1d3a5a":"#2a2a2a"),borderRadius:6,color:showLib?"#1d9bf0":"#666",fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.1em",padding:"6px 11px",cursor:"pointer",flexShrink:0}},
+        showLib?"← BACK":"LIBRARY DETAILS")
+    ),
+    showLib
+    ? React.createElement(LibraryDetailsEditor,{showToast,allWorkoutNames})
+    : React.createElement(React.Fragment,null,
     BASE_GROUPS.map(g=>renderGroup(g.label,g.base,false)),
     customGroups.map(label=>renderGroup(label,null,true)),
     !addingRow
@@ -2577,6 +2701,7 @@ function CoachingView({showToast}){
               "CANCEL")
           )
         )
+    )
   );
 }
 // ── Progress Tab ──────────────────────────────────────────────────────────────
