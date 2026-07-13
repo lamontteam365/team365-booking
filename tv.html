@@ -74,8 +74,9 @@ function render(name,rows){
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(doFit);
   setTimeout(doFit,300);
 }
-function doFit(){var f=document.getElementById("fit");if(!f)return;f.style.transform="none";var s=Math.min(window.innerWidth/f.offsetWidth,window.innerHeight/f.offsetHeight);f.style.transform="scale("+s+")";}
+function doFit(){var f=document.getElementById("fit");if(!f)return;var vw=window.innerWidth,vh=window.innerHeight;var portrait=vh>vw;var lng=Math.max(vw,vh),sht=Math.min(vw,vh);f.style.transform="none";f.style.width=lng+"px";var w=f.offsetWidth,h=f.offsetHeight;var s=Math.min(lng/w,sht/h);f.style.transform=(portrait?"rotate(90deg) ":"")+"scale("+s+")";}
 window.addEventListener("resize",doFit);
+window.addEventListener("orientationchange",function(){setTimeout(doFit,100);});
 // cast
 (function(){
   var btn=document.getElementById("cast");
