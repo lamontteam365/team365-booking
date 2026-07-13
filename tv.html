@@ -11,6 +11,9 @@ html,body{height:100%;background:#080808;color:#fff;font-family:'DM Sans',sans-s
 body{display:flex;align-items:center;justify-content:center}
 #cast{position:fixed;top:10px;left:12px;z-index:10;display:none;background:#0a1a2a;color:#1d9bf0;border:1px solid #1d3a5a;border-radius:6px;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.12em;padding:7px 16px;cursor:pointer}
 #err{color:#777;font-size:14px;letter-spacing:0.06em;text-align:center;padding:40px}
+#ctrl{position:fixed;bottom:8px;left:50%;transform:translateX(-50%);z-index:10;display:none;gap:6px;background:rgba(8,8,8,0.72);border:1px solid #333;border-radius:9px;padding:5px 7px;max-width:96vw;overflow-x:auto}
+.rbtn{background:#161616;color:#9aa;border:1px solid #333;border-radius:5px;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.08em;padding:5px 12px;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.rbtn.active{background:#1d9bf0;color:#fff;border-color:#1d9bf0}
 #fit{width:100vw;padding:2.4vh 3vw;transform-origin:center center}
 h1{font-family:'Syncopate',sans-serif;font-weight:700;font-size:22px;letter-spacing:0.1em;text-align:center;margin-bottom:8px}
 .wname{color:#1d9bf0}
@@ -34,6 +37,7 @@ h1{font-family:'Syncopate',sans-serif;font-weight:700;font-size:22px;letter-spac
 </head>
 <body>
 <button id="cast">▸ CAST TO TV</button>
+<div id="ctrl"></div>
 <div id="err">Loading…</div>
 <div id="fit"></div>
 <script>
@@ -66,13 +70,28 @@ function render(name,rows){
   var groups=[],cur=null,inRound=false;
   rows.forEach(function(r){ if(r.hdr!=null){inRound=/round/i.test(r.hdr);if(inRound){cur={hdr:r.hdr,hideTv:r.hideTv,dur:r.dur,sts:[]};groups.push(cur);}else{cur=null;}} else if(inRound&&cur)cur.sts.push(r); });
   if(!groups.length){document.getElementById("err").textContent="No rounds found for \""+name+"\".";return;}
-  var parts=groups.map(function(g){return '<div class="rd">'+(g.hideTv?"":'<div class="sec"><span class="rnm">'+esc(g.hdr)+'</span><span class="rtot">'+((g.dur&&g.dur.trim())?esc(g.dur.trim()):fmtSecs(roundSecs(g.sts)))+'</span></div>')+'<div class="sts">'+g.sts.map(stCard).join("")+'</div></div>';}).join("");
+  var parts=groups.map(function(g,i){return '<div class="rd" data-rd="'+i+'">'+(g.hideTv?"":'<div class="sec"><span class="rnm">'+esc(g.hdr)+'</span><span class="rtot">'+((g.dur&&g.dur.trim())?esc(g.dur.trim()):fmtSecs(roundSecs(g.sts)))+'</span></div>')+'<div class="sts">'+g.sts.map(stCard).join("")+'</div></div>';}).join("");
   var fit=document.getElementById("fit");
   fit.innerHTML='<h1>TEAM 365 <span class="wname">'+esc(name)+'</span></h1>'+parts;
   document.getElementById("err").style.display="none";
-  doFit();
+  var ctrl=document.getElementById("ctrl");
+  ctrl.innerHTML="";
+  if(groups.length>1){
+    var mk=function(label,idx){var b=document.createElement("button");b.className="rbtn";b.textContent=label;b.onclick=function(){setRound(idx);};return b;};
+    ctrl.appendChild(mk("ALL",-1));
+    groups.forEach(function(g,i){var m=(g.hdr||"").match(/(\d+)/);ctrl.appendChild(mk(m?("R"+m[1]):("R"+(i+1)),i));});
+    ctrl.style.display="flex";
+    setRound(-1);
+  }else{ctrl.style.display="none";doFit();}
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(doFit);
   setTimeout(doFit,300);
+}
+function setRound(i){
+  var rds=document.querySelectorAll("#fit .rd");
+  for(var k=0;k<rds.length;k++){rds[k].style.display=(i<0||k===i)?"":"none";}
+  var bs=document.querySelectorAll("#ctrl .rbtn");
+  for(var j=0;j<bs.length;j++){bs[j].className="rbtn"+((j===i+1)?" active":"");}
+  doFit();
 }
 function doFit(){var f=document.getElementById("fit");if(!f)return;var vw=window.innerWidth,vh=window.innerHeight;var portrait=vh>vw;var lng=Math.max(vw,vh),sht=Math.min(vw,vh);f.style.transform="none";f.style.width=lng+"px";var w=f.offsetWidth,h=f.offsetHeight;var s=Math.min(lng/w,sht/h);f.style.transform=(portrait?"rotate(90deg) ":"")+"scale("+s+")";}
 window.addEventListener("resize",doFit);
