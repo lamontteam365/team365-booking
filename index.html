@@ -1745,9 +1745,9 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
       React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,margin:"16px 0 10px"}},"SECTION VISIBILITY"),
       React.createElement("div",{style:{fontSize:11,color:"#666",letterSpacing:"0.04em",lineHeight:1.7,marginBottom:16}},"Turn a section on or off. When a section is off, its tab is hidden from members throughout the app. Admin management for each section stays available here."),
       [
-        {key:"classes",title:"CLASSES",enabled:classesEnabled,save:saveClassesSetting},
-        {key:"strength",title:"STRENGTH",enabled:strengthEnabled,save:saveStrengthSetting},
-        {key:"wellness",title:"WELLNESS · SAUNA + COLD PLUNGE",enabled:wellnessEnabled,save:saveWellnessSetting}
+        {key:"classes",title:"HIIT CLASSES",enabled:classesEnabled,save:saveClassesSetting},
+        {key:"strength",title:"STRENGTH CLASSES",enabled:strengthEnabled,save:saveStrengthSetting},
+        {key:"wellness",title:"WELLNESS CLASSES",enabled:wellnessEnabled,save:saveWellnessSetting}
       ].map(s=>React.createElement("div",{key:s.key,style:{background:"#141414",border:"1px solid #222",borderRadius:8,padding:"12px 16px",marginBottom:8}},
         React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
           React.createElement("div",null,
@@ -2114,7 +2114,7 @@ function WorkoutDetailsEditor({className,showToast}){
   const [dragOverId,setDragOverId]=useState(null);
   const wdGenId=()=>Math.random().toString(36).slice(2,9);
   function mapRow(r){
-    if(r.t==="h"||r.hdr!=null)return {id:wdGenId(),hdr:((r.label!=null?r.label:r.hdr)||""),hideTv:!!r.hideTv};
+    if(r.t==="h"||r.hdr!=null)return {id:wdGenId(),hdr:((r.label!=null?r.label:r.hdr)||""),hideTv:!!r.hideTv,dur:(r.dur!=null?r.dur:"")};
     if(r.reps!=null)return {id:wdGenId(),duration:r.duration||"1:00",exercise:r.exercise||"",maori:r.maori||"",reps:r.reps||"",c:r.c||"",o:r.o||"",d:r.d||"",notes:r.notes||"",station:r.station||""};
     const sc=splitReps(r.c||""),so=splitReps(r.o||""),sd=splitReps(r.d||"");
     return {id:wdGenId(),duration:r.duration||"1:00",exercise:r.exercise||"",maori:r.maori||"",reps:(sc.reps||so.reps||sd.reps||""),c:sc.weight,o:so.weight,d:sd.weight,notes:r.notes||"",station:r.station||""};
@@ -2182,7 +2182,7 @@ function WorkoutDetailsEditor({className,showToast}){
   function openDisplay(){
     const groups=[];let cur=null;let inRound=false;
     rows.forEach(r=>{
-      if(r.hdr!=null){inRound=/round/i.test(r.hdr);if(inRound){cur={hdr:r.hdr,hideTv:r.hideTv,sts:[]};groups.push(cur);}else{cur=null;}}
+      if(r.hdr!=null){inRound=/round/i.test(r.hdr);if(inRound){cur={hdr:r.hdr,hideTv:r.hideTv,dur:r.dur,sts:[]};groups.push(cur);}else{cur=null;}}
       else if(inRound&&cur)cur.sts.push(r);
     });
     const roundSecs=sts=>{let t=0;sts.forEach(s=>{const p=(s.duration||"").split(":");if(p.length===2)t+=(parseInt(p[0])||0)*60+(parseInt(p[1])||0);});return t;};
@@ -2193,8 +2193,8 @@ function WorkoutDetailsEditor({className,showToast}){
       const lvc=(name,val)=>`<div class="lvc"><div class="lvn">${name}</div><div class="lvb">${displayEsc(val)}</div></div>`;
       return `<div class="cell"><div class="top"><span class="stn">${r.station?displayEsc(r.station):"&nbsp;"}</span><span class="sdur">${r.duration?fmtDur(r.duration):"&nbsp;"}</span></div><div class="st"><div class="hd"><span class="ex">${displayEsc(r.exercise)}</span>${r.maori?`<span class="mao">${displayEsc(r.maori)}</span>`:""}</div><div class="reps">${reps||"&nbsp;"}</div><div class="lv">${lvc("COMMITMENT",r.c)}${lvc("CONSISTENCY",r.o)}${lvc("DETERMINATION",r.d)}</div></div></div>`;
     };
-    const parts=groups.map(g=>`<div class="rd">${g.hideTv?"":`<div class="sec"><span class="rnm">${displayEsc(g.hdr)}</span><span class="rtot">${fmtSecs(roundSecs(g.sts))}</span></div>`}<div class="sts">${g.sts.map(stCard).join("")}</div></div>`).join("");
-    const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${displayEsc(className)}</title><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,600&family=Syncopate:wght@700&display=swap" rel="stylesheet"><style>*{box-sizing:border-box;margin:0;padding:0}html,body{height:100%;background:#080808;color:#fff;font-family:'DM Sans',sans-serif;overflow:hidden}body{display:flex;align-items:center;justify-content:center}#fit{width:100vw;padding:2.4vh 3vw;transform-origin:center center}h1{font-family:'Syncopate',sans-serif;font-weight:700;font-size:22px;letter-spacing:0.1em;text-align:center;margin-bottom:8px}.wname{color:#1d9bf0}.rd{margin-bottom:10px}.sec{display:flex;align-items:baseline;gap:16px;font-family:'Bebas Neue',sans-serif;font-size:23px;letter-spacing:0.1em;background:#0a1a2a;border:2px solid #565656;border-radius:6px;padding:4px 12px;margin-bottom:12px}.rnm{color:#1d9bf0}.rtot{color:#fff;font-size:22px}.sts{display:grid;grid-template-columns:repeat(5,1fr);grid-auto-rows:1fr;gap:22px}.cell{display:flex;flex-direction:column}.top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:3px;padding:0 3px}.stn{font-size:12px;font-weight:400;letter-spacing:0.14em;color:#fff}.sdur{font-size:12px;font-weight:400;letter-spacing:0.14em;color:#fff}.st{flex:1;background:#202020;border:1px solid #565656;border-radius:9px;padding:10px 11px;display:flex;flex-direction:column}.hd{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:5px}.ex{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.1em;line-height:1.15;flex:1;min-width:0}.mao{font-size:12px;font-style:italic;color:#1d9bf0;white-space:nowrap;flex-shrink:0;text-align:right;padding-left:6px}.reps{font-size:14px;font-weight:700;letter-spacing:0.05em;color:#1d9bf0;margin-bottom:5px}.lv{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}.lvc{display:flex;flex-direction:column}.lvn{font-size:9px;letter-spacing:0.02em;color:#fff;font-weight:600;text-align:center;margin-bottom:3px}.lvb{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;background:#0a1a2a;border:1px solid #565656;border-radius:5px;padding:6px 3px;font-size:15px;color:#fff;line-height:1.15;min-height:28px}</style></head><body><div id="fit"><h1>TEAM 365 <span class="wname">${displayEsc(className)}</span></h1>${parts}</div><script>(function(){function fit(){var f=document.getElementById('fit');if(!f)return;f.style.transform='none';var s=Math.min(window.innerWidth/f.offsetWidth,window.innerHeight/f.offsetHeight);f.style.transform='scale('+s+')';}window.addEventListener('resize',fit);window.addEventListener('load',fit);if(document.fonts&&document.fonts.ready){document.fonts.ready.then(fit);}setTimeout(fit,250);})();<\/script></body></html>`;
+    const parts=groups.map(g=>`<div class="rd">${g.hideTv?"":`<div class="sec"><span class="rnm">${displayEsc(g.hdr)}</span><span class="rtot">${(g.dur&&g.dur.trim())?displayEsc(g.dur.trim()):fmtSecs(roundSecs(g.sts))}</span></div>`}<div class="sts">${g.sts.map(stCard).join("")}</div></div>`).join("");
+    const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${displayEsc(className)}</title><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,600&family=Syncopate:wght@700&display=swap" rel="stylesheet"><style>*{box-sizing:border-box;margin:0;padding:0}html,body{height:100%;background:#080808;color:#fff;font-family:'DM Sans',sans-serif;overflow:hidden}body{display:flex;align-items:center;justify-content:center}#fit{width:100vw;padding:2.4vh 3vw;transform-origin:center center}h1{font-family:'Syncopate',sans-serif;font-weight:700;font-size:22px;letter-spacing:0.1em;text-align:center;margin-bottom:8px}.wname{color:#1d9bf0}.rd{margin-bottom:10px}.sec{display:flex;align-items:baseline;gap:12px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.1em;background:#0a1a2a;border:1px solid #565656;border-radius:6px;padding:3px 11px;margin-bottom:12px}.rnm{color:#1d9bf0}.rtot{color:#cfe3f5;font-size:12px;font-weight:400;font-family:'DM Sans',sans-serif;letter-spacing:0.08em}.sts{display:grid;grid-template-columns:repeat(5,1fr);grid-auto-rows:1fr;gap:22px}.cell{display:flex;flex-direction:column}.top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:3px;padding:0 3px}.stn{font-size:12px;font-weight:400;letter-spacing:0.14em;color:#fff}.sdur{font-size:12px;font-weight:400;letter-spacing:0.14em;color:#fff}.st{flex:1;background:#202020;border:1px solid #565656;border-radius:9px;padding:10px 11px;display:flex;flex-direction:column}.hd{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:5px}.ex{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.1em;line-height:1.15;flex:1;min-width:0}.mao{font-size:12px;font-style:italic;color:#1d9bf0;white-space:nowrap;flex-shrink:0;text-align:right;padding-left:6px}.reps{font-size:14px;font-weight:700;letter-spacing:0.05em;color:#1d9bf0;margin-bottom:5px}.lv{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}.lvc{display:flex;flex-direction:column}.lvn{font-size:9px;letter-spacing:0.02em;color:#fff;font-weight:600;text-align:center;margin-bottom:3px}.lvb{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;background:#0a1a2a;border:1px solid #565656;border-radius:5px;padding:6px 3px;font-size:15px;color:#fff;line-height:1.15;min-height:28px}</style></head><body><div id="fit"><h1>TEAM 365 <span class="wname">${displayEsc(className)}</span></h1>${parts}</div><script>(function(){function fit(){var f=document.getElementById('fit');if(!f)return;f.style.transform='none';var s=Math.min(window.innerWidth/f.offsetWidth,window.innerHeight/f.offsetHeight);f.style.transform='scale('+s+')';}window.addEventListener('resize',fit);window.addEventListener('load',fit);if(document.fonts&&document.fonts.ready){document.fonts.ready.then(fit);}setTimeout(fit,250);})();<\/script></body></html>`;
     try{
       const blob=new Blob([html],{type:"text/html"});
       const url=URL.createObjectURL(blob);
@@ -2207,7 +2207,7 @@ function WorkoutDetailsEditor({className,showToast}){
   }
   async function save(){
     setSaving(true);
-    const clean=rows.map(r=>r.hdr!=null?{hdr:(r.hdr||"").trim().toUpperCase(),hideTv:!!r.hideTv}:{duration:r.duration,exercise:(r.exercise||"").trim().toUpperCase(),maori:(r.maori||"").trim(),reps:(r.reps||"").trim(),c:(r.c||"").trim(),o:(r.o||"").trim(),d:(r.d||"").trim(),notes:(r.notes||"").trim(),station:(r.station||"").trim()}).filter(r=>r.hdr!=null?r.hdr!=="":r.exercise!=="");
+    const clean=rows.map(r=>r.hdr!=null?{hdr:(r.hdr||"").trim().toUpperCase(),hideTv:!!r.hideTv,dur:(r.dur||"").trim()}:{duration:r.duration,exercise:(r.exercise||"").trim().toUpperCase(),maori:(r.maori||"").trim(),reps:(r.reps||"").trim(),c:(r.c||"").trim(),o:(r.o||"").trim(),d:(r.d||"").trim(),notes:(r.notes||"").trim(),station:(r.station||"").trim()}).filter(r=>r.hdr!=null?r.hdr!=="":r.exercise!=="");
     const ex0=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(storageKey)+"&select=id");
     const body={content:JSON.stringify(clean),updated_at:Date.now()};
     if(ex0&&ex0.length)await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent(storageKey),body);
@@ -2302,6 +2302,7 @@ function WorkoutDetailsEditor({className,showToast}){
           React.createElement("span",{...dragHandleProps(r.id)},"⠿"),
           React.createElement("button",{onClick:()=>setCollapsed(p=>{const n=new Set(p);n.has(r.id)?n.delete(r.id):n.add(r.id);return n;}),style:{background:"none",border:"none",color:"#888",fontSize:14,cursor:"pointer",transition:"transform .2s",transform:isC?"rotate(-90deg)":"rotate(0deg)",padding:"0 2px",flexShrink:0}},"▾"),
           React.createElement("input",{value:r.hdr,onChange:e=>setRow(r.id,"hdr",e.target.value.toUpperCase()),placeholder:"SECTION (e.g. ROUND 1, WARM UP)",style:{...inS,flex:1,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.12em",fontSize:14,color:"#1d9bf0",background:"#0a1a2a",borderColor:"#1d3a5a"}}),
+          React.createElement("input",{value:r.dur||"",onChange:e=>setRow(r.id,"dur",e.target.value),placeholder:"TIME",title:"Round time shown on TV — leave blank to auto-total the station times",style:{...inS,width:60,fontFamily:"'DM Sans',sans-serif",fontSize:11,textAlign:"center",color:"#cfe3f5",background:"#0a1a2a",borderColor:"#1d3a5a",flexShrink:0}}),
           React.createElement("button",{onClick:()=>setRow(r.id,"hideTv",!r.hideTv),title:"Hide this round's title on the TV view",style:{background:"none",border:"1px solid "+(r.hideTv?"#8a2515":"#2a2a2a"),borderRadius:4,color:r.hideTv?"#e06040":"#666",fontSize:9,letterSpacing:"0.06em",fontWeight:600,padding:"5px 7px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},r.hideTv?"TV OFF":"TV"),
           React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:1}},
             React.createElement("button",{onClick:()=>moveRow(r.id,-1),disabled:idx===0,style:{background:"none",border:"none",color:idx===0?"#252525":"#666",cursor:idx===0?"default":"pointer",fontSize:10,lineHeight:1,padding:"0 4px"}},"▲"),
@@ -2360,12 +2361,12 @@ function LibraryDetailsEditor({showToast,allWorkoutNames}){
     if(!L||!L.maori)L=(typeof window!=="undefined"&&window.T365_HIIT_SEED)?window.T365_HIIT_SEED:{maori:{},presc:{}};
     const maori=L.maori||{},presc=L.presc||{};
     const map={};
-    Object.keys(maori).forEach(ex=>{map[ex]=map[ex]||{ex,maori:maori[ex]||"",durs:[]};});
+    Object.keys(maori).forEach(ex=>{map[ex]=map[ex]||{ex,name:ex,maori:maori[ex]||"",durs:[]};});
     Object.keys(presc).forEach(k=>{
       const idx=k.lastIndexOf("|");if(idx<0)return;
       const ex=k.slice(0,idx),dur=k.slice(idx+1),p=presc[k]||{};
       const sc=splitReps(p.c),so=splitReps(p.o),sd=splitReps(p.d);
-      map[ex]=map[ex]||{ex,maori:maori[ex]||"",durs:[]};
+      map[ex]=map[ex]||{ex,name:ex,maori:maori[ex]||"",durs:[]};
       map[ex].durs.push({dur,reps:(sc.reps||so.reps||sd.reps||""),c:sc.weight,o:so.weight,d:sd.weight});
     });
     const arr=Object.values(map).sort((a,b)=>a.ex.localeCompare(b.ex));
@@ -2374,12 +2375,15 @@ function LibraryDetailsEditor({showToast,allWorkoutNames}){
   })();},[]);
   function setField(ex,field,val){setItems(its=>its.map(it=>it.ex===ex?{...it,[field]:val}:it));}
   function setDur(ex,dur,field,val){setItems(its=>its.map(it=>it.ex!==ex?it:{...it,durs:it.durs.map(d=>d.dur===dur?{...d,[field]:val}:d)}));}
+  function removeExercise(ex){setItems(its=>its.filter(it=>it.ex!==ex));}
   async function save(){
     setSaving(true);
     const maori={},presc={};
     items.forEach(it=>{
-      if(it.maori&&it.maori.trim())maori[it.ex]=it.maori.trim();
-      it.durs.forEach(d=>{presc[it.ex+"|"+d.dur]={c:recomb(d.reps,d.c),o:recomb(d.reps,d.o),d:recomb(d.reps,d.d)};});
+      const nm=(it.name||it.ex||"").trim().toUpperCase();
+      if(!nm)return;
+      if(it.maori&&it.maori.trim())maori[nm]=it.maori.trim();
+      it.durs.forEach(d=>{presc[nm+"|"+d.dur]={c:recomb(d.reps,d.c),o:recomb(d.reps,d.o),d:recomb(d.reps,d.d)};});
     });
     const newLib={maori,presc};
     const ex=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(LIB_KEY)+"&select=id");
@@ -2416,7 +2420,7 @@ function LibraryDetailsEditor({showToast,allWorkoutNames}){
   if(!loaded)return React.createElement("div",{style:{color:"#444",fontSize:11,padding:"12px 0"}},"Loading library…");
   const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:5,color:"#fff",fontSize:12,padding:"7px 9px",outline:"none",fontFamily:"inherit"};
   const ql=q.trim().toUpperCase();
-  const filtered=(items||[]).filter(it=>!ql||it.ex.includes(ql)||(it.maori||"").toUpperCase().includes(ql));
+  const filtered=(items||[]).filter(it=>!ql||(it.name||it.ex).toUpperCase().includes(ql)||(it.maori||"").toUpperCase().includes(ql));
   return React.createElement("div",null,
     React.createElement("div",{style:{fontSize:11,color:"#777",lineHeight:1.5,marginBottom:10}},"Edit the master exercise library. Saving updates every SAVED workout that uses each exercise + duration."),
     React.createElement("input",{value:q,onChange:e=>setQ(e.target.value),placeholder:"Search exercise…",style:{...inS,width:"100%",marginBottom:12}}),
@@ -2424,14 +2428,19 @@ function LibraryDetailsEditor({showToast,allWorkoutNames}){
     filtered.map(it=>{
       const isOpen=!!open[it.ex];
       return React.createElement("div",{key:it.ex,style:{border:"1px solid #1e1e1e",borderRadius:8,marginBottom:8,overflow:"hidden"}},
-        React.createElement("button",{onClick:()=>setOpen(o=>({...o,[it.ex]:!o[it.ex]})),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,background:isOpen?"#141414":"#0e0e0e",border:"none",padding:"11px 12px",cursor:"pointer",textAlign:"left"}},
-          React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.05em",color:"#fff"}},it.ex),
+        React.createElement("button",{onClick:()=>setOpen(o=>({...o,[it.ex]:!o[it.ex]})),style:{width:"100%",display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:8,background:isOpen?"#141414":"#0e0e0e",border:"none",padding:"11px 12px",cursor:"pointer",textAlign:"left"}},
+          React.createElement("span",{style:{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap",minWidth:0}},
+            React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.05em",color:"#fff"}},it.name||it.ex),
+            it.durs.length>0&&React.createElement("span",{style:{fontSize:10,fontWeight:400,color:"#666",letterSpacing:"0.04em"}},it.durs.map(d=>d.dur).join(" · "))
+          ),
           React.createElement("span",{style:{display:"flex",alignItems:"center",gap:8,flexShrink:0}},
             it.maori&&React.createElement("span",{style:{fontSize:11,fontStyle:"italic",color:"#1d9bf0"}},it.maori),
             React.createElement("span",{style:{color:"#555",fontSize:10}},isOpen?"▲":"▼")
           )
         ),
         isOpen&&React.createElement("div",{style:{padding:"12px",background:"#0b0b0b"}},
+          React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3}},"EXERCISE NAME"),
+          React.createElement("input",{value:it.name||"",onChange:e=>setField(it.ex,"name",e.target.value.toUpperCase()),placeholder:"Exercise name",style:{...inS,width:"100%",marginBottom:12,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.05em",fontSize:14}}),
           React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3}},"MĀORI NAME"),
           React.createElement("input",{value:it.maori,onChange:e=>setField(it.ex,"maori",e.target.value),placeholder:"—",style:{...inS,width:"100%",marginBottom:12,color:"#1d9bf0",fontStyle:"italic"}}),
           it.durs.length===0&&React.createElement("div",{style:{fontSize:10,color:"#444"}},"No prescriptions yet — set values on a workout to add one."),
@@ -2445,7 +2454,8 @@ function LibraryDetailsEditor({showToast,allWorkoutNames}){
                 React.createElement("input",{value:d[k],onChange:e=>setDur(it.ex,d.dur,k,e.target.value),placeholder:"—",style:{...inS,width:"100%",textAlign:"center",fontSize:11}})
               ))
             )
-          ))
+          )),
+          React.createElement("button",{onClick:()=>{if(typeof window!=="undefined"&&window.confirm&&!window.confirm("Delete \""+(it.name||it.ex)+"\" from the library? This won't remove it from existing workouts."))return;removeExercise(it.ex);},style:{marginTop:4,background:"none",border:"1px solid #3a1a12",borderRadius:6,color:"#8a2515",fontSize:10,letterSpacing:"0.1em",fontWeight:600,padding:"8px 12px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},"🗑 DELETE EXERCISE")
         )
       );
     }),
@@ -3517,6 +3527,9 @@ function MemberWorkoutAdmin({member}){
   const [showImport,setShowImport]=useState(false);
   const [importText,setImportText]=useState("");
   const [importErr,setImportErr]=useState("");
+  const [mwCollapsed,setMwCollapsed]=useState(new Set());
+  const [mwDragId,setMwDragId]=useState(null);
+  const [mwDragOverId,setMwDragOverId]=useState(null);
   const key=mwKey(member.email,weekStart);
   useEffect(()=>{load();},[weekStart]);
   // Parse an AI-generated JSON week and replace the whole week's draft. Does not save — admin reviews then hits Save.
@@ -3566,6 +3579,10 @@ function MemberWorkoutAdmin({member}){
   function moveItem(dk,id,dir){setDraft(p=>{const a=[...(p[dk]||[])];const idx=a.findIndex(x=>x.id===id);if(idx<0)return p;const w=a[idx].workout;let j=idx+dir;while(j>=0&&j<a.length&&a[j].workout!==w)j+=dir;if(j<0||j>=a.length)return p;[a[idx],a[j]]=[a[j],a[idx]];return{...p,[dk]:a};});}
   function setWorkoutName(dk,w,name){setDraft(p=>({...p,[dk]:(p[dk]||[]).map(it=>(parseInt(it.workout)||1)===w?{...it,workoutName:name}:it)}));}
   function addWorkout(dk){setDraft(p=>{const a=p[dk]||[];const maxW=a.length?Math.max(...a.map(it=>parseInt(it.workout)||1)):0;return{...p,[dk]:[...a,{id:mwGenId(),name:"",section:"Main",sets:"",reps:"",duration:"",notes:"",log:"kg",workout:maxW+1,workoutName:"",repeat:1}]};});}
+  function mwReorder(dk,fromId,toId){setDraft(p=>{const a=[...(p[dk]||[])];const f=a.findIndex(x=>x.id===fromId),t=a.findIndex(x=>x.id===toId);if(f<0||t<0||f===t)return p;if((parseInt(a[f].workout)||1)!==(parseInt(a[t].workout)||1))return p;const m=a.splice(f,1)[0];a.splice(t,0,m);return{...p,[dk]:a};});}
+  function mwFinishDrag(dk){if(mwDragId&&mwDragOverId&&mwDragId!==mwDragOverId)mwReorder(dk,mwDragId,mwDragOverId);setMwDragId(null);setMwDragOverId(null);}
+  function mwDragHandle(dk,id){return {draggable:true,onDragStart:e=>{setMwDragId(id);try{e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",id);}catch(_){ }},onDragEnd:()=>{setMwDragId(null);setMwDragOverId(null);},onTouchStart:()=>setMwDragId(id),onTouchMove:e=>{const t=e.touches&&e.touches[0];if(!t)return;const el=document.elementFromPoint(t.clientX,t.clientY);const row=el&&el.closest?el.closest("[data-mwid]"):null;if(row)setMwDragOverId(row.getAttribute("data-mwid"));},onTouchEnd:()=>mwFinishDrag(dk),style:{cursor:"grab",touchAction:"none",color:"#666",fontSize:15,lineHeight:1,padding:"0 4px",userSelect:"none",flexShrink:0}};}
+  function mwDropProps(dk,id){return {"data-mwid":id,onDragOver:e=>{e.preventDefault();if(mwDragId&&mwDragId!==id)setMwDragOverId(id);},onDrop:e=>{e.preventDefault();mwFinishDrag(dk);}};}
   async function upsertWeek(k,contentObj){
     const json=JSON.stringify(contentObj);
     const existing=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(k)}&select=id`);
@@ -3643,8 +3660,10 @@ function MemberWorkoutAdmin({member}){
               React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#1d9bf0",flexShrink:0}},"WORKOUT "+g.num),
               React.createElement("input",{value:g.name,onChange:e=>setWorkoutName(dk,g.num,e.target.value),placeholder:"Name (optional) e.g. RUN, LOWER",style:{...inS,flex:1,fontSize:12}})
             ),
-            ...g.exercises.map((it,gi)=>React.createElement("div",{key:it.id,style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:6,padding:"10px",marginBottom:8}},
-              React.createElement("div",{style:{display:"flex",gap:8,marginBottom:6,alignItems:"center"}},
+            ...g.exercises.map((it,gi)=>{const isCol=mwCollapsed.has(it.id);return React.createElement("div",{key:it.id,style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:6,padding:"10px",marginBottom:8,outline:mwDragOverId===it.id?"2px solid #1d9bf0":"none"},...mwDropProps(dk,it.id)},
+              React.createElement("div",{style:{display:"flex",gap:6,marginBottom:isCol?0:6,alignItems:"center"}},
+                React.createElement("span",{...mwDragHandle(dk,it.id),title:"Drag to reorder"},"⠿"),
+                React.createElement("button",{onClick:()=>setMwCollapsed(p=>{const n=new Set(p);n.has(it.id)?n.delete(it.id):n.add(it.id);return n;}),style:{background:"none",border:"none",color:"#888",fontSize:13,cursor:"pointer",transform:isCol?"rotate(-90deg)":"none",transition:"transform .15s",padding:"0 2px",flexShrink:0}},"▾"),
                 React.createElement("input",{value:it.name,onChange:e=>setItem(dk,it.id,"name",e.target.value.toUpperCase()),placeholder:"Exercise name e.g. BACK SQUAT",
                   style:{...inS,flex:1,color:"#fff",fontSize:14,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.06em"}}),
                 React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:1,flexShrink:0}},
@@ -3653,6 +3672,7 @@ function MemberWorkoutAdmin({member}){
                 ),
                 React.createElement("button",{onClick:()=>removeItem(dk,it.id),style:{background:"none",border:"1px solid #2a2a2a",borderRadius:4,color:"#8a2515",fontSize:12,padding:"4px 9px",cursor:"pointer",flexShrink:0}},"✕")
               ),
+              !isCol&&React.createElement(React.Fragment,null,
               React.createElement("div",{style:{display:"flex",gap:6,marginBottom:6}},
                 React.createElement("select",{value:it.section,onChange:e=>setItem(dk,it.id,"section",e.target.value),style:{...inS,flex:1,cursor:"pointer"}},
                   MW_SECTIONS.map(s=>React.createElement("option",{key:s,value:s},s))),
@@ -3673,7 +3693,8 @@ function MemberWorkoutAdmin({member}){
                 React.createElement("select",{value:it.repeat||1,onChange:e=>setItem(dk,it.id,"repeat",parseInt(e.target.value)),style:{...inS,fontSize:12,padding:"4px 6px",cursor:"pointer"}},
                   repChoices.map(n=>React.createElement("option",{key:n,value:n},n===1?"1 week":n+" weeks")))
               )
-            )),
+              )
+            );}),
             React.createElement("button",{onClick:()=>addItem(dk,g.num),style:{width:"100%",background:"none",border:"1px dashed #2a2a2a",borderRadius:5,color:"#666",fontSize:10,letterSpacing:"0.12em",padding:"7px",cursor:"pointer"}},"+ ADD EXERCISE")
           )),
           React.createElement("button",{onClick:()=>addWorkout(dk),style:{width:"100%",background:"none",border:"1px dashed #1d3a5a",borderRadius:5,color:"#1d9bf0",fontSize:10,letterSpacing:"0.12em",padding:"8px",cursor:"pointer",marginTop:2}},"+ ADD WORKOUT")
