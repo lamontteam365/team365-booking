@@ -9,14 +9,14 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:#080808;color:#fff;font-family:'DM Sans',sans-serif;overflow:hidden}
 body{display:flex;align-items:center;justify-content:center}
-#cast{position:fixed;top:10px;right:12px;z-index:10;display:none;background:#0a1a2a;color:#1d9bf0;border:1px solid #1d3a5a;border-radius:6px;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.12em;padding:7px 16px;cursor:pointer}
+#cast{position:fixed;top:10px;left:12px;z-index:10;display:none;background:#0a1a2a;color:#1d9bf0;border:1px solid #1d3a5a;border-radius:6px;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.12em;padding:7px 16px;cursor:pointer}
 #err{color:#777;font-size:14px;letter-spacing:0.06em;text-align:center;padding:40px}
 #fit{width:100vw;padding:2.4vh 3vw;transform-origin:center center}
 h1{font-family:'Syncopate',sans-serif;font-weight:700;font-size:22px;letter-spacing:0.1em;text-align:center;margin-bottom:8px}
 .wname{color:#1d9bf0}
 .rd{margin-bottom:10px}
-.sec{display:flex;align-items:baseline;gap:16px;font-family:'Bebas Neue',sans-serif;font-size:23px;letter-spacing:0.1em;background:#0a1a2a;border:2px solid #565656;border-radius:6px;padding:4px 12px;margin-bottom:12px}
-.rnm{color:#1d9bf0}.rtot{color:#fff;font-size:22px}
+.sec{display:flex;align-items:baseline;gap:12px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.1em;background:#0a1a2a;border:1px solid #565656;border-radius:6px;padding:3px 11px;margin-bottom:12px}
+.rnm{color:#1d9bf0}.rtot{color:#cfe3f5;font-size:12px;font-weight:400;font-family:'DM Sans',sans-serif;letter-spacing:0.08em}
 .sts{display:grid;grid-template-columns:repeat(5,1fr);grid-auto-rows:1fr;gap:22px}
 .cell{display:flex;flex-direction:column}
 .top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:3px;padding:0 3px}
@@ -51,7 +51,7 @@ function fmtSecs(t){if(t<=0)return "";if(t%60===0){var m=t/60;return m+(m===1?" 
 function fmtDur(d){var p=(d||"").split(":");if(p.length!==2)return esc(d||"");var m=parseInt(p[0])||0,s=parseInt(p[1])||0;if(s===0)return m+(m===1?" MINUTE":" MINUTES");return m+":"+String(s).padStart(2,"0")+" MINUTES";}
 function roundSecs(sts){var t=0;sts.forEach(function(s){var p=(s.duration||"").split(":");if(p.length===2)t+=(parseInt(p[0])||0)*60+(parseInt(p[1])||0);});return t;}
 function normalize(rows){return rows.map(function(r){
-  if(r.t==="h"||r.hdr!=null)return {hdr:(r.label!=null?r.label:r.hdr)||"",hideTv:!!r.hideTv};
+  if(r.t==="h"||r.hdr!=null)return {hdr:(r.label!=null?r.label:r.hdr)||"",hideTv:!!r.hideTv,dur:(r.dur!=null?r.dur:"")};
   if(r.reps!=null)return {duration:r.duration||"",exercise:r.exercise||"",maori:r.maori||"",reps:r.reps||"",c:r.c||"",o:r.o||"",d:r.d||"",station:r.station||""};
   var sc=splitReps(r.c||""),so=splitReps(r.o||""),sd=splitReps(r.d||"");
   return {duration:r.duration||"",exercise:r.exercise||"",maori:r.maori||"",reps:(sc.reps||so.reps||sd.reps||""),c:sc.weight,o:so.weight,d:sd.weight,station:r.station||""};
@@ -65,9 +65,9 @@ function stCard(r){
 function render(name,rows){
   numberStations(rows);
   var groups=[],cur=null,inRound=false;
-  rows.forEach(function(r){ if(r.hdr!=null){inRound=/round/i.test(r.hdr);if(inRound){cur={hdr:r.hdr,hideTv:r.hideTv,sts:[]};groups.push(cur);}else{cur=null;}} else if(inRound&&cur)cur.sts.push(r); });
+  rows.forEach(function(r){ if(r.hdr!=null){inRound=/round/i.test(r.hdr);if(inRound){cur={hdr:r.hdr,hideTv:r.hideTv,dur:r.dur,sts:[]};groups.push(cur);}else{cur=null;}} else if(inRound&&cur)cur.sts.push(r); });
   if(!groups.length){document.getElementById("err").textContent="No rounds found for \""+name+"\".";return;}
-  var parts=groups.map(function(g){return '<div class="rd">'+(g.hideTv?"":'<div class="sec"><span class="rnm">'+esc(g.hdr)+'</span><span class="rtot">'+fmtSecs(roundSecs(g.sts))+'</span></div>')+'<div class="sts">'+g.sts.map(stCard).join("")+'</div></div>';}).join("");
+  var parts=groups.map(function(g){return '<div class="rd">'+(g.hideTv?"":'<div class="sec"><span class="rnm">'+esc(g.hdr)+'</span><span class="rtot">'+((g.dur&&g.dur.trim())?esc(g.dur.trim()):fmtSecs(roundSecs(g.sts)))+'</span></div>')+'<div class="sts">'+g.sts.map(stCard).join("")+'</div></div>';}).join("");
   var fit=document.getElementById("fit");
   fit.innerHTML='<h1>TEAM 365 <span class="wname">'+esc(name)+'</span></h1>'+parts;
   document.getElementById("err").style.display="none";
