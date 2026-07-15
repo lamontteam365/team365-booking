@@ -543,7 +543,7 @@ function ImageCropper({imageSrc,onSave,onCancel}){
   );
 }
 // ── Member Profile Overlay (Admin) ────────────────────────────────────────────
-function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
+function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk}){
   const upcomingBks=bookings.filter(b=>b.email===member.email&&b.date_key>=toDS(new Date())).length;
   const attendedBks=bookings.filter(b=>b.email===member.email&&b.date_key<toDS(new Date())).length;
   const joinDate=fmtJoinDate(member.joined_at);
@@ -579,7 +579,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
       await sbDelete("coaching_notes",q);
       setAccTabs(null);
     }else{
-      const existing=await sbGet("coaching_notes",q+"&select=id");
+      const existing=await sbGet("coaching_notes",q+"&select=class_name");
       const body={content:JSON.stringify({tabs:nextTabs}),updated_at:Date.now()};
       if(existing&&existing.length)await sbPatch("coaching_notes",q,body);
       else await sbPost("coaching_notes",{class_name:"__ACCESS__"+member.email,...body});
@@ -920,7 +920,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin}){
         ),
         accMsg&&React.createElement("div",{style:{fontSize:10,color:"#4aaa88",letterSpacing:"0.04em",marginBottom:4}},accMsg)
       ),
-      currentUserIsAdmin&&React.createElement(MemberWorkoutAdmin,{member,memberView:wkMemberView}),
+      currentUserIsAdmin&&(mfWk!==false)&&React.createElement(MemberWorkoutAdmin,{member,memberView:wkMemberView}),
       currentUserIsAdmin&&React.createElement(React.Fragment,null,
         React.createElement("div",{className:"mp-section"},"ADMIN CONTROLS"),
         React.createElement("button",{
@@ -1335,12 +1335,14 @@ function MilestoneAdminPanel({milestoneConfig,saveMilestoneConfig,showToast}){
     )
   );
 }
-function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg}){
+function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg}){
   const [expandedTier,setExpandedTier]=useState(null);
   const [admDate,setAdmDate]=useState(new Date());
   const [expanded,setExpanded]=useState({});
   const [members,setMembers]=useState([]);
   const [membersLoaded,setMembersLoaded]=useState(false);
+  const [masterHidden,setMasterHidden]=useState(false);
+  const [mhSaving,setMhSaving]=useState(false);
   const [wellAdmBks,setWellAdmBks]=useState([]);
   const [wellAdmLoaded,setWellAdmLoaded]=useState(false);
   const [selectedMember,setSelectedMember]=useState(null);
@@ -1427,6 +1429,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
   useEffect(()=>{
     if(admSeg==="members"&&!membersLoaded){
       sbGet("members","select=*&order=name.asc").then(data=>{setMembers(data||[]);setMembersLoaded(true);});
+      sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__MASTER_HIDDEN__")+"&select=content").then(r=>{setMasterHidden(!!(r&&r.length&&r[0].content==="1"));});
     }
     if(admSeg==="wellness"&&!wellAdmLoaded){
       const keys=[];const now=new Date();now.setHours(0,0,0,0);
@@ -1434,6 +1437,18 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
       sbGet("wellness_bookings",`date_key=in.(${keys.join(",")})&select=email,name,date_key,time`).then(data=>{setWellAdmBks(data||[]);setWellAdmLoaded(true);});
     }
   },[admSeg]);
+  async function toggleMasterHidden(){
+    const nv=!masterHidden;setMasterHidden(nv);setMhSaving(true);
+    const key="__MASTER_HIDDEN__";const q="class_name=eq."+encodeURIComponent(key);
+    try{
+      const ex=await sbGet("coaching_notes",q+"&select=class_name");
+      if(ex&&ex.length)await sbPatch("coaching_notes",q,{content:nv?"1":"0",updated_at:Date.now()});
+      else await sbPost("coaching_notes",{class_name:key,content:nv?"1":"0",updated_at:Date.now()});
+      if(showToast)showToast(nv?"You are now hidden from members":"You are now visible");
+    }catch(e){setMasterHidden(!nv);if(showToast)showToast("Could not save");}
+    setMhSaving(false);
+  }
+  const visMembers=masterHidden?members.filter(m=>m.email!==ADMIN_EMAIL):members;
   const admDK=toDS(admDate);const admDOW=admDate.getDay();const admIsSat=admDOW===6;
   const standardTimes=admDOW===0?[]:admIsSat?SAT_TIMES:WD_TIMES;
   const extraTimes=Object.keys(classLimits||{}).filter(k=>k.startsWith(admDK+':')).map(k=>k.slice(admDK.length+1)).filter(t=>!standardTimes.includes(t));
@@ -1448,7 +1463,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
   }
   const admDateLabel=`${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][admDOW]} ${admDate.getDate()} ${MONTHS[admDate.getMonth()]} ${admDate.getFullYear()}`;
   return React.createElement("div",{className:"adm-wrap"},
-    selectedMember&&React.createElement(MemberProfileOverlay,{member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin}),
+    selectedMember&&React.createElement(MemberProfileOverlay,{member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin,mfWk:mFlags.wk}),
     React.createElement("div",{className:"adm-title"},"ADMIN"),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"0 0 6px"}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
@@ -1458,18 +1473,39 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
     React.createElement("div",{className:"adm-seg"},
       React.createElement("button",{"data-adm":"members",className:`adm-seg-btn${admSeg==="members"?" aas":""}`,onClick:()=>setAdmSeg("members")},"MEMBERS"),
       React.createElement("button",{"data-adm":"classes",className:`adm-seg-btn${admSeg==="classes"?" aas":""}`,onClick:()=>setAdmSeg("classes")},"CLASSES"),
-      React.createElement("button",{"data-adm":"wellness",className:`adm-seg-btn${admSeg==="wellness"?" aas":""}`,onClick:()=>setAdmSeg("wellness")},"WELLNESS"),
+      (isMaster||mFlags.welladm)&&React.createElement("button",{"data-adm":"wellness",className:`adm-seg-btn${admSeg==="wellness"?" aas":""}`,onClick:()=>setAdmSeg("wellness")},"WELLNESS"),
       React.createElement("button",{"data-adm":"sections",className:`adm-seg-btn${admSeg==="sections"?" aas":""}`,onClick:()=>setAdmSeg("sections")},"SECTIONS"),
       React.createElement("button",{"data-adm":"onboarding",className:`adm-seg-btn${admSeg==="onboarding"?" aas":""}`,onClick:()=>setAdmSeg("onboarding")},"ONBOARDING"),
       React.createElement("button",{"data-adm":"coaching",className:`adm-seg-btn${admSeg==="coaching"?" aas":""}`,onClick:()=>setAdmSeg("coaching")},"DETAILS")
     ),
     admSeg==="members"&&(!membersLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
     :React.createElement(React.Fragment,null,
+      isMaster&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(masterHidden?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"HIDE ME FROM MEMBERS"),
+          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"Hides your account from all members & admins")
+        ),
+        React.createElement("button",{onClick:toggleMasterHidden,disabled:mhSaving,style:{background:masterHidden?"#fff":"#222",color:masterHidden?"#000":"#555",border:"1px solid "+(masterHidden?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},masterHidden?"HIDE":"OFF")
+      ),
+      isMaster&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(!mFlags.wk?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"WORKOUT PROGRAM"),
+          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides it from everyone")
+        ),
+        React.createElement("button",{onClick:()=>saveMFlag("wk",!mFlags.wk),style:{background:!mFlags.wk?"#fff":"#222",color:!mFlags.wk?"#000":"#555",border:"1px solid "+(!mFlags.wk?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},!mFlags.wk?"HIDE":"OFF")
+      ),
+      isMaster&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(!mFlags.welladm?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"WELLNESS"),
+          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides it from admins")
+        ),
+        React.createElement("button",{onClick:()=>saveMFlag("welladm",!mFlags.welladm),style:{background:!mFlags.welladm?"#fff":"#222",color:!mFlags.welladm?"#000":"#555",border:"1px solid "+(!mFlags.welladm?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},!mFlags.welladm?"HIDE":"OFF")
+      ),
       React.createElement("div",{className:"adm-stats-row"},
-        React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},members.length),React.createElement("div",{className:"adm-stat-lbl"},"MEMBERS")),
+        React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},visMembers.length),React.createElement("div",{className:"adm-stat-lbl"},"MEMBERS")),
         React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},bookings.filter(b=>b.date_key>=toDS(new Date())).length),React.createElement("div",{className:"adm-stat-lbl"},"UPCOMING BKS"))
       ),
-      members.map((mb,i)=>{
+      visMembers.map((mb,i)=>{
         const mbBks=bookings.filter(b=>b.email===mb.email&&b.date_key>=toDS(new Date())).length;
         const joinDate=fmtJoinDate(mb.joined_at);
         return React.createElement("div",{key:i,className:"adm-member-card",onClick:()=>openMemberProfile(mb)},
@@ -1715,7 +1751,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
           )
       )
     ),
-    admSeg==="wellness"&&React.createElement(React.Fragment,null,
+    admSeg==="wellness"&&(isMaster||mFlags.welladm)&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"adm-day-nav"},
         React.createElement("button",{className:"adm-arrow",onClick:()=>changeDay(-1)},"‹"),
         React.createElement("div",{className:"adm-day-lbl"},admDateLabel.toUpperCase()),
@@ -1787,7 +1823,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClass
       [
         {key:"classes",title:"HIIT CLASSES",enabled:classesEnabled,save:saveClassesSetting},
         {key:"strength",title:"STRENGTH CLASSES",enabled:strengthEnabled,save:saveStrengthSetting},
-        {key:"wellness",title:"WELLNESS CLASSES",enabled:wellnessEnabled,save:saveWellnessSetting}
+        ...((isMaster||mFlags.welladm)?[{key:"wellness",title:"WELLNESS CLASSES",enabled:wellnessEnabled,save:saveWellnessSetting}]:[])
       ].map(s=>React.createElement("div",{key:s.key,style:{background:"#141414",border:"1px solid #222",borderRadius:0,padding:"12px 16px",marginBottom:8}},
         React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
           React.createElement("div",null,
@@ -1842,7 +1878,7 @@ function StepListEditor({storageKey,defaultSteps,toastMsg,showToast}){
   async function save(){
     setSaving(true);
     const json=JSON.stringify(draft);
-    const existing=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(storageKey)}&select=id`);
+    const existing=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(storageKey)}&select=class_name`);
     if(existing&&existing.length){await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(storageKey)}`,{content:json,updated_at:Date.now()});}
     else{await sbPost("coaching_notes",{class_name:storageKey,content:json,updated_at:Date.now()});}
     setSteps(draft.map(s=>({...s})));setSaving(false);setEditing(false);
@@ -2035,30 +2071,54 @@ function TierEditor({showToast}){
     })
   );
 }
-function OnboardingPanel({id,title,children,openPanel,setOpenPanel}){
+function OnboardingPanel({id,title,children,openPanel,setOpenPanel,titles,onSaveTitle}){
   const open=openPanel===id;
+  const shown=(titles&&titles[id])||title;
+  const [editing,setEditing]=useState(false);
+  const [draft,setDraft]=useState(shown);
   return React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:0,marginBottom:8,overflow:"hidden"}},
-    React.createElement("button",{onClick:()=>setOpenPanel(open?null:id),style:{width:"100%",background:"none",border:"none",padding:"14px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",textAlign:"left"}},
-      React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.08em",color:"#fff"}},title),
-      React.createElement("div",{style:{color:"#444",fontSize:14,transition:"transform .2s",transform:open?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
+    React.createElement("div",{style:{width:"100%",padding:"14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
+      editing
+        ?React.createElement("input",{value:draft,autoFocus:true,onChange:e=>setDraft(e.target.value),onKeyDown:e=>{if(e.key==="Enter"){onSaveTitle&&onSaveTitle(id,draft.trim()||title);setEditing(false);}},style:{flex:1,background:"#141414",border:"1px solid #1d3a5a",borderRadius:0,color:"#fff",fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.08em",padding:"4px 8px",outline:"none"}})
+        :React.createElement("div",{onClick:()=>setOpenPanel(open?null:id),style:{flex:1,fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.08em",color:"#fff",cursor:"pointer"}},shown),
+      editing
+        ?React.createElement("button",{onClick:()=>{onSaveTitle&&onSaveTitle(id,draft.trim()||title);setEditing(false);},style:{background:"#1d9bf0",color:"#fff",border:"none",borderRadius:0,fontSize:11,letterSpacing:"0.1em",fontWeight:700,padding:"6px 14px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},"SAVE")
+        :React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12}},
+            React.createElement("button",{onClick:()=>{setDraft(shown);setEditing(true);},title:"Rename",style:{background:"none",border:"none",color:"#1d9bf0",fontSize:13,cursor:"pointer",padding:0,lineHeight:1}},"✎"),
+            React.createElement("div",{onClick:()=>setOpenPanel(open?null:id),style:{color:"#444",fontSize:14,transition:"transform .2s",transform:open?"rotate(180deg)":"rotate(0deg)",lineHeight:1,cursor:"pointer"}},"▾")
+          )
     ),
     open&&React.createElement("div",{style:{padding:"0 14px 14px"}},children)
   );
 }
 function OnboardingView({showToast}){
   const [openPanel,setOpenPanel]=useState(null);
+  const [titles,setTitles]=useState({});
+  useEffect(()=>{
+    sbGet("coaching_notes","class_name=eq.__ONBOARDING_TITLES__&select=content").then(r=>{
+      if(r&&r.length&&r[0].content){try{const o=JSON.parse(r[0].content);if(o&&typeof o==="object")setTitles(o);}catch{}}
+    });
+  },[]);
+  async function onSaveTitle(id,val){
+    const next={...titles,[id]:val};setTitles(next);
+    const q="class_name=eq."+encodeURIComponent("__ONBOARDING_TITLES__");
+    const ex=await sbGet("coaching_notes",q+"&select=class_name");
+    if(ex&&ex.length)await sbPatch("coaching_notes",q,{content:JSON.stringify(next),updated_at:Date.now()});
+    else await sbPost("coaching_notes",{class_name:"__ONBOARDING_TITLES__",content:JSON.stringify(next),updated_at:Date.now()});
+    if(showToast)showToast("Title saved ✓");
+  }
   return React.createElement("div",{style:{marginTop:16}},
     React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},"ONBOARDING · ADMIN"),
-    React.createElement(OnboardingPanel,{id:"process",title:"ONBOARDING PROCESS",openPanel,setOpenPanel},
+    React.createElement(OnboardingPanel,{id:"process",title:"ONBOARDING PROCESS",openPanel,setOpenPanel,titles,onSaveTitle},
       React.createElement(ProcessNoteEditor,{showToast})
     ),
-    React.createElement(OnboardingPanel,{id:"journey",title:"MEMBER JOURNEY",openPanel,setOpenPanel},
+    React.createElement(OnboardingPanel,{id:"journey",title:"MEMBER JOURNEY",openPanel,setOpenPanel,titles,onSaveTitle},
       React.createElement(MemberJourneyEditor,{showToast})
     ),
-    React.createElement(OnboardingPanel,{id:"tiers",title:"MEMBERSHIP TIERS",openPanel,setOpenPanel},
+    React.createElement(OnboardingPanel,{id:"tiers",title:"MEMBERSHIP TIERS",openPanel,setOpenPanel,titles,onSaveTitle},
       React.createElement(TierEditor,{showToast})
     ),
-    React.createElement(OnboardingPanel,{id:"invite",title:"SEND REGISTRATION FORM",openPanel,setOpenPanel},
+    React.createElement(OnboardingPanel,{id:"invite",title:"SEND REGISTRATION FORM",openPanel,setOpenPanel,titles,onSaveTitle},
       React.createElement(InviteForm,{
         appsScript:true,
         endpoint:APPS_SCRIPT_URL,
@@ -2066,7 +2126,7 @@ function OnboardingView({showToast}){
         btnLabel:"SEND REGISTRATION FORM"
       })
     ),
-    React.createElement(OnboardingPanel,{id:"health",title:"SEND HEALTH SCREENING FORM",openPanel,setOpenPanel},
+    React.createElement(OnboardingPanel,{id:"health",title:"SEND HEALTH SCREENING FORM",openPanel,setOpenPanel,titles,onSaveTitle},
       React.createElement(InviteForm,{
         appsScript:true,
         endpoint:APPS_SCRIPT_URL,
@@ -2109,7 +2169,7 @@ function CoachingNoteEditor({className,showToast}){
   async function save(){
     setSaving(true);
     const json=JSON.stringify(draft);
-    const existing=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(className)}&select=id`);
+    const existing=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(className)}&select=class_name`);
     if(existing&&existing.length){await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(className)}`,{content:json,updated_at:Date.now()});}
     else{await sbPost("coaching_notes",{class_name:className,content:json,updated_at:Date.now()});}
     setSections(draft.map(s=>({...s})));setSaving(false);setEditing(false);
@@ -2264,7 +2324,7 @@ function WorkoutDetailsEditor({className,showToast}){
   async function save(){
     setSaving(true);
     const clean=rows.map(r=>r.hdr!=null?{hdr:(r.hdr||"").trim().toUpperCase(),hideTv:!!r.hideTv,dur:(r.dur||"").trim()}:{duration:r.duration,exercise:(r.exercise||"").trim().toUpperCase(),maori:(r.maori||"").trim(),reps:(r.reps||"").trim(),c:(r.c||"").trim(),o:(r.o||"").trim(),d:(r.d||"").trim(),notes:(r.notes||"").trim(),station:(r.station||"").trim()}).filter(r=>r.hdr!=null?r.hdr!=="":r.exercise!=="");
-    const ex0=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(storageKey)+"&select=id");
+    const ex0=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(storageKey)+"&select=class_name");
     const body={content:JSON.stringify(clean),updated_at:Date.now()};
     if(ex0&&ex0.length)await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent(storageKey),body);
     else await sbPost("coaching_notes",{class_name:storageKey,...body});
@@ -2278,7 +2338,7 @@ function WorkoutDetailsEditor({className,showToast}){
     });
     if(changed){
       const nl={maori:nm,presc:np};setLib(nl);
-      const l0=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(LIB_KEY)+"&select=id");
+      const l0=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(LIB_KEY)+"&select=class_name");
       const lb={content:JSON.stringify(nl),updated_at:Date.now()};
       if(l0&&l0.length)await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent(LIB_KEY),lb);
       else await sbPost("coaching_notes",{class_name:LIB_KEY,...lb});
@@ -2447,7 +2507,7 @@ function LibraryDetailsEditor({showToast,allWorkoutNames}){
       it.durs.forEach(d=>{presc[nm+"|"+d.dur]={reps:(d.reps||"").trim(),c:(d.c||"").trim(),o:(d.o||"").trim(),d:(d.d||"").trim()};});
     });
     const newLib={maori,presc};
-    const ex=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(LIB_KEY)+"&select=id");
+    const ex=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(LIB_KEY)+"&select=class_name");
     if(ex&&ex.length)await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent(LIB_KEY),{content:JSON.stringify(newLib),updated_at:Date.now()});
     else await sbPost("coaching_notes",{class_name:LIB_KEY,content:JSON.stringify(newLib),updated_at:Date.now()});
     let updated=0;
@@ -2578,7 +2638,7 @@ function CoachingView({showToast}){
   },[]);
   async function saveCustomGroups(groups){
     const key="__CUSTOM_GROUPS__";
-    const existing=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(key)+"&select=id");
+    const existing=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(key)+"&select=class_name");
     if(existing&&existing.length){
       await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent(key),{content:JSON.stringify(groups),updated_at:Date.now()});
     }else{
@@ -2617,7 +2677,7 @@ function CoachingView({showToast}){
     const newName=label+" "+nextNum;
     const newExtras=[...existing,newName];
     const key="__EXTRA__"+label;
-    const dbRows=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(key)+"&select=id");
+    const dbRows=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(key)+"&select=class_name");
     if(dbRows&&dbRows.length){
       await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent(key),{content:JSON.stringify(newExtras),updated_at:Date.now()});
     }else{
@@ -2632,7 +2692,7 @@ function CoachingView({showToast}){
     const isBase=(base||[]).includes(cn);
     const newExtras=isBase?(extras[label]||[]).filter(n=>n!==cn):(extras[label]||[]).filter(n=>n!==cn);
     const key="__EXTRA__"+label;
-    const dbRows=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(key)+"&select=id");
+    const dbRows=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(key)+"&select=class_name");
     if(dbRows&&dbRows.length){
       await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent(key),{content:JSON.stringify(newExtras),updated_at:Date.now()});
     }else{
@@ -3653,7 +3713,7 @@ function MemberWorkoutAdmin({member,memberView}){
   function mwDropProps(dk,id){return {"data-mwid":id,onDragOver:e=>{e.preventDefault();if(mwDragId&&mwDragId!==id)setMwDragOverId(id);},onDrop:e=>{e.preventDefault();mwFinishDrag(dk);}};}
   async function upsertWeek(k,contentObj){
     const json=JSON.stringify(contentObj);
-    const existing=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(k)}&select=id`);
+    const existing=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(k)}&select=class_name`);
     if(existing&&existing.length){await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(k)}`,{content:json,updated_at:Date.now()});}
     else{await sbPost("coaching_notes",{class_name:k,content:json,updated_at:Date.now()});}
   }
@@ -3839,7 +3899,7 @@ function MemberWorkoutsView({session,memberData}){
     const next={...wNotes};if(v)next[nk]=v;else delete next[nk];
     setWNotes(next);
     const q=`class_name=eq.${encodeURIComponent(notesKey)}`;
-    const existing=await sbGet("coaching_notes",q+"&select=id");
+    const existing=await sbGet("coaching_notes",q+"&select=class_name");
     if(existing&&existing.length){await sbPatch("coaching_notes",q,{content:JSON.stringify(next),updated_at:Date.now()});}
     else{await sbPost("coaching_notes",{class_name:notesKey,content:JSON.stringify(next),updated_at:Date.now()});}
   }
@@ -4116,6 +4176,8 @@ function App(){
   const touchStartX=useRef(null);
   const touchStartY=useRef(null);
   const isAdmin=session?.email===ADMIN_EMAIL||memberData?.is_admin===true;
+  const isMaster=session?.email===ADMIN_EMAIL;
+  const [mFlags,setMFlags]=useState({wk:true,welladm:true});
   const workoutsEnabled=memberData?.workouts_enabled===true;
   useEffect(()=>{
     (async()=>{
@@ -4154,6 +4216,8 @@ function App(){
       if(wsData&&wsData.length){try{const ws=JSON.parse(wsData[0].content);if(ws&&typeof ws==="object")setWellSlots(ws);}catch{}}
       const mcData=await sbGet("coaching_notes","class_name=eq.__MILESTONE_CONFIG__&select=content");
       if(mcData&&mcData.length){try{const mc=JSON.parse(mcData[0].content);setMilestoneConfig(p=>({...p,...mc}));}catch{}}
+      const mfData=await sbGet("coaching_notes","class_name=eq.__MFLAGS__&select=content");
+      if(mfData&&mfData.length){try{const mf=JSON.parse(mfData[0].content);if(mf&&typeof mf==="object")setMFlags(p=>({...p,...mf}));}catch{}}
       setReady(true);
     })();
   },[]);
@@ -4194,7 +4258,7 @@ function App(){
     ...(strengthEnabled&&acc("strength")?[{id:"strength",label:"STRENGTH"}]:[]),
     ...(wellnessEnabled&&acc("wellness")?[{id:"wellness",label:"WELLNESS"}]:[]),
     ...(acc("progress")?[{id:"progress",label:"PROGRESS"}]:[]),
-    ...(workoutsEnabled?[{id:"workouts",label:"WORKOUTS"}]:[]),
+    ...(workoutsEnabled&&mFlags.wk?[{id:"workouts",label:"WORKOUTS"}]:[]),
     ...(isAdmin?[{id:"admin",label:"ADMIN"}]:[])
   ];
   const TAB_ORDER=NAV_TABS.map(t=>t.id);
@@ -4385,6 +4449,13 @@ function App(){
     else{await sbPost("class_limits",{time_slot:time,date_key:dateKey,max_spots:n});}
     setClassLimits(p=>({...p,[`${dateKey}:${time}`]:n}));
   }
+  async function saveMFlag(key,val){
+    const next={...mFlags,[key]:val};setMFlags(next);
+    const q="class_name=eq."+encodeURIComponent("__MFLAGS__");
+    const ex=await sbGet("coaching_notes",q+"&select=class_name");
+    if(ex&&ex.length)await sbPatch("coaching_notes",q,{content:JSON.stringify(next),updated_at:Date.now()});
+    else await sbPost("coaching_notes",{class_name:"__MFLAGS__",content:JSON.stringify(next),updated_at:Date.now()});
+  }
   async function saveWellnessSetting(enabled){
     await sbPatch("feature_flags","id=eq.1",{wellness_enabled:enabled});
     setWellnessEnabled(enabled);
@@ -4411,7 +4482,7 @@ function App(){
   async function saveDowName(dow,name){
     const newDn={...dowNames,[dow]:name.toUpperCase()};
     setDowNames(newDn);
-    const existing=await sbGet("coaching_notes","class_name=eq.__DOW_NAMES__&select=id");
+    const existing=await sbGet("coaching_notes","class_name=eq.__DOW_NAMES__&select=class_name");
     if(existing&&existing.length){await sbPatch("coaching_notes","class_name=eq.__DOW_NAMES__",{content:JSON.stringify(newDn),updated_at:Date.now()});}
     else{await sbPost("coaching_notes",{class_name:"__DOW_NAMES__",content:JSON.stringify(newDn),updated_at:Date.now()});}
   }
@@ -4423,13 +4494,13 @@ function App(){
       if(hide.length||add.length)clean[dk]={hide,add};
     });
     setWellSlots(clean);
-    const existing=await sbGet("coaching_notes","class_name=eq.__WELL_SLOTS__&select=id");
+    const existing=await sbGet("coaching_notes","class_name=eq.__WELL_SLOTS__&select=class_name");
     if(existing&&existing.length){await sbPatch("coaching_notes","class_name=eq.__WELL_SLOTS__",{content:JSON.stringify(clean),updated_at:Date.now()});}
     else{await sbPost("coaching_notes",{class_name:"__WELL_SLOTS__",content:JSON.stringify(clean),updated_at:Date.now()});}
   }
   async function saveMilestoneConfig(cfg){
     setMilestoneConfig(cfg);
-    const existing=await sbGet("coaching_notes","class_name=eq.__MILESTONE_CONFIG__&select=id");
+    const existing=await sbGet("coaching_notes","class_name=eq.__MILESTONE_CONFIG__&select=class_name");
     if(existing&&existing.length){await sbPatch("coaching_notes","class_name=eq.__MILESTONE_CONFIG__",{content:JSON.stringify(cfg),updated_at:Date.now()});}
     else{await sbPost("coaching_notes",{class_name:"__MILESTONE_CONFIG__",content:JSON.stringify(cfg),updated_at:Date.now()});}
   }
@@ -4520,8 +4591,8 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         ),
         React.createElement("div",{style:{position:"absolute",left:0,right:0,display:"flex",flexDirection:"column",alignItems:"center",pointerEvents:"none"}},
           memberPhoto
-            ?React.createElement("img",{src:memberPhoto,alt:"profile",style:{display:"block",width:62,height:62,borderRadius:"50%",objectFit:"cover",border:"2px solid #333",marginBottom:8,pointerEvents:"auto"}})
-            :React.createElement("div",{style:{width:62,height:62,borderRadius:"50%",background:"#1a1a1a",border:"2px solid #2a2a2a",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#777",marginBottom:8}},memberInit),
+            ?React.createElement("img",{src:memberPhoto,alt:"profile",style:{display:"block",width:62,height:62,borderRadius:"50%",objectFit:"cover",border:"2px solid #1d9bf0",marginBottom:8,pointerEvents:"auto"}})
+            :React.createElement("div",{style:{width:62,height:62,borderRadius:"50%",background:"#1a1a1a",border:"2px solid #1d9bf0",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#777",marginBottom:8}},memberInit),
           React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:9,fontWeight:700,color:"#fff",textAlign:"center",letterSpacing:"0.1em",lineHeight:1.3,whiteSpace:"nowrap"}},"LAMONT TEAM 365"),
           React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:5,color:"#444",textAlign:"center",marginTop:4,letterSpacing:"0.12em",fontWeight:700,whiteSpace:"nowrap"}},"EVERYDAY. ALL YEAR ROUND.")
         ),
@@ -4714,9 +4785,9 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     tab==="community"&&acc("community")&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
     tab==="wellness"&&wellnessEnabled&&acc("wellness")&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin,memberData,wellSlots,calendarEnabled}),
     tab==="strength"&&acc("strength")&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast,bookings,memberData})),
-    tab==="workouts"&&workoutsEnabled&&React.createElement(MemberWorkoutsView,{session,memberData}),
+    tab==="workouts"&&workoutsEnabled&&mFlags.wk&&React.createElement(MemberWorkoutsView,{session,memberData}),
     tab==="progress"&&acc("progress")&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}),
-    tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg}),
+    tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg}),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:"auto"}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:7,letterSpacing:"0.22em",fontWeight:600,cursor:"pointer"}},"SWIPE FOR MORE"),
