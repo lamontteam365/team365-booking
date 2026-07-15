@@ -295,8 +295,8 @@ html,body{background:#080808;min-height:100vh}
 .mp-close{background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:4px;line-height:1;transition:color .15s}
 .mp-close:hover{color:#fff}
 .mp-body{padding:20px 20px 48px}
-.mp-avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid #333}
-.mp-avatar-init{width:64px;height:64px;border-radius:50%;background:#111;border:2px solid #222;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:24px;color:#555}
+.mp-avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;border:1px solid #1d9bf0}
+.mp-avatar-init{width:64px;height:64px;border-radius:50%;background:#111;border:1px solid #1d9bf0;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:24px;color:#555}
 .mp-top{display:flex;align-items:center;gap:16px;margin-bottom:24px}
 .mp-name{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:0.08em;color:#fff}
 .mp-meta{font-size:10px;letter-spacing:0.1em;color:#777;margin-top:3px}
@@ -1049,13 +1049,13 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,c
             React.createElement("div",{className:"well-slot-time"},fmt12(time)),
             React.createElement("div",{className:"well-slot-mid"},
               React.createElement("div",{className:"well-slot-name"},"SAUNA & COLD PLUNGE"),
-              React.createElement("div",{className:`well-slot-status${ismine?" wss-mine":taken?" wss-taken":""}`},ismine?"Your booking ✓":taken?"Booked":tooSoon?"Closes 24h before":"Available")
+              React.createElement("div",{className:`well-slot-status${ismine?" wss-mine":taken?" wss-taken":""}`,style:tooSoon?{whiteSpace:"nowrap",fontSize:9,letterSpacing:"0.02em"}:undefined},ismine?"Your booking ✓":taken?"Booked":tooSoon?"Bookings are required at least 24 hours in advance.":"Available")
             ),
             isAdmin&&React.createElement("div",{style:{fontSize:10,color:"#555",marginRight:4,flexShrink:0}},isExpanded?"▴":"▾"),
             !past&&(ismine
               ?React.createElement("button",{className:"well-btn wb-cancel",onClick:e=>{e.stopPropagation();handleCancel(time);}},"Cancel")
               :taken?React.createElement("button",{className:"well-btn wb-taken",disabled:true},"Booked")
-              :tooSoon?React.createElement("button",{className:"well-btn wb-taken",disabled:true},"Closed")
+              :tooSoon?null
               :wellAtLimit?React.createElement("button",{className:"well-btn wb-taken",disabled:true},wellLimit===0?"No Plan":"Limit")
               :React.createElement("button",{className:"well-btn wb-book",onClick:e=>{e.stopPropagation();handleBook(time);},disabled:isBusy},isBusy?"...":"Book")
             )
@@ -1512,8 +1512,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
           React.createElement("div",{className:"adm-mc-top"},
             React.createElement("div",null,React.createElement("div",{className:"adm-mc-name"},(mb.name||"").toUpperCase())),
             mb.photo
-              ?React.createElement("img",{src:mb.photo,style:{width:32,height:32,borderRadius:"50%",objectFit:"cover",border:"2px solid #1d9bf0",flexShrink:0},alt:""})
-              :React.createElement("div",{style:{width:32,height:32,borderRadius:"50%",background:"#1a1a1a",border:"2px solid #1d9bf0",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,color:"#666",flexShrink:0}},initials(mb.name||"?"))
+              ?React.createElement("img",{src:mb.photo,style:{width:32,height:32,borderRadius:"50%",objectFit:"cover",border:"1px solid #1d9bf0",flexShrink:0},alt:""})
+              :React.createElement("div",{style:{width:32,height:32,borderRadius:"50%",background:"#1a1a1a",border:"1px solid #1d9bf0",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,color:"#666",flexShrink:0}},initials(mb.name||"?"))
           ),
           React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.email)),
           mb.phone&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.phone)),
@@ -4614,7 +4614,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       React.createElement("div",{className:"no-sb",style:{display:"flex",marginLeft:-20,marginRight:-20,width:"calc(100% + 40px)",borderTop:"1px solid #888",borderBottom:"1px solid #888",background:"#141414",overflowX:"auto"},onClick:e=>e.stopPropagation()},
         NAV_TABS.map((t,ti)=>React.createElement(React.Fragment,{key:t.id},
           React.createElement("button",{"data-tab":t.id,
-            style:{flex:"1 0 auto",minWidth:56,padding:"10px 10px",background:tab===t.id?"#444":"none",border:"none",borderTop:`1px solid ${tab===t.id?"#fff":"#888"}`,borderBottom:`1px solid ${tab===t.id?"#fff":"#888"}`,borderLeft:"1px solid transparent",borderRight:"1px solid transparent",marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8.5px",letterSpacing:"0.1em",color:tab===t.id?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap",position:"relative"},
+            style:{flex:"1 0 auto",minWidth:56,padding:"12px 10px",background:tab===t.id?"#444":"none",border:"none",borderTop:`1px solid ${tab===t.id?"#fff":"#888"}`,borderBottom:`1px solid ${tab===t.id?"#fff":"#888"}`,borderLeft:"1px solid transparent",borderRight:"1px solid transparent",marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8.5px",letterSpacing:"0.1em",color:tab===t.id?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap",position:"relative"},
             onClick:()=>{setTab(t.id);if(t.id==="community")lsSet("t365-last-read",Date.now());}},
             t.label,
             t.dot&&unreadPosts>0&&tab!=="community"&&React.createElement("div",{className:"tab-dot"})
