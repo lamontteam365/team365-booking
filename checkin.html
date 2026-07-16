@@ -41,14 +41,14 @@ html,body{background:#080808;min-height:100vh;font-family:'DM Sans',sans-serif;c
 }
 .hero-circle{
   width:88px;height:88px;border-radius:50%;
-  border:2px solid #333;background:#111;
+  border:2px solid #1d9bf0;background:#111;
   overflow:hidden;margin-bottom:16px;
   display:flex;align-items:center;justify-content:center;
 }
 .hero-circle img{width:100%;height:100%;object-fit:cover;}
 .hero-name{font-family:'Syncopate',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.18em;color:#fff;margin-bottom:5px}
 .hero-tag{font-family:'Syncopate',sans-serif;font-size:6px;font-weight:700;letter-spacing:0.2em;color:#555;margin-bottom:14px}
-.hero-badge{font-size:9px;letter-spacing:0.18em;color:#1d9bf0;background:#0a1a2a;border:1px solid #1d3a5a;border-radius:3px;padding:4px 14px}
+.hero-badge{font-size:9px;letter-spacing:0.18em;color:#1d9bf0;background:#0a1a2a;border:1px solid #1d3a5a;border-radius:0;padding:4px 14px}
 
 /* ── Day nav ── */
 .day-nav{display:flex;align-items:center;padding:18px 24px 0}
@@ -74,7 +74,7 @@ html,body{background:#080808;min-height:100vh;font-family:'DM Sans',sans-serif;c
 .c-row{
   display:flex;align-items:center;gap:16px;
   padding:14px 20px;
-  background:#141414;border:1px solid #666;border-radius:9px;
+  background:#141414;border:1px solid #888;border-radius:0;
   transition:border-color .15s;cursor:pointer;
 }
 .c-row:hover{border-color:#999}
@@ -83,7 +83,7 @@ html,body{background:#080808;min-height:100vh;font-family:'DM Sans',sans-serif;c
 .c-class-name{font-size:8px;letter-spacing:0.12em;color:#555;font-weight:600;margin-top:4px;font-family:'DM Sans',sans-serif}
 .c-mid{flex:1;display:flex;flex-direction:column;gap:7px}
 .c-bars{display:flex;gap:3px}
-.c-bar{flex:1;height:3px;border-radius:2px;background:#2a2a2a}
+.c-bar{flex:1;height:3px;border-radius:0;background:#2a2a2a}
 .c-bar.ct{background:#fff}
 .c-sub{font-size:11px;letter-spacing:0.1em;color:#999;font-weight:500}
 .c-chevron{font-size:14px;color:#555;flex-shrink:0;transition:transform .2s}
@@ -93,7 +93,7 @@ html,body{background:#080808;min-height:100vh;font-family:'DM Sans',sans-serif;c
 .members-panel{
   background:#141414;
   border:1px solid #1d9bf0;border-top:none;
-  border-bottom-left-radius:9px;border-bottom-right-radius:9px;
+  border-bottom-left-radius:0;border-bottom-right-radius:0;
   overflow:hidden;margin-top:-1px;
 }
 .members-panel-empty{text-align:center;padding:22px;font-size:11px;letter-spacing:0.14em;color:#333;font-weight:500}
@@ -109,7 +109,7 @@ html,body{background:#080808;min-height:100vh;font-family:'DM Sans',sans-serif;c
 .member-checkin-time{font-size:10px;color:#4aaa66;letter-spacing:0.08em;margin-top:1px}
 .checkin-btn{
   font-size:10px;letter-spacing:0.1em;font-weight:600;
-  font-family:'DM Sans',sans-serif;border:none;border-radius:5px;
+  font-family:'DM Sans',sans-serif;border:none;border-radius:0;
   padding:10px 20px;cursor:pointer;transition:all .15s;
 }
 .checkin-btn.do{background:#1d9bf0;color:#fff}
@@ -132,7 +132,7 @@ html,body{background:#080808;min-height:100vh;font-family:'DM Sans',sans-serif;c
   position:fixed;bottom:36px;left:50%;transform:translateX(-50%);
   background:#fff;color:#000;
   font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:0.15em;
-  padding:12px 28px;border-radius:4px;
+  padding:12px 28px;border-radius:0;
   pointer-events:none;transition:opacity .3s;z-index:200;
   white-space:nowrap;opacity:0;
 }
