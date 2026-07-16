@@ -4853,4 +4853,20 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         React.createElement("label",{className:"fl"},"NEW PASSWORD"),
         React.createElement("input",{className:"fi",type:"password",placeholder:"Leave blank to keep current",value:profForm.newPw,onChange:e=>{setProfForm(f=>({...f,newPw:e.target.value}));setProfErr("");setProfOk("");}}),
         React.createElement("label",{className:"fl"},"CONFIRM PASSWORD"),
-        React.createElement("input",{className:"fi",type:"password",placeholder:"Repeat new password",value:profForm.confirmPw,onChange:e=>{setProfForm(f=>({...f,confirmPw:e.target.value}));setProfErr
+        React.createElement("input",{className:"fi",type:"password",placeholder:"Repeat new password",value:profForm.confirmPw,onChange:e=>{setProfForm(f=>({...f,confirmPw:e.target.value}));setProfErr("");setProfOk("");}}),
+        profErr&&React.createElement("div",{className:"prof-err"},profErr),
+        profOk&&React.createElement("div",{className:"prof-ok"},profOk),
+        React.createElement("button",{className:"prof-save",onClick:handleSaveProf,disabled:profBusy},profBusy?"SAVING...":"SAVE CHANGES"),
+        React.createElement("button",{className:"prof-logout",onClick:handleLogout},"LOG OUT")
+      )
+    )
+  );
+}
+/* Team 365 — section toggles + per-member workouts */
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+if("serviceWorker"in navigator){
+  window.addEventListener("load",()=>{navigator.serviceWorker.register("/sw.js");});
+}
+</script>
+</body>
+</html>
