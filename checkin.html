@@ -28,7 +28,7 @@ html,body{background:#080808;min-height:100vh;font-family:'DM Sans',sans-serif;c
 
 /* ── Hero header ── */
 .hero{
-  background-image:linear-gradient(rgba(8,8,8,0.72),rgba(8,8,8,0.88)),
+  background-image:linear-gradient(rgba(8,8,8,0.45),rgba(8,8,8,0.68)),
     url("https://raw.githubusercontent.com/lamontteam365/team365-booking/main/images/671a9a90865c3673c895b473f6d1feed.jpg");
   background-size:cover;
   background-position:center top;
@@ -80,7 +80,7 @@ html,body{background:#080808;min-height:100vh;font-family:'DM Sans',sans-serif;c
 .c-row:hover{border-color:#999}
 .c-row.expanded{border-color:#1d9bf0;border-bottom-left-radius:0;border-bottom-right-radius:0}
 .c-time{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:0.03em;color:#fff;min-width:96px;line-height:1}
-.c-class-name{font-size:8px;letter-spacing:0.12em;color:#555;font-weight:600;margin-top:4px;font-family:'DM Sans',sans-serif}
+.c-class-name{font-size:8px;letter-spacing:0.12em;color:#aaa;font-weight:600;margin-top:4px;font-family:'DM Sans',sans-serif}
 .c-mid{flex:1;display:flex;flex-direction:column;gap:7px}
 .c-bars{display:flex;gap:3px}
 .c-bar{flex:1;height:3px;border-radius:0;background:#2a2a2a}
@@ -224,7 +224,8 @@ function App(){
     if(next.getDay()===0)next=addDays(next,delta>0?1:-1);
     setSelDate(next);setExpandedSlot(null);
   }
-  const DAY_NAMES=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const DAY_NAMES=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const FULL_MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
   const refreshStr=`${lastRefresh.getHours()}:${String(lastRefresh.getMinutes()).padStart(2,"0")}`;
   return React.createElement("div",{className:"app"},
     React.createElement("div",{className:"hero"},
@@ -242,7 +243,7 @@ function App(){
       React.createElement("button",{className:"day-arrow",onClick:()=>changeDay(-1)},"‹"),
       React.createElement("div",{className:"day-label"},
         React.createElement("div",{className:"day-label-main"},isTodaySel?"TODAY":DAY_NAMES[selDate.getDay()].toUpperCase()),
-        React.createElement("div",{className:"day-label-sub"},`${selDate.getDate()} ${MONTHS[selDate.getMonth()]} ${selDate.getFullYear()}`)
+        React.createElement("div",{className:"day-label-sub"},`${selDate.getDate()} ${FULL_MONTHS[selDate.getMonth()]} ${selDate.getFullYear()}`)
       ),
       React.createElement("button",{className:"day-arrow",onClick:()=>changeDay(1)},"›")
     ),
@@ -307,7 +308,7 @@ function App(){
               })
         ),
     React.createElement("div",{className:"kiosk-footer"},
-      React.createElement("div",{className:"footer-tagline"},"COMMITMENT. CONSISTENCY. DETERMINATION."),
+      React.createElement("div",{className:"footer-tagline"},"LAMONT FITNESS APPLICATIONS"),
       React.createElement("div",{className:"footer-powered"},
         "POWERED BY ",
         React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener"},"WWW.LAMONTCOLLECTIVE.COM")
