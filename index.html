@@ -4066,11 +4066,11 @@ function MemberWorkoutsView({session,memberData}){
         ));
         const isOpen=openW.has(dk+"_"+w.num);
         return React.createElement("div",{key:"w"+w.num,style:multiW?{border:"1px solid #333",borderRadius:0,background:"#0d0d0d",padding:"0 14px",marginBottom:14,overflow:"hidden"}:null},
-          multiW&&React.createElement("div",{onClick:()=>toggleW(dk+"_"+w.num),style:{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",padding:"14px 0",borderBottom:isOpen?"1px solid #222":"none"}},
-            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:19,letterSpacing:"0.1em",color:"#fff"}},(w.name||("WORKOUT "+w.num)).toUpperCase()),
+          multiW&&React.createElement("div",{onClick:()=>toggleW(dk+"_"+w.num),style:{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",background:"#fff",color:"#000",margin:"0 -14px",padding:"9px 14px",marginBottom:isOpen?10:0}},
+            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.1em",color:"#000"}},(w.name||("WORKOUT "+w.num)).toUpperCase()),
             React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
               React.createElement("span",{style:{fontSize:10,letterSpacing:"0.1em",color:"#555"}},w.exercises.length+(w.exercises.length===1?" EXERCISE":" EXERCISES")),
-              React.createElement("div",{style:{color:"#666",fontSize:15,transition:"transform .2s",transform:isOpen?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
+              React.createElement("div",{style:{color:"#000",fontSize:13,transition:"transform .2s",transform:isOpen?"none":"rotate(-90deg)",lineHeight:1}},"▾")
             )
           ),
           (!multiW||isOpen)&&React.createElement("div",{style:multiW?{padding:"4px 0 14px"}:null},...body)
@@ -4253,8 +4253,10 @@ function App(){
   const [mFlags,setMFlags]=useState({wk:true,welladm:true});
   const workoutsEnabled=memberData?.workouts_enabled===true;
   const routinesEnabled=memberData?.routines_enabled===true;
-  const [bookSub,setBookSub]=useState("classes");
-  const [wkSub,setWkSub]=useState("pt");
+  const [bookSub,setBookSub]=useState(()=>ssGet("t365-booksub","classes"));
+  const [wkSub,setWkSub]=useState(()=>ssGet("t365-wksub","pt"));
+  useEffect(()=>{ssSet("t365-booksub",bookSub);},[bookSub]);
+  useEffect(()=>{ssSet("t365-wksub",wkSub);},[wkSub]);
   const [myClsCol,setMyClsCol]=useState(true);
   const [myWellCol,setMyWellCol]=useState(true);
   useEffect(()=>{
@@ -4347,7 +4349,7 @@ function App(){
   const effBookSub=bookOpts.some(o=>o.id===bookSub)?bookSub:(bookOpts[0]&&bookOpts[0].id);
   const wkOpts=[...(showPT?[{id:"pt",label:"PT PROGRAM"}]:[]),...(showStrength?[{id:"strength",label:"S & C CLASSES"}]:[]),...(showRoutines?[{id:"routines",label:"ROUTINES"}]:[])];
   const effWkSub=wkOpts.some(o=>o.id===wkSub)?wkSub:(wkOpts[0]&&wkOpts[0].id);
-  const renderSeg=(opts,cur,set)=>opts.length<=1?null:React.createElement("div",{className:"sp-toggle",style:{marginTop:16,marginBottom:16,paddingLeft:20,paddingRight:20}},opts.map(o=>React.createElement("button",{key:o.id,className:`sp-toggle-btn${cur===o.id?" spta":""}`,onClick:()=>set(o.id)},o.label)));
+  const renderSeg=(opts,cur,set)=>opts.length<=1?null:React.createElement("div",{className:"sp-toggle",style:{marginTop:16,marginBottom:16,paddingLeft:20,paddingRight:20}},opts.map(o=>React.createElement("button",{key:o.id,className:`sp-toggle-btn${cur===o.id?" spta":""}`,style:{border:"1px solid #fff"},onClick:()=>set(o.id)},o.label)));
   // If the current tab isn't available to this member, snap to the first available one.
   useEffect(()=>{if(ready&&TAB_ORDER.length&&!TAB_ORDER.includes(tab))setTab(TAB_ORDER[0]);},[memberAccess,classesEnabled,strengthEnabled,wellnessEnabled,workoutsEnabled,ready]);
   function handleTouchStart(e){touchStartX.current=e.touches[0].clientX;touchStartY.current=e.touches[0].clientY;}
