@@ -3133,9 +3133,9 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
             )
       )
     ),
-    React.createElement("div",{style:{...CS.sectionHdr,cursor:"pointer",userSelect:"none",display:"flex",alignItems:"center",justifyContent:"space-between"},onClick:()=>setShowPBSection(v=>!v)},
+    React.createElement("div",{style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginTop:16,marginBottom:10},onClick:()=>setShowPBSection(v=>!v)},
       "MY PERSONAL BESTS",
-      React.createElement("span",{style:{color:"#444",fontSize:13,transform:showPBSection?"rotate(180deg)":"none",transition:"transform .2s",lineHeight:1}},"▾")
+      React.createElement("span",{style:{fontSize:11,transform:showPBSection?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
     ),
     showPBSection&&(enabledExercises.length===0
       ?React.createElement("div",{style:{fontSize:10,color:"#444",textAlign:"center",padding:"24px 0",letterSpacing:"0.14em"}},"NO EXERCISES AVAILABLE\nAsk your coach to add exercises.")
@@ -3185,9 +3185,9 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
                 )
           );
         })),
-    React.createElement("div",{style:{...CS.sectionHdr,cursor:"pointer",userSelect:"none",display:"flex",alignItems:"center",justifyContent:"space-between"},onClick:()=>setShowCBSection(v=>!v)},
+    React.createElement("div",{style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginTop:16,marginBottom:10},onClick:()=>setShowCBSection(v=>!v)},
       "COMMUNITY PERSONAL BESTS",
-      React.createElement("span",{style:{color:"#444",fontSize:13,transform:showCBSection?"rotate(180deg)":"none",transition:"transform .2s",lineHeight:1}},"▾")
+      React.createElement("span",{style:{fontSize:11,transform:showCBSection?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
     ),
     showCBSection&&(enabledExercises.length===0
       ?null
@@ -4345,7 +4345,7 @@ function App(){
   const effBookSub=bookOpts.some(o=>o.id===bookSub)?bookSub:(bookOpts[0]&&bookOpts[0].id);
   const wkOpts=[...(showPT?[{id:"pt",label:"PT PROGRAM"}]:[]),...(showStrength?[{id:"strength",label:"STRENGTH"}]:[]),...(showRoutines?[{id:"routines",label:"ROUTINES"}]:[])];
   const effWkSub=wkOpts.some(o=>o.id===wkSub)?wkSub:(wkOpts[0]&&wkOpts[0].id);
-  const renderSeg=(opts,cur,set)=>opts.length<=1?null:React.createElement("div",{className:"sp-toggle",style:{marginTop:2}},opts.map(o=>React.createElement("button",{key:o.id,className:`sp-toggle-btn${cur===o.id?" spta":""}`,onClick:()=>set(o.id)},o.label)));
+  const renderSeg=(opts,cur,set)=>opts.length<=1?null:React.createElement("div",{className:"sp-toggle",style:{marginTop:16,marginBottom:16,justifyContent:"center"}},opts.map(o=>React.createElement("button",{key:o.id,className:`sp-toggle-btn${cur===o.id?" spta":""}`,style:{flex:"0 0 auto",padding:"9px 22px"},onClick:()=>set(o.id)},o.label)));
   // If the current tab isn't available to this member, snap to the first available one.
   useEffect(()=>{if(ready&&TAB_ORDER.length&&!TAB_ORDER.includes(tab))setTab(TAB_ORDER[0]);},[memberAccess,classesEnabled,strengthEnabled,wellnessEnabled,workoutsEnabled,ready]);
   function handleTouchStart(e){touchStartX.current=e.touches[0].clientX;touchStartY.current=e.touches[0].clientY;}
