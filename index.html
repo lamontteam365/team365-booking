@@ -17,7 +17,8 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{background:#080808;min-height:100vh}
 #root{min-height:100vh}
-.app{font-family:'DM Sans',sans-serif;background:#080808;color:#fff;min-height:100vh;display:flex;flex-direction:column;max-width:480px;margin:0 auto}
+.app{font-family:'DM Sans',sans-serif;background:#080808;color:#fff;min-height:100vh;height:100dvh;display:flex;flex-direction:column;max-width:480px;margin:0 auto}
+.app-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .hdr{padding:14px 20px 0;display:flex;flex-direction:column;background:#080808}
 .hdr-row{display:flex;align-items:center;justify-content:space-between}
 .hdr-left{display:flex;align-items:center;gap:10px;cursor:pointer}
@@ -3256,12 +3257,12 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
       const specials=((milestoneConfig||{}).specials||[]).filter(s=>{const cls=s.classes?.toString().toLowerCase();return cls==="first"?attended>=1:attended>=parseInt(s.classes);});
       const sorted=[...specials].sort((a,b)=>a.classes-b.classes);
       return React.createElement("div",{style:{marginBottom:4}},
-        React.createElement("div",{style:{...CS.sectionHdr,cursor:"pointer",userSelect:"none",display:"flex",alignItems:"center",justifyContent:"space-between"},onClick:()=>setShowMilSection(v=>!v)},
+        React.createElement("div",{style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginTop:16,marginBottom:10},onClick:()=>setShowMilSection(v=>!v)},
           React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
-            React.createElement("span",null,"MILESTONES"),
-            specials.length===0&&React.createElement("span",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:11,color:"#888",letterSpacing:"0.04em",textTransform:"none"}},"Well done — you've completed your first class! 🎉")
+            React.createElement("span",null,"MY MILESTONES"),
+            specials.length===0&&React.createElement("span",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:400,fontSize:11,color:"#555",letterSpacing:"0.04em",textTransform:"none"}},"Well done — you've completed your first class! 🎉")
           ),
-          React.createElement("span",{style:{color:"#444",fontSize:13,transform:showMilSection?"rotate(180deg)":"none",transition:"transform .2s",lineHeight:1}},"▾")
+          React.createElement("span",{style:{fontSize:11,transform:showMilSection?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
         ),
         showMilSection&&React.createElement(React.Fragment,null,...sorted.map((e,i)=>{
           const isFirstClass=e.classes.toString().toLowerCase()==="first";
@@ -4343,9 +4344,9 @@ function App(){
   const TAB_ORDER=NAV_TABS.map(t=>t.id);
   const bookOpts=[...(showClasses?[{id:"classes",label:"CLASSES"}]:[]),...(showWellness?[{id:"wellness",label:"WELLNESS"}]:[])];
   const effBookSub=bookOpts.some(o=>o.id===bookSub)?bookSub:(bookOpts[0]&&bookOpts[0].id);
-  const wkOpts=[...(showPT?[{id:"pt",label:"PT PROGRAM"}]:[]),...(showStrength?[{id:"strength",label:"STRENGTH"}]:[]),...(showRoutines?[{id:"routines",label:"ROUTINES"}]:[])];
+  const wkOpts=[...(showPT?[{id:"pt",label:"PT PROGRAM"}]:[]),...(showStrength?[{id:"strength",label:"S & C CLASSES"}]:[]),...(showRoutines?[{id:"routines",label:"ROUTINES"}]:[])];
   const effWkSub=wkOpts.some(o=>o.id===wkSub)?wkSub:(wkOpts[0]&&wkOpts[0].id);
-  const renderSeg=(opts,cur,set)=>opts.length<=1?null:React.createElement("div",{className:"sp-toggle",style:{marginTop:16,marginBottom:16,justifyContent:"center"}},opts.map(o=>React.createElement("button",{key:o.id,className:`sp-toggle-btn${cur===o.id?" spta":""}`,style:{flex:"0 0 auto",padding:"9px 22px"},onClick:()=>set(o.id)},o.label)));
+  const renderSeg=(opts,cur,set)=>opts.length<=1?null:React.createElement("div",{className:"sp-toggle",style:{marginTop:16,marginBottom:16,paddingLeft:20,paddingRight:20}},opts.map(o=>React.createElement("button",{key:o.id,className:`sp-toggle-btn${cur===o.id?" spta":""}`,onClick:()=>set(o.id)},o.label)));
   // If the current tab isn't available to this member, snap to the first available one.
   useEffect(()=>{if(ready&&TAB_ORDER.length&&!TAB_ORDER.includes(tab))setTab(TAB_ORDER[0]);},[memberAccess,classesEnabled,strengthEnabled,wellnessEnabled,workoutsEnabled,ready]);
   function handleTouchStart(e){touchStartX.current=e.touches[0].clientX;touchStartY.current=e.touches[0].clientY;}
@@ -4680,7 +4681,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
           React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:9,fontWeight:700,color:"#fff",textAlign:"center",letterSpacing:"0.1em",lineHeight:1.3,whiteSpace:"nowrap"}},"LAMONT TEAM 365"),
           React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:5,color:"#999",textAlign:"center",marginTop:4,letterSpacing:"0.12em",fontWeight:700,whiteSpace:"nowrap"}},"EVERYDAY. ALL YEAR ROUND."),
           React.createElement("div",{onClick:e=>{e.stopPropagation();window.location.reload();},title:"Refresh",style:{marginTop:10,position:"relative",top:5,opacity:0.4,cursor:"pointer",pointerEvents:"auto",display:"flex",alignItems:"center",justifyContent:"center",gap:6}},
-            React.createElement("svg",{xmlns:"http://www.w3.org/2000/svg",width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"#666",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},
+            React.createElement("svg",{xmlns:"http://www.w3.org/2000/svg",width:13,height:13,viewBox:"0 0 24 24",fill:"none",stroke:"#666",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},
               React.createElement("polyline",{points:"23 4 23 10 17 10"}),
               React.createElement("polyline",{points:"1 20 1 14 7 14"}),
               React.createElement("path",{d:"M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"})
@@ -4715,6 +4716,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         ))
       )
     ),
+    React.createElement("div",{className:"app-body"},
     tab==="book"&&React.createElement(React.Fragment,null,
       renderSeg(bookOpts,effBookSub,setBookSub),
       effBookSub==="classes"&&showClasses&&React.createElement(React.Fragment,null,
@@ -4886,7 +4888,8 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     ),
     tab==="progress"&&acc("progress")&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}),
     tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg}),
-    React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:"auto"}},
+    ),
+    React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:7,letterSpacing:"0.22em",fontWeight:600,cursor:"pointer"}},"SWIPE FOR MORE"),
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"›")
