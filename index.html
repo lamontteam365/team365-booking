@@ -157,7 +157,7 @@ html,body{background:#080808;min-height:100vh}
 .post-pin-btn.pinned{color:#888}
 .tab-bar{display:flex;border-top:1px solid #888;border-bottom:1px solid #888;margin-top:auto;background:#141414;overflow-x:auto}
 .tab-btn{flex:1 0 auto;min-width:64px;padding:12px 10px;background:none;border:1px solid;border-color:#888 transparent;margin:-1px 0;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:8.5px;letter-spacing:0.1em;color:#777;font-weight:600;transition:color .15s;white-space:nowrap;position:relative}
-.tab-btn.ta{color:#fff;background:#444;border-top-color:#fff;border-bottom-color:#fff}
+.tab-btn.ta{color:#000;background:#fff;border-top-color:#fff;border-bottom-color:#fff}
 .tab-btn:hover:not(.ta){color:#bbb}
 .tab-dot{position:absolute;top:8px;right:calc(50% - 14px);width:7px;height:7px;background:#e06040;border-radius:50%;border:1px solid #080808}
 .post-reply-btn{background:none;border:none;color:#444;cursor:pointer;font-size:10px;font-family:'DM Sans',sans-serif;letter-spacing:0.06em;transition:color .15s;font-weight:500}
@@ -2866,9 +2866,9 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
   const [exNameDraft,setExNameDraft]=useState("");
   const [holderPhotos,setHolderPhotos]=useState({});
   const [showMilAdmin,setShowMilAdmin]=useState(false);
-  const [showMilSection,setShowMilSection]=useState(true);
-  const [showPBSection,setShowPBSection]=useState(true);
-  const [showCBSection,setShowCBSection]=useState(true);
+  const [showMilSection,setShowMilSection]=useState(false);
+  const [showPBSection,setShowPBSection]=useState(false);
+  const [showCBSection,setShowCBSection]=useState(false);
   useEffect(()=>{loadAll();},[]);
   async function loadAll(){
     setLoading(true);
@@ -3322,9 +3322,10 @@ function ExSection({sectionName,exercises,isFirst,ctx}){
   const {editingId,setEditingId,exEdit,setExEdit,savingEx,saveExercise,
          session,ticks,toggleTick,expandedEx,toggleEx,weights,saveSetWeight,
          isAdmin,deleteExercise,monthYear}=ctx;
+  const [col,setCol]=useState(true);
   return React.createElement(React.Fragment,null,
-    React.createElement("div",{className:`sp-section-hdr${isFirst?" spsh-first":""}`},sectionName.toUpperCase()),
-    exercises.map(ex=>{
+    React.createElement("div",{onClick:()=>setCol(c=>!c),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginTop:isFirst?0:8,marginBottom:10}},React.createElement("span",null,sectionName.toUpperCase()),React.createElement("span",{style:{fontSize:11,transform:col?"rotate(-90deg)":"none",transition:"transform .15s"}},"▾")),
+    !col&&exercises.map(ex=>{
       const isCore=ex.section==="Core";
       const isMobility=ex.section==="Mobility";
       const setCount=parseInt(ex.sets)||1;
@@ -4254,8 +4255,8 @@ function App(){
   const routinesEnabled=memberData?.routines_enabled===true;
   const [bookSub,setBookSub]=useState("classes");
   const [wkSub,setWkSub]=useState("pt");
-  const [myClsCol,setMyClsCol]=useState(false);
-  const [myWellCol,setMyWellCol]=useState(false);
+  const [myClsCol,setMyClsCol]=useState(true);
+  const [myWellCol,setMyWellCol]=useState(true);
   useEffect(()=>{
     (async()=>{
       let joinedAt=0;
@@ -4707,7 +4708,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       React.createElement("div",{className:"no-sb",style:{display:"flex",marginLeft:-20,marginRight:-20,width:"calc(100% + 40px)",borderTop:"1px solid #888",borderBottom:"1px solid #888",background:"#141414",overflowX:"auto"},onClick:e=>e.stopPropagation()},
         NAV_TABS.map((t,ti)=>React.createElement(React.Fragment,{key:t.id},
           React.createElement("button",{"data-tab":t.id,
-            style:{flex:"1 0 auto",minWidth:56,padding:"12px 10px",background:tab===t.id?"#444":"none",border:"none",borderTop:`1px solid ${tab===t.id?"#fff":"#888"}`,borderBottom:`1px solid ${tab===t.id?"#fff":"#888"}`,borderLeft:"1px solid transparent",borderRight:"1px solid transparent",marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8.5px",letterSpacing:"0.1em",color:tab===t.id?"#fff":"#555",fontWeight:600,whiteSpace:"nowrap",position:"relative"},
+            style:{flex:"1 0 auto",minWidth:56,padding:"12px 10px",background:tab===t.id?"#fff":"none",border:"none",borderTop:`1px solid ${tab===t.id?"#fff":"#888"}`,borderBottom:`1px solid ${tab===t.id?"#fff":"#888"}`,borderLeft:"1px solid transparent",borderRight:"1px solid transparent",marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8.5px",letterSpacing:"0.1em",color:tab===t.id?"#000":"#555",fontWeight:600,whiteSpace:"nowrap",position:"relative"},
             onClick:()=>{setTab(t.id);if(t.id==="community")lsSet("t365-last-read",Date.now());}},
             t.label,
             t.dot&&unreadPosts>0&&tab!=="community"&&React.createElement("div",{className:"tab-dot"})
