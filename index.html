@@ -4081,7 +4081,7 @@ function MemberWorkoutsView({session,memberData}){
             onBlur:e=>saveNote(dk,w.num,e.target.value),
             style:{width:"100%",background:"#141414",border:"1px solid #262626",borderRadius:0,color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:13,lineHeight:1.6,padding:"10px 12px",outline:"none",resize:"vertical",boxSizing:"border-box"}})
         ));
-        const isOpen=openW.has(dk+"_"+w.num);
+        const isOpen=!openW.has(dk+"_"+w.num);
         return React.createElement("div",{key:"w"+w.num,style:multiW?{border:"1px solid #333",borderRadius:0,background:"#0d0d0d",padding:"0 14px",marginBottom:14,overflow:"hidden"}:null},
           multiW&&React.createElement("div",{onClick:()=>toggleW(dk+"_"+w.num),style:{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",background:"#fff",color:"#000",margin:"0 -14px",padding:"9px 14px",marginBottom:isOpen?10:0}},
             React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.1em",color:"#000"}},(w.name||("WORKOUT "+w.num)).toUpperCase()),
@@ -4202,14 +4202,20 @@ function RoutinesAdmin({member}){
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
   const [msg,setMsg]=useState("");
+  const [excl,setExcl]=useState(new Set());
   const key="__RT__"+member.email;
   useEffect(()=>{load();},[]);
   async function load(){
     setLoading(true);
     const d=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(key)}&select=content`);
     let arr=[];if(d&&d.length&&d[0].content){try{const o=JSON.parse(d[0].content);arr=Array.isArray(o)?o:(o.routines||[]);}catch{}}
-    setRoutines((arr||[]).map(r=>({...r,id:r.id||mwGenId(),exercises:(r.exercises||[]).map(e=>({...e,id:e.id||mwGenId()}))})));setLoading(false);
+    const mapped=(arr||[]).map(r=>({...r,id:r.id||mwGenId(),exercises:(r.exercises||[]).map(e=>({...e,id:e.id||mwGenId()}))}));
+    setRoutines(mapped);setOpen(new Set(mapped.map(r=>r.id)));setLoading(false);
   }
+  function moveEx(rid,eid,dir){setRoutines(p=>p.map(r=>{if(r.id!==rid)return r;const a=[...(r.exercises||[])];const i=a.findIndex(e=>e.id===eid);const j=i+dir;if(i<0||j<0||j>=a.length)return r;[a[i],a[j]]=[a[j],a[i]];return{...r,exercises:a};}));}
+  function dupEx(rid,eid){setRoutines(p=>p.map(r=>{if(r.id!==rid)return r;const a=[...(r.exercises||[])];const i=a.findIndex(e=>e.id===eid);if(i<0)return r;a.splice(i+1,0,{...a[i],id:mwGenId()});return{...r,exercises:a};}));}
+  function dupRoutine(rid){setRoutines(p=>{const i=p.findIndex(r=>r.id===rid);if(i<0)return p;const src=p[i];const copy={id:mwGenId(),title:(src.title||"")+" (COPY)",exercises:(src.exercises||[]).map(e=>({...e,id:mwGenId()}))};const a=[...p];a.splice(i+1,0,copy);setOpen(o=>new Set([...o,copy.id]));return a;});}
+  function toggleExcl(rid){setExcl(p=>{const n=new Set(p);n.has(rid)?n.delete(rid):n.add(rid);return n;});}
   function toggle(id){setOpen(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});}
   function addRoutine(){const id=mwGenId();setRoutines(p=>[...p,{id,title:"",exercises:[]}]);setOpen(p=>new Set([...p,id]));}
   function removeRoutine(rid){if(!window.confirm("Remove this routine?"))return;setRoutines(p=>p.filter(r=>r.id!==rid));}
@@ -4226,9 +4232,11 @@ function RoutinesAdmin({member}){
   }
   async function save(){setSaving(true);await upsertRT(key,clean(routines));setSaving(false);setMsg("Saved ✓");setTimeout(()=>setMsg(""),2500);}
   async function assignAll(){
-    if(!window.confirm("Copy these routines to ALL members and turn Routines on for them? Each member keeps their own times."))return;
+    const inc=routines.filter(r=>!excl.has(r.id));
+    if(!inc.length){setMsg("Tick at least one routine to assign.");setTimeout(()=>setMsg(""),3000);return;}
+    if(!window.confirm("Copy the "+inc.length+" ticked routine(s) to ALL members and turn Routines on for them? Each member keeps their own times."))return;
     setSaving(true);
-    const cleaned=clean(routines);
+    const cleaned=clean(inc);
     const mem=await sbGet("members","select=email");
     for(const m of (mem||[])){
       if(!m.email)continue;
@@ -4251,15 +4259,22 @@ function RoutinesAdmin({member}){
     :React.createElement(React.Fragment,null,
       ...routines.map(r=>{const isOpen=open.has(r.id);return React.createElement("div",{key:r.id,style:{border:"1px solid #222",borderRadius:0,marginBottom:10}},
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,background:"#fff",padding:"8px 12px"}},
+          React.createElement("button",{onClick:()=>toggleExcl(r.id),title:"Include when assigning to all members",style:{background:excl.has(r.id)?"#fff":"#1d9bf0",border:"1px solid "+(excl.has(r.id)?"#999":"#1d9bf0"),borderRadius:0,width:17,height:17,color:"#fff",fontSize:11,lineHeight:1,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",padding:0}},excl.has(r.id)?"":"✓"),
           React.createElement("button",{onClick:()=>toggle(r.id),style:{background:"none",border:"none",color:"#000",fontSize:12,cursor:"pointer",transform:isOpen?"none":"rotate(-90deg)",transition:"transform .15s",padding:"0 2px",flexShrink:0}},"▾"),
           React.createElement("input",{value:r.title,onChange:e=>updR(r.id,"title",e.target.value),placeholder:"Routine title e.g. AMRAP 1",style:{flex:1,background:"transparent",border:"none",color:"#000",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",outline:"none"}}),
+          React.createElement("button",{onClick:()=>dupRoutine(r.id),title:"Duplicate routine",style:{background:"none",border:"1px solid #ccc",borderRadius:0,color:"#333",fontSize:12,padding:"3px 8px",cursor:"pointer",flexShrink:0}},"⧉"),
           React.createElement("button",{onClick:()=>removeRoutine(r.id),style:{background:"none",border:"1px solid #ccc",borderRadius:0,color:"#8a2515",fontSize:11,padding:"3px 8px",cursor:"pointer",flexShrink:0}},"✕")
         ),
         isOpen&&React.createElement("div",{style:{padding:"10px 12px"}},
           ...(r.exercises||[]).map(e=>React.createElement("div",{key:e.id,style:{border:"1px solid #1e1e1e",background:"#0e0e0e",padding:"8px",marginBottom:6}},
-            React.createElement("div",{style:{display:"flex",gap:6,marginBottom:6}},
+            React.createElement("div",{style:{display:"flex",gap:6,marginBottom:6,alignItems:"center"}},
               React.createElement("input",{value:e.name,onChange:v=>updEx(r.id,e.id,"name",v.target.value.toUpperCase()),placeholder:"Exercise name",style:{...inS,flex:1,fontFamily:"'Bebas Neue',sans-serif",fontSize:14,color:"#fff"}}),
-              React.createElement("button",{onClick:()=>removeEx(r.id,e.id),style:{background:"none",border:"1px solid #2a2a2a",borderRadius:0,color:"#8a2515",fontSize:12,padding:"4px 9px",cursor:"pointer"}},"✕")
+              React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:1,flexShrink:0}},
+                React.createElement("button",{onClick:()=>moveEx(r.id,e.id,-1),style:{background:"none",border:"none",color:"#666",cursor:"pointer",fontSize:10,padding:"1px 6px",lineHeight:1}},"▲"),
+                React.createElement("button",{onClick:()=>moveEx(r.id,e.id,1),style:{background:"none",border:"none",color:"#666",cursor:"pointer",fontSize:10,padding:"1px 6px",lineHeight:1}},"▼")
+              ),
+              React.createElement("button",{onClick:()=>dupEx(r.id,e.id),title:"Duplicate exercise",style:{background:"none",border:"1px solid #2a2a2a",borderRadius:0,color:"#888",fontSize:12,padding:"4px 8px",cursor:"pointer",flexShrink:0}},"⧉"),
+              React.createElement("button",{onClick:()=>removeEx(r.id,e.id),style:{background:"none",border:"1px solid #2a2a2a",borderRadius:0,color:"#8a2515",fontSize:12,padding:"4px 9px",cursor:"pointer",flexShrink:0}},"✕")
             ),
             React.createElement("div",{style:{display:"flex",gap:6}},
               React.createElement("input",{value:e.sets,onChange:v=>updEx(r.id,e.id,"sets",v.target.value),placeholder:"Sets",style:{...inS,width:56,textAlign:"center"}}),
@@ -4316,7 +4331,7 @@ function RoutinesView({session}){
   }
   const hdrStyle={width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginBottom:10};
   return React.createElement("div",{className:"well-wrap"},
-    React.createElement("div",{className:"well-hdr"},React.createElement("div",{className:"well-title"},"ROUTINES")),
+    React.createElement("div",{className:"well-hdr",style:{marginBottom:18}},React.createElement("div",{className:"well-title"},"ROUTINES")),
     loading?React.createElement("div",{style:{fontSize:11,color:"#555",letterSpacing:"0.1em",padding:"20px 0",textAlign:"center"}},"LOADING...")
     :(routines.length===0?React.createElement("div",{style:{fontSize:12,color:"#555",letterSpacing:"0.04em",lineHeight:1.8,textAlign:"center",padding:"40px 20px"}},"No routines yet.\nYour coach will add timed routines here for you to record your times.")
     :React.createElement(React.Fragment,null,...routines.map(r=>{
@@ -4342,7 +4357,7 @@ function RoutinesView({session}){
           :React.createElement(React.Fragment,null,...hist.map(e=>React.createElement("div",{key:e._i,style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #161616"}},
             React.createElement("span",{style:{fontSize:12,color:"#aaa",letterSpacing:"0.04em"}},new Date(e.date+"T12:00:00").toLocaleDateString("en-US",{day:"numeric",month:"short",year:"numeric"})),
             React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
-              React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.05em",color:e.time===bt?"#1d9bf0":"#fff"}},e.time+(e.time===bt?" ⭐":"")),
+              React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.05em",color:"#fff"}},e.time),
               React.createElement("button",{onClick:()=>delTime(r.id,e._i),style:{background:"none",border:"none",color:"#5a2018",fontSize:14,cursor:"pointer"}},"✕")
             )
           ))),
