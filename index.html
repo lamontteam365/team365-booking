@@ -564,6 +564,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
   const [wkEnabled,setWkEnabled]=useState(member.workouts_enabled===true); // Workouts add-on (separate cost)
   const [rtEnabled,setRtEnabled]=useState(member.routines_enabled===true); // Routines add-on
   const [showDet,setShowDet]=useState(false);
+  const [showAcc,setShowAcc]=useState(false);
   const [wkMemberView,setWkMemberView]=useState(false); // admin: view program as the member sees it (read-only, with completions)
   const [savingAcc,setSavingAcc]=useState(false);
   const [accMsg,setAccMsg]=useState("");
@@ -894,10 +895,14 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
       )
       ),
       currentUserIsAdmin&&React.createElement(React.Fragment,null,
-        React.createElement("div",{className:"mp-section",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
+        React.createElement("div",{onClick:()=>setShowAcc(v=>!v),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginTop:16,marginBottom:showAcc?10:0}},
           React.createElement("span",null,"SECTION ACCESS"),
-          React.createElement("span",{style:{fontSize:9,letterSpacing:"0.06em",color:accTabs===null?"#4aaa66":accTabs.length===0?"#e06040":"#1d9bf0",fontWeight:700}},accTabs===null?"STUDIO":accTabs.length===0?"NONE":accTabs.length+"/"+ACCESS_TABS.length)
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
+            React.createElement("span",{style:{fontFamily:"'DM Sans',sans-serif",fontSize:9,letterSpacing:"0.06em",color:accTabs===null?"#2f7a3f":accTabs.length===0?"#c0402a":"#176a9a",fontWeight:700}},accTabs===null?"STUDIO":accTabs.length===0?"NONE":accTabs.length+"/"+ACCESS_TABS.length),
+            React.createElement("span",{style:{fontSize:11,transform:showAcc?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
+          )
         ),
+        showAcc&&React.createElement(React.Fragment,null,
         React.createElement("div",{style:{fontSize:10,color:"#666",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:8}},"Which tabs this member can see. STUDIO = everything except Workouts. Workouts is a separate add-on you switch on below. My Bookings appears automatically when a bookable section is on. Your global Section toggles still apply on top."),
         React.createElement("div",{style:{display:"flex",gap:6,marginBottom:10}},
           React.createElement("button",{onClick:()=>saveAccess(null),disabled:savingAcc,style:accSegBtn(accTabs===null)},"STUDIO MEMBER"),
@@ -940,6 +945,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
             wkMemberView?"ON":"OFF")
         ),
         accMsg&&React.createElement("div",{style:{fontSize:10,color:"#4aaa88",letterSpacing:"0.04em",marginBottom:4}},accMsg)
+      )
       ),
       currentUserIsAdmin&&(isMaster||mfWk!==false)&&React.createElement(MemberWorkoutAdmin,{member,memberView:wkMemberView}),
       currentUserIsAdmin&&React.createElement(RoutinesAdmin,{member}),
@@ -3685,6 +3691,7 @@ function MemberWorkoutAdmin({member,memberView}){
   const [mwDragId,setMwDragId]=useState(null);
   const [mwDragOverId,setMwDragOverId]=useState(null);
   const [collapsedDays,setCollapsedDays]=useState(new Set(MW_DAYS));
+  const [ptCol,setPtCol]=useState(true);
   const [collapsedWorkouts,setCollapsedWorkouts]=useState(new Set());
   const [copyFromDay,setCopyFromDay]=useState(null);
   const [templates,setTemplates]=useState([]);
@@ -3827,8 +3834,8 @@ function MemberWorkoutAdmin({member,memberView}){
   const allCollapsed=MW_DAYS.every(d=>collapsedDays.has(d));
   const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",padding:"7px 9px",outline:"none",boxSizing:"border-box"};
   return React.createElement(React.Fragment,null,
-    React.createElement("div",{className:"mp-section"},memberView?"PT PROGRAM · MEMBER VIEW":"PT PROGRAM"),
-    memberView?React.createElement(MemberWorkoutReview,{email:member.email}):React.createElement(React.Fragment,null,
+    React.createElement("div",{onClick:()=>setPtCol(v=>!v),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginTop:16,marginBottom:ptCol?0:10}},React.createElement("span",null,memberView?"PT PROGRAM · MEMBER VIEW":"PT PROGRAM"),React.createElement("span",{style:{fontSize:11,transform:ptCol?"rotate(-90deg)":"none",transition:"transform .15s"}},"▾")),
+    !ptCol&&(memberView?React.createElement(MemberWorkoutReview,{email:member.email}):React.createElement(React.Fragment,null,
     React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:4}},"Build this member's weekly program below. Turn the Workouts add-on on in Section Access above to give them the Workouts tab."),
     React.createElement("div",{style:{fontSize:9,color:"#444",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:12}},"Group exercises into separate workouts (W1, W2…) with + ADD WORKOUT — each shows as its own block for the member. Set each to log Weight (kg), Distance (km) or a Tick; reorder within a workout with ▲▼."),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}},
@@ -3928,7 +3935,7 @@ function MemberWorkoutAdmin({member,memberView}){
         saving?"SAVING...":"SAVE WEEK"),
       savedMsg&&React.createElement("div",{style:{fontSize:11,color:"#4aaa88",textAlign:"center",marginTop:8}},savedMsg)
     )
-    )
+    ))
   );
 }
 // ── Member Workouts Tab (read-only, member-facing) ────────────────────────────
@@ -4207,6 +4214,7 @@ function RoutinesAdmin({member}){
   const [saving,setSaving]=useState(false);
   const [msg,setMsg]=useState("");
   const [excl,setExcl]=useState(new Set());
+  const [rtCol,setRtCol]=useState(true);
   const key="__RT__"+member.email;
   useEffect(()=>{load();},[]);
   async function load(){
@@ -4257,9 +4265,9 @@ function RoutinesAdmin({member}){
   }
   const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",padding:"7px 9px",outline:"none",boxSizing:"border-box"};
   return React.createElement(React.Fragment,null,
-    React.createElement("div",{className:"mp-section"},"ROUTINES"),
-    React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:10}},"Build timed routines for this member. Turn the Routines add-on on above to show them the tab. Members log their own time each attempt — the history and best time build up for them."),
-    loading?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"8px 0"}},"LOADING...")
+    React.createElement("div",{onClick:()=>setRtCol(v=>!v),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginTop:16,marginBottom:rtCol?0:10}},React.createElement("span",null,"ROUTINES"),React.createElement("span",{style:{fontSize:11,transform:rtCol?"rotate(-90deg)":"none",transition:"transform .15s"}},"▾")),
+    !rtCol&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:10}},"Build timed routines for this member. Turn the Routines add-on on above to show them the tab. Members log their own time each attempt — the history and best time build up for them."),
+    rtCol?null:loading?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"8px 0"}},"LOADING...")
     :React.createElement(React.Fragment,null,
       ...routines.map(r=>{const isOpen=open.has(r.id);return React.createElement("div",{key:r.id,style:{border:"1px solid #222",borderRadius:0,marginBottom:10}},
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,background:"#fff",padding:"8px 12px"}},
