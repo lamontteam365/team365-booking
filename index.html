@@ -4215,6 +4215,10 @@ function RoutinesAdmin({member}){
   const [msg,setMsg]=useState("");
   const [excl,setExcl]=useState(new Set());
   const [rtCol,setRtCol]=useState(true);
+  const [showAssign,setShowAssign]=useState(false);
+  const [members,setMembers]=useState([]);
+  const [selM,setSelM]=useState(new Set());
+  const [mSearch,setMSearch]=useState("");
   const key="__RT__"+member.email;
   useEffect(()=>{load();},[]);
   async function load(){
@@ -4243,25 +4247,29 @@ function RoutinesAdmin({member}){
     else{await sbPost("coaching_notes",{class_name:k,content:json,updated_at:Date.now()});}
   }
   async function save(){setSaving(true);await upsertRT(key,clean(routines));setSaving(false);setMsg("Saved ✓");setTimeout(()=>setMsg(""),2500);}
-  async function assignAll(){
+  async function openAssign(){
     const inc=routines.filter(r=>!excl.has(r.id));
     if(!inc.length){setMsg("Tick at least one routine to assign.");setTimeout(()=>setMsg(""),3000);return;}
-    if(!window.confirm("Copy the "+inc.length+" ticked routine(s) to ALL members and turn Routines on for them? Each member keeps their own times."))return;
+    const m=await sbGet("members","select=email,name&order=name.asc");
+    setMembers(m||[]);setSelM(new Set());setMSearch("");setShowAssign(true);
+  }
+  function toggleM(email){setSelM(p=>{const n=new Set(p);n.has(email)?n.delete(email):n.add(email);return n;});}
+  async function assignTo(emails){
+    const inc=routines.filter(r=>!excl.has(r.id));
+    if(!inc.length||!emails.length)return;
     setSaving(true);
     const cleaned=clean(inc);
-    const mem=await sbGet("members","select=email");
-    for(const m of (mem||[])){
-      if(!m.email)continue;
-      const k="__RT__"+m.email;
+    for(const em of emails){
+      const k="__RT__"+em;
       const d=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(k)}&select=content`);
       let arr=[];if(d&&d.length&&d[0].content){try{const o=JSON.parse(d[0].content);arr=Array.isArray(o)?o:(o.routines||[]);}catch{}}
       const titles=new Set(cleaned.map(r=>r.title.toLowerCase()));
       const kept=(arr||[]).filter(r=>!titles.has((r.title||"").toLowerCase()));
       const merged=[...kept,...cleaned.map(r=>({id:mwGenId(),title:r.title,exercises:r.exercises.map(e=>({...e,id:mwGenId()}))}))];
       await upsertRT(k,merged);
-      await sbPatch("members",`email=eq.${encodeURIComponent(m.email)}`,{routines_enabled:true});
+      await sbPatch("members",`email=eq.${encodeURIComponent(em)}`,{routines_enabled:true});
     }
-    setSaving(false);setMsg("Assigned to all members ✓");setTimeout(()=>setMsg(""),3500);
+    setSaving(false);setShowAssign(false);setMsg("Assigned to "+emails.length+" member(s) ✓");setTimeout(()=>setMsg(""),3500);
   }
   const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",padding:"7px 9px",outline:"none",boxSizing:"border-box"};
   return React.createElement(React.Fragment,null,
@@ -4300,7 +4308,24 @@ function RoutinesAdmin({member}){
       React.createElement("button",{onClick:addRoutine,style:{width:"100%",background:"none",border:"1px dashed #1d3a5a",borderRadius:0,color:"#1d9bf0",fontSize:10,letterSpacing:"0.12em",padding:"9px",cursor:"pointer",marginBottom:10}},"+ ADD ROUTINE"),
       React.createElement("div",{style:{display:"flex",gap:8}},
         React.createElement("button",{onClick:save,disabled:saving,style:{flex:2,background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",padding:"12px",borderRadius:0,cursor:"pointer"}},saving?"SAVING...":"SAVE ROUTINES"),
-        React.createElement("button",{onClick:assignAll,disabled:saving,style:{flex:1,background:"none",color:"#1d9bf0",border:"1px solid #1d3a5a",fontFamily:"'DM Sans',sans-serif",fontSize:10,letterSpacing:"0.08em",fontWeight:600,padding:"12px 6px",borderRadius:0,cursor:"pointer"}},"ASSIGN TO ALL")
+        React.createElement("button",{onClick:openAssign,disabled:saving,style:{flex:1,background:"none",color:"#1d9bf0",border:"1px solid #1d3a5a",fontFamily:"'DM Sans',sans-serif",fontSize:10,letterSpacing:"0.08em",fontWeight:600,padding:"12px 6px",borderRadius:0,cursor:"pointer"}},"ASSIGN…")
+      ),
+      showAssign&&React.createElement("div",{style:{border:"1px solid #1d3a5a",background:"#0a1520",padding:"12px",marginTop:10}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}},
+          React.createElement("div",{style:{fontSize:10,letterSpacing:"0.08em",color:"#89a",fontWeight:600}},"ASSIGN TICKED ROUTINES TO:"),
+          React.createElement("button",{onClick:()=>setSelM(selM.size===members.length&&members.length?new Set():new Set(members.map(m=>m.email))),style:{background:"none",border:"1px solid #1d3a5a",color:"#1d9bf0",fontSize:9,letterSpacing:"0.06em",padding:"3px 8px",cursor:"pointer",borderRadius:0}},selM.size===members.length&&members.length?"CLEAR ALL":"SELECT ALL")
+        ),
+        React.createElement("input",{value:mSearch,onChange:e=>setMSearch(e.target.value),placeholder:"Search members…",style:{...inS,width:"100%",marginBottom:8}}),
+        React.createElement("div",{style:{maxHeight:200,overflowY:"auto",marginBottom:10}},
+          ...members.filter(m=>!mSearch||((m.name||"")+" "+(m.email||"")).toLowerCase().includes(mSearch.toLowerCase())).map(m=>React.createElement("div",{key:m.email,onClick:()=>toggleM(m.email),style:{display:"flex",alignItems:"center",gap:8,padding:"7px 4px",borderBottom:"1px solid #12202c",cursor:"pointer"}},
+            React.createElement("div",{style:{width:15,height:15,flexShrink:0,background:selM.has(m.email)?"#1d9bf0":"none",border:"1px solid "+(selM.has(m.email)?"#1d9bf0":"#345"),display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff"}},selM.has(m.email)?"✓":""),
+            React.createElement("div",{style:{fontSize:12,color:"#ccc"}},m.name||m.email)
+          ))
+        ),
+        React.createElement("div",{style:{display:"flex",gap:8}},
+          React.createElement("button",{onClick:()=>setShowAssign(false),style:{flex:1,background:"none",border:"1px solid #333",color:"#666",fontSize:10,letterSpacing:"0.1em",padding:"10px",cursor:"pointer",borderRadius:0}},"CANCEL"),
+          React.createElement("button",{onClick:()=>assignTo([...selM]),disabled:saving||selM.size===0,style:{flex:2,background:selM.size?"#1d9bf0":"#1a1a1a",color:selM.size?"#fff":"#444",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",padding:"11px",cursor:selM.size?"pointer":"default",borderRadius:0}},saving?"ASSIGNING…":"ASSIGN TO "+selM.size+" MEMBER"+(selM.size===1?"":"S"))
+        )
       ),
       msg&&React.createElement("div",{style:{fontSize:11,color:"#4aaa88",textAlign:"center",marginTop:8}},msg)
     )
@@ -4342,7 +4367,7 @@ function RoutinesView({session}){
     await persist({...logs,[rid]:arr});
   }
   const hdrStyle={width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginBottom:10};
-  return React.createElement("div",{className:"well-wrap"},
+  return React.createElement("div",{className:"well-wrap",style:{padding:"14px 16px 80px"}},
     React.createElement("div",{className:"well-hdr",style:{marginBottom:18}},React.createElement("div",{className:"well-title"},"ROUTINES")),
     loading?React.createElement("div",{style:{fontSize:11,color:"#555",letterSpacing:"0.1em",padding:"20px 0",textAlign:"center"}},"LOADING...")
     :(routines.length===0?React.createElement("div",{style:{fontSize:12,color:"#555",letterSpacing:"0.04em",lineHeight:1.8,textAlign:"center",padding:"40px 20px"}},"No routines yet.\nYour coach will add timed routines here for you to record your times.")
