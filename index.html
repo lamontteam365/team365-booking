@@ -562,6 +562,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
   const ACCESS_TABS=[{id:"community",label:"Notice Board"},{id:"book",label:"Classes"},{id:"strength",label:"Strength"},{id:"wellness",label:"Wellness"},{id:"progress",label:"Progress"}];
   const [accTabs,setAccTabs]=useState(null); // null = Studio (all studio sections); array = restricted set. Workouts is separate.
   const [wkEnabled,setWkEnabled]=useState(member.workouts_enabled===true); // Workouts add-on (separate cost)
+  const [rtEnabled,setRtEnabled]=useState(member.routines_enabled===true); // Routines add-on
   const [wkMemberView,setWkMemberView]=useState(false); // admin: view program as the member sees it (read-only, with completions)
   const [savingAcc,setSavingAcc]=useState(false);
   const [accMsg,setAccMsg]=useState("");
@@ -592,6 +593,12 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
     setSavingAcc(true);
     await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,{workouts_enabled:v});
     member.workouts_enabled=v;setWkEnabled(v);
+    setSavingAcc(false);setAccMsg("Access updated ✓");setTimeout(()=>setAccMsg(""),2500);
+  }
+  async function setRoutinesFlag(v){
+    setSavingAcc(true);
+    await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,{routines_enabled:v});
+    member.routines_enabled=v;setRtEnabled(v);
     setSavingAcc(false);setAccMsg("Access updated ✓");setTimeout(()=>setAccMsg(""),2500);
   }
   async function setNoAccess(){await saveAccess([]);await setWorkoutsFlag(false);}
@@ -910,6 +917,15 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
             style:{background:wkEnabled?"#fff":"#222",color:wkEnabled?"#000":"#555",border:"1px solid "+(wkEnabled?"#fff":"#333"),borderRadius:0,padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},
             wkEnabled?"ON":"OFF")
         ),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(rtEnabled?"#1d3a5a":"#222"),borderRadius:0,padding:"11px 14px",marginBottom:6}},
+          React.createElement("div",null,
+            React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"ROUTINES"),
+            React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"Add-on · timed routines & benchmarks")
+          ),
+          React.createElement("button",{onClick:()=>setRoutinesFlag(!rtEnabled),disabled:savingAcc,
+            style:{background:rtEnabled?"#fff":"#222",color:rtEnabled?"#000":"#555",border:"1px solid "+(rtEnabled?"#fff":"#333"),borderRadius:0,padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},
+            rtEnabled?"ON":"OFF")
+        ),
         (isMaster||mfWk!==false)&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(wkMemberView?"#1d5a34":"#222"),borderRadius:0,padding:"11px 14px",marginBottom:6}},
           React.createElement("div",null,
             React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"MEMBER VIEW"),
@@ -922,6 +938,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
         accMsg&&React.createElement("div",{style:{fontSize:10,color:"#4aaa88",letterSpacing:"0.04em",marginBottom:4}},accMsg)
       ),
       currentUserIsAdmin&&(isMaster||mfWk!==false)&&React.createElement(MemberWorkoutAdmin,{member,memberView:wkMemberView}),
+      currentUserIsAdmin&&React.createElement(RoutinesAdmin,{member}),
       currentUserIsAdmin&&React.createElement(React.Fragment,null,
         React.createElement("div",{className:"mp-section"},"ADMIN CONTROLS"),
         React.createElement("button",{
@@ -4032,7 +4049,7 @@ function MemberWorkoutsView({session,memberData}){
     );
   }
   return React.createElement("div",{className:"well-wrap"},
-    React.createElement("div",{className:"well-hdr"},React.createElement("div",{className:"well-title"},"WORKOUTS")),
+    React.createElement("div",{className:"well-hdr"},React.createElement("div",{className:"well-title"},"PT PROGRAM")),
     React.createElement("div",{className:"week-nav",style:{paddingTop:0}},
       React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7))},"‹"),
       React.createElement("div",{className:"wk-label"},weekLabel),
@@ -4177,6 +4194,164 @@ function MemberWorkoutReview({email}){
   );
 }
 // ── Main App ──────────────────────────────────────────────────────────────────
+function rtCmp(a,b){const s=t=>{const p=(t||"").split(":").map(Number);return p.length>=2?p[0]*60+(p[1]||0):(parseFloat(t)||0);};return s(a)-s(b);}
+// ── Routines (admin builder, lives in member profile) ─────────────────────────
+function RoutinesAdmin({member}){
+  const [routines,setRoutines]=useState([]);
+  const [open,setOpen]=useState(new Set());
+  const [loading,setLoading]=useState(true);
+  const [saving,setSaving]=useState(false);
+  const [msg,setMsg]=useState("");
+  const key="__RT__"+member.email;
+  useEffect(()=>{load();},[]);
+  async function load(){
+    setLoading(true);
+    const d=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(key)}&select=content`);
+    let arr=[];if(d&&d.length&&d[0].content){try{const o=JSON.parse(d[0].content);arr=Array.isArray(o)?o:(o.routines||[]);}catch{}}
+    setRoutines((arr||[]).map(r=>({...r,id:r.id||mwGenId(),exercises:(r.exercises||[]).map(e=>({...e,id:e.id||mwGenId()}))})));setLoading(false);
+  }
+  function toggle(id){setOpen(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});}
+  function addRoutine(){const id=mwGenId();setRoutines(p=>[...p,{id,title:"",exercises:[]}]);setOpen(p=>new Set([...p,id]));}
+  function removeRoutine(rid){if(!window.confirm("Remove this routine?"))return;setRoutines(p=>p.filter(r=>r.id!==rid));}
+  function updR(rid,f,v){setRoutines(p=>p.map(r=>r.id===rid?{...r,[f]:v}:r));}
+  function addEx(rid){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:[...(r.exercises||[]),{id:mwGenId(),name:"",sets:"",reps:"",duration:""}]}:r));}
+  function updEx(rid,eid,f,v){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:r.exercises.map(e=>e.id===eid?{...e,[f]:v}:e)}:r));}
+  function removeEx(rid,eid){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:r.exercises.filter(e=>e.id!==eid)}:r));}
+  function clean(arr){return (arr||[]).map(r=>({id:r.id||mwGenId(),title:(r.title||"").trim(),exercises:(r.exercises||[]).map(e=>({id:e.id||mwGenId(),name:(e.name||"").trim().toUpperCase(),sets:(e.sets||"").trim(),reps:(e.reps||"").trim(),duration:(e.duration||"").trim()})).filter(e=>e.name)})).filter(r=>r.title||r.exercises.length);}
+  async function upsertRT(k,arr){
+    const json=JSON.stringify(arr);
+    const ex=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(k)}&select=class_name`);
+    if(ex&&ex.length){await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(k)}`,{content:json,updated_at:Date.now()});}
+    else{await sbPost("coaching_notes",{class_name:k,content:json,updated_at:Date.now()});}
+  }
+  async function save(){setSaving(true);await upsertRT(key,clean(routines));setSaving(false);setMsg("Saved ✓");setTimeout(()=>setMsg(""),2500);}
+  async function assignAll(){
+    if(!window.confirm("Copy these routines to ALL members and turn Routines on for them? Each member keeps their own times."))return;
+    setSaving(true);
+    const cleaned=clean(routines);
+    const mem=await sbGet("members","select=email");
+    for(const m of (mem||[])){
+      if(!m.email)continue;
+      const k="__RT__"+m.email;
+      const d=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(k)}&select=content`);
+      let arr=[];if(d&&d.length&&d[0].content){try{const o=JSON.parse(d[0].content);arr=Array.isArray(o)?o:(o.routines||[]);}catch{}}
+      const titles=new Set(cleaned.map(r=>r.title.toLowerCase()));
+      const kept=(arr||[]).filter(r=>!titles.has((r.title||"").toLowerCase()));
+      const merged=[...kept,...cleaned.map(r=>({id:mwGenId(),title:r.title,exercises:r.exercises.map(e=>({...e,id:mwGenId()}))}))];
+      await upsertRT(k,merged);
+      await sbPatch("members",`email=eq.${encodeURIComponent(m.email)}`,{routines_enabled:true});
+    }
+    setSaving(false);setMsg("Assigned to all members ✓");setTimeout(()=>setMsg(""),3500);
+  }
+  const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",padding:"7px 9px",outline:"none",boxSizing:"border-box"};
+  return React.createElement(React.Fragment,null,
+    React.createElement("div",{className:"mp-section"},"ROUTINES"),
+    React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:10}},"Build timed routines for this member. Turn the Routines add-on on above to show them the tab. Members log their own time each attempt — the history and best time build up for them."),
+    loading?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"8px 0"}},"LOADING...")
+    :React.createElement(React.Fragment,null,
+      ...routines.map(r=>{const isOpen=open.has(r.id);return React.createElement("div",{key:r.id,style:{border:"1px solid #222",borderRadius:0,marginBottom:10}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,background:"#fff",padding:"8px 12px"}},
+          React.createElement("button",{onClick:()=>toggle(r.id),style:{background:"none",border:"none",color:"#000",fontSize:12,cursor:"pointer",transform:isOpen?"none":"rotate(-90deg)",transition:"transform .15s",padding:"0 2px",flexShrink:0}},"▾"),
+          React.createElement("input",{value:r.title,onChange:e=>updR(r.id,"title",e.target.value),placeholder:"Routine title e.g. AMRAP 1",style:{flex:1,background:"transparent",border:"none",color:"#000",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",outline:"none"}}),
+          React.createElement("button",{onClick:()=>removeRoutine(r.id),style:{background:"none",border:"1px solid #ccc",borderRadius:0,color:"#8a2515",fontSize:11,padding:"3px 8px",cursor:"pointer",flexShrink:0}},"✕")
+        ),
+        isOpen&&React.createElement("div",{style:{padding:"10px 12px"}},
+          ...(r.exercises||[]).map(e=>React.createElement("div",{key:e.id,style:{border:"1px solid #1e1e1e",background:"#0e0e0e",padding:"8px",marginBottom:6}},
+            React.createElement("div",{style:{display:"flex",gap:6,marginBottom:6}},
+              React.createElement("input",{value:e.name,onChange:v=>updEx(r.id,e.id,"name",v.target.value.toUpperCase()),placeholder:"Exercise name",style:{...inS,flex:1,fontFamily:"'Bebas Neue',sans-serif",fontSize:14,color:"#fff"}}),
+              React.createElement("button",{onClick:()=>removeEx(r.id,e.id),style:{background:"none",border:"1px solid #2a2a2a",borderRadius:0,color:"#8a2515",fontSize:12,padding:"4px 9px",cursor:"pointer"}},"✕")
+            ),
+            React.createElement("div",{style:{display:"flex",gap:6}},
+              React.createElement("input",{value:e.sets,onChange:v=>updEx(r.id,e.id,"sets",v.target.value),placeholder:"Sets",style:{...inS,width:56,textAlign:"center"}}),
+              React.createElement("input",{value:e.reps,onChange:v=>updEx(r.id,e.id,"reps",v.target.value),placeholder:"Reps",style:{...inS,width:64,textAlign:"center"}}),
+              React.createElement("input",{value:e.duration,onChange:v=>updEx(r.id,e.id,"duration",v.target.value),placeholder:"Duration e.g. 400m / 40 sec",style:{...inS,flex:1}})
+            )
+          )),
+          React.createElement("button",{onClick:()=>addEx(r.id),style:{width:"100%",background:"none",border:"1px dashed #2a2a2a",borderRadius:0,color:"#666",fontSize:10,letterSpacing:"0.12em",padding:"7px",cursor:"pointer"}},"+ ADD EXERCISE")
+        )
+      );}),
+      React.createElement("button",{onClick:addRoutine,style:{width:"100%",background:"none",border:"1px dashed #1d3a5a",borderRadius:0,color:"#1d9bf0",fontSize:10,letterSpacing:"0.12em",padding:"9px",cursor:"pointer",marginBottom:10}},"+ ADD ROUTINE"),
+      React.createElement("div",{style:{display:"flex",gap:8}},
+        React.createElement("button",{onClick:save,disabled:saving,style:{flex:2,background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",padding:"12px",borderRadius:0,cursor:"pointer"}},saving?"SAVING...":"SAVE ROUTINES"),
+        React.createElement("button",{onClick:assignAll,disabled:saving,style:{flex:1,background:"none",color:"#1d9bf0",border:"1px solid #1d3a5a",fontFamily:"'DM Sans',sans-serif",fontSize:10,letterSpacing:"0.08em",fontWeight:600,padding:"12px 6px",borderRadius:0,cursor:"pointer"}},"ASSIGN TO ALL")
+      ),
+      msg&&React.createElement("div",{style:{fontSize:11,color:"#4aaa88",textAlign:"center",marginTop:8}},msg)
+    )
+  );
+}
+// ── Routines (member-facing, timed logging) ───────────────────────────────────
+function RoutinesView({session}){
+  const [routines,setRoutines]=useState([]);
+  const [logs,setLogs]=useState({});
+  const [open,setOpen]=useState(new Set());
+  const [loading,setLoading]=useState(true);
+  const lkey="__RTLOG__"+session.email;
+  useEffect(()=>{load();},[]);
+  async function load(){
+    setLoading(true);
+    const [d,l]=await Promise.all([
+      sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__RT__"+session.email)}&select=content`),
+      sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(lkey)}&select=content`)
+    ]);
+    let arr=[];if(d&&d.length&&d[0].content){try{const o=JSON.parse(d[0].content);arr=Array.isArray(o)?o:(o.routines||[]);}catch{}}
+    let lg={};if(l&&l.length&&l[0].content){try{lg=JSON.parse(l[0].content)||{};}catch{}}
+    setRoutines(arr||[]);setLogs(lg||{});setLoading(false);
+  }
+  function toggle(id){setOpen(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});}
+  function best(rid){const a=(logs[rid]||[]).map(e=>e.time).filter(Boolean);if(!a.length)return null;return [...a].sort(rtCmp)[0];}
+  async function persist(next){
+    setLogs(next);
+    const ex=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(lkey)}&select=class_name`);
+    if(ex&&ex.length){await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(lkey)}`,{content:JSON.stringify(next),updated_at:Date.now()});}
+    else{await sbPost("coaching_notes",{class_name:lkey,content:JSON.stringify(next),updated_at:Date.now()});}
+  }
+  async function addTime(rid){
+    const t=window.prompt("Enter your time for this routine (e.g. 8:42):","");
+    if(!t||!t.trim())return;
+    await persist({...logs,[rid]:[...(logs[rid]||[]),{date:toDS(new Date()),time:t.trim()}]});
+  }
+  async function delTime(rid,idx){
+    const arr=[...(logs[rid]||[])];arr.splice(idx,1);
+    await persist({...logs,[rid]:arr});
+  }
+  const hdrStyle={width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginBottom:10};
+  return React.createElement("div",{className:"well-wrap"},
+    React.createElement("div",{className:"well-hdr"},React.createElement("div",{className:"well-title"},"ROUTINES")),
+    loading?React.createElement("div",{style:{fontSize:11,color:"#555",letterSpacing:"0.1em",padding:"20px 0",textAlign:"center"}},"LOADING...")
+    :(routines.length===0?React.createElement("div",{style:{fontSize:12,color:"#555",letterSpacing:"0.04em",lineHeight:1.8,textAlign:"center",padding:"40px 20px"}},"No routines yet.\nYour coach will add timed routines here for you to record your times.")
+    :React.createElement(React.Fragment,null,...routines.map(r=>{
+      const isOpen=open.has(r.id);const bt=best(r.id);
+      const hist=(logs[r.id]||[]).map((e,i)=>({...e,_i:i})).sort((a,b)=>(a.date<b.date?1:-1));
+      return React.createElement("div",{key:r.id,style:{marginBottom:12}},
+        React.createElement("div",{onClick:()=>toggle(r.id),style:hdrStyle},
+          React.createElement("span",null,(r.title||"ROUTINE").toUpperCase()),
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
+            bt&&React.createElement("span",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:600,fontSize:11,color:"#333",letterSpacing:"0.04em"}},"BEST "+bt),
+            React.createElement("span",{style:{fontSize:11,transform:isOpen?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
+          )
+        ),
+        isOpen&&React.createElement("div",{style:{border:"1px solid #222",borderTop:"none",background:"#0d0d0d",padding:"12px 14px",marginTop:-10,marginBottom:4}},
+          (r.exercises||[]).length>0&&React.createElement("div",{style:{marginBottom:12}},
+            ...(r.exercises||[]).map(e=>React.createElement("div",{key:e.id,style:{display:"flex",justifyContent:"space-between",gap:10,padding:"6px 0",borderBottom:"1px solid #161616"}},
+              React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.05em",color:"#eee"}},e.name),
+              React.createElement("span",{style:{fontSize:11,color:"#777",letterSpacing:"0.04em",textAlign:"right",flexShrink:0}},[e.sets&&e.sets+" sets",e.reps&&e.reps+" reps",e.duration].filter(Boolean).join(" · "))
+            ))
+          ),
+          React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#666",fontWeight:600,marginBottom:6}},"YOUR TIMES"),
+          hist.length===0?React.createElement("div",{style:{fontSize:11,color:"#555",padding:"4px 0 10px"}},"No times logged yet.")
+          :React.createElement(React.Fragment,null,...hist.map(e=>React.createElement("div",{key:e._i,style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #161616"}},
+            React.createElement("span",{style:{fontSize:12,color:"#aaa",letterSpacing:"0.04em"}},new Date(e.date+"T12:00:00").toLocaleDateString("en-US",{day:"numeric",month:"short",year:"numeric"})),
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
+              React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.05em",color:e.time===bt?"#1d9bf0":"#fff"}},e.time+(e.time===bt?" ⭐":"")),
+              React.createElement("button",{onClick:()=>delTime(r.id,e._i),style:{background:"none",border:"none",color:"#5a2018",fontSize:14,cursor:"pointer"}},"✕")
+            )
+          ))),
+          React.createElement("button",{onClick:()=>addTime(r.id),style:{width:"100%",background:"#fff",color:"#000",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.12em",padding:"11px",cursor:"pointer",marginTop:10}},"+ ADD TIME")
+        )
+      );
+    })))
+  );
+}
 function App(){
   const [ready,setReady]=useState(false);
   const [session,setSession]=useState(null);
@@ -4887,7 +5062,8 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     tab==="workouts"&&React.createElement(React.Fragment,null,
       renderSeg(wkOpts,effWkSub,setWkSub),
       effWkSub==="pt"&&showPT&&React.createElement(MemberWorkoutsView,{session,memberData}),
-      effWkSub==="strength"&&showStrength&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast,bookings,memberData}))
+      effWkSub==="strength"&&showStrength&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast,bookings,memberData})),
+      effWkSub==="routines"&&showRoutines&&React.createElement(RoutinesView,{session})
     ),
     tab==="progress"&&acc("progress")&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}),
     tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg}),
