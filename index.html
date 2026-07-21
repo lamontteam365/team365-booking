@@ -1024,7 +1024,7 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,c
     setWellBks(prev=>[...prev,newBk]);
     const ok=await sbPost("wellness_bookings",newBk);
     if(!ok){setWellBks(prev=>prev.filter(b=>!(b.date_key===selDK&&b.time===time)));showToast("Booking failed — try again");}
-    else{showToast("Wellness session booked ✓");notifyWellnessBooking(session.name,session.email,selDK,time);if(!isAdmin&&calendarEnabled)openAddToCalendar({title:"Team 365 Sauna & Cold Plunge",dateKey:selDK,time,durationMin:90,details:"Booked via the Team 365 app."});}
+    else{showToast("Wellness session booked ✓");notifyWellnessBooking(session.name,session.email,selDK,time);if(calendarEnabled)openAddToCalendar({title:"Team 365 Sauna & Cold Plunge",dateKey:selDK,time,durationMin:90,details:"Booked via the Team 365 app."});}
     setBusy(p=>({...p,[lk]:false}));
   }
   async function handleCancel(time){
@@ -4712,7 +4712,7 @@ function App(){
     setBookings(prev=>[...prev,newBk]);
     const ok=await sbPost("bookings",newBk);
     if(!ok){setBookings(prev=>prev.filter(b=>!(b.email===session.email&&b.date_key===selDK&&b.time===time)));showToast("Booking failed — try again");}
-    else{showToast("Spot reserved ✓");if(!isAdmin&&calendarEnabled)openAddToCalendar({title:"Team 365 "+(slotNames[selDK+":"+time]||getDayClassName(selDK)||sessionType),dateKey:selDK,time,durationMin:60,details:"Booked via the Team 365 app."});}
+    else{showToast("Spot reserved ✓");if(calendarEnabled)openAddToCalendar({title:"Team 365 "+(slotNames[selDK+":"+time]||getDayClassName(selDK)||sessionType),dateKey:selDK,time,durationMin:60,details:"Booked via the Team 365 app."});}
     setBkBusy(p=>({...p,[lk]:false}));
   }
   // Book the same weekday+time for N consecutive weeks. Skips full/unavailable/limit weeks, reports a summary.
@@ -4744,7 +4744,7 @@ function App(){
     if(n===0)showToast("Those weeks are full — nothing booked");
     else if(skipped.length===0)showToast(`Booked ${n} week${n>1?"s":""} ✓`);
     else showToast(`Booked ${n} of ${weeks} — ${skipped.map(d=>d.getDate()+" "+MONTHS[d.getMonth()]).join(", ")} full`);
-    if(!isAdmin&&added.length&&calendarEnabled)openAddToCalendar({title:"Team 365 "+(slotNames[added[0].date_key+":"+time]||getDayClassName(added[0].date_key)||sessionType),dateKey:added[0].date_key,time,durationMin:60,recurWeeks:added.length,details:"Booked via the Team 365 app."});
+    if(added.length&&calendarEnabled)openAddToCalendar({title:"Team 365 "+(slotNames[added[0].date_key+":"+time]||getDayClassName(added[0].date_key)||sessionType),dateKey:added[0].date_key,time,durationMin:60,recurWeeks:added.length,details:"Booked via the Team 365 app."});
     setBkBusy(p=>({...p,[lk]:false}));
   }
   async function handleCancel(time,dk){
