@@ -1532,6 +1532,13 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
         ),
         React.createElement("button",{onClick:()=>saveMFlag("welladm",!mFlags.welladm),style:{background:!mFlags.welladm?"#fff":"#222",color:!mFlags.welladm?"#000":"#555",border:"1px solid "+(!mFlags.welladm?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},!mFlags.welladm?"HIDE":"OFF")
       ),
+      isMaster&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(mFlags.maint?"#c98a1e":"#222"),padding:"11px 14px",marginBottom:10}},
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"MAINTENANCE MODE"),
+          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"ON = members & admins see only the Notice Board")
+        ),
+        React.createElement("button",{onClick:()=>saveMFlag("maint",!mFlags.maint),style:{background:mFlags.maint?"#c98a1e":"#222",color:mFlags.maint?"#000":"#555",border:"1px solid "+(mFlags.maint?"#c98a1e":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},mFlags.maint?"ON":"OFF")
+      ),
       React.createElement("div",{className:"adm-stats-row"},
         React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},visMembers.length),React.createElement("div",{className:"adm-stat-lbl"},"MEMBERS")),
         React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},bookings.filter(b=>b.date_key>=toDS(new Date())).length),React.createElement("div",{className:"adm-stat-lbl"},"UPCOMING BKS"))
@@ -4575,7 +4582,9 @@ function App(){
   const showStrength=strengthEnabled&&acc("strength");
   const showPT=workoutsEnabled;
   const showRoutines=routinesEnabled;
-  const NAV_TABS=[
+  const maintActive=mFlags.maint===true&&!isMaster;
+  const effTab=maintActive?"community":tab;
+  const NAV_TABS=maintActive?[{id:"community",label:"NOTICE BOARD",dot:true}]:[
     ...(acc("community")?[{id:"community",label:"NOTICE BOARD",dot:true}]:[]),
     ...(canBook?[{id:"my",label:"MY BOOKINGS"}]:[]),
     ...((showClasses||showWellness)?[{id:"book",label:"BOOKINGS"}]:[]),
@@ -4953,7 +4962,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       React.createElement("div",{className:"no-sb",style:{display:"flex",marginLeft:-20,marginRight:-20,width:"calc(100% + 40px)",borderTop:"1px solid #888",borderBottom:"1px solid #888",background:"#141414",overflowX:"auto"},onClick:e=>e.stopPropagation()},
         NAV_TABS.map((t,ti)=>React.createElement(React.Fragment,{key:t.id},
           React.createElement("button",{"data-tab":t.id,
-            style:{flex:"1 0 auto",minWidth:56,padding:"12px 10px",background:tab===t.id?"#fff":"none",border:"none",borderTop:`1px solid ${tab===t.id?"#fff":"#888"}`,borderBottom:`1px solid ${tab===t.id?"#fff":"#888"}`,borderLeft:"1px solid transparent",borderRight:"1px solid transparent",marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8.5px",letterSpacing:"0.1em",color:tab===t.id?"#000":"#555",fontWeight:600,whiteSpace:"nowrap",position:"relative"},
+            style:{flex:"1 0 auto",minWidth:56,padding:"12px 10px",background:effTab===t.id?"#fff":"none",border:"none",borderTop:`1px solid ${effTab===t.id?"#fff":"#888"}`,borderBottom:`1px solid ${effTab===t.id?"#fff":"#888"}`,borderLeft:"1px solid transparent",borderRight:"1px solid transparent",marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8.5px",letterSpacing:"0.1em",color:effTab===t.id?"#000":"#555",fontWeight:600,whiteSpace:"nowrap",position:"relative"},
             onClick:()=>{setTab(t.id);if(t.id==="community")lsSet("t365-last-read",Date.now());}},
             t.label,
             t.dot&&unreadPosts>0&&tab!=="community"&&React.createElement("div",{className:"tab-dot"})
@@ -4963,7 +4972,8 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       )
     ),
     React.createElement("div",{className:"app-body"},
-    tab==="book"&&React.createElement(React.Fragment,null,
+    mFlags.maint&&React.createElement("div",{style:{background:"#c98a1e",color:"#0a0a0a",textAlign:"center",padding:"8px 10px",fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.2em",fontSize:14,marginBottom:10}},"⚙ MAINTENANCE MODE"),
+    effTab==="book"&&React.createElement(React.Fragment,null,
       renderSeg(bookOpts,effBookSub,setBookSub),
       effBookSub==="classes"&&showClasses&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"well-hdr"},
@@ -5038,7 +5048,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       ),
       effBookSub==="wellness"&&showWellness&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin,memberData,wellSlots,calendarEnabled})
     ),
-    tab==="my"&&canBook&&React.createElement("div",{className:"my-wrap"},
+    effTab==="my"&&canBook&&React.createElement("div",{className:"my-wrap"},
       React.createElement("div",{className:"my-hdr"},"MY BOOKINGS"),
       classesEnabled&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"adm-stats-row",style:{marginBottom:18}},
@@ -5126,15 +5136,15 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:"0.1em",color:"#fff",marginBottom:10}},"WELCOME TO TEAM 365"),
       React.createElement("div",{style:{fontSize:12,letterSpacing:"0.04em",lineHeight:1.9}},"Your account is set up. You will have access shortly — check back soon, or get in touch with Team 365.")
     ),
-    tab==="community"&&acc("community")&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
-    tab==="workouts"&&React.createElement(React.Fragment,null,
+    effTab==="community"&&acc("community")&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
+    effTab==="workouts"&&React.createElement(React.Fragment,null,
       renderSeg(wkOpts,effWkSub,setWkSub),
       effWkSub==="pt"&&showPT&&React.createElement(MemberWorkoutsView,{session,memberData}),
       effWkSub==="strength"&&showStrength&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast,bookings,memberData})),
       effWkSub==="routines"&&showRoutines&&React.createElement(RoutinesView,{session})
     ),
-    tab==="progress"&&acc("progress")&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}),
-    tab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg}),
+    effTab==="progress"&&acc("progress")&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}),
+    effTab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg}),
     ),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
@@ -5143,7 +5153,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     ),
     React.createElement("div",{className:"tab-bar no-sb",style:{marginTop:0}},
       NAV_TABS.map((t,ti)=>React.createElement(React.Fragment,{key:t.id},
-        React.createElement("button",{"data-tab":t.id,className:`tab-btn${tab===t.id?" ta":""}`,style:t.dot?{position:"relative"}:undefined,
+        React.createElement("button",{"data-tab":t.id,className:`tab-btn${effTab===t.id?" ta":""}`,style:t.dot?{position:"relative"}:undefined,
           onClick:()=>{setTab(t.id);if(t.id==="community")lsSet("t365-last-read",Date.now());}},
           t.label,
           t.dot&&unreadPosts>0&&tab!=="community"&&React.createElement("div",{className:"tab-dot"})
