@@ -149,9 +149,14 @@ html,body{background:#080808;min-height:100vh;font-family:'DM Sans',sans-serif;c
 const { useState, useEffect, useCallback } = React;
 const SB_URL = "https://xczwmexavysvljmobbgv.supabase.co";
 const SB_KEY = "sb_publishable_tujGGhPRUimflq1-IFzuvA_Crw6knMO";
+let AUTH_TOKEN=null;
 const SB_HDR = {"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return=minimal"};
-async function sbGet(t,q=""){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
-async function sbPatch(t,q,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{method:"PATCH",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
+function setAuthToken(t){AUTH_TOKEN=t||null;SB_HDR.Authorization=`Bearer ${t||SB_KEY}`;}
+const RECEPTION_EMAIL="reception@team365.local", RECEPTION_PW="Reception365-Kiosk";
+async function receptionLogin(){try{const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=password`,{method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({email:RECEPTION_EMAIL,password:RECEPTION_PW})});const j=await r.json();if(r.ok&&j.access_token)setAuthToken(j.access_token);return r.ok;}catch(e){return false;}}
+const AUTH_READY=receptionLogin();
+async function sbGet(t,q=""){try{await AUTH_READY;const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
+async function sbPatch(t,q,d){try{await AUTH_READY;const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{method:"PATCH",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
 const SAT_TIMES=["06:30","07:30","08:30","09:30"];

@@ -427,14 +427,20 @@ async function notifyWellnessBooking(name, email, dateKey, time) {
 }
 const SB_URL = "https://xczwmexavysvljmobbgv.supabase.co";
 const SB_KEY = "sb_publishable_tujGGhPRUimflq1-IFzuvA_Crw6knMO";
+let AUTH_TOKEN = null;
 const SB_HDR = {"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return=minimal"};
+function setAuthToken(t){AUTH_TOKEN=t||null;SB_HDR.Authorization=`Bearer ${t||SB_KEY}`;}
+async function authLogin(email,password){try{const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=password`,{method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({email,password})});const j=await r.json();if(!r.ok||!j.access_token)return{error:(j.error_description||j.msg||j.error||"Login failed")};setAuthToken(j.access_token);try{localStorage.setItem("t365-refresh",j.refresh_token||"");}catch(e){}return{ok:true,user:j.user};}catch(e){return{error:"Network error"};}}
+async function authSignup(email,password){try{const r=await fetch(`${SB_URL}/auth/v1/signup`,{method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({email,password})});const j=await r.json();if(!r.ok)return{error:(j.error_description||j.msg||j.error||"Sign up failed")};if(j.access_token){setAuthToken(j.access_token);try{localStorage.setItem("t365-refresh",j.refresh_token||"");}catch(e){}}return{ok:true};}catch(e){return{error:"Network error"};}}
+async function authRefresh(){try{var rt=localStorage.getItem("t365-refresh");if(!rt)return false;const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`,{method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({refresh_token:rt})});const j=await r.json();if(!r.ok||!j.access_token){setAuthToken(null);try{localStorage.removeItem("t365-refresh");}catch(e){}return false;}setAuthToken(j.access_token);try{localStorage.setItem("t365-refresh",j.refresh_token||"");}catch(e){}return true;}catch(e){return false;}}
+function authLogout(){setAuthToken(null);try{localStorage.removeItem("t365-refresh");}catch(e){}}
+async function migrateLogin(email,password){try{const r=await fetch(`${SB_URL}/functions/v1/dynamic-api`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({email,password})});const j=await r.json().catch(()=>({}));if(j&&j.ok)return{ok:true};if(j&&j.error==="wrong_password")return{wrong:true};return{error:(j&&j.error)||"failed"};}catch(e){return{error:"network"};}}
 async function sbGet(t,q=""){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
 async function sbPost(t,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
 async function sbPatch(t,q,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{method:"PATCH",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
 async function sbDelete(t,q){
   try{
-    const headers={"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"};
-    const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{method:"DELETE",headers});
+    const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{method:"DELETE",headers:SB_HDR});
     return r.ok;
   }catch{return false;}
 }
@@ -960,8 +966,9 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
           onClick:async()=>{
             setResettingPw(true);setPwResetOk("");
             const tmpPw="T365"+String(Math.floor(1000+Math.random()*9000));
-            const hashed=hashPw(tmpPw);
-            await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,{password:hashed});
+            let srvOk=false;
+            try{const sr=await fetch(`${SB_URL}/functions/v1/dynamic-api`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${AUTH_TOKEN||SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({action:"adminSetPassword",email:member.email,password:tmpPw})});const sj=await sr.json().catch(()=>({}));srvOk=!!(sj&&sj.ok);}catch(e){}
+            if(!srvOk){setResettingPw(false);setPwResetOk("Reset failed. Please try again.");return;}
             const firstName=member.name?member.name.split(" ")[0]:"there";
             const params=new URLSearchParams({action:"adminReset",to:member.email,firstName,tempPassword:tmpPw});
             try{await fetch(APPS_SCRIPT_URL+"?"+params.toString(),{method:"GET",mode:"no-cors"});}catch(e){}
@@ -1143,7 +1150,6 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
     const post={author_email:session.email,author_name:session.name,content,created_at:Date.now(),likes:[],pinned:false};
     const ok=await sbPost("posts",post);
     if(ok){setText("");await loadPosts();}
-    else showToast("Failed to post");
     setPosting(false);
   }
   async function handleReply(parentPost){
@@ -2918,7 +2924,7 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
       session?sbGet("personal_bests",`email=eq.${encodeURIComponent(session.email)}&select=*`):Promise.resolve([]),
       sbGet("community_bests","select=*"),
       sbGet("personal_bests","select=email,exercise_id,weight_kg,achieved_date"),
-      sbGet("members","select=email")
+      sbGet("members_public","select=email")
     ]);
     setExercises(exData||[]);
     const pbMap={};
@@ -4264,7 +4270,7 @@ function RoutinesAdmin({member}){
   async function openAssign(){
     const inc=routines.filter(r=>!excl.has(r.id));
     if(!inc.length){setMsg("Tick at least one routine to assign.");setTimeout(()=>setMsg(""),3000);return;}
-    const m=await sbGet("members","select=email,name&order=name.asc");
+    const m=await sbGet("members_public","select=email,name&order=name.asc");
     setMembers(m||[]);setSelM(new Set());setMSearch("");setShowAssign(true);
   }
   function toggleM(email){setSelM(p=>{const n=new Set(p);n.has(email)?n.delete(email):n.add(email);return n;});}
@@ -4503,8 +4509,10 @@ function App(){
   useEffect(()=>{
     (async()=>{
       let joinedAt=0;
+      await authRefresh();
       const s=lsGet("t365-session",null);
-      if(s){
+      if(s&&!AUTH_TOKEN)lsSet("t365-session",null);
+      if(s&&AUTH_TOKEN){
         const mb=await sbGet("members",`email=eq.${encodeURIComponent(s.email)}`);
         if(mb.length){setSession(s);setMemberData(mb[0]);joinedAt=mb[0].joined_at||0;
           const accRow=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__ACCESS__"+s.email)}&select=content`);
@@ -4516,7 +4524,7 @@ function App(){
       const lastRead=lsGet("t365-last-read",0)||joinedAt;
       const recentPosts=await sbGet("posts",`created_at=gt.${lastRead}&select=id`);
       setUnreadPosts((recentPosts||[]).length);
-      const allMembers=await sbGet("members","select=email,name,photo_updated_at");
+      const allMembers=await sbGet("members_public","select=email,name,photo_updated_at");
       const nameList=[];
       (allMembers||[]).forEach(m=>{if(m.name)nameList.push(m.name);});
       setAllMemberNames(nameList);
@@ -4524,7 +4532,7 @@ function App(){
       const changedP=[];
       (allMembers||[]).forEach(m=>{const v=m.photo_updated_at||0;if(v>0){if(!pcache[m.email]||pcache[m.email].v!==v)changedP.push(m.email);}else if(pcache[m.email])delete pcache[m.email];});
       if(changedP.length){
-        const fp=await sbGet("members",`email=in.(${changedP.map(e=>encodeURIComponent(e)).join(",")})&select=email,photo,photo_updated_at`);
+        const fp=await sbGet("members_public",`email=in.(${changedP.map(e=>encodeURIComponent(e)).join(",")})&select=email,photo,photo_updated_at`);
         (fp||[]).forEach(m=>{pcache[m.email]={v:m.photo_updated_at||0,photo:m.photo||""};});
       }
       const emSet=new Set((allMembers||[]).map(m=>m.email));
@@ -4644,10 +4652,15 @@ function App(){
     if(password.length<6){setAuthErr("Password must be at least 6 characters.");return;}
     setAuthBusy(true);
     if(authMode==="login"){
+      let auth=await authLogin(em,password);
+      if(auth.error){
+        const mig=await migrateLogin(em,password);
+        if(mig&&mig.ok){auth=await authLogin(em,password);}
+        if(auth.error){setAuthErr(mig&&mig.wrong?"Incorrect password.":"Incorrect email or password.");setAuthBusy(false);return;}
+      }
       const rows=await sbGet("members",`email=eq.${encodeURIComponent(em)}`);
       if(!rows.length){setAuthErr("No account found with that email.");setAuthBusy(false);return;}
       const mb=rows[0];
-      if(mb.password!==hashPw(password)){setAuthErr("Incorrect password.");setAuthBusy(false);return;}
       const s={email:em,name:mb.name};lsSet("t365-session",s);setSession(s);setMemberData(mb);
       if(mb.photo)setMemberPhotos(p=>({...p,[em]:mb.photo}));
       const accRow=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__ACCESS__"+em)}&select=content`);
@@ -4656,25 +4669,28 @@ function App(){
     }else{
       const existing=await sbGet("members",`email=eq.${encodeURIComponent(em)}`);
       if(existing.length){setAuthErr("An account already exists with this email.");setAuthBusy(false);return;}
+      const su=await authSignup(em,password);
+      if(su.error){setAuthErr(su.error);setAuthBusy(false);return;}
       const mb={email:em,name:name.trim(),phone:phone.trim(),photo:"",password:hashPw(password),joined_at:Date.now()};
       const ok=await sbPost("members",mb);
       if(!ok){setAuthErr("Something went wrong. Please try again.");setAuthBusy(false);return;}
+      if(!AUTH_TOKEN)await authLogin(em,password);
       const s={email:em,name:name.trim()};lsSet("t365-session",s);setSession(s);setMemberData(mb);
     }
     setAuthBusy(false);
   }
-  function handleLogout(){lsSet("t365-session",null);setSession(null);setMemberData(null);setMemberAccess(null);setShowProf(false);}
+  function handleLogout(){authLogout();lsSet("t365-session",null);setSession(null);setMemberData(null);setMemberAccess(null);setShowProf(false);}
   async function handleForgotPw(){
     const em=fpEmail.toLowerCase().trim();
     if(!em||!/\S+@\S+\.\S+/.test(em)){setFpErr("Please enter a valid email address.");return;}
     setFpBusy(true);setFpErr("");
-    const rows=await sbGet("members",`email=eq.${encodeURIComponent(em)}&select=name`);
-    if(!rows.length){setFpBusy(false);setFpErr("No account found with that email.");return;}
-    const firstName=rows[0].name?rows[0].name.split(" ")[0]:"there";
-    const token=Math.random().toString(36).slice(2)+Date.now().toString(36)+Math.random().toString(36).slice(2);
-    const expiresAt=Date.now()+86400000;
-    await sbDelete("password_resets",`email=eq.${encodeURIComponent(em)}`);
-    await sbPost("password_resets",{email:em,token,expires_at:expiresAt});
+    let firstName="there",token=null;
+    try{
+      const rr=await fetch(`${SB_URL}/functions/v1/dynamic-api`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({action:"requestReset",email:em})});
+      const jj=await rr.json().catch(()=>({}));
+      if(!jj||!jj.ok){setFpBusy(false);setFpErr("No account found with that email.");return;}
+      firstName=jj.firstName||"there";token=jj.token;
+    }catch(e){setFpBusy(false);setFpErr("Something went wrong. Please try again.");return;}
     const params=new URLSearchParams({action:"passwordReset",to:em,firstName,token});
     try{await fetch(APPS_SCRIPT_URL+"?"+params.toString(),{method:"GET",mode:"no-cors"});}catch(e){}
     setFpBusy(false);setFpMsg("Reset link sent! Check your email. The link expires in 24 hours.");
@@ -4876,6 +4892,7 @@ function App(){
     const upd={name:name.trim(),phone:phone.trim(),photo:photo||"",emergency_name:profForm.emergencyName||"",emergency_phone:profForm.emergencyPhone||""};
     if(photoChanged)upd.photo_updated_at=photoTs;
     if(newPw)upd.password=hashPw(newPw);if(em!==session.email)upd.email=em;
+    if(newPw&&AUTH_TOKEN){try{const ar=await fetch(`${SB_URL}/auth/v1/user`,{method:"PUT",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${AUTH_TOKEN}`,"Content-Type":"application/json"},body:JSON.stringify({password:newPw})});if(!ar.ok){setProfErr("Password update failed. Please try again.");setProfBusy(false);return;}}catch(e){setProfErr("Password update failed. Please try again.");setProfBusy(false);return;}}
     const ok=await sbPatch("members",`email=eq.${encodeURIComponent(session.email)}`,upd);
     if(!ok){setProfErr("Update failed. Please try again.");setProfBusy(false);return;}
     const ns={email:em,name:name.trim()};

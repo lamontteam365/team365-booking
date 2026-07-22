@@ -209,8 +209,6 @@ async function handleSubmit(){
   if(!healthDeclaration){errEl.textContent="Please confirm the health declaration.";return;}
   if(!mediaConsent){errEl.textContent="Please confirm your media consent preference.";return;}
   if(!hasSig){errEl.textContent="Please sign the form.";return;}
-  const existing = await sbGet("members",`email=eq.${encodeURIComponent(email)}`);
-  const isExisting = existing.length > 0;
   const btn = document.getElementById("submit-btn");
   btn.disabled=true; btn.textContent="SUBMITTING...";
   const sigData = sigCanvas.toDataURL("image/png",0.7);
@@ -248,21 +246,16 @@ async function handleSubmit(){
   };
   let ok = false;
   let tempPw = "";
-  if(isExisting){
-    const patchRes = await fetch(`${SB_URL}/rest/v1/members?email=eq.${encodeURIComponent(email)}`,{
-      method:"PATCH", headers:SB_HDR, body:JSON.stringify(regData)
-    });
-    ok = patchRes.ok;
-    if(ok) logHealthToSheets(healthData);
-  } else {
-    tempPw = Math.random().toString(36).slice(2,10);
-    ok = await sbPost("members", {email,photo:"",password:hashPw(tempPw),joined_at:Date.now(),workouts_enabled:true,...regData});
-    if(ok){
-      // New health-screening signups start with Notice Board + the Workouts add-on; admin grants the rest from their profile.
-      sbPost("coaching_notes",{class_name:"__ACCESS__"+email,content:JSON.stringify({tabs:["community"]}),updated_at:Date.now()});
-      sendWelcomeEmailViaScript(email, firstName, tempPw);
-      logHealthToSheets(healthData);
-    }
+  let isExisting = false;
+  try{
+    const ur = await fetch(`${SB_URL}/functions/v1/dynamic-api`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({action:"memberUpsert",email,data:regData,defaults:{workouts_enabled:true},accessTabs:["community"]})});
+    const uj = await ur.json().catch(()=>({}));
+    ok = !!(uj&&uj.ok); isExisting = !!(uj&&uj.existing); tempPw = (uj&&uj.tempPw)||"";
+  }catch(e){ ok=false; }
+  if(ok){
+    // New health-screening signups get the welcome email + Notice Board/Workouts access (created server-side).
+    if(!isExisting) sendWelcomeEmailViaScript(email, firstName, tempPw);
+    logHealthToSheets(healthData);
   }
   if(!ok){
     errEl.textContent="Something went wrong. Please try again.";

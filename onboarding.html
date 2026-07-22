@@ -639,15 +639,12 @@ async function handleSubmit(){
     membership_type:membershipType,registration_date:today(),
     expiry_date:ed.toISOString().split("T")[0]
   };
-  const existing=await sbGet("members",`email=eq.${encodeURIComponent(email)}`);
-  const isExisting=existing.length>0;
-  let ok=false,tempPw="";
-  if(isExisting){
-    ok=await sbPatch("members",`email=eq.${encodeURIComponent(email)}`,regData);
-  } else {
-    tempPw=Math.random().toString(36).slice(2,10);
-    ok=await sbPost("members",{email,photo:"",password:hashPw(tempPw),joined_at:Date.now(),...regData});
-  }
+  let ok=false,tempPw="",isExisting=false;
+  try{
+    const ur=await fetch(`${SB_URL}/functions/v1/dynamic-api`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({action:"memberUpsert",email,data:regData})});
+    const uj=await ur.json().catch(()=>({}));
+    ok=!!(uj&&uj.ok);isExisting=!!(uj&&uj.existing);tempPw=(uj&&uj.tempPw)||"";
+  }catch(e){ok=false;}
   if(!ok){errEl.textContent="Something went wrong. Please try again.";btn.disabled=false;btn.textContent="COMPLETE REGISTRATION";return;}
   const ddData={
     name,email,phone,dob,emergencyName:eName,emergencyPhone:ePhone,

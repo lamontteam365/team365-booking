@@ -547,14 +547,10 @@ async function handleSubmit(){
   // Generate PDF
   const pdfUri = generatePDF(ddData);
 
-  // Update member profile in Supabase
-  const rows=await sbGet("members",`email=eq.${encodeURIComponent(email)}`);
-  if(rows.length){
-    await sbPatch("members",`email=eq.${encodeURIComponent(email)}`,{
-      membership_type:`${plan.name} - ${selectedTerm} months`,
-      registration_date:today()
-    });
-  }
+  // Update member profile in Supabase (server-side; only if the member already exists)
+  try{
+    await fetch(`${SB_URL}/functions/v1/dynamic-api`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({action:"memberUpsert",email,updateOnly:true,data:{membership_type:`${plan.name} - ${selectedTerm} months`,registration_date:today()}})});
+  }catch(e){}
 
   // Send emails
   await sendDDEmail(email,name,pdfUri,ddData);

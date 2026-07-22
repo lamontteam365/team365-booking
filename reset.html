@@ -117,7 +117,7 @@ function renderForm(email) {
   app.innerHTML = `
     <div class="card">
       <div class="card-title">SET NEW PASSWORD</div>
-      <div class="card-sub">Choose a new password for <strong style="color:#aaa">${email}</strong></div>
+      <div class="card-sub">Choose a new password for your account.</div>
       <div class="field">
         <label>NEW PASSWORD</label>
         <input type="password" id="pw1" placeholder="Enter new password" autocomplete="new-password"/>
@@ -180,19 +180,22 @@ async function doReset(email) {
   btn.disabled = true;
   btn.textContent = "UPDATING...";
 
-  const hashed = hashPw(pw1);
-  const ok = await sbPatch("members", `email=eq.${encodeURIComponent(email)}`, { password: hashed });
+  const token = new URLSearchParams(window.location.search).get("token");
+  let ok = false, errMsg = "Failed to update password. Please try again.";
+  try {
+    const rr = await fetch(`${SB_URL}/functions/v1/dynamic-api`, { method:"POST", headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"}, body: JSON.stringify({ action:"doReset", token, password: pw1 }) });
+    const jj = await rr.json().catch(() => ({}));
+    ok = !!(jj && jj.ok);
+    if (!ok && jj && jj.error === "expired") errMsg = "This reset link has expired. Please request a new one.";
+    else if (!ok && jj && jj.error === "badtoken") errMsg = "This reset link is invalid or already used. Please request a new one.";
+  } catch (e) {}
 
   if (!ok) {
     btn.disabled = false;
     btn.textContent = "UPDATE PASSWORD";
-    showErr("Failed to update password. Please try again.");
+    showErr(errMsg);
     return;
   }
-
-  // Delete the token (clean up)
-  const token = new URLSearchParams(window.location.search).get("token");
-  if (token) await sbDelete("password_resets", `token=eq.${encodeURIComponent(token)}`);
 
   renderSuccess();
 }
@@ -208,25 +211,8 @@ async function init() {
     return;
   }
 
-  // Look up the token
-  const rows = await sbGet("password_resets", `token=eq.${encodeURIComponent(token)}&select=email,expires_at`);
-
-  if (!rows || rows.length === 0) {
-    renderInvalid("This reset link is invalid or has already been used. Please request a new one.");
-    return;
-  }
-
-  const { email, expires_at } = rows[0];
-  const now = Date.now();
-
-  if (expires_at && now > expires_at) {
-    // Clean up expired token
-    await sbDelete("password_resets", `token=eq.${encodeURIComponent(token)}`);
-    renderInvalid("This reset link has expired (links are valid for 24 hours). Please request a new one.");
-    return;
-  }
-
-  renderForm(email);
+  // Token is validated server-side when the new password is submitted.
+  renderForm("");
 }
 
 init();
