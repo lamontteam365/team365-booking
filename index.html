@@ -4077,7 +4077,7 @@ function MemberWorkoutAdmin({member,memberView,isMaster,mfPasteAI}){
   );
 }
 // ── Member Workouts Tab (read-only, member-facing) ────────────────────────────
-function MemberWorkoutsView({session,memberData}){
+function MemberWorkoutsView({session,memberData,ttl}){
   const [weekStart,setWeekStart]=useState(()=>mondayOf(new Date()));
   const [selDay,setSelDay]=useState(()=>{const d=new Date().getDay();return d===0?6:d-1;});
   const [program,setProgram]=useState({});
@@ -4198,7 +4198,7 @@ function MemberWorkoutsView({session,memberData}){
     );
   }
   return React.createElement("div",{className:"well-wrap"},
-    React.createElement("div",{className:"well-hdr"},React.createElement("div",{className:"well-title"},"PT PROGRAM")),
+    React.createElement("div",{className:"well-hdr"},React.createElement("div",{className:"well-title"},ttl||"PT PROGRAM")),
     React.createElement("div",{className:"week-nav",style:{paddingTop:0}},
       React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7))},"‹"),
       React.createElement("div",{className:"wk-label"},weekLabel),
@@ -4527,7 +4527,7 @@ function RoutinesAdmin({member}){
   );
 }
 // ── Routines (member-facing, timed logging) ───────────────────────────────────
-function RoutinesView({session}){
+function RoutinesView({session,ttl}){
   const [routines,setRoutines]=useState([]);
   const [logs,setLogs]=useState({});
   const [open,setOpen]=useState(new Set());
@@ -4563,7 +4563,7 @@ function RoutinesView({session}){
   }
   const hdrStyle={width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginBottom:10};
   return React.createElement("div",{className:"well-wrap",style:{padding:"14px 16px 80px"}},
-    React.createElement("div",{className:"well-hdr",style:{marginBottom:18}},React.createElement("div",{className:"well-title"},"ROUTINES")),
+    React.createElement("div",{className:"well-hdr",style:{marginBottom:18}},React.createElement("div",{className:"well-title"},ttl||"ROUTINES")),
     loading?React.createElement("div",{style:{fontSize:11,color:"#555",letterSpacing:"0.1em",padding:"20px 0",textAlign:"center"}},"LOADING...")
     :(routines.length===0?React.createElement("div",{style:{fontSize:12,color:"#555",letterSpacing:"0.04em",lineHeight:1.8,textAlign:"center",padding:"40px 20px"}},"No routines yet.\nYour coach will add timed routines here for you to record your times.")
     :React.createElement(React.Fragment,null,...routines.map(r=>{
@@ -5354,9 +5354,9 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     effTab==="community"&&acc("community")&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
     effTab==="workouts"&&React.createElement(React.Fragment,null,
       renderSeg(wkOpts,effWkSub,setWkSub),
-      effWkSub==="pt"&&showPT&&React.createElement(MemberWorkoutsView,{session,memberData}),
+      effWkSub==="pt"&&showPT&&React.createElement(MemberWorkoutsView,{session,memberData,ttl:wkTitles.pt}),
       effWkSub==="strength"&&showStrength&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast,bookings,memberData})),
-      effWkSub==="routines"&&showRoutines&&React.createElement(RoutinesView,{session})
+      effWkSub==="routines"&&showRoutines&&React.createElement(RoutinesView,{session,ttl:wkTitles.rt})
     ),
     effTab==="progress"&&acc("progress")&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}),
     effTab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg}),
