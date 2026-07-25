@@ -3960,17 +3960,14 @@ function MemberWorkoutAdmin({member,memberView,isMaster,mfPasteAI}){
   const allCollapsed=MW_DAYS.every(d=>collapsedDays.has(d));
   const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",padding:"7px 9px",outline:"none",boxSizing:"border-box"};
   return React.createElement(React.Fragment,null,
-    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",marginTop:16,marginBottom:(ptCol&&!editGlobalPt)?0:10}},
-      React.createElement("div",{onClick:()=>setPtCol(v=>!v),style:{flex:1,display:"flex",alignItems:"center",justifyContent:"space-between",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none"}},
+    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",marginTop:16,marginBottom:ptCol?0:10}},
+      editGlobalPt
+      ?React.createElement("input",{autoFocus:true,defaultValue:ptTitleGlobal,placeholder:"PT PROGRAM",onClick:e=>e.stopPropagation(),onBlur:e=>{saveGlobalPtTitle(e.target.value);setEditGlobalPt(false);},onKeyDown:e=>{if(e.key==="Enter"){saveGlobalPtTitle(e.target.value);setEditGlobalPt(false);}else if(e.key==="Escape")setEditGlobalPt(false);},style:{flex:1,minWidth:0,background:"#eee",border:"1px solid #999",borderRadius:0,color:"#000",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",padding:"4px 8px",outline:"none"}})
+      :React.createElement("div",{onClick:()=>setPtCol(v=>!v),style:{flex:1,display:"flex",alignItems:"center",gap:8,cursor:"pointer",userSelect:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em"}},
         React.createElement("span",null,(ptTitle||ptTitleGlobal||"PT PROGRAM")+(memberView?" · MEMBER VIEW":"")),
-        React.createElement("span",{style:{fontSize:11,transform:ptCol?"rotate(-90deg)":"none",transition:"transform .15s",marginLeft:10}},"▾")
-      ),
-      React.createElement("span",{onClick:e=>{e.stopPropagation();setEditGlobalPt(v=>!v);},title:"Rename for all members",style:{fontSize:13,cursor:"pointer",opacity:editGlobalPt?1:0.5,padding:"0 4px"}},"✎")
-    ),
-    editGlobalPt&&React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1d3a5a",borderRadius:0,padding:"10px 12px",marginBottom:6}},
-      React.createElement("label",{style:{display:"block",fontSize:9,letterSpacing:"0.12em",color:"#89a",marginBottom:4}},"PT PROGRAM TITLE — ALL MEMBERS"),
-      React.createElement("input",{value:ptTitleGlobal,placeholder:"PT PROGRAM",onChange:e=>setPtTitleGlobal(e.target.value),onBlur:e=>saveGlobalPtTitle(e.target.value),style:{...inS,width:"100%"}}),
-      React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:4,lineHeight:1.5}},"Renames the PT Program tab for every member. Leave blank for the default. A member's own title (below, when expanded) overrides this.")
+        React.createElement("span",{onClick:e=>{e.stopPropagation();setEditGlobalPt(true);},title:"Rename for all members",style:{fontSize:12,opacity:0.5,cursor:"pointer"}},"✎"),
+        React.createElement("span",{style:{marginLeft:"auto",fontSize:11,transform:ptCol?"rotate(-90deg)":"none",transition:"transform .15s"}},"▾")
+      )
     ),
     !ptCol&&(memberView?React.createElement(MemberWorkoutReview,{email:member.email}):React.createElement(React.Fragment,null,
     React.createElement("div",{style:{marginBottom:12}},
@@ -4376,13 +4373,20 @@ function RoutinesAdmin({member}){
   async function upsertNoteRT(k,val){const ex=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(k)}&select=class_name`);if(ex&&ex.length)await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(k)}`,{content:val,updated_at:Date.now()});else await sbPost("coaching_notes",{class_name:k,content:val,updated_at:Date.now()});}
   async function saveRtTitle(v){const val=(v||"").trim();setRtTitle(val);await upsertNoteRT(rtTitleKey,val);}
   async function saveGlobalRtTitle(v){const val=(v||"").trim();setRtTitleGlobal(val);await upsertNoteRT("__RTTITLE__GLOBAL",val);}
+  const [rtLogs,setRtLogs]=useState({});
+  const [showTimes,setShowTimes]=useState(false);
+  const bestT=rid=>{const a=(rtLogs[rid]||[]).map(e=>e.time).filter(Boolean);if(!a.length)return null;return [...a].sort(rtCmp)[0];};
   useEffect(()=>{load();},[]);
   async function load(){
     setLoading(true);
-    const d=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(key)}&select=content`);
+    const [d,l]=await Promise.all([
+      sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(key)}&select=content`),
+      sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__RTLOG__"+member.email)}&select=content`)
+    ]);
     let arr=[];if(d&&d.length&&d[0].content){try{const o=JSON.parse(d[0].content);arr=Array.isArray(o)?o:(o.routines||[]);}catch{}}
+    let lg={};if(l&&l.length&&l[0].content){try{lg=JSON.parse(l[0].content)||{};}catch{}}
     const mapped=(arr||[]).map(r=>({...r,id:r.id||mwGenId(),exercises:(r.exercises||[]).map(e=>({...e,id:e.id||mwGenId()}))}));
-    setRoutines(mapped);setOpen(new Set(mapped.map(r=>r.id)));setLoading(false);
+    setRoutines(mapped);setRtLogs(lg);setOpen(new Set(mapped.map(r=>r.id)));setLoading(false);
   }
   function moveEx(rid,eid,dir){setRoutines(p=>p.map(r=>{if(r.id!==rid)return r;const a=[...(r.exercises||[])];const i=a.findIndex(e=>e.id===eid);const j=i+dir;if(i<0||j<0||j>=a.length)return r;[a[i],a[j]]=[a[j],a[i]];return{...r,exercises:a};}));}
   function dupEx(rid,eid){setRoutines(p=>p.map(r=>{if(r.id!==rid)return r;const a=[...(r.exercises||[])];const i=a.findIndex(e=>e.id===eid);if(i<0)return r;a.splice(i+1,0,{...a[i],id:mwGenId()});return{...r,exercises:a};}));}
@@ -4429,23 +4433,43 @@ function RoutinesAdmin({member}){
   }
   const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",padding:"7px 9px",outline:"none",boxSizing:"border-box"};
   return React.createElement(React.Fragment,null,
-    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",marginTop:16,marginBottom:(rtCol&&!editGlobalRt)?0:10}},
-      React.createElement("div",{onClick:()=>setRtCol(v=>!v),style:{flex:1,display:"flex",alignItems:"center",justifyContent:"space-between",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none"}},
+    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",marginTop:16,marginBottom:rtCol?0:10}},
+      editGlobalRt
+      ?React.createElement("input",{autoFocus:true,defaultValue:rtTitleGlobal,placeholder:"ROUTINES",onClick:e=>e.stopPropagation(),onBlur:e=>{saveGlobalRtTitle(e.target.value);setEditGlobalRt(false);},onKeyDown:e=>{if(e.key==="Enter"){saveGlobalRtTitle(e.target.value);setEditGlobalRt(false);}else if(e.key==="Escape")setEditGlobalRt(false);},style:{flex:1,minWidth:0,background:"#eee",border:"1px solid #999",borderRadius:0,color:"#000",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",padding:"4px 8px",outline:"none"}})
+      :React.createElement("div",{onClick:()=>setRtCol(v=>!v),style:{flex:1,display:"flex",alignItems:"center",gap:8,cursor:"pointer",userSelect:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em"}},
         React.createElement("span",null,rtTitle||rtTitleGlobal||"ROUTINES"),
-        React.createElement("span",{style:{fontSize:11,transform:rtCol?"rotate(-90deg)":"none",transition:"transform .15s",marginLeft:10}},"▾")
-      ),
-      React.createElement("span",{onClick:e=>{e.stopPropagation();setEditGlobalRt(v=>!v);},title:"Rename for all members",style:{fontSize:13,cursor:"pointer",opacity:editGlobalRt?1:0.5,padding:"0 4px"}},"✎")
-    ),
-    editGlobalRt&&React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1d3a5a",borderRadius:0,padding:"10px 12px",marginBottom:6}},
-      React.createElement("label",{style:{display:"block",fontSize:9,letterSpacing:"0.12em",color:"#89a",marginBottom:4}},"ROUTINES TITLE — ALL MEMBERS"),
-      React.createElement("input",{value:rtTitleGlobal,placeholder:"ROUTINES",onChange:e=>setRtTitleGlobal(e.target.value),onBlur:e=>saveGlobalRtTitle(e.target.value),style:{...inS,width:"100%"}}),
-      React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:4,lineHeight:1.5}},"Renames the Routines tab for every member. Leave blank for the default. A member's own title (below, when expanded) overrides this.")
+        React.createElement("span",{onClick:e=>{e.stopPropagation();setEditGlobalRt(true);},title:"Rename for all members",style:{fontSize:12,opacity:0.5,cursor:"pointer"}},"✎"),
+        React.createElement("span",{style:{marginLeft:"auto",fontSize:11,transform:rtCol?"rotate(-90deg)":"none",transition:"transform .15s"}},"▾")
+      )
     ),
     !rtCol&&React.createElement("div",{style:{marginBottom:12}},
       React.createElement("label",{style:{display:"block",fontSize:9,letterSpacing:"0.12em",color:"#666",marginBottom:4}},"THIS MEMBER'S TITLE — OVERRIDES GLOBAL"),
       React.createElement("input",{value:rtTitle,placeholder:rtTitleGlobal||"ROUTINES",onChange:e=>setRtTitle(e.target.value),onBlur:e=>saveRtTitle(e.target.value),style:{...inS,width:"100%"}})
     ),
     !rtCol&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:10}},"Build timed routines for this member. Turn the Routines add-on on above to show them the tab. Members log their own time each attempt — the history and best time build up for them."),
+    !rtCol&&React.createElement("button",{onClick:()=>setShowTimes(v=>!v),style:{width:"100%",background:showTimes?"#0a1a2a":"none",border:"1px dashed "+(showTimes?"#1d3a5a":"#2a2a2a"),borderRadius:0,color:"#1d9bf0",fontSize:10,letterSpacing:"0.12em",padding:"9px",cursor:"pointer",marginBottom:10}},showTimes?"✕ HIDE MEMBER'S LOGGED TIMES":"⏱ SHOW MEMBER'S LOGGED TIMES"),
+    !rtCol&&showTimes&&React.createElement("div",{style:{marginBottom:12}},
+      routines.length===0
+      ?React.createElement("div",{style:{fontSize:11,color:"#555",padding:"4px 0"}},"No routines yet.")
+      :routines.map(r=>{
+        const times=(rtLogs[r.id]||[]).slice().sort((a,b)=>(a.date<b.date?1:-1));
+        const bt=bestT(r.id);
+        return React.createElement("div",{key:"t_"+r.id,style:{border:"1px solid #222",borderRadius:0,marginBottom:8}},
+          React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",padding:"8px 12px"}},
+            React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.08em",color:"#fff"}},(r.title||"ROUTINE").toUpperCase()),
+            bt&&React.createElement("span",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:600,fontSize:11,color:"#4a8aaa",letterSpacing:"0.04em"}},"BEST "+bt)
+          ),
+          React.createElement("div",{style:{padding:"6px 12px 10px"}},
+            times.length===0
+            ?React.createElement("div",{style:{fontSize:11,color:"#555",padding:"4px 0"}},"No times logged yet.")
+            :times.map((e,i)=>React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #161616"}},
+              React.createElement("span",{style:{fontSize:11,color:"#999"}},new Date(e.date+"T12:00:00").toLocaleDateString("en-US",{day:"numeric",month:"short",year:"numeric"})),
+              React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#fff",letterSpacing:"0.05em"}},e.time)
+            ))
+          )
+        );
+      })
+    ),
     rtCol?null:loading?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"8px 0"}},"LOADING...")
     :React.createElement(React.Fragment,null,
       ...routines.map(r=>{const isOpen=open.has(r.id);return React.createElement("div",{key:r.id,style:{border:"1px solid #222",borderRadius:0,marginBottom:10}},
