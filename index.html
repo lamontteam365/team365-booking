@@ -3804,9 +3804,20 @@ function MemberWorkoutAdmin({member,memberView,isMaster,mfPasteAI}){
   const [collapsedDays,setCollapsedDays]=useState(new Set(MW_DAYS));
   const [ptCol,setPtCol]=useState(true);
   const [ptTitle,setPtTitle]=useState("");
+  const [ptTitleGlobal,setPtTitleGlobal]=useState("");
+  const [editGlobalPt,setEditGlobalPt]=useState(false);
   const ptTitleKey="__PTTITLE__"+member.email;
-  useEffect(()=>{(async()=>{const d=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(ptTitleKey)}&select=content`);if(d&&d[0]&&d[0].content!=null)setPtTitle(d[0].content);})();},[]);
-  async function savePtTitle(v){const val=(v||"").trim();setPtTitle(val);const ex=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(ptTitleKey)}&select=class_name`);if(ex&&ex.length)await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(ptTitleKey)}`,{content:val,updated_at:Date.now()});else await sbPost("coaching_notes",{class_name:ptTitleKey,content:val,updated_at:Date.now()});}
+  useEffect(()=>{(async()=>{
+    const [d,g]=await Promise.all([
+      sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(ptTitleKey)}&select=content`),
+      sbGet("coaching_notes","class_name=eq.__PTTITLE__GLOBAL&select=content")
+    ]);
+    if(d&&d[0]&&d[0].content!=null)setPtTitle(d[0].content);
+    if(g&&g[0]&&g[0].content!=null)setPtTitleGlobal(g[0].content);
+  })();},[]);
+  async function upsertNote(k,val){const ex=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(k)}&select=class_name`);if(ex&&ex.length)await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(k)}`,{content:val,updated_at:Date.now()});else await sbPost("coaching_notes",{class_name:k,content:val,updated_at:Date.now()});}
+  async function savePtTitle(v){const val=(v||"").trim();setPtTitle(val);await upsertNote(ptTitleKey,val);}
+  async function saveGlobalPtTitle(v){const val=(v||"").trim();setPtTitleGlobal(val);await upsertNote("__PTTITLE__GLOBAL",val);}
   const [collapsedWorkouts,setCollapsedWorkouts]=useState(new Set());
   const [copyFromDay,setCopyFromDay]=useState(null);
   const [templates,setTemplates]=useState([]);
@@ -3949,11 +3960,22 @@ function MemberWorkoutAdmin({member,memberView,isMaster,mfPasteAI}){
   const allCollapsed=MW_DAYS.every(d=>collapsedDays.has(d));
   const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",padding:"7px 9px",outline:"none",boxSizing:"border-box"};
   return React.createElement(React.Fragment,null,
-    React.createElement("div",{onClick:()=>setPtCol(v=>!v),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginTop:16,marginBottom:ptCol?0:10}},React.createElement("span",null,(ptTitle||"PT PROGRAM")+(memberView?" · MEMBER VIEW":"")),React.createElement("span",{style:{fontSize:11,transform:ptCol?"rotate(-90deg)":"none",transition:"transform .15s"}},"▾")),
+    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",marginTop:16,marginBottom:(ptCol&&!editGlobalPt)?0:10}},
+      React.createElement("div",{onClick:()=>setPtCol(v=>!v),style:{flex:1,display:"flex",alignItems:"center",justifyContent:"space-between",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none"}},
+        React.createElement("span",null,(ptTitle||ptTitleGlobal||"PT PROGRAM")+(memberView?" · MEMBER VIEW":"")),
+        React.createElement("span",{style:{fontSize:11,transform:ptCol?"rotate(-90deg)":"none",transition:"transform .15s",marginLeft:10}},"▾")
+      ),
+      React.createElement("span",{onClick:e=>{e.stopPropagation();setEditGlobalPt(v=>!v);},title:"Rename for all members",style:{fontSize:13,cursor:"pointer",opacity:editGlobalPt?1:0.5,padding:"0 4px"}},"✎")
+    ),
+    editGlobalPt&&React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1d3a5a",borderRadius:0,padding:"10px 12px",marginBottom:6}},
+      React.createElement("label",{style:{display:"block",fontSize:9,letterSpacing:"0.12em",color:"#89a",marginBottom:4}},"PT PROGRAM TITLE — ALL MEMBERS"),
+      React.createElement("input",{value:ptTitleGlobal,placeholder:"PT PROGRAM",onChange:e=>setPtTitleGlobal(e.target.value),onBlur:e=>saveGlobalPtTitle(e.target.value),style:{...inS,width:"100%"}}),
+      React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:4,lineHeight:1.5}},"Renames the PT Program tab for every member. Leave blank for the default. A member's own title (below, when expanded) overrides this.")
+    ),
     !ptCol&&(memberView?React.createElement(MemberWorkoutReview,{email:member.email}):React.createElement(React.Fragment,null,
     React.createElement("div",{style:{marginBottom:12}},
-      React.createElement("label",{style:{display:"block",fontSize:9,letterSpacing:"0.12em",color:"#666",marginBottom:4}},"SECTION TITLE — WHAT THE MEMBER SEES"),
-      React.createElement("input",{value:ptTitle,placeholder:"PT PROGRAM",onChange:e=>setPtTitle(e.target.value),onBlur:e=>savePtTitle(e.target.value),style:{...inS,width:"100%"}})
+      React.createElement("label",{style:{display:"block",fontSize:9,letterSpacing:"0.12em",color:"#666",marginBottom:4}},"THIS MEMBER'S TITLE — OVERRIDES GLOBAL"),
+      React.createElement("input",{value:ptTitle,placeholder:ptTitleGlobal||"PT PROGRAM",onChange:e=>setPtTitle(e.target.value),onBlur:e=>savePtTitle(e.target.value),style:{...inS,width:"100%"}})
     ),
     React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:4}},"Build this member's weekly program below. Turn the Workouts add-on on in Section Access above to give them the Workouts tab."),
     React.createElement("div",{style:{fontSize:9,color:"#444",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:12}},"Group exercises into separate workouts (W1, W2…) with + ADD WORKOUT — each shows as its own block for the member. Set each to log Weight (kg), Distance (km) or a Tick; reorder within a workout with ▲▼."),
@@ -4340,9 +4362,20 @@ function RoutinesAdmin({member}){
   const [mSearch,setMSearch]=useState("");
   const key="__RT__"+member.email;
   const [rtTitle,setRtTitle]=useState("");
+  const [rtTitleGlobal,setRtTitleGlobal]=useState("");
+  const [editGlobalRt,setEditGlobalRt]=useState(false);
   const rtTitleKey="__RTTITLE__"+member.email;
-  useEffect(()=>{(async()=>{const d=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(rtTitleKey)}&select=content`);if(d&&d[0]&&d[0].content!=null)setRtTitle(d[0].content);})();},[]);
-  async function saveRtTitle(v){const val=(v||"").trim();setRtTitle(val);const ex=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(rtTitleKey)}&select=class_name`);if(ex&&ex.length)await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(rtTitleKey)}`,{content:val,updated_at:Date.now()});else await sbPost("coaching_notes",{class_name:rtTitleKey,content:val,updated_at:Date.now()});}
+  useEffect(()=>{(async()=>{
+    const [d,g]=await Promise.all([
+      sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(rtTitleKey)}&select=content`),
+      sbGet("coaching_notes","class_name=eq.__RTTITLE__GLOBAL&select=content")
+    ]);
+    if(d&&d[0]&&d[0].content!=null)setRtTitle(d[0].content);
+    if(g&&g[0]&&g[0].content!=null)setRtTitleGlobal(g[0].content);
+  })();},[]);
+  async function upsertNoteRT(k,val){const ex=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(k)}&select=class_name`);if(ex&&ex.length)await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(k)}`,{content:val,updated_at:Date.now()});else await sbPost("coaching_notes",{class_name:k,content:val,updated_at:Date.now()});}
+  async function saveRtTitle(v){const val=(v||"").trim();setRtTitle(val);await upsertNoteRT(rtTitleKey,val);}
+  async function saveGlobalRtTitle(v){const val=(v||"").trim();setRtTitleGlobal(val);await upsertNoteRT("__RTTITLE__GLOBAL",val);}
   useEffect(()=>{load();},[]);
   async function load(){
     setLoading(true);
@@ -4396,10 +4429,21 @@ function RoutinesAdmin({member}){
   }
   const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",padding:"7px 9px",outline:"none",boxSizing:"border-box"};
   return React.createElement(React.Fragment,null,
-    React.createElement("div",{onClick:()=>setRtCol(v=>!v),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginTop:16,marginBottom:rtCol?0:10}},React.createElement("span",null,rtTitle||"ROUTINES"),React.createElement("span",{style:{fontSize:11,transform:rtCol?"rotate(-90deg)":"none",transition:"transform .15s"}},"▾")),
+    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",marginTop:16,marginBottom:(rtCol&&!editGlobalRt)?0:10}},
+      React.createElement("div",{onClick:()=>setRtCol(v=>!v),style:{flex:1,display:"flex",alignItems:"center",justifyContent:"space-between",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none"}},
+        React.createElement("span",null,rtTitle||rtTitleGlobal||"ROUTINES"),
+        React.createElement("span",{style:{fontSize:11,transform:rtCol?"rotate(-90deg)":"none",transition:"transform .15s",marginLeft:10}},"▾")
+      ),
+      React.createElement("span",{onClick:e=>{e.stopPropagation();setEditGlobalRt(v=>!v);},title:"Rename for all members",style:{fontSize:13,cursor:"pointer",opacity:editGlobalRt?1:0.5,padding:"0 4px"}},"✎")
+    ),
+    editGlobalRt&&React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1d3a5a",borderRadius:0,padding:"10px 12px",marginBottom:6}},
+      React.createElement("label",{style:{display:"block",fontSize:9,letterSpacing:"0.12em",color:"#89a",marginBottom:4}},"ROUTINES TITLE — ALL MEMBERS"),
+      React.createElement("input",{value:rtTitleGlobal,placeholder:"ROUTINES",onChange:e=>setRtTitleGlobal(e.target.value),onBlur:e=>saveGlobalRtTitle(e.target.value),style:{...inS,width:"100%"}}),
+      React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:4,lineHeight:1.5}},"Renames the Routines tab for every member. Leave blank for the default. A member's own title (below, when expanded) overrides this.")
+    ),
     !rtCol&&React.createElement("div",{style:{marginBottom:12}},
-      React.createElement("label",{style:{display:"block",fontSize:9,letterSpacing:"0.12em",color:"#666",marginBottom:4}},"SECTION TITLE — WHAT THE MEMBER SEES"),
-      React.createElement("input",{value:rtTitle,placeholder:"ROUTINES",onChange:e=>setRtTitle(e.target.value),onBlur:e=>saveRtTitle(e.target.value),style:{...inS,width:"100%"}})
+      React.createElement("label",{style:{display:"block",fontSize:9,letterSpacing:"0.12em",color:"#666",marginBottom:4}},"THIS MEMBER'S TITLE — OVERRIDES GLOBAL"),
+      React.createElement("input",{value:rtTitle,placeholder:rtTitleGlobal||"ROUTINES",onChange:e=>setRtTitle(e.target.value),onBlur:e=>saveRtTitle(e.target.value),style:{...inS,width:"100%"}})
     ),
     !rtCol&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:10}},"Build timed routines for this member. Turn the Routines add-on on above to show them the tab. Members log their own time each attempt — the history and best time build up for them."),
     rtCol?null:loading?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"8px 0"}},"LOADING...")
@@ -4614,11 +4658,15 @@ function App(){
     if(!session||!session.email){setWkTitles({pt:"",rt:""});return;}
     (async()=>{
       const pk="__PTTITLE__"+session.email,rk="__RTTITLE__"+session.email;
-      const [pr,rr]=await Promise.all([
+      const [pr,rr,gp,gr]=await Promise.all([
         sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(pk)}&select=content`),
-        sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(rk)}&select=content`)
+        sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(rk)}&select=content`),
+        sbGet("coaching_notes","class_name=eq.__PTTITLE__GLOBAL&select=content"),
+        sbGet("coaching_notes","class_name=eq.__RTTITLE__GLOBAL&select=content")
       ]);
-      setWkTitles({pt:(pr&&pr[0]&&pr[0].content)||"",rt:(rr&&rr[0]&&rr[0].content)||""});
+      const perPt=(pr&&pr[0]&&pr[0].content)||"",perRt=(rr&&rr[0]&&rr[0].content)||"";
+      const gPt=(gp&&gp[0]&&gp[0].content)||"",gRt=(gr&&gr[0]&&gr[0].content)||"";
+      setWkTitles({pt:perPt||gPt,rt:perRt||gRt});
     })();
   },[session]);
   useEffect(()=>{ssSet("t365-booksub",bookSub);},[bookSub]);
