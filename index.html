@@ -941,19 +941,10 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
             style:{background:rtEnabled?"#fff":"#222",color:rtEnabled?"#000":"#555",border:"1px solid "+(rtEnabled?"#fff":"#333"),borderRadius:0,padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},
             rtEnabled?"ON":"OFF")
         ),
-        (isMaster||mfWk!==false)&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(wkMemberView?"#1d5a34":"#222"),borderRadius:0,padding:"11px 14px",marginBottom:6}},
-          React.createElement("div",null,
-            React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"MEMBER VIEW"),
-            React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"See their program as they see it — with completed sets & past weeks")
-          ),
-          React.createElement("button",{onClick:()=>setWkMemberView(v=>!v),
-            style:{background:wkMemberView?"#4aaa66":"#222",color:wkMemberView?"#000":"#555",border:"1px solid "+(wkMemberView?"#4aaa66":"#333"),borderRadius:0,padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},
-            wkMemberView?"ON":"OFF")
-        ),
         accMsg&&React.createElement("div",{style:{fontSize:10,color:"#4aaa88",letterSpacing:"0.04em",marginBottom:4}},accMsg)
       )
       ),
-      currentUserIsAdmin&&(isMaster||mfWk!==false)&&React.createElement(MemberWorkoutAdmin,{member,memberView:wkMemberView,isMaster,mfPasteAI}),
+      currentUserIsAdmin&&(isMaster||mfWk!==false)&&React.createElement(MemberWorkoutAdmin,{member,memberView:wkMemberView,setMemberView:setWkMemberView,isMaster,mfPasteAI}),
       currentUserIsAdmin&&React.createElement(RoutinesAdmin,{member}),
       currentUserIsAdmin&&React.createElement(MemberPBAdmin,{member}),
       currentUserIsAdmin&&React.createElement(React.Fragment,null,
@@ -3787,7 +3778,7 @@ function mwWorkouts(items){
   });
   return [...map.values()].sort((a,b)=>a.num-b.num);
 }
-function MemberWorkoutAdmin({member,memberView,isMaster,mfPasteAI}){
+function MemberWorkoutAdmin({member,memberView,setMemberView,isMaster,mfPasteAI}){
   const [enabled,setEnabled]=useState(member.workouts_enabled===true);
   const [weekStart,setWeekStart]=useState(()=>mondayOf(new Date()));
   const [draft,setDraft]=useState({});     // {Mon:[{title,body,repeat},...],...} (repeat is per-block, transient)
@@ -3968,6 +3959,13 @@ function MemberWorkoutAdmin({member,memberView,isMaster,mfPasteAI}){
         React.createElement("span",{onClick:e=>{e.stopPropagation();setEditGlobalPt(true);},title:"Rename for all members",style:{fontSize:12,opacity:0.5,cursor:"pointer"}},"✎"),
         React.createElement("span",{style:{marginLeft:"auto",fontSize:11,transform:ptCol?"rotate(-90deg)":"none",transition:"transform .15s"}},"▾")
       )
+    ),
+    !ptCol&&setMemberView&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(memberView?"#1d5a34":"#222"),borderRadius:0,padding:"10px 12px",marginTop:10,marginBottom:6}},
+      React.createElement("div",null,
+        React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"MEMBER VIEW"),
+        React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"See their program as they see it — with completed sets & past weeks")
+      ),
+      React.createElement("button",{onClick:()=>setMemberView(v=>!v),style:{background:memberView?"#4aaa66":"#222",color:memberView?"#000":"#555",border:"1px solid "+(memberView?"#4aaa66":"#333"),borderRadius:0,padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},memberView?"ON":"OFF")
     ),
     !ptCol&&(memberView?React.createElement(MemberWorkoutReview,{email:member.email}):React.createElement(React.Fragment,null,
     React.createElement("div",{style:{marginBottom:12}},
@@ -4442,12 +4440,18 @@ function RoutinesAdmin({member}){
         React.createElement("span",{style:{marginLeft:"auto",fontSize:11,transform:rtCol?"rotate(-90deg)":"none",transition:"transform .15s"}},"▾")
       )
     ),
-    !rtCol&&React.createElement("div",{style:{marginBottom:12}},
+    !rtCol&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(showTimes?"#1d5a34":"#222"),borderRadius:0,padding:"10px 12px",marginTop:10,marginBottom:6}},
+      React.createElement("div",null,
+        React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"MEMBER VIEW"),
+        React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"See their routines and logged times as they see them")
+      ),
+      React.createElement("button",{onClick:()=>setShowTimes(v=>!v),style:{background:showTimes?"#4aaa66":"#222",color:showTimes?"#000":"#555",border:"1px solid "+(showTimes?"#4aaa66":"#333"),borderRadius:0,padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},showTimes?"ON":"OFF")
+    ),
+    !rtCol&&!showTimes&&React.createElement("div",{style:{marginBottom:12}},
       React.createElement("label",{style:{display:"block",fontSize:9,letterSpacing:"0.12em",color:"#666",marginBottom:4}},"THIS MEMBER'S TITLE — OVERRIDES GLOBAL"),
       React.createElement("input",{value:rtTitle,placeholder:rtTitleGlobal||"ROUTINES",onChange:e=>setRtTitle(e.target.value),onBlur:e=>saveRtTitle(e.target.value),style:{...inS,width:"100%"}})
     ),
-    !rtCol&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:10}},"Build timed routines for this member. Turn the Routines add-on on above to show them the tab. Members log their own time each attempt — the history and best time build up for them."),
-    !rtCol&&React.createElement("button",{onClick:()=>setShowTimes(v=>!v),style:{width:"100%",background:showTimes?"#0a1a2a":"none",border:"1px dashed "+(showTimes?"#1d3a5a":"#2a2a2a"),borderRadius:0,color:"#1d9bf0",fontSize:10,letterSpacing:"0.12em",padding:"9px",cursor:"pointer",marginBottom:10}},showTimes?"✕ HIDE MEMBER'S LOGGED TIMES":"⏱ SHOW MEMBER'S LOGGED TIMES"),
+    !rtCol&&!showTimes&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:10}},"Build timed routines for this member. Turn the Routines add-on on above to show them the tab. Members log their own time each attempt — the history and best time build up for them."),
     !rtCol&&showTimes&&React.createElement("div",{style:{marginBottom:12}},
       routines.length===0
       ?React.createElement("div",{style:{fontSize:11,color:"#555",padding:"4px 0"}},"No routines yet.")
@@ -4470,7 +4474,7 @@ function RoutinesAdmin({member}){
         );
       })
     ),
-    rtCol?null:loading?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"8px 0"}},"LOADING...")
+    (rtCol||showTimes)?null:loading?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"8px 0"}},"LOADING...")
     :React.createElement(React.Fragment,null,
       ...routines.map(r=>{const isOpen=open.has(r.id);return React.createElement("div",{key:r.id,style:{border:"1px solid #222",borderRadius:0,marginBottom:10}},
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,background:"#fff",padding:"8px 12px"}},
@@ -5097,7 +5101,7 @@ function App(){
   if(!ready)return React.createElement("div",{className:"loading-screen"},React.createElement("div",null,"LAMONT APPLICATIONS"),React.createElement("div",{className:"loading-bar"},React.createElement("div",{className:"loading-fill"})),React.createElement("div",null,"TEAM 365"));
   if(!session)return React.createElement("div",{className:"auth-page"},
 React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",marginBottom:48}},
-  React.createElement("div",{style:{width:62,height:62,borderRadius:"50%",border:"2px solid #2a2a2a",marginBottom:10,overflow:"hidden"}},
+  React.createElement("div",{style:{width:62,height:62,borderRadius:"50%",border:"2px solid #1d9bf0",marginBottom:10,overflow:"hidden"}},
     React.createElement("img",{src:"icon-192.png",style:{width:"100%",height:"100%",objectFit:"cover"}})
   ),
   React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:11,fontWeight:700,color:"#fff",textAlign:"center",letterSpacing:"0.1em",lineHeight:1.3,whiteSpace:"nowrap"}},"LAMONT TEAM 365"),
