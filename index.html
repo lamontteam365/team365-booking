@@ -3778,6 +3778,54 @@ function mwWorkouts(items){
   });
   return [...map.values()].sort((a,b)=>a.num-b.num);
 }
+const MW_AI_PROMPT = `You are an experienced strength & conditioning coach writing ONE week of training for a personal-training client. Design a sensible, safe, progressive week based on the details below.
+
+CLIENT DETAILS (edit these):
+- Goal: [e.g. tone up, grow glutes, don't grow quads/calves]
+- Training days per week: [e.g. 5]
+- Experience level: [beginner / intermediate / advanced]
+- Equipment available: [e.g. full gym / dumbbells only / home]
+- Injuries or notes: [e.g. 4 months postpartum — cleared to train, mind pelvic floor & core]
+- Anything to avoid: [e.g. high impact, heavy squats]
+
+OUTPUT RULES — follow exactly:
+- Reply with ONLY a JSON object. No explanation before or after, and no code fences.
+- Top-level keys are the days: "Mon","Tue","Wed","Thu","Fri","Sat","Sun".
+- A rest day is an empty array, e.g. "Sun": []
+- Aim for about 5-10 exercises per training day.
+- Each day is an array of exercise objects. Each exercise has these fields:
+  - "workout": a number (1, 2, 3...). Use 1 unless the day has two separate sessions (e.g. a morning run and an evening lift) - then put the run as workout 2, etc.
+  - "workoutName": a short optional label for that workout block, e.g. "RUN" or "LOWER". Use "" if not needed.
+  - "name": the exercise name, e.g. "Barbell Hip Thrust".
+  - "section": MUST be one of exactly: "Warm Up", "Main", "Accessories", "Core", "Mobility", "Warm Down".
+  - "sets": a string, e.g. "4". Use "" if not applicable.
+  - "reps": a string, e.g. "10-12" or "12/side". Use "" if not applicable.
+  - "duration": a string for time/distance work, e.g. "20 min" or "5 km". Use "" if not applicable.
+  - "log": how the member records it - MUST be one of:
+      "kg"   = they log a weight in kilograms (most strength exercises)
+      "km"   = they log a distance/time (runs, rows, cardio)
+      "tick" = they just tick it off (bodyweight core, mobility, stretches)
+  - "notes": a short coaching cue, or "".
+- Order exercises within each day sensibly: Warm Up first, then Main, Accessories, Core, then Mobility / Warm Down.
+
+EXAMPLE of the exact format (structure only - not a real program):
+{
+  "Mon": [
+    {"workout":1,"workoutName":"","name":"Banded Glute Bridge","section":"Warm Up","sets":"2","reps":"15","duration":"","log":"tick","notes":"activation"},
+    {"workout":1,"workoutName":"","name":"Barbell Hip Thrust","section":"Main","sets":"4","reps":"10-12","duration":"","log":"kg","notes":"squeeze at top"},
+    {"workout":1,"workoutName":"","name":"Cable Kickback","section":"Accessories","sets":"3","reps":"12/side","duration":"","log":"kg","notes":""}
+  ],
+  "Tue": [],
+  "Wed": [
+    {"workout":1,"workoutName":"RUN","name":"Easy Jog","section":"Main","sets":"","reps":"","duration":"20 min","log":"km","notes":"conversational pace"}
+  ],
+  "Thu": [],
+  "Fri": [],
+  "Sat": [],
+  "Sun": []
+}
+
+Now write the week for the client details above. Reply with ONLY the JSON.`;
 function MemberWorkoutAdmin({member,memberView,setMemberView,isMaster,mfPasteAI}){
   const [enabled,setEnabled]=useState(member.workouts_enabled===true);
   const [weekStart,setWeekStart]=useState(()=>mondayOf(new Date()));
@@ -3787,6 +3835,8 @@ function MemberWorkoutAdmin({member,memberView,setMemberView,isMaster,mfPasteAI}
   const [savedMsg,setSavedMsg]=useState("");
   const [togglingEnable,setTogglingEnable]=useState(false);
   const [showImport,setShowImport]=useState(false);
+  const [showPrompt,setShowPrompt]=useState(false);
+  const [promptCopied,setPromptCopied]=useState(false);
   const [importText,setImportText]=useState("");
   const [importErr,setImportErr]=useState("");
   const [mwCollapsed,setMwCollapsed]=useState(new Set());
@@ -3989,6 +4039,12 @@ function MemberWorkoutAdmin({member,memberView,setMemberView,isMaster,mfPasteAI}
           React.createElement("button",{onClick:()=>{setShowImport(false);setImportText("");setImportErr("");},style:{flex:1,background:"none",border:"1px solid #333",borderRadius:0,padding:"9px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
           React.createElement("button",{onClick:importFromAI,disabled:!importText.trim(),style:{flex:2,background:importText.trim()?"#1d9bf0":"#1a1a1a",color:importText.trim()?"#fff":"#444",border:"none",borderRadius:0,padding:"9px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:importText.trim()?"pointer":"default"}},"IMPORT & REPLACE WEEK")
         )
+      ),
+      (isMaster||mfPasteAI)&&React.createElement("button",{onClick:()=>setShowPrompt(s=>!s),style:{width:"100%",background:showPrompt?"#0a1a2a":"none",border:"1px dashed "+(showPrompt?"#1d3a5a":"#2a2a2a"),borderRadius:0,color:"#1d9bf0",fontSize:10,letterSpacing:"0.12em",padding:"9px",cursor:"pointer",marginTop:8}},showPrompt?"✕ HIDE AI PROMPT":"📋 AI PROMPT — COPY FOR CLAUDE"),
+      showPrompt&&React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1d3a5a",borderRadius:0,padding:"12px",marginTop:8}},
+        React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#89a",lineHeight:1.7,marginBottom:8}},"Copy this, paste it into Claude or ChatGPT, fill in the client details, and send. Then copy what it gives back and paste it into PASTE FROM AI above."),
+        React.createElement("textarea",{value:MW_AI_PROMPT,readOnly:true,rows:8,onFocus:e=>e.target.select(),style:{...inS,width:"100%",fontFamily:"monospace",fontSize:11,lineHeight:1.5,resize:"vertical"}}),
+        React.createElement("button",{onClick:()=>{try{navigator.clipboard.writeText(MW_AI_PROMPT);}catch(e){}setPromptCopied(true);setTimeout(()=>setPromptCopied(false),1500);},style:{width:"100%",marginTop:8,background:promptCopied?"#1d5a34":"#1d9bf0",color:"#fff",border:"none",borderRadius:0,padding:"9px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},promptCopied?"COPIED ✓":"COPY PROMPT")
       )
     ),
     loading?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"10px 0"}},"LOADING...")
