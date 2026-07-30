@@ -2258,8 +2258,10 @@ function renderBoldText(str){
 function WorkoutDetailsEditor({className,showToast}){
   const storageKey="__WORKOUT__"+className;
   const LIB_KEY="__HIIT_LIB__";
+  const SCROLL_KEY="__SCROLL__"+className;
   const DUR_CHOICES=["0:30","1:00","1:30","2:00","2:30","3:00","4:00","5:00","6:00","8:00","10:00"];
   const [rows,setRows]=useState([]);
+  const [scroll,setScroll]=useState("");
   const [lib,setLib]=useState({maori:{},presc:{}});
   const [legacy,setLegacy]=useState("");
   const [loaded,setLoaded]=useState(false);
@@ -2270,7 +2272,7 @@ function WorkoutDetailsEditor({className,showToast}){
   const [dragOverId,setDragOverId]=useState(null);
   const wdGenId=()=>Math.random().toString(36).slice(2,9);
   function mapRow(r){
-    if(r.t==="h"||r.hdr!=null)return {id:wdGenId(),hdr:((r.label!=null?r.label:r.hdr)||""),hideTv:!!r.hideTv,dur:(r.dur!=null?r.dur:"")};
+    if(r.t==="h"||r.hdr!=null)return {id:wdGenId(),hdr:((r.label!=null?r.label:r.hdr)||""),hideTv:!!r.hideTv,dur:(r.dur!=null?r.dur:""),st:(r.st===true?true:(r.st===false?false:null))};
     if(r.reps!=null)return {id:wdGenId(),duration:r.duration||"1:00",exercise:r.exercise||"",maori:r.maori||"",reps:r.reps||"",c:r.c||"",o:r.o||"",d:r.d||"",notes:r.notes||"",station:r.station||""};
     const sc=splitReps(r.c||""),so=splitReps(r.o||""),sd=splitReps(r.d||"");
     return {id:wdGenId(),duration:r.duration||"1:00",exercise:r.exercise||"",maori:r.maori||"",reps:(sc.reps||so.reps||sd.reps||""),c:sc.weight,o:so.weight,d:sd.weight,notes:r.notes||"",station:r.station||""};
@@ -2305,6 +2307,9 @@ function WorkoutDetailsEditor({className,showToast}){
       else{if(!Array.isArray(p))leg=c;rws=seed?seed.map(mapRow):[];}
     }else{rws=seed?seed.map(mapRow):[];}
     numberStations(rws);
+    (function(){let hd=null,segs=[];const flush=()=>{if(hd&&hd.st==null){const u={};segs.forEach(s=>{u[s.duration||""]=1;});hd.st=(/round/i.test(hd.hdr||"")&&Object.keys(u).length<=1&&segs.length>2);}hd=null;segs=[];};rws.forEach(r=>{if(r.hdr!=null){flush();hd=r;}else segs.push(r);});flush();})();
+    const scr=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(SCROLL_KEY)+"&select=content");
+    setScroll(scr&&scr.length&&scr[0].content?scr[0].content:"");
     setRows(rws);setLegacy(leg);setEditing(rws.length===0);setLoaded(true);
   })();},[className]);
   function autofill(row){
@@ -2366,11 +2371,15 @@ function WorkoutDetailsEditor({className,showToast}){
   }
   async function save(){
     setSaving(true);
-    const clean=rows.map(r=>r.hdr!=null?{hdr:(r.hdr||"").trim().toUpperCase(),hideTv:!!r.hideTv,dur:(r.dur||"").trim()}:{duration:r.duration,exercise:(r.exercise||"").trim().toUpperCase(),maori:(r.maori||"").trim(),reps:(r.reps||"").trim(),c:(r.c||"").trim(),o:(r.o||"").trim(),d:(r.d||"").trim(),notes:(r.notes||"").trim(),station:(r.station||"").trim()}).filter(r=>r.hdr!=null?r.hdr!=="":r.exercise!=="");
+    const clean=rows.map(r=>r.hdr!=null?{hdr:(r.hdr||"").trim().toUpperCase(),hideTv:!!r.hideTv,dur:(r.dur||"").trim(),st:(r.st===true)}:{duration:r.duration,exercise:(r.exercise||"").trim().toUpperCase(),maori:(r.maori||"").trim(),reps:(r.reps||"").trim(),c:(r.c||"").trim(),o:(r.o||"").trim(),d:(r.d||"").trim(),notes:(r.notes||"").trim(),station:(r.station||"").trim()}).filter(r=>r.hdr!=null?r.hdr!=="":r.exercise!=="");
     const ex0=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(storageKey)+"&select=class_name");
     const body={content:JSON.stringify(clean),updated_at:Date.now()};
     if(ex0&&ex0.length)await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent(storageKey),body);
     else await sbPost("coaching_notes",{class_name:storageKey,...body});
+    const s0=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(SCROLL_KEY)+"&select=class_name");
+    const sbody={content:(scroll||""),updated_at:Date.now()};
+    if(s0&&s0.length)await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent(SCROLL_KEY),sbody);
+    else await sbPost("coaching_notes",{class_name:SCROLL_KEY,...sbody});
     const nm={...lib.maori},np={...lib.presc};let changed=false;
     clean.forEach(r=>{
       if(r.hdr!=null)return;
@@ -2455,6 +2464,10 @@ function WorkoutDetailsEditor({className,showToast}){
       React.createElement("div",{style:{whiteSpace:"pre-wrap",fontSize:12,color:"#aaa",lineHeight:1.6}},legacy)
     ),
     rows.length===0&&React.createElement("div",{style:{fontSize:11,color:"#444",letterSpacing:"0.06em",padding:"6px 0 12px",textAlign:"center"}},"No exercises yet — add your first below."),
+    React.createElement("div",{style:{margin:"2px 0 12px"}},
+      React.createElement("div",{style:{fontSize:10,letterSpacing:"0.12em",color:"#7a8790",marginBottom:5,fontFamily:"'Bebas Neue',sans-serif"}},"SCROLLING TEXT (TV)  ·  SEPARATE PHRASES WITH  •"),
+      React.createElement("input",{value:scroll,onChange:e=>setScroll(e.target.value),placeholder:"GOOD WORK • KEEP GOING • DIG DEEP",style:{...inS,width:"100%",fontFamily:"'DM Sans',sans-serif",fontSize:12}})
+    ),
     ...rows.map((r,idx)=>{
       if(r.hdr!=null){editSec=r.id;const isC=collapsed.has(r.id);
       return React.createElement("div",{key:r.id,style:{display:"flex",gap:6,alignItems:"center",marginTop:6,marginBottom:6,outline:dragOverId===r.id?"2px solid #1d9bf0":"none",borderRadius:0},...dropProps(r.id)},
@@ -2463,6 +2476,7 @@ function WorkoutDetailsEditor({className,showToast}){
           React.createElement("input",{value:r.hdr,onChange:e=>setRow(r.id,"hdr",e.target.value.toUpperCase()),placeholder:"SECTION (e.g. ROUND 1, WARM UP)",style:{...inS,flex:1,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.12em",fontSize:14,color:"#1d9bf0",background:"#0a1a2a",borderColor:"#1d3a5a"}}),
           React.createElement("input",{value:r.dur||"",onChange:e=>setRow(r.id,"dur",e.target.value),placeholder:"TIME",title:"Round time shown on TV — leave blank to auto-total the station times",style:{...inS,width:60,fontFamily:"'DM Sans',sans-serif",fontSize:11,textAlign:"center",color:"#cfe3f5",background:"#0a1a2a",borderColor:"#1d3a5a",flexShrink:0}}),
           React.createElement("button",{onClick:()=>setRow(r.id,"hideTv",!r.hideTv),title:"Hide this round's title on the TV view",style:{background:"none",border:"1px solid "+(r.hideTv?"#8a2515":"#2a2a2a"),borderRadius:0,color:r.hideTv?"#e06040":"#666",fontSize:9,letterSpacing:"0.06em",fontWeight:600,padding:"5px 7px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},r.hideTv?"TV OFF":"TV"),
+          React.createElement("button",{onClick:()=>setRow(r.id,"st",!(r.st===true)),title:"TV layout: STATIONS = grid; RUN/PUSH = run & push-ups layout",style:{background:"none",border:"1px solid "+((r.st===true)?"#1d5a34":"#4a3f15"),borderRadius:0,color:(r.st===true)?"#3ddc84":"#c9a227",fontSize:9,letterSpacing:"0.06em",fontWeight:600,padding:"5px 7px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},(r.st===true)?"STATIONS":"RUN/PUSH"),
           React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:1}},
             React.createElement("button",{onClick:()=>moveRow(r.id,-1),disabled:idx===0,style:{background:"none",border:"none",color:idx===0?"#252525":"#666",cursor:idx===0?"default":"pointer",fontSize:10,lineHeight:1,padding:"0 4px"}},"▲"),
             React.createElement("button",{onClick:()=>moveRow(r.id,1),disabled:idx===rows.length-1,style:{background:"none",border:"none",color:idx===rows.length-1?"#252525":"#666",cursor:idx===rows.length-1?"default":"pointer",fontSize:10,lineHeight:1,padding:"0 4px"}},"▼")
