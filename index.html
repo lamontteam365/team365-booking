@@ -2403,7 +2403,6 @@ function WorkoutDetailsEditor({className,showToast}){
     return React.createElement("div",null,
       React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}},
         React.createElement("button",{onClick:()=>setEditing(true),style:{flex:1,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"✎ EDIT WORKOUT"),
-        rows.length>0&&React.createElement("button",{onClick:openDisplay,style:{flex:1,background:"#0a1a2a",color:"#1d9bf0",border:"1px solid #1d3a5a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"📺 TV VIEW"),
         rows.length>0&&React.createElement("button",{onClick:()=>{const u="tv.html?w="+encodeURIComponent(className);const w=window.open(u,"_blank");if(!w)window.location.href=u;},title:"Opens the full-screen TV page with a Cast button (uses the last SAVED version)",style:{flex:1,background:"#12331a",color:"#3ddc84",border:"1px solid #1d5a34",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"▸ CAST TO TV")
       ),
       legacy&&React.createElement("div",{style:{whiteSpace:"pre-wrap",fontSize:12,color:"#aaa",lineHeight:1.6,marginBottom:12}},legacy),
@@ -2439,8 +2438,7 @@ function WorkoutDetailsEditor({className,showToast}){
         );
       }),
       rows.length>0&&React.createElement("div",{style:{display:"flex",gap:8,marginTop:12}},
-        React.createElement("button",{onClick:()=>setEditing(true),style:{flex:1,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"✎ EDIT WORKOUT"),
-        React.createElement("button",{onClick:openDisplay,style:{flex:1,background:"#0a1a2a",color:"#1d9bf0",border:"1px solid #1d3a5a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"📺 TV VIEW")
+        React.createElement("button",{onClick:()=>setEditing(true),style:{flex:1,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"✎ EDIT WORKOUT")
       )
     );
   }
