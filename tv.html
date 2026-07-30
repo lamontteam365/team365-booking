@@ -73,7 +73,8 @@ body.paused .mtrack,body.paused .inarrow{animation-play-state:paused}
 .fbig{font-family:'Bebas Neue',sans-serif;font-size:44px;line-height:0.95;color:#fff;font-variant-numeric:tabular-nums}
 .fnext{font-family:'Bebas Neue',sans-serif;font-style:italic;font-size:34px;line-height:0.95;color:#8cd0ff}
 .ftitle{font-size:19px}
-.startwith{font-family:'Bebas Neue',sans-serif;font-style:italic;font-size:1.7cqw;letter-spacing:0.05em;color:#e8eef4;margin-top:8px}
+.startwith{font-family:'Bebas Neue',sans-serif;font-style:normal;font-size:1.7cqw;letter-spacing:0.05em;color:#e8eef4;margin-top:8px}
+.boxin.cenin .bh{font-style:normal}
 .inarrow{-webkit-text-fill-color:#8cd0ff;color:#8cd0ff;font-size:2.2cqw;margin-left:14px;display:inline-block;vertical-align:-0.15em;animation:arrowpush 1.4s ease-in-out infinite}
 @keyframes arrowpush{0%,100%{transform:translateX(0)}50%{transform:translateX(12px)}}
 /* keep-working coming-up */
@@ -271,7 +272,7 @@ function runpushSess(g){var order=[],mp={};g.sts.forEach(function(s){if(!mp[s.ex
   var t='<div class="r3t"><span>COMMITMENT</span><b>'+E(s.c)+'</b></div><div class="r3t"><span>CONSISTENCY</span><b>'+E(s.o)+'</b></div><div class="r3t"><span>DETERMINATION</span><b>'+E(s.d)+'</b></div>';
   var b=m.c>1?'<div class="r3h b">B: '+E(ex)+' '+fmtMinShort(s.duration)+' <span class="lt">&middot; AS ABOVE</span></div>':'';
   return '<div class="scol">'+h+t+b+'</div>';}).join("");
- return '<div class="scols r3">'+cols+'</div>';}
+ return '<div class="scols r3" style="grid-template-columns:repeat('+order.length+',minmax(0,17cqw))">'+cols+'</div>';}
 function listOrBlock(g,startNum){ if(isStationG(g)){var items=g.sts.map(function(s,i){return {n:startNum+i,name:s.exercise};});return two_col(items);} return runpushSess(g); }
 function previewBody(g,startNum){ return '<div class="rsub">'+roundSub(g)+'</div>'+listOrBlock(g,startNum)+(isStationG(g)?TAG:''); }
 var WUV=VBASE+"warmups/";
@@ -286,7 +287,7 @@ function ccScreen(rlab,rnum,rtot,tot,elapsed,total,scroll,wname){
  return screenWrap(motbar(scroll)+'<div class="cols one">'+box+'</div>'+clockbar({rlabel:rlab,rnum:rnum,rtot:rtot,ss:tot,sm:tot,tot:tot,elapsed:elapsed,total:total,sttime:30,stloop:false,roundtime:30,adv:false,wname:wname}),'board r3board','data-final');
 }
 function briefHTML(t){var parts=String(t).toUpperCase().replace(/\r/g,"").split(/\n{2,}/).map(function(p){return p.trim();}).filter(Boolean);return '<div class="sessbrief">'+parts.map(function(p){return '<div class="bp">'+E(p).replace(/\n/g,"<br>")+'</div>';}).join("")+'</div>';}
-function pillarHTML(t){var blocks=String(t).toUpperCase().replace(/\r/g,"").split(/\n{2,}/).filter(function(b){return b.trim();});return '<div class="pillbrief">'+blocks.map(function(b){var lns=b.split("\n").map(function(x){return x.trim();}).filter(Boolean);return '<div class="grp">'+lns.map(function(ln){var m=ln.match(/^\*\*(.+?)\*\*$/);return m?'<div class="pbh">'+E(m[1])+'</div>':'<div class="pbl">'+E(ln)+'</div>';}).join("")+'</div>';}).join("")+'</div>';}
+function pillarHTML(t){var blocks=String(t).toUpperCase().replace(/\r/g,"").split(/\n{2,}/).filter(function(b){return b.trim();});return '<div class="pillbrief">'+blocks.map(function(b){var lns=b.split("\n").map(function(x){return x.trim();}).filter(Boolean);return '<div class="grp">'+lns.map(function(ln,i){return i===0?'<div class="pbh">'+E(ln)+'</div>':'<div class="pbl">'+E(ln)+'</div>';}).join("")+'</div>';}).join("")+'</div>';}
 function buildFlow(name,rows,opts){
  opts=opts||{}; var scroll=opts.scroll||PHRASES_DEFAULT;
  var m=String(name).match(/^(.*?)\s*(\d+)\s*$/); var base=(m?m[1]:name).trim().toUpperCase(); var num=m?m[2]:""; var wname=num?(base+" ("+num+")"):base;
