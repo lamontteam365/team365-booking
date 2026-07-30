@@ -192,7 +192,7 @@ function fmtMinLabel(d){var p=String(d||"").split(":");if(p.length!==2)return E(
 function lvcell(n,v){return '<div class="lvc"><div class="lvn">'+n+'</div><div class="lvb">'+E(v)+'</div></div>';}
 function pillbox(c,o,d){return '<div class="lv">'+lvcell("COMMITMENT",c)+lvcell("CONSISTENCY",o)+lvcell("DETERMINATION",d)+'</div>';}
 function media(nm,folder){var url=VBASE+(folder||"exercises")+"/"+encodeURIComponent(nm)+".webm";return '<div class="media"><video src="'+url+'" autoplay muted loop playsinline onerror="var p=this.parentNode;p.className=\'media ph\';p.textContent=\'VIDEO COMING SOON\'"></video></div>';}
-function motbar(text){var parts=String(text).split("&bull;").map(function(p){return p.trim();}).filter(Boolean);var seg=parts.map(function(p){return p+'<span class="dot">&bull;</span>';}).join("");return '<div class="motivate"><div class="mtrack"><span class="mtext">'+seg+'</span><span class="mtext">'+seg+'</span></div></div>';}
+function motbar(text){var parts=String(text).split(/&bull;|[\u2022\u00b7]/).map(function(p){return p.trim();}).filter(Boolean);var seg=parts.map(function(p){return p+'<span class="dot">&bull;</span>';}).join("");return '<div class="motivate"><div class="mtrack"><span class="mtext">'+seg+'</span><span class="mtext">'+seg+'</span></div></div>';}
 function tblock(label,secs,dir,loop,mx,adv){var e=(loop?' data-loop="1"':'')+(mx!=null?' data-max="'+mx+'"':'')+(adv?' data-adv="1"':'');return '<div class="tblock"><div class="tlabel">'+label+'</div><span class="timer" data-secs="'+secs+'" data-dir="'+dir+'"'+e+'>'+mmss(secs)+'</span></div>';}
 function clockbar(o){
  var stadv=(o.adv&&o.advon==="station"),rdadv=(o.adv&&o.advon==="round");
@@ -251,7 +251,7 @@ function runpushSess(g){var order=[],mp={};g.sts.forEach(function(s){if(!mp[s.ex
 function listOrBlock(g,startNum){ if(isStationG(g)){var items=g.sts.map(function(s,i){return {n:startNum+i,name:s.exercise};});return two_col(items);} return runpushSess(g); }
 function previewBody(g,startNum){ return '<div class="rsub">'+roundSub(g)+'</div>'+listOrBlock(g,startNum)+(isStationG(g)?TAG:''); }
 var WUV=VBASE+"warmups/";
-function warmFile(nm){return nm.replace(/&ndash;/g,"–").replace(/&amp;/g,"&");}
+function warmFile(nm){return nm.replace(/&ndash;/g,"-").replace(/&amp;/g,"&");}
 var WARMNAMES=WU.map(function(w){return warmFile(w[0]);});
 var WARMDISP=WU.map(function(w){return w[0];});
 function transitionScreen(rlab,rnum,rtot,ss,tot,elapsed,total,nextg,startNum,scroll,wname){
