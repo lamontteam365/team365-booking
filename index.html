@@ -430,10 +430,31 @@ const SB_KEY = "sb_publishable_tujGGhPRUimflq1-IFzuvA_Crw6knMO";
 let AUTH_TOKEN = null;
 const SB_HDR = {"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return=minimal"};
 function setAuthToken(t){AUTH_TOKEN=t||null;SB_HDR.Authorization=`Bearer ${t||SB_KEY}`;}
-async function authLogin(email,password){try{const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=password`,{method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({email,password})});const j=await r.json();if(!r.ok||!j.access_token)return{error:(j.error_description||j.msg||j.error||"Login failed")};setAuthToken(j.access_token);try{localStorage.setItem("t365-refresh",j.refresh_token||"");}catch(e){}return{ok:true,user:j.user};}catch(e){return{error:"Network error"};}}
-async function authSignup(email,password){try{const r=await fetch(`${SB_URL}/auth/v1/signup`,{method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({email,password})});const j=await r.json();if(!r.ok)return{error:(j.error_description||j.msg||j.error||"Sign up failed")};if(j.access_token){setAuthToken(j.access_token);try{localStorage.setItem("t365-refresh",j.refresh_token||"");}catch(e){}}return{ok:true};}catch(e){return{error:"Network error"};}}
-async function authRefresh(){try{var rt=localStorage.getItem("t365-refresh");if(!rt)return false;const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`,{method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({refresh_token:rt})});const j=await r.json();if(!r.ok||!j.access_token){setAuthToken(null);try{localStorage.removeItem("t365-refresh");}catch(e){}return false;}setAuthToken(j.access_token);try{localStorage.setItem("t365-refresh",j.refresh_token||"");}catch(e){}return true;}catch(e){return false;}}
-function authLogout(){setAuthToken(null);try{localStorage.removeItem("t365-refresh");}catch(e){}}
+let _refreshInFlight=null;
+function _storeAuth(j){if(!j)return;if(j.access_token)setAuthToken(j.access_token);try{if(j.refresh_token)localStorage.setItem("t365-refresh",j.refresh_token);var ttl=(j.expires_in?+j.expires_in:3600);localStorage.setItem("t365-exp",String(Date.now()+ttl*1000));}catch(e){}}
+async function authLogin(email,password){try{const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=password`,{method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({email,password})});const j=await r.json();if(!r.ok||!j.access_token)return{error:(j.error_description||j.msg||j.error||"Login failed")};_storeAuth(j);return{ok:true,user:j.user};}catch(e){return{error:"Network error"};}}
+async function authSignup(email,password){try{const r=await fetch(`${SB_URL}/auth/v1/signup`,{method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({email,password})});const j=await r.json();if(!r.ok)return{error:(j.error_description||j.msg||j.error||"Sign up failed")};if(j.access_token){_storeAuth(j);}return{ok:true};}catch(e){return{error:"Network error"};}}
+async function authRefresh(){
+  if(_refreshInFlight)return _refreshInFlight;
+  _refreshInFlight=(async()=>{
+    var rt="";try{rt=localStorage.getItem("t365-refresh")||"";}catch(e){}
+    if(!rt)return false;
+    try{
+      const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`,{method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({refresh_token:rt})});
+      let j={};try{j=await r.json();}catch(e){}
+      if(r.ok&&j.access_token){_storeAuth(j);return true;}
+      // Only sign out when the server DEFINITIVELY rejects the token (bad/expired/revoked).
+      if(r.status===400||r.status===401||r.status===403){setAuthToken(null);try{localStorage.removeItem("t365-refresh");localStorage.removeItem("t365-exp");}catch(e){}return false;}
+      // Transient (5xx / rate-limit / unexpected): keep the token so the user stays logged in and we retry later.
+      return false;
+    }catch(e){
+      // Network error: do NOT wipe the token — a blip must not log the member out.
+      return false;
+    }
+  })();
+  try{return await _refreshInFlight;}finally{_refreshInFlight=null;}
+}
+function authLogout(){setAuthToken(null);try{localStorage.removeItem("t365-refresh");localStorage.removeItem("t365-exp");}catch(e){}}
 async function migrateLogin(email,password){try{const r=await fetch(`${SB_URL}/functions/v1/dynamic-api`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({email,password})});const j=await r.json().catch(()=>({}));if(j&&j.ok)return{ok:true};if(j&&j.error==="wrong_password")return{wrong:true};return{error:(j&&j.error)||"failed"};}catch(e){return{error:"network"};}}
 async function sbGet(t,q=""){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
 async function sbPost(t,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
@@ -4773,15 +4794,22 @@ function App(){
     (async()=>{
       let joinedAt=0;
       await authRefresh();
+      // If the refresh didn't land but a refresh token is still stored, retry briefly (mobile/network blips).
+      if(!AUTH_TOKEN){var _rt0="";try{_rt0=localStorage.getItem("t365-refresh")||"";}catch(e){}
+        for(var _i=0;_i<2&&!AUTH_TOKEN&&_rt0;_i++){await new Promise(res=>setTimeout(res,700));await authRefresh();try{_rt0=localStorage.getItem("t365-refresh")||"";}catch(e){}}
+      }
       const s=lsGet("t365-session",null);
-      if(s&&!AUTH_TOKEN)lsSet("t365-session",null);
-      if(s&&AUTH_TOKEN){
+      var haveRT=false;try{haveRT=!!localStorage.getItem("t365-refresh");}catch(e){}
+      // Only truly sign out when the refresh token is gone (server definitively rejected it).
+      if(s&&!AUTH_TOKEN&&!haveRT)lsSet("t365-session",null);
+      if(s&&(AUTH_TOKEN||haveRT)){
         const mb=await sbGet("members",`email=eq.${encodeURIComponent(s.email)}`);
         if(mb.length){setSession(s);setMemberData(mb[0]);joinedAt=mb[0].joined_at||0;
           const accRow=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__ACCESS__"+s.email)}&select=content`);
           if(accRow&&accRow.length&&accRow[0].content){try{const a=JSON.parse(accRow[0].content);if(a&&Array.isArray(a.tabs))setMemberAccess(a.tabs);}catch{}}
         }
-        else{lsSet("t365-session",null);}
+        else if(AUTH_TOKEN){lsSet("t365-session",null);}
+        else{setSession(s);}
       }
       await refreshBookings();
       const lastRead=lsGet("t365-last-read",0)||joinedAt;
@@ -4826,6 +4854,18 @@ function App(){
     })();
   },[]);
   useEffect(()=>{const id=setInterval(refreshBookings,30000);return()=>clearInterval(id);},[]);
+  // Keep the auth session alive: proactively refresh the access token before it expires,
+  // and whenever the tab/app is brought back to the foreground. Stops members being logged out.
+  useEffect(()=>{
+    function due(){var e=0;try{e=parseInt(localStorage.getItem("t365-exp")||"0",10)||0;}catch(x){}return e?(Date.now()>(e-5*60*1000)):true;}
+    function have(){try{return !!localStorage.getItem("t365-refresh");}catch(x){return false;}}
+    function tick(){if(have()&&due())authRefresh();}
+    const id=setInterval(tick,60000);
+    function onVis(){if(document.visibilityState==="visible")tick();}
+    document.addEventListener("visibilitychange",onVis);
+    window.addEventListener("focus",onVis);
+    return ()=>{clearInterval(id);document.removeEventListener("visibilitychange",onVis);window.removeEventListener("focus",onVis);};
+  },[]);
   async function loadStatCounts(month){
     if(!session)return;
     const[y,m]=month.split("-").map(Number);
