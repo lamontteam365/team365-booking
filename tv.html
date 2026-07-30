@@ -9,7 +9,8 @@ body.paused .mtrack{animation-play-state:paused}
 #nav button{background:#161616;color:#9fb3c4;border:1px solid #35424d;font-size:15px;min-width:46px;padding:6px 12px;cursor:pointer;font-family:'Bebas Neue',sans-serif;letter-spacing:0.06em}
 #nav button:hover{background:#1d9bf0;color:#fff;border-color:#1d9bf0}
 .pnum{display:flex;align-items:center;color:#9fb3c4;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.08em;padding:0 6px}
-#stage{position:fixed;top:50%;left:50%;width:1280px;height:720px;container-type:size;overflow:hidden;transform:translate(-50%,-50%);transform-origin:center center}
+#stage{position:fixed;top:0;left:0;height:100vh;width:100vw;container-type:size;overflow:hidden}
+@media (max-width:1024px){#stage{top:50%;left:50%;width:1920px;height:1080px;transform:translate(-50%,-50%);transform-origin:center center}}
 .screen{display:none;height:100%;width:100%;padding:16px 2.2cqw;flex-direction:column}
 .screen.show{display:flex}
 .wname{-webkit-text-fill-color:transparent}
@@ -40,6 +41,8 @@ body.paused .mtrack{animation-play-state:paused}
 .body.pil .ln.big{font-weight:700;color:#fff;font-size:1.45cqw}
 .body.pil .ln.str{font-weight:700;color:#8cd0ff;font-size:1.2cqw}
 .body.sess{font-style:italic;font-size:1.15cqw;line-height:1.3}
+.body.sess .sessbrief{text-align:left;padding-left:2.6cqw;padding-right:1.4cqw}
+.body.sess .sessbrief .bp{margin-bottom:1.15cqw;line-height:1.45}
 .tag2c{font-style:italic;color:#9aa6b1;font-size:0.9cqw;line-height:1.3;margin-bottom:10px;white-space:nowrap}
 .tag2c.low{margin-top:20px;margin-bottom:0}
 .body.sess .rh{font-weight:700;color:#fff;margin:16px 0 5px;font-size:1.15cqw}
@@ -278,6 +281,7 @@ function ccScreen(rlab,rnum,rtot,tot,elapsed,total,scroll,wname){
  var box='<div class="r3col"><div class="st r3card kwcard"><div class="kwmid"><div class="kwlabel">CLASS COMPLETE IN</div><span class="timer bigtimer mid" data-secs="30" data-dir="down" data-adv="1">0:30</span></div></div></div>';
  return screenWrap(motbar(scroll)+'<div class="cols one">'+box+'</div>'+clockbar({rlabel:rlab,rnum:rnum,rtot:rtot,ss:tot,sm:tot,tot:tot,elapsed:elapsed,total:total,sttime:30,stloop:false,roundtime:30,adv:false,wname:wname}),'board r3board','data-final');
 }
+function briefHTML(t){var parts=String(t).replace(/\r/g,"").split(/\n{2,}/).map(function(p){return p.trim();}).filter(Boolean);return '<div class="sessbrief">'+parts.map(function(p){return '<div class="bp">'+E(p).replace(/\n/g,"<br>")+'</div>';}).join("")+'</div>';}
 function buildFlow(name,rows,opts){
  opts=opts||{}; var scroll=opts.scroll||PHRASES_DEFAULT;
  var m=String(name).match(/^(.*?)\s*(\d+)\s*$/); var base=(m?m[1]:name).trim().toUpperCase(); var num=m?m[2]:""; var wname=num?(base+" ("+num+")"):base;
@@ -288,9 +292,10 @@ function buildFlow(name,rows,opts){
  var total=0; groups.forEach(function(g){ total += durSecs(g.dur)||roundSum(g); });
  var totStn=0; groups.forEach(function(g){ totStn+=g.sts.length; });
  var rtot=groups.length;
- // session brief
- var sb=TAG; var acc0=0;
- groups.forEach(function(g){ sb+='<div class="rh">'+g.hdr.toUpperCase()+' <span>'+roundSub(g)+'</span></div>'+listOrBlock(g,acc0+1); acc0+=g.sts.length; });
+ // session brief — prefer the coach's written SESSION BRIEF from coaching notes; else auto-summary
+ var sb;
+ if(opts.brief){ sb=TAG+briefHTML(opts.brief); }
+ else { sb=TAG; var acc0=0; groups.forEach(function(g){ sb+='<div class="rh">'+g.hdr.toUpperCase()+' <span>'+roundSub(g)+'</span></div>'+listOrBlock(g,acc0+1); acc0+=g.sts.length; }); }
  var warmBody='<div class="wlist">'+warmrows()+'</div>';
  var S=[];
  S.push(screenWrap('<div class="logo">TEAM 365</div><div class="subttl">CLASS BRIEF STARTING IN</div><div class="bigtimer" data-count>0:30</div>','brand','data-dur="30"'));
@@ -381,7 +386,7 @@ setInterval(function(){if(paused||!window.__started)return;var sc=screens[cur];i
 window.__startFlow=function(){window.__started=true;unlock();};show(0);
 }
 (function(){var b=document.getElementById("cast");if(b)b.onclick=function(){alert("To cast: open the Chrome menu top-right, tap Cast, pick your TV.");};})();
-var params=new URLSearchParams(location.search);var wname=(params.get("w")||"").toUpperCase();function start(rows,scroll){document.getElementById("stage").innerHTML=buildFlow(wname,rows,{scroll:scroll});runEngine();}if(!wname){var er=document.getElementById("err");er.style.display="block";er.textContent="No workout specified.";document.getElementById("startov").style.display="none";}else{Promise.all([sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__WORKOUT__"+wname)+"&select=content"),sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__SCROLL__"+wname)+"&select=content")]).then(function(res){var rows=null,scroll=null;if(res[0]&&res[0].length&&res[0][0].content){try{var p=JSON.parse(res[0][0].content);if(Array.isArray(p)&&p.length)rows=p;}catch(e){}}if(res[1]&&res[1].length&&res[1][0].content)scroll=res[1][0].content;if(!rows){var er=document.getElementById("err");er.style.display="block";er.textContent="No saved workout for \""+wname+"\".";document.getElementById("startov").style.display="none";return;}start(rows,scroll);});}var so=document.getElementById("startov");if(so)so.onclick=function(){this.style.display="none";var el=document.documentElement;var fn=el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen;if(fn){try{fn.call(el);}catch(e){}}if(window.__startFlow)window.__startFlow();};
+var params=new URLSearchParams(location.search);var wname=(params.get("w")||"").toUpperCase();function start(rows,scroll,brief){document.getElementById("stage").innerHTML=buildFlow(wname,rows,{scroll:scroll,brief:brief});runEngine();}if(!wname){var er=document.getElementById("err");er.style.display="block";er.textContent="No workout specified.";document.getElementById("startov").style.display="none";}else{Promise.all([sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__WORKOUT__"+wname)+"&select=content"),sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__SCROLL__"+wname)+"&select=content"),sbGet("coaching_notes","class_name=eq."+encodeURIComponent(wname)+"&select=content")]).then(function(res){var rows=null,scroll=null,brief=null;if(res[0]&&res[0].length&&res[0][0].content){try{var p=JSON.parse(res[0][0].content);if(Array.isArray(p)&&p.length)rows=p;}catch(e){}}if(res[1]&&res[1].length&&res[1][0].content)scroll=res[1][0].content;if(res[2]&&res[2].length&&res[2][0].content){try{var _ba=JSON.parse(res[2][0].content);if(Array.isArray(_ba)){for(var _i=0;_i<_ba.length;_i++){if(_ba[_i]&&String(_ba[_i].title||"").toUpperCase()==="SESSION BRIEF"&&_ba[_i].body){brief=_ba[_i].body;break;}}}}catch(e){}}if(!rows){var er=document.getElementById("err");er.style.display="block";er.textContent="No saved workout for \""+wname+"\".";document.getElementById("startov").style.display="none";return;}start(rows,scroll,brief);});}var so=document.getElementById("startov");if(so)so.onclick=function(){this.style.display="none";var el=document.documentElement;var fn=el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen;if(fn){try{fn.call(el);}catch(e){}}if(window.__startFlow)window.__startFlow();};
 // Scale the fixed 1280x720 board to fit any screen (letterboxed); rotate 90 on portrait phones.
-function fitStage(){var st=document.getElementById('stage');if(!st)return;var vw=window.innerWidth,vh=window.innerHeight,W=1280,H=720;var s,tf;if(vh>vw){s=Math.min(vh/W,vw/H);tf='translate(-50%,-50%) rotate(90deg) scale('+s+')';}else{s=Math.min(vw/W,vh/H);tf='translate(-50%,-50%) scale('+s+')';}st.style.transform=tf;}
+function fitStage(){var st=document.getElementById('stage');if(!st)return;var vw=window.innerWidth,vh=window.innerHeight;if(vw>1024){st.style.transform='';return;}var W=1920,H=1080,s,tf;if(vh>vw){s=Math.min(vh/W,vw/H);tf='translate(-50%,-50%) rotate(90deg) scale('+s+')';}else{s=Math.min(vw/W,vh/H);tf='translate(-50%,-50%) scale('+s+')';}st.style.transform=tf;}
 window.addEventListener('resize',fitStage);window.addEventListener('orientationchange',function(){setTimeout(fitStage,120);});document.addEventListener('fullscreenchange',function(){setTimeout(fitStage,80);});document.addEventListener('webkitfullscreenchange',function(){setTimeout(fitStage,80);});fitStage();</script></body></html>
