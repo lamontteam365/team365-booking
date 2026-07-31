@@ -2424,7 +2424,7 @@ function WorkoutDetailsEditor({className,showToast}){
     return React.createElement("div",null,
       React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}},
         React.createElement("button",{onClick:()=>setEditing(true),style:{flex:1,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"✎ EDIT WORKOUT"),
-        rows.length>0&&React.createElement("button",{onClick:()=>{const u="tv.html?w="+encodeURIComponent(className);const w=window.open(u,"_blank");if(!w)window.location.href=u;},title:"Opens the full-screen TV page with a Cast button (uses the last SAVED version)",style:{flex:1,background:"#12331a",color:"#3ddc84",border:"1px solid #1d5a34",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"▸ CAST TO TV")
+        rows.length>0&&React.createElement("button",{onClick:()=>{const u="tv.html?w="+encodeURIComponent(className);const w=window.open(u,"_blank");if(!w)window.location.href=u;},title:"Opens the full-screen TV page with a Cast button (uses the last SAVED version)",style:{flex:1,background:"#12331a",color:"#3ddc84",border:"1px solid #1d5a34",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"▸ PLAY")
       ),
       legacy&&React.createElement("div",{style:{whiteSpace:"pre-wrap",fontSize:12,color:"#aaa",lineHeight:1.6,marginBottom:12}},legacy),
       rows.length===0&&!legacy&&React.createElement("div",{style:{fontSize:11,color:"#444",letterSpacing:"0.1em",padding:"16px 0",textAlign:"center"}},"NO WORKOUT YET · TAP EDIT TO BUILD IT"),
@@ -4495,6 +4495,24 @@ function RoutinesAdmin({member}){
     else{await sbPost("coaching_notes",{class_name:k,content:json,updated_at:Date.now()});}
   }
   async function save(){setSaving(true);await upsertRT(key,clean(routines));setSaving(false);setMsg("Saved ✓");setTimeout(()=>setMsg(""),2500);}
+  async function saveGlobal(){
+    const cleaned=clean(routines);
+    if(!cleaned.length){setMsg("Nothing to save.");setTimeout(()=>setMsg(""),2500);return;}
+    if(!window.confirm("Update these routines for EVERY member who has a routine with the same name? This overwrites their copy."))return;
+    setSaving(true);
+    await upsertRT(key,cleaned);
+    const byTitle={};cleaned.forEach(r=>{byTitle[(r.title||"").toLowerCase()]=r;});
+    const rows=await sbGet("coaching_notes","class_name=like.__RT__*&select=class_name,content");
+    let n=0;
+    for(const row of (rows||[])){
+      if(!row||!row.class_name||row.class_name.indexOf("__RT__")!==0||row.class_name===key)continue;
+      let arr=[];try{const o=JSON.parse(row.content);arr=Array.isArray(o)?o:(o.routines||[]);}catch{}
+      let changed=false;
+      const upd=(arr||[]).map(r=>{const t=(r.title||"").toLowerCase();if(byTitle[t]){changed=true;return {id:r.id||mwGenId(),title:byTitle[t].title,exercises:byTitle[t].exercises.map(e=>({...e,id:mwGenId()}))};}return r;});
+      if(changed){await upsertRT(row.class_name,upd);n++;}
+    }
+    setSaving(false);setMsg("Updated "+n+" other member(s) ✓");setTimeout(()=>setMsg(""),3500);
+  }
   async function openAssign(){
     const inc=routines.filter(r=>!excl.has(r.id));
     if(!inc.length){setMsg("Tick at least one routine to assign.");setTimeout(()=>setMsg(""),3000);return;}
@@ -4597,7 +4615,8 @@ function RoutinesAdmin({member}){
       React.createElement("button",{onClick:addRoutine,style:{width:"100%",background:"none",border:"1px dashed #1d3a5a",borderRadius:0,color:"#1d9bf0",fontSize:10,letterSpacing:"0.12em",padding:"9px",cursor:"pointer",marginBottom:10}},"+ ADD ROUTINE"),
       React.createElement("div",{style:{display:"flex",gap:8}},
         React.createElement("button",{onClick:save,disabled:saving,style:{flex:2,background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",padding:"12px",borderRadius:0,cursor:"pointer"}},saving?"SAVING...":"SAVE ROUTINES"),
-        React.createElement("button",{onClick:openAssign,disabled:saving,style:{flex:1,background:"none",color:"#1d9bf0",border:"1px solid #1d3a5a",fontFamily:"'DM Sans',sans-serif",fontSize:10,letterSpacing:"0.08em",fontWeight:600,padding:"12px 6px",borderRadius:0,cursor:"pointer"}},"ASSIGN…")
+        React.createElement("button",{onClick:openAssign,disabled:saving,style:{flex:1,background:"none",color:"#1d9bf0",border:"1px solid #1d3a5a",fontFamily:"'DM Sans',sans-serif",fontSize:10,letterSpacing:"0.08em",fontWeight:600,padding:"12px 6px",borderRadius:0,cursor:"pointer"}},"ASSIGN…"),
+        React.createElement("button",{onClick:saveGlobal,disabled:saving,title:"Save these edits to every member who already has a routine with the same name",style:{flex:1,background:"none",color:"#c9a227",border:"1px solid #4a3f15",fontFamily:"'DM Sans',sans-serif",fontSize:10,letterSpacing:"0.08em",fontWeight:600,padding:"12px 6px",borderRadius:0,cursor:"pointer"}},"UPDATE ALL")
       ),
       showAssign&&React.createElement("div",{style:{border:"1px solid #1d3a5a",background:"#0a1520",padding:"12px",marginTop:10}},
         React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}},
