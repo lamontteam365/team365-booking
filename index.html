@@ -4474,20 +4474,20 @@ function RoutinesAdmin({member}){
     let arr=[];if(d&&d.length&&d[0].content){try{const o=JSON.parse(d[0].content);arr=Array.isArray(o)?o:(o.routines||[]);}catch{}}
     let lg={};if(l&&l.length&&l[0].content){try{lg=JSON.parse(l[0].content)||{};}catch{}}
     const mapped=(arr||[]).map(r=>({...r,id:r.id||mwGenId(),exercises:(r.exercises||[]).map(e=>({...e,id:e.id||mwGenId()}))}));
-    setRoutines(mapped);setRtLogs(lg);setOpen(new Set(mapped.map(r=>r.id)));setLoading(false);
+    setRoutines(mapped);setRtLogs(lg);setOpen(new Set());setLoading(false);
   }
   function moveEx(rid,eid,dir){setRoutines(p=>p.map(r=>{if(r.id!==rid)return r;const a=[...(r.exercises||[])];const i=a.findIndex(e=>e.id===eid);const j=i+dir;if(i<0||j<0||j>=a.length)return r;[a[i],a[j]]=[a[j],a[i]];return{...r,exercises:a};}));}
   function dupEx(rid,eid){setRoutines(p=>p.map(r=>{if(r.id!==rid)return r;const a=[...(r.exercises||[])];const i=a.findIndex(e=>e.id===eid);if(i<0)return r;a.splice(i+1,0,{...a[i],id:mwGenId()});return{...r,exercises:a};}));}
-  function dupRoutine(rid){setRoutines(p=>{const i=p.findIndex(r=>r.id===rid);if(i<0)return p;const src=p[i];const copy={id:mwGenId(),title:(src.title||"")+" (COPY)",exercises:(src.exercises||[]).map(e=>({...e,id:mwGenId()}))};const a=[...p];a.splice(i+1,0,copy);setOpen(o=>new Set([...o,copy.id]));return a;});}
+  function dupRoutine(rid){setRoutines(p=>{const i=p.findIndex(r=>r.id===rid);if(i<0)return p;const src=p[i];const copy={id:mwGenId(),sid:mwGenId(),title:(src.title||"")+" (COPY)",exercises:(src.exercises||[]).map(e=>({...e,id:mwGenId()}))};const a=[...p];a.splice(i+1,0,copy);setOpen(o=>new Set([...o,copy.id]));return a;});}
   function toggleExcl(rid){setExcl(p=>{const n=new Set(p);n.has(rid)?n.delete(rid):n.add(rid);return n;});}
   function toggle(id){setOpen(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});}
-  function addRoutine(){const id=mwGenId();setRoutines(p=>[...p,{id,title:"",exercises:[]}]);setOpen(p=>new Set([...p,id]));}
+  function addRoutine(){const id=mwGenId();setRoutines(p=>[...p,{id,sid:mwGenId(),title:"",exercises:[]}]);setOpen(p=>new Set([...p,id]));}
   function removeRoutine(rid){if(!window.confirm("Remove this routine?"))return;setRoutines(p=>p.filter(r=>r.id!==rid));}
   function updR(rid,f,v){setRoutines(p=>p.map(r=>r.id===rid?{...r,[f]:v}:r));}
   function addEx(rid){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:[...(r.exercises||[]),{id:mwGenId(),name:"",sets:"",reps:"",duration:""}]}:r));}
   function updEx(rid,eid,f,v){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:r.exercises.map(e=>e.id===eid?{...e,[f]:v}:e)}:r));}
   function removeEx(rid,eid){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:r.exercises.filter(e=>e.id!==eid)}:r));}
-  function clean(arr){return (arr||[]).map(r=>({id:r.id||mwGenId(),title:(r.title||"").trim(),exercises:(r.exercises||[]).map(e=>({id:e.id||mwGenId(),name:(e.name||"").trim().toUpperCase(),sets:(e.sets||"").trim(),reps:(e.reps||"").trim(),duration:(e.duration||"").trim()})).filter(e=>e.name)})).filter(r=>r.title||r.exercises.length);}
+  function clean(arr){return (arr||[]).map(r=>({id:r.id||mwGenId(),sid:(r.sid||mwGenId()),title:(r.title||"").trim(),exercises:(r.exercises||[]).map(e=>({id:e.id||mwGenId(),name:(e.name||"").trim().toUpperCase(),sets:(e.sets||"").trim(),reps:(e.reps||"").trim(),duration:(e.duration||"").trim()})).filter(e=>e.name)})).filter(r=>r.title||r.exercises.length);}
   async function upsertRT(k,arr){
     const json=JSON.stringify(arr);
     const ex=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(k)}&select=class_name`);
@@ -4501,14 +4501,14 @@ function RoutinesAdmin({member}){
     if(!window.confirm("Update these routines for EVERY member who has a routine with the same name? This overwrites their copy."))return;
     setSaving(true);
     await upsertRT(key,cleaned);
-    const byTitle={};cleaned.forEach(r=>{byTitle[(r.title||"").toLowerCase()]=r;});
+    const bySid={},byTitle={};cleaned.forEach(r=>{if(r.sid)bySid[r.sid]=r;byTitle[(r.title||"").toLowerCase()]=r;});
     const rows=await sbGet("coaching_notes","class_name=like.__RT__*&select=class_name,content");
     let n=0;
     for(const row of (rows||[])){
       if(!row||!row.class_name||row.class_name.indexOf("__RT__")!==0||row.class_name===key)continue;
       let arr=[];try{const o=JSON.parse(row.content);arr=Array.isArray(o)?o:(o.routines||[]);}catch{}
       let changed=false;
-      const upd=(arr||[]).map(r=>{const t=(r.title||"").toLowerCase();if(byTitle[t]){changed=true;return {id:r.id||mwGenId(),title:byTitle[t].title,exercises:byTitle[t].exercises.map(e=>({...e,id:mwGenId()}))};}return r;});
+      const upd=(arr||[]).map(r=>{const m=(r.sid&&bySid[r.sid])||byTitle[(r.title||"").toLowerCase()];if(m){changed=true;return {id:r.id||mwGenId(),sid:m.sid,title:m.title,exercises:m.exercises.map(e=>({...e,id:mwGenId()}))};}return r;});
       if(changed){await upsertRT(row.class_name,upd);n++;}
     }
     setSaving(false);setMsg("Updated "+n+" other member(s) ✓");setTimeout(()=>setMsg(""),3500);
@@ -4531,7 +4531,7 @@ function RoutinesAdmin({member}){
       let arr=[];if(d&&d.length&&d[0].content){try{const o=JSON.parse(d[0].content);arr=Array.isArray(o)?o:(o.routines||[]);}catch{}}
       const titles=new Set(cleaned.map(r=>r.title.toLowerCase()));
       const kept=(arr||[]).filter(r=>!titles.has((r.title||"").toLowerCase()));
-      const merged=[...kept,...cleaned.map(r=>({id:mwGenId(),title:r.title,exercises:r.exercises.map(e=>({...e,id:mwGenId()}))}))];
+      const merged=[...kept,...cleaned.map(r=>({id:mwGenId(),sid:r.sid,title:r.title,exercises:r.exercises.map(e=>({...e,id:mwGenId()}))}))];
       await upsertRT(k,merged);
       await sbPatch("members",`email=eq.${encodeURIComponent(em)}`,{routines_enabled:true});
     }
