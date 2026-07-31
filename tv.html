@@ -2,7 +2,7 @@
 html,body{height:100vh;overflow:hidden;background:#080808;color:#fff;font-family:'DM Sans',sans-serif}
 #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:60}
 #flash.on{animation:flashwhite 1s ease-in-out}
-@keyframes flashwhite{0%{opacity:0}15%{opacity:1}30%{opacity:1}100%{opacity:0}}
+@keyframes flashwhite{0%{opacity:0}18%{opacity:0.5}100%{opacity:0}}
 #nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);z-index:50;display:flex;gap:8px;background:rgba(8,8,8,0.92);border:1px solid #333;padding:7px 10px 9px;border-radius:6px 6px 0 0;opacity:0;pointer-events:none;transition:opacity .25s}
 #nav.on,#nav:hover{opacity:1;pointer-events:auto}
 body.paused .mtrack,body.paused .inarrow{animation-play-state:paused}
