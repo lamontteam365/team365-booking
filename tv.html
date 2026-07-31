@@ -12,6 +12,7 @@ body.paused .mtrack,body.paused .inarrow{animation-play-state:paused}
 #stage{position:fixed;top:0;left:0;height:100vh;width:100vw;container-type:size;overflow:hidden}
 @media (max-width:1024px){#stage{top:50%;left:50%;width:1920px;height:1080px;transform:translate(-50%,-50%);transform-origin:center center}}
 .screen{display:none;height:100%;width:100%;padding:16px 2.2cqw;flex-direction:column}
+.screen.board:not(.r3board){padding-left:1cqw;padding-right:1cqw}
 .screen.show{display:flex}
 .wname{-webkit-text-fill-color:transparent}
 @keyframes lvnshine{0%{background-position:100% 0}33%{background-position:0% 0}100%{background-position:0% 0}}
@@ -138,7 +139,7 @@ body.paused .mtrack,body.paused .inarrow{animation-play-state:paused}
 .st.r3card .lvb{font-size:1.6cqw;padding:14px 6px;min-height:auto}
 .rsep{-webkit-text-fill-color:#5f6b76;color:#5f6b76;margin:0 1.1cqw}
 .reccard .recmid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.6cqw;text-align:center}
-.reccard .rectitle{font-family:'Bebas Neue',sans-serif;font-style:italic;font-size:5.2cqw;letter-spacing:0.08em;line-height:1;color:transparent;background:linear-gradient(90deg,#fff 0%,#fff 38%,#8cd0ff 50%,#fff 62%,#fff 100%);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;animation:lvnshine 5s linear infinite}
+.reccard .rectitle{font-family:'Bebas Neue',sans-serif;font-style:italic;font-size:5.2cqw;letter-spacing:0.08em;line-height:1.22;padding-bottom:0.4cqw;color:transparent;background:linear-gradient(90deg,#fff 0%,#fff 38%,#8cd0ff 50%,#fff 62%,#fff 100%);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;animation:lvnshine 5s linear infinite}
 .reccard .recmao{font-family:'Bebas Neue',sans-serif;font-style:italic;font-size:2.4cqw;letter-spacing:0.06em;-webkit-text-fill-color:#8cd0ff;color:#8cd0ff}
 .reccard .bigtimer.mid{font-size:9cqw;margin-top:1cqw}
 .motivate{flex-shrink:0;overflow:hidden;background:#0a1a2a;border:1px solid #565656;padding:12px 0;margin-bottom:12px;min-height:58px;display:flex;align-items:center}
