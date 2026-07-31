@@ -11,7 +11,7 @@ body.paused .mtrack,body.paused .inarrow{animation-play-state:paused}
 .pnum{display:flex;align-items:center;color:#9fb3c4;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.08em;padding:0 6px}
 #stage{position:fixed;top:0;left:0;height:100vh;width:100vw;container-type:size;overflow:hidden}
 @media (max-width:1024px){#stage{top:50%;left:50%;width:1920px;height:1080px;transform:translate(-50%,-50%);transform-origin:center center}}
-.screen{display:none;height:100%;width:100%;padding:14px 1.2cqw;flex-direction:column}
+.screen{display:none;height:100%;width:100%;padding:12px 0.7cqw;flex-direction:column}
 .screen.board:not(.r3board){padding-left:0.6cqw;padding-right:0.6cqw}
 .screen.show{display:flex}
 .wname{-webkit-text-fill-color:transparent}
@@ -25,7 +25,7 @@ body.paused .mtrack,body.paused .inarrow{animation-play-state:paused}
 .split{gap:12px}
 .cols{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .cols.one{grid-template-columns:1fr}
-.col{background:#141414;border:1px solid #565656;padding:20px 20px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.col{background:#141414;border:1px solid #565656;padding:16px 14px;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .col.faded{opacity:0.26}
 .col.vidcol{padding:0;background:#000;position:relative;display:block}
 .boxin{text-align:left}.boxin.cenin{text-align:center}
@@ -139,8 +139,9 @@ body.paused .mtrack,body.paused .inarrow{animation-play-state:paused}
 .st.r3card .lvn{font-size:1cqw}
 .st.r3card .lvb{font-size:1.6cqw;padding:14px 6px;min-height:auto}
 .rsep{-webkit-text-fill-color:#5f6b76;color:#5f6b76;margin:0 1.1cqw}
-.reccard .recmid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.6cqw;text-align:center}
-.reccard .rectitle{font-family:'Bebas Neue',sans-serif;font-style:italic;font-size:5.2cqw;letter-spacing:0.08em;line-height:1.4;padding-bottom:0.7cqw;color:transparent;background:linear-gradient(90deg,#fff 0%,#fff 38%,#8cd0ff 50%,#fff 62%,#fff 100%);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;animation:lvnshine 5s linear infinite}
+.st.reccard{overflow:visible}
+.reccard .recmid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.6cqw;text-align:center;overflow:visible}
+.reccard .rectitle{font-family:'Bebas Neue',sans-serif;font-style:italic;font-size:5.2cqw;letter-spacing:0.08em;line-height:1.4;padding:0.2cqw 0.6cqw 1cqw;color:transparent;background:linear-gradient(90deg,#fff 0%,#fff 38%,#8cd0ff 50%,#fff 62%,#fff 100%);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;animation:lvnshine 5s linear infinite}
 .reccard .recmao{font-family:'Bebas Neue',sans-serif;font-style:italic;font-size:2.4cqw;letter-spacing:0.06em;-webkit-text-fill-color:#8cd0ff;color:#8cd0ff}
 .reccard .bigtimer.mid{font-size:9cqw;margin-top:1cqw}
 .motivate{flex-shrink:0;overflow:hidden;background:#0a1a2a;border:1px solid #565656;padding:12px 0;margin-bottom:12px;min-height:58px;display:flex;align-items:center}
@@ -176,7 +177,9 @@ body.paused .mtrack,body.paused .inarrow{animation-play-state:paused}
 .st{flex:1;min-height:0;background:#202020;border:1px solid #565656;padding:12px 10px;display:flex;flex-direction:column;overflow:hidden}
 .ex{flex-shrink:0;font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.02em;line-height:1.08;text-align:center;margin-bottom:4px;text-decoration:underline;text-decoration-color:#6b7d8c;text-decoration-thickness:1px;text-underline-offset:3px;color:transparent;background:linear-gradient(90deg,#fff 0%,#fff 38%,#8cd0ff 50%,#fff 62%,#fff 100%);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;animation:lvnshine 7s linear infinite}
 .mao{flex-shrink:0;font-style:italic;font-weight:600;font-size:12px;letter-spacing:0.05em;color:#1d9bf0;text-align:center;line-height:1.1;margin-bottom:6px}
-.media{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;margin:4px 0 8px;overflow:hidden}
+.media{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;margin:4px 0 8px;overflow:hidden;position:relative}
+.media::after{content:"";position:absolute;top:0;bottom:0;left:-45%;width:35%;background:linear-gradient(100deg,transparent 0%,rgba(255,255,255,0.22) 50%,transparent 100%);transform:skewX(-16deg);pointer-events:none;z-index:2;animation:vshine 5s ease-in-out infinite}
+@keyframes vshine{0%{left:-45%}55%{left:120%}100%{left:120%}}
 .media.ph{border:1px dashed #33424f;color:#33424f;font-size:10px;letter-spacing:0.16em}
 .media video{width:100%;height:100%;object-fit:cover;display:block}
 .lv{flex-shrink:0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}.lvc{display:flex;flex-direction:column}
@@ -319,7 +322,7 @@ function buildFlow(name,rows,opts){
  S.push(screenWrap('<div class="cols">'+box("active","SESSION BRIEF",'<div class="body sess">'+sb+'</div>')+box("faded","WARM UP",'<div class="body warm">'+warmBody+'</div>')+'</div>'+footer("SESSION BRIEF","WARM UP","0:30",wname),'split','data-dur="30"'));
  S.push(screenWrap('<div class="cols">'+box("active","WARM UP",'<div class="body warm">'+warmBody+'</div>')+'<div class="col vidcol"><div class="media"><video id="warmvid" src="'+WUV+encodeURIComponent(WARMNAMES[0])+'.webm" autoplay muted loop playsinline onerror="var p=this.parentNode;p.className=\'media ph\';p.textContent=\'VIDEO COMING SOON\'"></video></div><div class="vcap"><span id="wcap">'+WARMDISP[0]+'</span></div></div></div>'+footer("WARM UP","30 SECS FINAL PREP","3:00",wname),'split','data-dur="180" data-warm'));
  var g0=groups[0];
- S.push(screenWrap('<div class="cols"><div class="col cen"><div class="boxin cenin"><div class="bh">CLASS STARTING IN&hellip;</div><div class="bigtimer mid" data-count>0:30</div><div class="startwith"><span class="swtext">STARTING WITH YOUR FIRST STATION</span> <span class="inarrow">&#10142;</span></div></div></div>'+previewcard(g0.hdr.toUpperCase(),fmtMinLabel(g0.dur||mmss(roundSum(g0))),previewBody(dispG(g0),1),false)+'</div>'+footer("CLASS STARTING IN",g0.hdr.toUpperCase(),"0:30",wname),'split','data-dur="30"'));
+ S.push(screenWrap('<div class="cols"><div class="col cen"><div class="boxin cenin"><div class="bh">CLASS STARTING IN&hellip;</div><div class="bigtimer mid" data-count>0:30</div><div class="startwith"><span class="swtext">STARTING WITH YOUR FIRST STATION</span> <span class="inarrow">&#10142;</span></div></div></div>'+previewcard(g0.hdr.toUpperCase(),fmtMinLabel(g0.dur||mmss(roundSum(g0))),previewBody(dispG(g0),1),false)+'</div>'+footer("CLASS STARTING IN",g0.hdr.toUpperCase(),"0:30",wname),'split','data-dur="30" data-cue'));
  var elapsed=0, acc=0;
  groups.forEach(function(g,ri){
    var rlab=g.hdr.toUpperCase(); var rnum=ri+1; var isLast=(ri===groups.length-1);
@@ -399,7 +402,7 @@ document.getElementById('pp').onclick=function(){unlock();paused=!paused;this.te
 document.body.addEventListener('click',function(){showNav();});
 setInterval(function(){if(paused||!window.__started)return;var sc=screens[cur];if(!sc)return;
  if(sc.hasAttribute('data-final')){if(!boardOn)return;sc.querySelectorAll('.timer').forEach(function(t){if(t.dataset.running!=='1')return;var l=parseInt(t.dataset.left);if(t.dataset.dir==='up'){l+=1;var mx=t.dataset.max?parseInt(t.dataset.max):null;if(mx!==null&&l>=mx){l=mx;t.dataset.running='0';t.classList.add('done');}t.dataset.left=l;t.textContent=fmt(l);return;}l-=1;if(l<=0){if(t.dataset.loop==='1'){doFlash();var sn=sc.querySelector('.stnnum');if(sn){var vv=parseInt(sn.textContent);var mm=parseInt(sn.dataset.max||'999');if(vv<mm)sn.textContent=(vv+1)+' / '+(sn.dataset.tot||mm);}l=parseInt(t.dataset.secs);t.dataset.left=l;t.textContent=fmt(l);return;}t.dataset.left=0;t.textContent=fmt(0);t.dataset.running='0';t.classList.add('done');if(t.dataset.adv==='1'){setTimeout(nextScreen,500);}return;}t.dataset.left=l;t.textContent=fmt(l);if(t.dataset.loop==='1'){if(l===30)chime();else if(l===4||l===3||l===2)beep();else if(l===1)longBeep();}});return;}
- if(introLeft>0){introLeft-=1;setCounts(sc,introLeft);if(sc.hasAttribute('data-warm')){var dur=parseInt(sc.getAttribute('data-dur'));updWarm(sc,warmIdx(dur-introLeft));}if(introLeft<=0)nextScreen();}
+ if(introLeft>0){introLeft-=1;setCounts(sc,introLeft);if(sc.hasAttribute('data-warm')){var dur=parseInt(sc.getAttribute('data-dur'));updWarm(sc,warmIdx(dur-introLeft));}if(sc.hasAttribute('data-cue')){if(introLeft===3||introLeft===2)beep();else if(introLeft===1)longBeep();}if(introLeft<=0){if(sc.hasAttribute('data-cue'))doFlash();nextScreen();}}
 },1000);
 window.__startFlow=function(){window.__started=true;unlock();};show(0);
 }
