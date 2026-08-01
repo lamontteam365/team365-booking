@@ -4484,10 +4484,10 @@ function RoutinesAdmin({member}){
   function addRoutine(){const id=mwGenId();setRoutines(p=>[...p,{id,sid:mwGenId(),title:"",exercises:[]}]);setOpen(p=>new Set([...p,id]));}
   function removeRoutine(rid){if(!window.confirm("Remove this routine?"))return;setRoutines(p=>p.filter(r=>r.id!==rid));}
   function updR(rid,f,v){setRoutines(p=>p.map(r=>r.id===rid?{...r,[f]:v}:r));}
-  function addEx(rid){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:[...(r.exercises||[]),{id:mwGenId(),name:"",sets:"",reps:"",duration:"",unit:"",c:"",o:"",d:""}]}:r));}
+  function addEx(rid){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:[...(r.exercises||[]),{id:mwGenId(),name:"",sets:"",reps:"",duration:"",unit:"",c:"",o:"",d:"",wc:"",wo:"",wd:""}]}:r));}
   function updEx(rid,eid,f,v){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:r.exercises.map(e=>e.id===eid?{...e,[f]:v}:e)}:r));}
   function removeEx(rid,eid){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:r.exercises.filter(e=>e.id!==eid)}:r));}
-  function clean(arr){return (arr||[]).map(r=>({id:r.id||mwGenId(),sid:(r.sid||mwGenId()),title:(r.title||"").trim(),mode:(r.mode==="pillar"?"pillar":""),hidden:!!r.hidden,exercises:(r.exercises||[]).map(e=>({id:e.id||mwGenId(),name:(e.name||"").trim().toUpperCase(),sets:(e.sets||"").trim(),reps:(e.reps||"").trim(),duration:(e.duration||"").trim(),unit:(e.unit||"").trim(),c:(e.c||"").trim(),o:(e.o||"").trim(),d:(e.d||"").trim()})).filter(e=>e.name)})).filter(r=>r.title||r.exercises.length);}
+  function clean(arr){return (arr||[]).map(r=>({id:r.id||mwGenId(),sid:(r.sid||mwGenId()),title:(r.title||"").trim(),mode:(r.mode==="pillar"?"pillar":""),hidden:!!r.hidden,exercises:(r.exercises||[]).map(e=>({id:e.id||mwGenId(),name:(e.name||"").trim().toUpperCase(),sets:(e.sets||"").trim(),reps:(e.reps||"").trim(),duration:(e.duration||"").trim(),unit:(e.unit||"").trim(),c:(e.c||"").trim(),o:(e.o||"").trim(),d:(e.d||"").trim(),wc:(e.wc||"").trim(),wo:(e.wo||"").trim(),wd:(e.wd||"").trim()})).filter(e=>e.name)})).filter(r=>r.title||r.exercises.length);}
   async function upsertRT(k,arr){
     const json=JSON.stringify(arr);
     const ex=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(k)}&select=class_name`);
@@ -4548,6 +4548,10 @@ function RoutinesAdmin({member}){
         React.createElement("span",{style:{marginLeft:"auto",fontSize:11,transform:rtCol?"rotate(-90deg)":"none",transition:"transform .15s"}},"▾")
       )
     ),
+    !rtCol&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:7,marginTop:10,marginBottom:2}},
+      React.createElement("span",{style:{fontSize:8,letterSpacing:"0.16em",fontWeight:700,color:"#000",background:"#c9a227",padding:"3px 7px"}},"COACH EDITING"),
+      React.createElement("span",{style:{fontSize:8.5,letterSpacing:"0.06em",color:"#666"}},"Admin only — members never see this editing screen")
+    ),
     !rtCol&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(showTimes?"#1d5a34":"#222"),borderRadius:0,padding:"10px 12px",marginTop:10,marginBottom:6}},
       React.createElement("div",null,
         React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"MEMBER VIEW"),
@@ -4606,7 +4610,8 @@ function RoutinesAdmin({member}){
               React.createElement("button",{onClick:()=>removeEx(r.id,e.id),style:{background:"none",border:"1px solid #2a2a2a",borderRadius:0,color:"#8a2515",fontSize:12,padding:"4px 9px",cursor:"pointer",flexShrink:0}},"✕")
             ),
             r.mode==="pillar"
-            ? React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+            ? React.createElement(React.Fragment,null,
+              React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
                 React.createElement("select",{value:e.unit||"",onChange:v=>updEx(r.id,e.id,"unit",v.target.value),title:"Measure for the three target values",style:{...inS,width:80,cursor:"pointer"}},
                   React.createElement("option",{value:""},"unit…"),
                   React.createElement("option",{value:"reps"},"reps"),
@@ -4618,6 +4623,13 @@ function RoutinesAdmin({member}){
                 React.createElement("input",{value:e.c||"",onChange:v=>updEx(r.id,e.id,"c",v.target.value),placeholder:"Commitment",style:{...inS,flex:1,minWidth:78,borderColor:"#2a4a2a"}}),
                 React.createElement("input",{value:e.o||"",onChange:v=>updEx(r.id,e.id,"o",v.target.value),placeholder:"Consistency",style:{...inS,flex:1,minWidth:78,borderColor:"#2a4a2a"}}),
                 React.createElement("input",{value:e.d||"",onChange:v=>updEx(r.id,e.id,"d",v.target.value),placeholder:"Determination",style:{...inS,flex:1,minWidth:78,borderColor:"#2a4a2a"}})
+              ),
+              React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginTop:6}},
+                React.createElement("span",{title:"Optional suggested weight range per pillar, shown to the member in kg. Leave blank for non-weighted moves (run, bike, etc.).",style:{width:80,flexShrink:0,fontSize:8.5,letterSpacing:"0.04em",color:"#7a6a2a",fontWeight:600,textTransform:"uppercase"}},"KG range"),
+                React.createElement("input",{value:e.wc||"",onChange:v=>updEx(r.id,e.id,"wc",v.target.value),placeholder:"e.g. 2–14",style:{...inS,flex:1,minWidth:78,borderColor:"#4a3f15"}}),
+                React.createElement("input",{value:e.wo||"",onChange:v=>updEx(r.id,e.id,"wo",v.target.value),placeholder:"e.g. 14–24",style:{...inS,flex:1,minWidth:78,borderColor:"#4a3f15"}}),
+                React.createElement("input",{value:e.wd||"",onChange:v=>updEx(r.id,e.id,"wd",v.target.value),placeholder:"e.g. 24–34",style:{...inS,flex:1,minWidth:78,borderColor:"#4a3f15"}})
+              )
               )
             : React.createElement("div",{style:{display:"flex",gap:6}},
                 React.createElement("input",{value:e.sets,onChange:v=>updEx(r.id,e.id,"sets",v.target.value),placeholder:"Sets",style:{...inS,width:56,textAlign:"center"}}),
@@ -4723,15 +4735,24 @@ function RoutinesView({session,ttl}){
           ? React.createElement("div",{style:{marginBottom:12}},
               React.createElement("div",{style:{display:"flex",gap:6,padding:"3px 0 5px",borderBottom:"1px solid #222"}},
                 React.createElement("span",{style:{flex:2.2,fontSize:8,letterSpacing:"0.06em",color:"#666",fontWeight:600}},"EXERCISE"),
-                React.createElement("span",{style:{flex:1,fontSize:8,letterSpacing:"0.04em",color:"#4aaa66",fontWeight:600,textAlign:"right"}},"COMMIT"),
-                React.createElement("span",{style:{flex:1,fontSize:8,letterSpacing:"0.04em",color:"#4aaa66",fontWeight:600,textAlign:"right"}},"CONSIST"),
-                React.createElement("span",{style:{flex:1,fontSize:8,letterSpacing:"0.04em",color:"#4aaa66",fontWeight:600,textAlign:"right"}},"DETERM")
+                React.createElement("span",{style:{flex:1,fontSize:8,letterSpacing:"0.04em",color:"#8cd0ff",fontWeight:600,textAlign:"right"}},"COMMIT"),
+                React.createElement("span",{style:{flex:1,fontSize:8,letterSpacing:"0.04em",color:"#8cd0ff",fontWeight:600,textAlign:"right"}},"CONSIST"),
+                React.createElement("span",{style:{flex:1,fontSize:8,letterSpacing:"0.04em",color:"#8cd0ff",fontWeight:600,textAlign:"right"}},"DETERM")
               ),
               ...(r.exercises||[]).map(e=>React.createElement("div",{key:e.id,style:{display:"flex",gap:6,padding:"6px 0",borderBottom:"1px solid #161616",alignItems:"baseline"}},
                 React.createElement("span",{style:{flex:2.2,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.04em",color:"#eee"}},e.name),
-                React.createElement("span",{style:{flex:1,fontSize:10,color:"#9aa6b1",textAlign:"right"}},e.c?(e.c+(e.unit?(" "+e.unit):"")):"—"),
-                React.createElement("span",{style:{flex:1,fontSize:10,color:"#9aa6b1",textAlign:"right"}},e.o?(e.o+(e.unit?(" "+e.unit):"")):"—"),
-                React.createElement("span",{style:{flex:1,fontSize:10,color:"#9aa6b1",textAlign:"right"}},e.d?(e.d+(e.unit?(" "+e.unit):"")):"—")
+                React.createElement("div",{style:{flex:1,textAlign:"right"}},
+                  React.createElement("div",{style:{fontSize:10,color:"#9aa6b1"}},e.c?(e.c+(e.unit?(" "+e.unit):"")):"—"),
+                  e.wc&&React.createElement("div",{style:{fontSize:8,color:"#c9a227",fontWeight:600,marginTop:1}},e.wc+" kg")
+                ),
+                React.createElement("div",{style:{flex:1,textAlign:"right"}},
+                  React.createElement("div",{style:{fontSize:10,color:"#9aa6b1"}},e.o?(e.o+(e.unit?(" "+e.unit):"")):"—"),
+                  e.wo&&React.createElement("div",{style:{fontSize:8,color:"#c9a227",fontWeight:600,marginTop:1}},e.wo+" kg")
+                ),
+                React.createElement("div",{style:{flex:1,textAlign:"right"}},
+                  React.createElement("div",{style:{fontSize:10,color:"#9aa6b1"}},e.d?(e.d+(e.unit?(" "+e.unit):"")):"—"),
+                  e.wd&&React.createElement("div",{style:{fontSize:8,color:"#c9a227",fontWeight:600,marginTop:1}},e.wd+" kg")
+                )
               ))
             )
           : React.createElement("div",{style:{marginBottom:12}},
@@ -4745,7 +4766,7 @@ function RoutinesView({session,ttl}){
           :React.createElement(React.Fragment,null,...hist.map(e=>React.createElement("div",{key:e._i,style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #161616"}},
             React.createElement("span",{style:{fontSize:12,color:"#aaa",letterSpacing:"0.04em"}},new Date(e.date+"T12:00:00").toLocaleDateString("en-US",{day:"numeric",month:"short",year:"numeric"})),
             React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
-              e.pillar&&React.createElement("span",{style:{fontSize:9,letterSpacing:"0.05em",color:"#4aaa66",fontWeight:600}},e.pillar==="c"?"COMMITMENT":e.pillar==="o"?"CONSISTENCY":e.pillar==="d"?"DETERMINATION":String(e.pillar).toUpperCase()),
+              e.pillar&&React.createElement("span",{style:{fontSize:9,letterSpacing:"0.05em",color:"#8cd0ff",fontWeight:600}},e.pillar==="c"?"COMMITMENT":e.pillar==="o"?"CONSISTENCY":e.pillar==="d"?"DETERMINATION":String(e.pillar).toUpperCase()),
               React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.05em",color:"#fff"}},e.time),
               React.createElement("button",{onClick:()=>delTime(r.id,e._i),style:{background:"none",border:"none",color:"#5a2018",fontSize:14,cursor:"pointer"}},"✕")
             )
@@ -4755,7 +4776,7 @@ function RoutinesView({session,ttl}){
             ? React.createElement("div",{style:{marginTop:10,background:"#111",border:"1px solid #222",padding:"10px"}},
                 React.createElement("div",{style:{fontSize:9,letterSpacing:"0.12em",color:"#666",fontWeight:600,marginBottom:7}},"WHICH PILLAR DID YOU DO?"),
                 React.createElement("div",{style:{display:"flex",gap:6,marginBottom:8}},
-                  ...PILS.map(p=>React.createElement("button",{key:p[0],onClick:()=>setLogPil(p[0]),style:{flex:1,background:logPil===p[0]?"#1d5a34":"none",border:"1px solid "+(logPil===p[0]?"#1d5a34":"#333"),color:logPil===p[0]?"#fff":"#888",fontSize:8.5,letterSpacing:"0.03em",fontWeight:600,padding:"7px 2px",cursor:"pointer",borderRadius:0}},p[1]))
+                  ...PILS.map(p=>React.createElement("button",{key:p[0],onClick:()=>setLogPil(p[0]),style:{flex:1,background:logPil===p[0]?"#123f5c":"none",border:"1px solid "+(logPil===p[0]?"#1d9bf0":"#333"),color:logPil===p[0]?"#fff":"#888",fontSize:8.5,letterSpacing:"0.03em",fontWeight:600,padding:"7px 2px",cursor:"pointer",borderRadius:0}},p[1]))
                 ),
                 React.createElement("div",{style:{display:"flex",gap:6}},
                   React.createElement("input",{value:logTm,onChange:e=>setLogTm(e.target.value),placeholder:"Your time e.g. 8:42",autoFocus:true,onKeyDown:e=>{if(e.key==="Enter"&&logTm.trim()&&logPil)saveLog(r.id);},style:{flex:1,background:"#161616",border:"1px solid #2a2a2a",borderRadius:0,color:"#fff",fontSize:13,padding:"9px 10px",outline:"none"}}),
