@@ -4453,6 +4453,7 @@ function RoutinesAdmin({member}){
   const [rtCol,setRtCol]=useState(true);
   const [showAssign,setShowAssign]=useState(false);
   const [members,setMembers]=useState([]);
+  const [memberRT,setMemberRT]=useState({});
   const [selM,setSelM]=useState(new Set());
   const [mSearch,setMSearch]=useState("");
   const key="__RT__"+member.email;
@@ -4526,29 +4527,41 @@ function RoutinesAdmin({member}){
     }
     setSaving(false);setMsg("Updated "+n+" other member(s) ✓");setTimeout(()=>setMsg(""),3500);
   }
+  const rtMatch=(x,r)=>(x.sid&&r.sid&&x.sid===r.sid)||((x.title||"").toLowerCase()===(r.title||"").toLowerCase());
   async function openAssign(){
     const inc=routines.filter(r=>!excl.has(r.id));
-    if(!inc.length){setMsg("Tick at least one routine to assign.");setTimeout(()=>setMsg(""),3000);return;}
-    const m=await sbGet("members_public","select=email,name&order=name.asc");
-    setMembers(m||[]);setSelM(new Set());setMSearch("");setShowAssign(true);
+    if(!inc.length){setMsg("Tick at least one routine, then Assign.");setTimeout(()=>setMsg(""),3000);return;}
+    const [m,rows]=await Promise.all([
+      sbGet("members_public","select=email,name&order=name.asc"),
+      sbGet("coaching_notes","class_name=like.__RT__*&select=class_name,content")
+    ]);
+    const byEmail={};
+    (rows||[]).forEach(row=>{if(!row||!row.class_name||row.class_name.indexOf("__RT__")!==0)return;const em=row.class_name.slice(6);let arr=[];try{const o=JSON.parse(row.content);arr=Array.isArray(o)?o:(o.routines||[]);}catch{}byEmail[em]=arr;});
+    // Pre-tick members who already have EVERY ticked routine, visible
+    const pre=new Set();
+    (m||[]).forEach(mm=>{const arr=byEmail[mm.email]||[];if(inc.every(r=>arr.some(x=>rtMatch(x,r)&&!x.hidden)))pre.add(mm.email);});
+    setMembers(m||[]);setMemberRT(byEmail);setSelM(pre);setMSearch("");setShowAssign(true);
   }
   function toggleM(email){setSelM(p=>{const n=new Set(p);n.has(email)?n.delete(email):n.add(email);return n;});}
-  async function assignTo(emails){
-    const inc=routines.filter(r=>!excl.has(r.id));
-    if(!inc.length||!emails.length)return;
+  async function applyAssign(){
+    const cleaned=clean(routines.filter(r=>!excl.has(r.id)));
+    if(!cleaned.length){setShowAssign(false);return;}
     setSaving(true);
-    const cleaned=clean(inc);
-    for(const em of emails){
-      const k="__RT__"+em;
-      const d=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(k)}&select=content`);
-      let arr=[];if(d&&d.length&&d[0].content){try{const o=JSON.parse(d[0].content);arr=Array.isArray(o)?o:(o.routines||[]);}catch{}}
-      const titles=new Set(cleaned.map(r=>r.title.toLowerCase()));
-      const kept=(arr||[]).filter(r=>!titles.has((r.title||"").toLowerCase()));
-      const merged=[...kept,...cleaned.map(r=>({id:mwGenId(),sid:r.sid,title:r.title,mode:r.mode,hidden:false,exercises:r.exercises.map(e=>({...e,id:mwGenId()}))}))];
-      await upsertRT(k,merged);
-      await sbPatch("members",`email=eq.${encodeURIComponent(em)}`,{routines_enabled:true});
+    let added=0,removed=0;
+    for(const mm of members){
+      const em=mm.email;const ticked=selM.has(em);
+      let arr=(memberRT[em]||[]).slice();let changed=false;
+      if(ticked){
+        cleaned.forEach(r=>{const i=arr.findIndex(x=>rtMatch(x,r));
+          if(i>=0){if(arr[i].hidden){arr[i]={...arr[i],hidden:false};changed=true;added++;}}
+          else{arr=[...arr,{id:mwGenId(),sid:r.sid,title:r.title,mode:r.mode,hidden:false,exercises:r.exercises.map(e=>({...e,id:mwGenId()}))}];changed=true;added++;}
+        });
+      } else {
+        arr=arr.map(x=>{if(cleaned.some(r=>rtMatch(x,r))&&!x.hidden){changed=true;removed++;return {...x,hidden:true};}return x;});
+      }
+      if(changed){await upsertRT("__RT__"+em,arr);if(ticked)await sbPatch("members",`email=eq.${encodeURIComponent(em)}`,{routines_enabled:true});}
     }
-    setSaving(false);setShowAssign(false);setMsg("Assigned to "+emails.length+" member(s) ✓");setTimeout(()=>setMsg(""),3500);
+    setSaving(false);setShowAssign(false);setMsg("Updated ✓ ("+added+" on, "+removed+" hidden)");setTimeout(()=>setMsg(""),3500);
   }
   function openTV(){const inc=clean(routines.filter(r=>!excl.has(r.id)));if(!inc.length){setMsg("Tick at least one routine to play to the TV.");setTimeout(()=>setMsg(""),3000);return;}setTv(inc);}
   function openTVOne(r){const cl=clean([r]);if(!cl.length){setMsg("Add an exercise first.");setTimeout(()=>setMsg(""),2500);return;}setTv(cl);}
@@ -4664,7 +4677,7 @@ function RoutinesAdmin({member}){
       ),
       showAssign&&React.createElement("div",{style:{border:"1px solid #1d3a5a",background:"#0a1520",padding:"12px",marginTop:10}},
         React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}},
-          React.createElement("div",{style:{fontSize:10,letterSpacing:"0.08em",color:"#89a",fontWeight:600}},"ASSIGN TICKED ROUTINES TO:"),
+          React.createElement("div",{style:{fontSize:10,letterSpacing:"0.08em",color:"#89a",fontWeight:600}},"WHO CAN SEE THIS — TICK ON / UNTICK OFF:"),
           React.createElement("button",{onClick:()=>setSelM(selM.size===members.length&&members.length?new Set():new Set(members.map(m=>m.email))),style:{background:"none",border:"1px solid #1d3a5a",color:"#1d9bf0",fontSize:9,letterSpacing:"0.06em",padding:"3px 8px",cursor:"pointer",borderRadius:0}},selM.size===members.length&&members.length?"CLEAR ALL":"SELECT ALL")
         ),
         React.createElement("input",{value:mSearch,onChange:e=>setMSearch(e.target.value),placeholder:"Search members…",style:{...inS,width:"100%",marginBottom:8}}),
@@ -4676,7 +4689,7 @@ function RoutinesAdmin({member}){
         ),
         React.createElement("div",{style:{display:"flex",gap:8}},
           React.createElement("button",{onClick:()=>setShowAssign(false),style:{flex:1,background:"none",border:"1px solid #333",color:"#666",fontSize:10,letterSpacing:"0.1em",padding:"10px",cursor:"pointer",borderRadius:0}},"CANCEL"),
-          React.createElement("button",{onClick:()=>assignTo([...selM]),disabled:saving||selM.size===0,style:{flex:2,background:selM.size?"#1d9bf0":"#1a1a1a",color:selM.size?"#fff":"#444",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",padding:"11px",cursor:selM.size?"pointer":"default",borderRadius:0}},saving?"ASSIGNING…":"ASSIGN TO "+selM.size+" MEMBER"+(selM.size===1?"":"S"))
+          React.createElement("button",{onClick:applyAssign,disabled:saving,style:{flex:2,background:"#1d9bf0",color:"#fff",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",padding:"11px",cursor:"pointer",borderRadius:0}},saving?"SAVING…":"SAVE — "+selM.size+" CAN SEE IT")
         )
       ),
       msg&&React.createElement("div",{style:{fontSize:11,color:"#4aaa88",textAlign:"center",marginTop:8}},msg)
@@ -4811,7 +4824,7 @@ function RoutinesView({session,ttl,isAdmin}){
         React.createElement("div",{onClick:()=>toggle(r.id),style:hdrStyle},
           React.createElement("span",null,(r.title||"ROUTINE").toUpperCase()),
           React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
-            isAdmin&&React.createElement("button",{onClick:ev=>{ev.stopPropagation();openTVOne(r);},title:"Play this routine full-screen for the class — cast/mirror to the TV. (Admins only)",style:{background:"#1d9bf0",border:"none",borderRadius:0,color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:9,fontWeight:700,letterSpacing:"0.04em",padding:"4px 8px",cursor:"pointer",flexShrink:0}},"▶ CLASS VIEW"),
+            React.createElement("button",{onClick:ev=>{ev.stopPropagation();openTVOne(r);},title:"Play this routine full-screen with the exercise videos.",style:{background:"#1d9bf0",border:"none",borderRadius:0,color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:9,fontWeight:700,letterSpacing:"0.04em",padding:"4px 8px",cursor:"pointer",flexShrink:0}},"▶ VIDEO VIEW"),
             bt&&React.createElement("span",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:600,fontSize:11,color:"#333",letterSpacing:"0.04em"}},"BEST "+bt),
             React.createElement("span",{style:{fontSize:11,transform:isOpen?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
           )
