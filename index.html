@@ -4433,16 +4433,19 @@ function MemberWorkoutReview({email}){
 // ── Main App ──────────────────────────────────────────────────────────────────
 function rtCmp(a,b){const s=t=>{const p=(t||"").split(":").map(Number);return p.length>=2?p[0]*60+(p[1]||0):(parseFloat(t)||0);};return s(a)-s(b);}
 // ── Routines (admin builder, lives in member profile) ─────────────────────────
-// Movement weight-range library. Seeded with the ranges the coach has given; grows
-// as coaches enter kg ranges on any exercise (learned on save). Key = UPPERCASE name.
-const RT_WT_DEFAULTS={"KETTLEBELL SWINGS":{c:"2–14",o:"14–24",d:"24–34"}};
-const rtNm=s=>(s||"").trim().toUpperCase();
+// Weight ranges are drawn from the EXISTING class-workout library (__HIIT_LIB__), so
+// weights live in one place. Names are normalised (ignore spaces & trailing plural S)
+// and the kg range is pulled out of each level's prescription (c/o/d).
+const rtNm=s=>(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"").replace(/S$/,"");
+const rtKg=v=>{const m=String(v||"").match(/(\d+(?:\s*[-–]\s*\d+)?)\s*kg/i);return m?m[1].replace(/\s*[-–]\s*/,"–"):"";};
+function rtBuildWtLib(content){let L={};try{L=JSON.parse(content)||{};}catch{}const presc=(L&&L.presc)||{};const out={};Object.keys(presc).forEach(k=>{const nm=rtNm(k.split("|")[0]);if(!nm)return;const p=presc[k]||{};const c=rtKg(p.c),o=rtKg(p.o),d=rtKg(p.d);if(!(c||o||d))return;const s=(c?1:0)+(o?1:0)+(d?1:0);const cur=out[nm];if(!cur||s>cur._s)out[nm]={c,o,d,_s:s};});return out;}
 function RoutinesAdmin({member}){
   const [routines,setRoutines]=useState([]);
   const [open,setOpen]=useState(new Set());
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
   const [msg,setMsg]=useState("");
+  const [tv,setTv]=useState(null);
   const [excl,setExcl]=useState(new Set());
   const [rtCol,setRtCol]=useState(true);
   const [showAssign,setShowAssign]=useState(false);
@@ -4467,7 +4470,7 @@ function RoutinesAdmin({member}){
   async function saveGlobalRtTitle(v){const val=(v||"").trim();setRtTitleGlobal(val);await upsertNoteRT("__RTTITLE__GLOBAL",val);}
   const [rtLogs,setRtLogs]=useState({});
   const [showTimes,setShowTimes]=useState(false);
-  const [wtLib,setWtLib]=useState(RT_WT_DEFAULTS);
+  const [wtLib,setWtLib]=useState({});
   const bestT=rid=>{const a=(rtLogs[rid]||[]).map(e=>e.time).filter(Boolean);if(!a.length)return null;return [...a].sort(rtCmp)[0];};
   useEffect(()=>{load();},[]);
   async function load(){
@@ -4475,11 +4478,11 @@ function RoutinesAdmin({member}){
     const [d,l,wl]=await Promise.all([
       sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(key)}&select=content`),
       sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__RTLOG__"+member.email)}&select=content`),
-      sbGet("coaching_notes","class_name=eq.__RTWTLIB__&select=content")
+      sbGet("coaching_notes","class_name=eq.__HIIT_LIB__&select=content")
     ]);
     let arr=[];if(d&&d.length&&d[0].content){try{const o=JSON.parse(d[0].content);arr=Array.isArray(o)?o:(o.routines||[]);}catch{}}
     let lg={};if(l&&l.length&&l[0].content){try{lg=JSON.parse(l[0].content)||{};}catch{}}
-    if(wl&&wl.length&&wl[0].content){try{setWtLib({...RT_WT_DEFAULTS,...(JSON.parse(wl[0].content)||{})});}catch{}}
+    if(wl&&wl.length&&wl[0].content){setWtLib(rtBuildWtLib(wl[0].content));}
     const mapped=(arr||[]).map(r=>({...r,id:r.id||mwGenId(),exercises:(r.exercises||[]).map(e=>({...e,id:e.id||mwGenId()}))}));
     setRoutines(mapped);setRtLogs(lg);setOpen(new Set());setLoading(false);
   }
@@ -4493,11 +4496,6 @@ function RoutinesAdmin({member}){
   function updR(rid,f,v){setRoutines(p=>p.map(r=>r.id===rid?{...r,[f]:v}:r));}
   function addEx(rid){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:[...(r.exercises||[]),{id:mwGenId(),name:"",sets:"",reps:"",duration:"",unit:"",c:"",o:"",d:"",wc:"",wo:"",wd:""}]}:r));}
   function updEx(rid,eid,f,v){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:r.exercises.map(e=>{if(e.id!==eid)return e;const ne={...e,[f]:v};if(f==="name"){const hit=wtLib[rtNm(v)];if(hit&&!(ne.wc||ne.wo||ne.wd)){ne.wc=hit.c||"";ne.wo=hit.o||"";ne.wd=hit.d||"";}}return ne;})}:r));}
-  async function learnLib(rs){
-    const next={...wtLib};let changed=false;
-    (rs||[]).forEach(r=>(r.exercises||[]).forEach(e=>{const n=rtNm(e.name);if(!n)return;if(!(e.wc||e.wo||e.wd))return;const cur=next[n]||{};const nc=e.wc||cur.c||"",no=e.wo||cur.o||"",nd=e.wd||cur.d||"";if(cur.c!==nc||cur.o!==no||cur.d!==nd){next[n]={c:nc,o:no,d:nd};changed=true;}}));
-    if(changed){setWtLib(next);await upsertNoteRT("__RTWTLIB__",JSON.stringify(next));}
-  }
   function removeEx(rid,eid){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:r.exercises.filter(e=>e.id!==eid)}:r));}
   function clean(arr){return (arr||[]).map(r=>({id:r.id||mwGenId(),sid:(r.sid||mwGenId()),title:(r.title||"").trim(),mode:(r.mode==="pillar"?"pillar":""),hidden:!!r.hidden,exercises:(r.exercises||[]).map(e=>({id:e.id||mwGenId(),name:(e.name||"").trim().toUpperCase(),sets:(e.sets||"").trim(),reps:(e.reps||"").trim(),duration:(e.duration||"").trim(),unit:(e.unit||"").trim(),c:(e.c||"").trim(),o:(e.o||"").trim(),d:(e.d||"").trim(),wc:(e.wc||"").trim(),wo:(e.wo||"").trim(),wd:(e.wd||"").trim()})).filter(e=>e.name)})).filter(r=>r.title||r.exercises.length);}
   async function upsertRT(k,arr){
@@ -4506,14 +4504,13 @@ function RoutinesAdmin({member}){
     if(ex&&ex.length){await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(k)}`,{content:json,updated_at:Date.now()});}
     else{await sbPost("coaching_notes",{class_name:k,content:json,updated_at:Date.now()});}
   }
-  async function save(){setSaving(true);const cl=clean(routines);await upsertRT(key,cl);await learnLib(cl);setSaving(false);setMsg("Saved ✓");setTimeout(()=>setMsg(""),2500);}
+  async function save(){setSaving(true);await upsertRT(key,clean(routines));setSaving(false);setMsg("Saved ✓");setTimeout(()=>setMsg(""),2500);}
   async function saveGlobal(){
     const cleaned=clean(routines);
     if(!cleaned.length){setMsg("Nothing to save.");setTimeout(()=>setMsg(""),2500);return;}
     if(!window.confirm("Update these routines for EVERY member who has a routine with the same name? This overwrites their copy."))return;
     setSaving(true);
     await upsertRT(key,cleaned);
-    await learnLib(cleaned);
     const bySid={},byTitle={};cleaned.forEach(r=>{if(r.sid)bySid[r.sid]=r;byTitle[(r.title||"").toLowerCase()]=r;});
     const rows=await sbGet("coaching_notes","class_name=like.__RT__*&select=class_name,content");
     let n=0;
@@ -4550,8 +4547,10 @@ function RoutinesAdmin({member}){
     }
     setSaving(false);setShowAssign(false);setMsg("Assigned to "+emails.length+" member(s) ✓");setTimeout(()=>setMsg(""),3500);
   }
+  function openTV(){const inc=clean(routines.filter(r=>!excl.has(r.id)));if(!inc.length){setMsg("Tick at least one routine to play to the TV.");setTimeout(()=>setMsg(""),3000);return;}setTv(inc);}
   const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",padding:"7px 9px",outline:"none",boxSizing:"border-box"};
   return React.createElement(React.Fragment,null,
+    tv&&React.createElement(RoutineTV,{routines:tv,onClose:()=>setTv(null)}),
     React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",marginTop:16,marginBottom:rtCol?0:10}},
       editGlobalRt
       ?React.createElement("input",{autoFocus:true,defaultValue:rtTitleGlobal,placeholder:"ROUTINES",onClick:e=>e.stopPropagation(),onBlur:e=>{saveGlobalRtTitle(e.target.value);setEditGlobalRt(false);},onKeyDown:e=>{if(e.key==="Enter"){saveGlobalRtTitle(e.target.value);setEditGlobalRt(false);}else if(e.key==="Escape")setEditGlobalRt(false);},style:{flex:1,minWidth:0,background:"#eee",border:"1px solid #999",borderRadius:0,color:"#000",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",padding:"4px 8px",outline:"none"}})
@@ -4638,10 +4637,10 @@ function RoutinesAdmin({member}){
                 React.createElement("input",{value:e.d||"",onChange:v=>updEx(r.id,e.id,"d",v.target.value),placeholder:"Determination",style:{...inS,flex:1,minWidth:78,borderColor:"#2a4a2a"}})
               ),
               React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginTop:6}},
-                React.createElement("span",{title:"Optional suggested weight range per pillar, shown to the member in kg. Leave blank for non-weighted moves (run, bike, etc.).",style:{width:80,flexShrink:0,fontSize:8.5,letterSpacing:"0.04em",color:"#7a6a2a",fontWeight:600,textTransform:"uppercase"}},"KG range"),
-                React.createElement("input",{value:e.wc||"",onChange:v=>updEx(r.id,e.id,"wc",v.target.value),placeholder:"e.g. 2–14",style:{...inS,flex:1,minWidth:78,borderColor:"#4a3f15"}}),
-                React.createElement("input",{value:e.wo||"",onChange:v=>updEx(r.id,e.id,"wo",v.target.value),placeholder:"e.g. 14–24",style:{...inS,flex:1,minWidth:78,borderColor:"#4a3f15"}}),
-                React.createElement("input",{value:e.wd||"",onChange:v=>updEx(r.id,e.id,"wd",v.target.value),placeholder:"e.g. 24–34",style:{...inS,flex:1,minWidth:78,borderColor:"#4a3f15"}})
+                React.createElement("span",{title:"Optional suggested weight range per pillar, shown to the member in kg. Leave blank for non-weighted moves (run, bike, etc.).",style:{width:80,flexShrink:0,fontSize:8.5,letterSpacing:"0.04em",color:"#4a86b8",fontWeight:600,textTransform:"uppercase"}},"KG range"),
+                React.createElement("input",{value:e.wc||"",onChange:v=>updEx(r.id,e.id,"wc",v.target.value),placeholder:"e.g. 2–14",style:{...inS,flex:1,minWidth:78,borderColor:"#24506e"}}),
+                React.createElement("input",{value:e.wo||"",onChange:v=>updEx(r.id,e.id,"wo",v.target.value),placeholder:"e.g. 14–24",style:{...inS,flex:1,minWidth:78,borderColor:"#24506e"}}),
+                React.createElement("input",{value:e.wd||"",onChange:v=>updEx(r.id,e.id,"wd",v.target.value),placeholder:"e.g. 24–34",style:{...inS,flex:1,minWidth:78,borderColor:"#24506e"}})
               )
               )
             : React.createElement("div",{style:{display:"flex",gap:6}},
@@ -4654,10 +4653,11 @@ function RoutinesAdmin({member}){
         )
       );}),
       React.createElement("button",{onClick:addRoutine,style:{width:"100%",background:"none",border:"1px dashed #1d3a5a",borderRadius:0,color:"#1d9bf0",fontSize:10,letterSpacing:"0.12em",padding:"9px",cursor:"pointer",marginBottom:10}},"+ ADD ROUTINE"),
-      React.createElement("div",{style:{display:"flex",gap:8}},
-        React.createElement("button",{onClick:save,disabled:saving,style:{flex:2,background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",padding:"12px",borderRadius:0,cursor:"pointer"}},saving?"SAVING...":"SAVE ROUTINES"),
-        React.createElement("button",{onClick:openAssign,disabled:saving,style:{flex:1,background:"none",color:"#1d9bf0",border:"1px solid #1d3a5a",fontFamily:"'DM Sans',sans-serif",fontSize:10,letterSpacing:"0.08em",fontWeight:600,padding:"12px 6px",borderRadius:0,cursor:"pointer"}},"ASSIGN…"),
-        React.createElement("button",{onClick:saveGlobal,disabled:saving,title:"Save these edits to every member who already has a routine with the same name",style:{flex:1,background:"none",color:"#c9a227",border:"1px solid #4a3f15",fontFamily:"'DM Sans',sans-serif",fontSize:10,letterSpacing:"0.08em",fontWeight:600,padding:"12px 6px",borderRadius:0,cursor:"pointer"}},"UPDATE ALL")
+      React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+        React.createElement("button",{onClick:save,disabled:saving,style:{flex:"2 1 100%",background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",padding:"12px",borderRadius:0,cursor:"pointer"}},saving?"SAVING...":"SAVE ROUTINES"),
+        React.createElement("button",{onClick:openAssign,disabled:saving,style:{flex:1,minWidth:84,background:"none",color:"#1d9bf0",border:"1px solid #1d3a5a",fontFamily:"'DM Sans',sans-serif",fontSize:10,letterSpacing:"0.08em",fontWeight:600,padding:"12px 6px",borderRadius:0,cursor:"pointer"}},"ASSIGN…"),
+        React.createElement("button",{onClick:openTV,disabled:saving,title:"Play the ticked routine(s) full-screen for the class — cast or mirror your screen to the TV.",style:{flex:1,minWidth:96,background:"#1d9bf0",color:"#fff",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.06em",padding:"12px 6px",borderRadius:0,cursor:"pointer"}},"▶ CLASS VIEW"),
+        React.createElement("button",{onClick:saveGlobal,disabled:saving,title:"Save these edits to every member who already has a routine with the same name",style:{flex:1,minWidth:84,background:"none",color:"#c9a227",border:"1px solid #4a3f15",fontFamily:"'DM Sans',sans-serif",fontSize:10,letterSpacing:"0.08em",fontWeight:600,padding:"12px 6px",borderRadius:0,cursor:"pointer"}},"UPDATE ALL")
       ),
       showAssign&&React.createElement("div",{style:{border:"1px solid #1d3a5a",background:"#0a1520",padding:"12px",marginTop:10}},
         React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}},
@@ -4677,6 +4677,47 @@ function RoutinesAdmin({member}){
         )
       ),
       msg&&React.createElement("div",{style:{fontSize:11,color:"#4aaa88",textAlign:"center",marginTop:8}},msg)
+    )
+  );
+}
+// ── Class View: full-screen routine board for the TV (count-up timer from 0) ──
+function RoutineTV({routines,onClose}){
+  const list=(routines||[]).filter(r=>(r.exercises||[]).length);
+  const [idx,setIdx]=useState(0);
+  const [sec,setSec]=useState(0);
+  const [run,setRun]=useState(true);
+  useEffect(()=>{if(!run)return;const t=setInterval(()=>setSec(s=>s+1),1000);return ()=>clearInterval(t);},[run]);
+  useEffect(()=>{const onKey=e=>{if(e.key==="Escape")onClose();else if(e.key===" "){e.preventDefault();setRun(x=>!x);}};window.addEventListener("keydown",onKey);return ()=>window.removeEventListener("keydown",onKey);},[]);
+  if(!list.length)return null;
+  const r=list[Math.min(idx,list.length-1)];
+  const exs=(r.exercises||[]).slice(0,8);
+  const fmt=s=>{const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60,p=n=>String(n).padStart(2,"0");return h>0?(h+":"+p(m)+":"+p(ss)):(p(m)+":"+p(ss));};
+  const PL=[["c","COMMITMENT"],["o","CONSISTENCY"],["d","DETERMINATION"]];
+  const tvBtn={background:"none",border:"1px solid #24506e",color:"#8cd0ff",fontSize:22,lineHeight:1,padding:"4px 13px",cursor:"pointer",borderRadius:0,flexShrink:0,fontFamily:"'DM Sans',sans-serif"};
+  return React.createElement("div",{style:{position:"fixed",inset:0,zIndex:99999,background:"#000",color:"#fff",display:"flex",flexDirection:"column",fontFamily:"'DM Sans',sans-serif"}},
+    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,padding:"12px 18px",borderBottom:"1px solid #14202c",flexShrink:0}},
+      list.length>1&&React.createElement("button",{onClick:()=>setIdx(i=>(i-1+list.length)%list.length),style:tvBtn,title:"Previous routine"},"‹"),
+      React.createElement("div",{style:{flex:1,minWidth:0}},
+        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(20px,3.2vw,44px)",letterSpacing:"0.09em",color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},(r.title||"ROUTINE").toUpperCase()),
+        list.length>1&&React.createElement("div",{style:{fontSize:11,letterSpacing:"0.1em",color:"#5a7fa0",marginTop:2}},"ROUTINE "+(idx+1)+" / "+list.length)
+      ),
+      React.createElement("div",{onClick:()=>setRun(x=>!x),title:"Tap to start / stop (spacebar)",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(32px,6.5vw,80px)",letterSpacing:"0.05em",color:run?"#8cd0ff":"#c9a227",cursor:"pointer",lineHeight:1,fontVariantNumeric:"tabular-nums",flexShrink:0}},fmt(sec)),
+      React.createElement("button",{onClick:()=>{setSec(0);setRun(true);},style:tvBtn,title:"Reset timer to 0"},"⟲"),
+      list.length>1&&React.createElement("button",{onClick:()=>setIdx(i=>(i+1)%list.length),style:tvBtn,title:"Next routine"},"›"),
+      React.createElement("button",{onClick:onClose,style:{...tvBtn,color:"#e06040",borderColor:"#5a2018"},title:"Close (Esc)"},"✕")
+    ),
+    React.createElement("div",{style:{flex:1,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gridAutoRows:"1fr",gap:10,padding:14,overflow:"auto"}},
+      ...exs.map((e,i)=>React.createElement("div",{key:e.id||i,style:{background:"#0b0f14",border:"1px solid #16222e",display:"flex",flexDirection:"column",padding:"14px 14px 12px",minHeight:0}},
+        React.createElement("div",{style:{fontSize:10,letterSpacing:"0.16em",color:"#4a6076",fontWeight:700,marginBottom:6}},"STATION "+(i+1)),
+        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(18px,2.1vw,32px)",letterSpacing:"0.04em",color:"#fff",lineHeight:1.05,marginBottom:10}},e.name),
+        React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:"auto"}},
+          ...PL.map(p=>React.createElement("div",{key:p[0],style:{background:"#111a24",border:"1px solid #16222e",padding:"7px 4px",textAlign:"center"}},
+            React.createElement("div",{style:{fontSize:8,letterSpacing:"0.03em",color:"#8cd0ff",fontWeight:700,marginBottom:4}},p[1]),
+            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(14px,1.5vw,22px)",letterSpacing:"0.03em",color:"#fff"}},e[p[0]]?(e[p[0]]+(e.unit?(" "+e.unit):"")):"—"),
+            e["w"+p[0]]&&React.createElement("div",{style:{fontSize:"clamp(9px,1vw,12px)",color:"#6ba3d6",fontWeight:600,marginTop:2}},e["w"+p[0]]+" kg")
+          ))
+        )
+      ))
     )
   );
 }
@@ -4756,15 +4797,15 @@ function RoutinesView({session,ttl}){
                 React.createElement("span",{style:{flex:2.2,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.04em",color:"#eee"}},e.name),
                 React.createElement("div",{style:{flex:1,textAlign:"right"}},
                   React.createElement("div",{style:{fontSize:10,color:"#9aa6b1"}},e.c?(e.c+(e.unit?(" "+e.unit):"")):"—"),
-                  e.wc&&React.createElement("div",{style:{fontSize:8,color:"#c9a227",fontWeight:600,marginTop:1}},e.wc+" kg")
+                  e.wc&&React.createElement("div",{style:{fontSize:8,color:"#6ba3d6",fontWeight:600,marginTop:1}},e.wc+" kg")
                 ),
                 React.createElement("div",{style:{flex:1,textAlign:"right"}},
                   React.createElement("div",{style:{fontSize:10,color:"#9aa6b1"}},e.o?(e.o+(e.unit?(" "+e.unit):"")):"—"),
-                  e.wo&&React.createElement("div",{style:{fontSize:8,color:"#c9a227",fontWeight:600,marginTop:1}},e.wo+" kg")
+                  e.wo&&React.createElement("div",{style:{fontSize:8,color:"#6ba3d6",fontWeight:600,marginTop:1}},e.wo+" kg")
                 ),
                 React.createElement("div",{style:{flex:1,textAlign:"right"}},
                   React.createElement("div",{style:{fontSize:10,color:"#9aa6b1"}},e.d?(e.d+(e.unit?(" "+e.unit):"")):"—"),
-                  e.wd&&React.createElement("div",{style:{fontSize:8,color:"#c9a227",fontWeight:600,marginTop:1}},e.wd+" kg")
+                  e.wd&&React.createElement("div",{style:{fontSize:8,color:"#6ba3d6",fontWeight:600,marginTop:1}},e.wd+" kg")
                 )
               ))
             )
