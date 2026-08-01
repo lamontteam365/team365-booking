@@ -4637,9 +4637,9 @@ function RoutinesAdmin({member}){
                   React.createElement("option",{value:"kgs"},"kgs"),
                   React.createElement("option",{value:"sec"},"secs")
                 ),
-                React.createElement("input",{value:e.c||"",onChange:v=>updEx(r.id,e.id,"c",v.target.value),placeholder:"Commitment",style:{...inS,flex:1,minWidth:78,borderColor:"#2a4a2a"}}),
-                React.createElement("input",{value:e.o||"",onChange:v=>updEx(r.id,e.id,"o",v.target.value),placeholder:"Consistency",style:{...inS,flex:1,minWidth:78,borderColor:"#2a4a2a"}}),
-                React.createElement("input",{value:e.d||"",onChange:v=>updEx(r.id,e.id,"d",v.target.value),placeholder:"Determination",style:{...inS,flex:1,minWidth:78,borderColor:"#2a4a2a"}})
+                React.createElement("input",{value:e.c||"",onChange:v=>updEx(r.id,e.id,"c",v.target.value),placeholder:"Commitment",style:{...inS,flex:1,minWidth:78,borderColor:"#24506e"}}),
+                React.createElement("input",{value:e.o||"",onChange:v=>updEx(r.id,e.id,"o",v.target.value),placeholder:"Consistency",style:{...inS,flex:1,minWidth:78,borderColor:"#24506e"}}),
+                React.createElement("input",{value:e.d||"",onChange:v=>updEx(r.id,e.id,"d",v.target.value),placeholder:"Determination",style:{...inS,flex:1,minWidth:78,borderColor:"#24506e"}})
               ),
               React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginTop:6}},
                 React.createElement("span",{title:"Optional suggested weight range per pillar, shown to the member in kg. Leave blank for non-weighted moves (run, bike, etc.).",style:{width:80,flexShrink:0,fontSize:8.5,letterSpacing:"0.04em",color:"#4a86b8",fontWeight:600,textTransform:"uppercase"}},"KG range"),
@@ -4699,35 +4699,52 @@ function RoutineTV({routines,onClose}){
   const PL=[["c","COMMITMENT"],["o","CONSISTENCY"],["d","DETERMINATION"]];
   const tvBtn={background:"none",border:"1px solid #24506e",color:"#8cd0ff",fontSize:22,lineHeight:1,padding:"4px 13px",cursor:"pointer",borderRadius:0,flexShrink:0,fontFamily:"'DM Sans',sans-serif"};
   return React.createElement("div",{style:{position:"fixed",inset:0,zIndex:99999,background:"#000",color:"#fff",display:"flex",flexDirection:"column",fontFamily:"'DM Sans',sans-serif"}},
-    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,padding:"12px 18px",borderBottom:"1px solid #14202c",flexShrink:0}},
-      list.length>1&&React.createElement("button",{onClick:()=>setIdx(i=>(i-1+list.length)%list.length),style:tvBtn,title:"Previous routine"},"‹"),
-      React.createElement("div",{style:{flex:1,minWidth:0}},
+    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,padding:"10px 18px",borderBottom:"1px solid #14202c",flexShrink:0}},
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,flex:"0 0 auto"}},
+        React.createElement("div",{onClick:()=>setRun(x=>!x),title:"Tap to start / stop (spacebar)",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(32px,6.5vw,80px)",letterSpacing:"0.05em",color:run?"#8cd0ff":"#c9a227",cursor:"pointer",lineHeight:1,fontVariantNumeric:"tabular-nums"}},fmt(sec)),
+        list.length>1&&React.createElement("button",{onClick:()=>setIdx(i=>(i-1+list.length)%list.length),style:tvBtn,title:"Previous routine"},"‹")
+      ),
+      React.createElement("div",{style:{flex:1,minWidth:0,textAlign:"center"}},
         React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(20px,3.2vw,44px)",letterSpacing:"0.09em",color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},(r.title||"ROUTINE").toUpperCase()),
         list.length>1&&React.createElement("div",{style:{fontSize:11,letterSpacing:"0.1em",color:"#5a7fa0",marginTop:2}},"ROUTINE "+(idx+1)+" / "+list.length)
       ),
-      React.createElement("div",{onClick:()=>setRun(x=>!x),title:"Tap to start / stop (spacebar)",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(32px,6.5vw,80px)",letterSpacing:"0.05em",color:run?"#8cd0ff":"#c9a227",cursor:"pointer",lineHeight:1,fontVariantNumeric:"tabular-nums",flexShrink:0}},fmt(sec)),
-      React.createElement("button",{onClick:()=>{setSec(0);setRun(true);},style:tvBtn,title:"Reset timer to 0"},"⟲"),
-      list.length>1&&React.createElement("button",{onClick:()=>setIdx(i=>(i+1)%list.length),style:tvBtn,title:"Next routine"},"›"),
-      React.createElement("button",{onClick:onClose,style:{...tvBtn,color:"#e06040",borderColor:"#5a2018"},title:"Close (Esc)"},"✕")
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,flex:"0 0 auto"}},
+        list.length>1&&React.createElement("button",{onClick:()=>setIdx(i=>(i+1)%list.length),style:tvBtn,title:"Next routine"},"›"),
+        React.createElement("button",{onClick:()=>{setSec(0);setRun(true);},style:tvBtn,title:"Reset timer to 0"},"⟲"),
+        React.createElement("button",{onClick:onClose,style:{...tvBtn,color:"#e06040",borderColor:"#5a2018"},title:"Close (Esc)"},"✕")
+      )
     ),
     React.createElement("div",{style:{flex:1,display:"grid",gridTemplateColumns:"repeat(4,1fr)",gridTemplateRows:"1fr 1fr",gap:8,padding:10,overflow:"hidden"}},
-      ...exs.map((e,i)=>React.createElement("div",{key:e.id||i,style:{background:"#141414",border:"1px solid #565656",display:"flex",flexDirection:"column",minHeight:0,overflow:"hidden"}},
-        React.createElement("div",{style:{position:"relative",width:"100%",flex:"1 1 46%",minHeight:0,background:"#0b0f14",overflow:"hidden"}},
-          React.createElement("div",{style:{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(10px,1vw,14px)",letterSpacing:"0.12em",color:"#33414d"}},"VIDEO COMING SOON"),
-          React.createElement("video",{src:RT_VBASE+rtSlug(e.name)+".webm",autoPlay:true,muted:true,loop:true,playsInline:true,onError:ev=>{ev.currentTarget.style.display="none";},style:{position:"relative",width:"100%",height:"100%",objectFit:"cover",display:"block"}}),
-          React.createElement("div",{style:{position:"absolute",top:5,left:8,fontSize:"clamp(8px,0.8vw,11px)",letterSpacing:"0.14em",color:"#8cd0ff",fontWeight:700,textShadow:"0 1px 3px #000"}},"STATION "+(i+1))
-        ),
-        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(14px,1.6vw,26px)",letterSpacing:"0.04em",color:"#fff",lineHeight:1.05,padding:"7px 8px 5px",textAlign:"center"}},e.name),
-        React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,padding:"0 8px 9px"}},
-          ...PL.map(p=>React.createElement("div",{key:p[0],style:{display:"flex",flexDirection:"column",textAlign:"center"}},
-            React.createElement("div",{style:{fontSize:"clamp(7px,0.75vw,10px)",letterSpacing:"0.02em",color:"#8cd0ff",fontWeight:700,marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},p[1]),
-            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(12px,1.35vw,20px)",color:"#fff",lineHeight:1,marginBottom:4}},e[p[0]]?(e[p[0]]+(e.unit?(" "+e.unit):"")):"—"),
-            React.createElement("div",{style:{background:"#0b0f14",border:"1px solid #565656",minHeight:24,display:"flex",alignItems:"center",justifyContent:"center",padding:"4px 2px"}},
-              React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(11px,1.2vw,17px)",letterSpacing:"0.02em",color:e["w"+p[0]]?"#6ba3d6":"#33414d"}},e["w"+p[0]]?(e["w"+p[0]]+" kg"):"—")
-            )
-          ))
-        )
-      ))
+      ...exs.map((e,i)=>{
+        const unit=e.unit?(" "+e.unit):"";
+        const same=!!e.c&&e.c===e.o&&e.o===e.d;
+        return React.createElement("div",{key:e.id||i,style:{background:"#141414",border:"1px solid #565656",display:"flex",flexDirection:"column",minHeight:0,overflow:"hidden"}},
+          React.createElement("div",{style:{position:"relative",padding:"7px 10px 5px",flexShrink:0}},
+            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(14px,1.6vw,26px)",letterSpacing:"0.04em",color:"#fff",lineHeight:1.05,textAlign:"center",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},e.name),
+            same&&React.createElement("div",{style:{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(11px,1.2vw,18px)",color:"#8cd0ff",letterSpacing:"0.03em"}},e.c+unit)
+          ),
+          React.createElement("div",{style:{position:"relative",width:"100%",flex:"1 1 34%",minHeight:0,overflow:"hidden"}},
+            React.createElement("div",{className:"rtph",style:{position:"absolute",inset:0,display:"none",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(10px,1vw,14px)",letterSpacing:"0.12em",color:"#33414d"}},"VIDEO COMING SOON"),
+            React.createElement("video",{src:RT_VBASE+rtSlug(e.name)+".webm",autoPlay:true,muted:true,loop:true,playsInline:true,onError:ev=>{ev.currentTarget.style.display="none";const ph=ev.currentTarget.parentNode.querySelector(".rtph");if(ph)ph.style.display="flex";},style:{width:"100%",height:"100%",objectFit:"contain",display:"block"}}),
+            React.createElement("div",{style:{position:"absolute",top:5,left:8,fontSize:"clamp(8px,0.8vw,11px)",letterSpacing:"0.14em",color:"#8cd0ff",fontWeight:700,textShadow:"0 1px 3px #000"}},"EXERCISE "+(i+1))
+          ),
+          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,padding:"7px 8px 9px",flexShrink:0}},
+            ...PL.map(p=>{const k=p[0];const val=e[k]?(e[k]+unit):"";const wt=e["w"+k];
+              return React.createElement("div",{key:k,style:{display:"flex",flexDirection:"column",textAlign:"center"}},
+                React.createElement("div",{style:{fontSize:"clamp(7px,0.75vw,10px)",letterSpacing:"0.02em",color:"#8cd0ff",fontWeight:700,marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},p[1]),
+                React.createElement("div",{style:{background:"#0b0f14",border:"1px solid #565656",minHeight:30,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"5px 2px",gap:1}},
+                  same
+                  ? React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(11px,1.2vw,18px)",color:wt?"#6ba3d6":"#33414d"}},wt?(wt+" kg"):"—")
+                  : React.createElement(React.Fragment,null,
+                      React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(11px,1.2vw,18px)",color:"#fff"}},val||"—"),
+                      wt&&React.createElement("span",{style:{fontSize:"clamp(8px,0.9vw,12px)",color:"#6ba3d6",fontWeight:600}},wt+" kg")
+                    )
+                )
+              );
+            })
+          )
+        );
+      })
     )
   );
 }
