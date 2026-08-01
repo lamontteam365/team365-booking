@@ -4492,7 +4492,7 @@ function RoutinesAdmin({member}){
   }
   function moveEx(rid,eid,dir){setRoutines(p=>p.map(r=>{if(r.id!==rid)return r;const a=[...(r.exercises||[])];const i=a.findIndex(e=>e.id===eid);const j=i+dir;if(i<0||j<0||j>=a.length)return r;[a[i],a[j]]=[a[j],a[i]];return{...r,exercises:a};}));}
   function dupEx(rid,eid){setRoutines(p=>p.map(r=>{if(r.id!==rid)return r;const a=[...(r.exercises||[])];const i=a.findIndex(e=>e.id===eid);if(i<0)return r;a.splice(i+1,0,{...a[i],id:mwGenId()});return{...r,exercises:a};}));}
-  function dupRoutine(rid){setRoutines(p=>{const i=p.findIndex(r=>r.id===rid);if(i<0)return p;const src=p[i];const copy={id:mwGenId(),sid:mwGenId(),title:(src.title||"")+" (COPY)",mode:src.mode,exercises:(src.exercises||[]).map(e=>({...e,id:mwGenId()}))};const a=[...p];a.splice(i+1,0,copy);setOpen(o=>new Set([...o,copy.id]));return a;});}
+  function dupRoutine(rid){setRoutines(p=>{const i=p.findIndex(r=>r.id===rid);if(i<0)return p;const src=p[i];const copy={id:mwGenId(),sid:mwGenId(),title:(src.title||"")+" (COPY)",mode:src.mode,vvoff:src.vvoff,exercises:(src.exercises||[]).map(e=>({...e,id:mwGenId()}))};const a=[...p];a.splice(i+1,0,copy);setOpen(o=>new Set([...o,copy.id]));return a;});}
   function toggleExcl(rid){setExcl(p=>{const n=new Set(p);n.has(rid)?n.delete(rid):n.add(rid);return n;});}
   function toggle(id){setOpen(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});}
   function addRoutine(){const id=mwGenId();setRoutines(p=>[...p,{id,sid:mwGenId(),title:"",exercises:[]}]);setOpen(p=>new Set([...p,id]));}
@@ -4501,7 +4501,7 @@ function RoutinesAdmin({member}){
   function addEx(rid){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:[...(r.exercises||[]),{id:mwGenId(),name:"",sets:"",reps:"",duration:"",unit:"",c:"",o:"",d:"",wc:"",wo:"",wd:""}]}:r));}
   function updEx(rid,eid,f,v){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:r.exercises.map(e=>{if(e.id!==eid)return e;const ne={...e,[f]:v};if(f==="name"){const hit=wtLib[rtNm(v)];if(hit&&!(ne.wc||ne.wo||ne.wd)){ne.wc=hit.c||"";ne.wo=hit.o||"";ne.wd=hit.d||"";}}return ne;})}:r));}
   function removeEx(rid,eid){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:r.exercises.filter(e=>e.id!==eid)}:r));}
-  function clean(arr){return (arr||[]).map(r=>({id:r.id||mwGenId(),sid:(r.sid||mwGenId()),title:(r.title||"").trim(),mode:(r.mode==="pillar"?"pillar":""),hidden:!!r.hidden,exercises:(r.exercises||[]).map(e=>({id:e.id||mwGenId(),name:(e.name||"").trim().toUpperCase(),sets:(e.sets||"").trim(),reps:(e.reps||"").trim(),duration:(e.duration||"").trim(),unit:(e.unit||"").trim(),c:(e.c||"").trim(),o:(e.o||"").trim(),d:(e.d||"").trim(),wc:(e.wc||"").trim(),wo:(e.wo||"").trim(),wd:(e.wd||"").trim()})).filter(e=>e.name)})).filter(r=>r.title||r.exercises.length);}
+  function clean(arr){return (arr||[]).map(r=>({id:r.id||mwGenId(),sid:(r.sid||mwGenId()),title:(r.title||"").trim(),mode:(r.mode==="pillar"?"pillar":""),hidden:!!r.hidden,vvoff:!!r.vvoff,exercises:(r.exercises||[]).map(e=>({id:e.id||mwGenId(),name:(e.name||"").trim().toUpperCase(),sets:(e.sets||"").trim(),reps:(e.reps||"").trim(),duration:(e.duration||"").trim(),unit:(e.unit||"").trim(),c:(e.c||"").trim(),o:(e.o||"").trim(),d:(e.d||"").trim(),wc:(e.wc||"").trim(),wo:(e.wo||"").trim(),wd:(e.wd||"").trim()})).filter(e=>e.name)})).filter(r=>r.title||r.exercises.length);}
   async function upsertRT(k,arr){
     const json=JSON.stringify(arr);
     const ex=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(k)}&select=class_name`);
@@ -4522,7 +4522,7 @@ function RoutinesAdmin({member}){
       if(!row||!row.class_name||row.class_name.indexOf("__RT__")!==0||row.class_name===key)continue;
       let arr=[];try{const o=JSON.parse(row.content);arr=Array.isArray(o)?o:(o.routines||[]);}catch{}
       let changed=false;
-      const upd=(arr||[]).map(r=>{const m=(r.sid&&bySid[r.sid])||byTitle[(r.title||"").toLowerCase()];if(m){changed=true;return {id:r.id||mwGenId(),sid:m.sid,title:m.title,mode:m.mode,hidden:!!r.hidden,exercises:m.exercises.map(e=>({...e,id:mwGenId()}))};}return r;});
+      const upd=(arr||[]).map(r=>{const m=(r.sid&&bySid[r.sid])||byTitle[(r.title||"").toLowerCase()];if(m){changed=true;return {id:r.id||mwGenId(),sid:m.sid,title:m.title,mode:m.mode,hidden:!!r.hidden,vvoff:!!m.vvoff,exercises:m.exercises.map(e=>({...e,id:mwGenId()}))};}return r;});
       if(changed){await upsertRT(row.class_name,upd);n++;}
     }
     setSaving(false);setMsg("Updated "+n+" other member(s) ✓");setTimeout(()=>setMsg(""),3500);
@@ -4554,7 +4554,7 @@ function RoutinesAdmin({member}){
       if(ticked){
         cleaned.forEach(r=>{const i=arr.findIndex(x=>rtMatch(x,r));
           if(i>=0){if(arr[i].hidden){arr[i]={...arr[i],hidden:false};changed=true;added++;}}
-          else{arr=[...arr,{id:mwGenId(),sid:r.sid,title:r.title,mode:r.mode,hidden:false,exercises:r.exercises.map(e=>({...e,id:mwGenId()}))}];changed=true;added++;}
+          else{arr=[...arr,{id:mwGenId(),sid:r.sid,title:r.title,mode:r.mode,hidden:false,vvoff:!!r.vvoff,exercises:r.exercises.map(e=>({...e,id:mwGenId()}))}];changed=true;added++;}
         });
       } else {
         arr=arr.map(x=>{if(cleaned.some(r=>rtMatch(x,r))&&!x.hidden){changed=true;removed++;return {...x,hidden:true};}return x;});
@@ -4622,6 +4622,7 @@ function RoutinesAdmin({member}){
           React.createElement("button",{onClick:()=>toggleExcl(r.id),title:"Include when assigning to all members",style:{background:excl.has(r.id)?"#fff":"#1d9bf0",border:"1px solid "+(excl.has(r.id)?"#999":"#1d9bf0"),borderRadius:0,width:17,height:17,color:"#fff",fontSize:11,lineHeight:1,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",padding:0}},excl.has(r.id)?"":"✓"),
           React.createElement("button",{onClick:()=>toggle(r.id),style:{background:"none",border:"none",color:"#000",fontSize:12,cursor:"pointer",transform:isOpen?"none":"rotate(-90deg)",transition:"transform .15s",padding:"0 2px",flexShrink:0}},"▾"),
           React.createElement("input",{value:r.title,onChange:e=>updR(r.id,"title",e.target.value),placeholder:"Routine title e.g. AMRAP 1",style:{flex:"1 1 auto",minWidth:40,background:"transparent",border:"none",color:"#000",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",outline:"none"}}),
+          React.createElement("button",{onClick:()=>updR(r.id,"vvoff",!r.vvoff),title:"Show or hide the VIDEO VIEW button for this routine in the Timed Exercises tab.",style:{background:r.vvoff?"none":"#1d9bf0",border:"1px solid "+(r.vvoff?"#ccc":"#1d9bf0"),borderRadius:0,color:r.vvoff?"#888":"#fff",fontSize:8,fontWeight:600,letterSpacing:"0.02em",padding:"3px 5px",cursor:"pointer",flexShrink:0,fontFamily:"'DM Sans',sans-serif"}},r.vvoff?"VIDEO OFF":"VIDEO ON"),
           React.createElement("button",{onClick:()=>updR(r.id,"hidden",!r.hidden),title:"Show or hide this routine for THIS member. Hiding keeps their logged times.",style:{background:"none",border:"1px solid "+(r.hidden?"#c9a227":"#ccc"),borderRadius:0,color:r.hidden?"#c9a227":"#4aaa66",fontSize:8,fontWeight:600,letterSpacing:"0.02em",padding:"3px 5px",cursor:"pointer",flexShrink:0,fontFamily:"'DM Sans',sans-serif"}},r.hidden?"HIDDEN":"VISIBLE"),
           React.createElement("button",{onClick:()=>updR(r.id,"mode",r.mode==="pillar"?"":"pillar"),title:"3-pillar targets (Commitment / Consistency / Determination). On = member picks a pillar; off = simple time only.",style:{background:r.mode==="pillar"?"#1d5a34":"none",border:"1px solid "+(r.mode==="pillar"?"#1d5a34":"#ccc"),borderRadius:0,color:r.mode==="pillar"?"#fff":"#666",fontSize:8,fontWeight:600,letterSpacing:"0.02em",padding:"3px 5px",cursor:"pointer",flexShrink:0,fontFamily:"'DM Sans',sans-serif"}},"3 PILLAR"),
           React.createElement("button",{onClick:()=>dupRoutine(r.id),title:"Duplicate routine",style:{background:"none",border:"1px solid #ccc",borderRadius:0,color:"#333",fontSize:11,padding:"2px 6px",cursor:"pointer",flexShrink:0}},"⧉"),
@@ -4824,7 +4825,7 @@ function RoutinesView({session,ttl,isAdmin}){
         React.createElement("div",{onClick:()=>toggle(r.id),style:hdrStyle},
           React.createElement("span",null,(r.title||"ROUTINE").toUpperCase()),
           React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
-            React.createElement("button",{onClick:ev=>{ev.stopPropagation();openTVOne(r);},title:"Play this routine full-screen with the exercise videos.",style:{background:"#1d9bf0",border:"none",borderRadius:0,color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:9,fontWeight:700,letterSpacing:"0.04em",padding:"4px 8px",cursor:"pointer",flexShrink:0}},"▶ VIDEO VIEW"),
+            !r.vvoff&&React.createElement("button",{onClick:ev=>{ev.stopPropagation();openTVOne(r);},title:"Play this routine full-screen with the exercise videos.",style:{background:"#1d9bf0",border:"none",borderRadius:0,color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:9,fontWeight:700,letterSpacing:"0.04em",padding:"4px 8px",cursor:"pointer",flexShrink:0}},"▶ VIDEO VIEW"),
             bt&&React.createElement("span",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:600,fontSize:11,color:"#333",letterSpacing:"0.04em"}},"BEST "+bt),
             React.createElement("span",{style:{fontSize:11,transform:isOpen?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
           )
