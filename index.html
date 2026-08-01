@@ -4433,6 +4433,10 @@ function MemberWorkoutReview({email}){
 // ── Main App ──────────────────────────────────────────────────────────────────
 function rtCmp(a,b){const s=t=>{const p=(t||"").split(":").map(Number);return p.length>=2?p[0]*60+(p[1]||0):(parseFloat(t)||0);};return s(a)-s(b);}
 // ── Routines (admin builder, lives in member profile) ─────────────────────────
+// Movement weight-range library. Seeded with the ranges the coach has given; grows
+// as coaches enter kg ranges on any exercise (learned on save). Key = UPPERCASE name.
+const RT_WT_DEFAULTS={"KETTLEBELL SWINGS":{c:"2–14",o:"14–24",d:"24–34"}};
+const rtNm=s=>(s||"").trim().toUpperCase();
 function RoutinesAdmin({member}){
   const [routines,setRoutines]=useState([]);
   const [open,setOpen]=useState(new Set());
@@ -4463,16 +4467,19 @@ function RoutinesAdmin({member}){
   async function saveGlobalRtTitle(v){const val=(v||"").trim();setRtTitleGlobal(val);await upsertNoteRT("__RTTITLE__GLOBAL",val);}
   const [rtLogs,setRtLogs]=useState({});
   const [showTimes,setShowTimes]=useState(false);
+  const [wtLib,setWtLib]=useState(RT_WT_DEFAULTS);
   const bestT=rid=>{const a=(rtLogs[rid]||[]).map(e=>e.time).filter(Boolean);if(!a.length)return null;return [...a].sort(rtCmp)[0];};
   useEffect(()=>{load();},[]);
   async function load(){
     setLoading(true);
-    const [d,l]=await Promise.all([
+    const [d,l,wl]=await Promise.all([
       sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(key)}&select=content`),
-      sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__RTLOG__"+member.email)}&select=content`)
+      sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__RTLOG__"+member.email)}&select=content`),
+      sbGet("coaching_notes","class_name=eq.__RTWTLIB__&select=content")
     ]);
     let arr=[];if(d&&d.length&&d[0].content){try{const o=JSON.parse(d[0].content);arr=Array.isArray(o)?o:(o.routines||[]);}catch{}}
     let lg={};if(l&&l.length&&l[0].content){try{lg=JSON.parse(l[0].content)||{};}catch{}}
+    if(wl&&wl.length&&wl[0].content){try{setWtLib({...RT_WT_DEFAULTS,...(JSON.parse(wl[0].content)||{})});}catch{}}
     const mapped=(arr||[]).map(r=>({...r,id:r.id||mwGenId(),exercises:(r.exercises||[]).map(e=>({...e,id:e.id||mwGenId()}))}));
     setRoutines(mapped);setRtLogs(lg);setOpen(new Set());setLoading(false);
   }
@@ -4485,7 +4492,12 @@ function RoutinesAdmin({member}){
   function removeRoutine(rid){if(!window.confirm("Remove this routine?"))return;setRoutines(p=>p.filter(r=>r.id!==rid));}
   function updR(rid,f,v){setRoutines(p=>p.map(r=>r.id===rid?{...r,[f]:v}:r));}
   function addEx(rid){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:[...(r.exercises||[]),{id:mwGenId(),name:"",sets:"",reps:"",duration:"",unit:"",c:"",o:"",d:"",wc:"",wo:"",wd:""}]}:r));}
-  function updEx(rid,eid,f,v){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:r.exercises.map(e=>e.id===eid?{...e,[f]:v}:e)}:r));}
+  function updEx(rid,eid,f,v){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:r.exercises.map(e=>{if(e.id!==eid)return e;const ne={...e,[f]:v};if(f==="name"){const hit=wtLib[rtNm(v)];if(hit&&!(ne.wc||ne.wo||ne.wd)){ne.wc=hit.c||"";ne.wo=hit.o||"";ne.wd=hit.d||"";}}return ne;})}:r));}
+  async function learnLib(rs){
+    const next={...wtLib};let changed=false;
+    (rs||[]).forEach(r=>(r.exercises||[]).forEach(e=>{const n=rtNm(e.name);if(!n)return;if(!(e.wc||e.wo||e.wd))return;const cur=next[n]||{};const nc=e.wc||cur.c||"",no=e.wo||cur.o||"",nd=e.wd||cur.d||"";if(cur.c!==nc||cur.o!==no||cur.d!==nd){next[n]={c:nc,o:no,d:nd};changed=true;}}));
+    if(changed){setWtLib(next);await upsertNoteRT("__RTWTLIB__",JSON.stringify(next));}
+  }
   function removeEx(rid,eid){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:r.exercises.filter(e=>e.id!==eid)}:r));}
   function clean(arr){return (arr||[]).map(r=>({id:r.id||mwGenId(),sid:(r.sid||mwGenId()),title:(r.title||"").trim(),mode:(r.mode==="pillar"?"pillar":""),hidden:!!r.hidden,exercises:(r.exercises||[]).map(e=>({id:e.id||mwGenId(),name:(e.name||"").trim().toUpperCase(),sets:(e.sets||"").trim(),reps:(e.reps||"").trim(),duration:(e.duration||"").trim(),unit:(e.unit||"").trim(),c:(e.c||"").trim(),o:(e.o||"").trim(),d:(e.d||"").trim(),wc:(e.wc||"").trim(),wo:(e.wo||"").trim(),wd:(e.wd||"").trim()})).filter(e=>e.name)})).filter(r=>r.title||r.exercises.length);}
   async function upsertRT(k,arr){
@@ -4494,13 +4506,14 @@ function RoutinesAdmin({member}){
     if(ex&&ex.length){await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(k)}`,{content:json,updated_at:Date.now()});}
     else{await sbPost("coaching_notes",{class_name:k,content:json,updated_at:Date.now()});}
   }
-  async function save(){setSaving(true);await upsertRT(key,clean(routines));setSaving(false);setMsg("Saved ✓");setTimeout(()=>setMsg(""),2500);}
+  async function save(){setSaving(true);const cl=clean(routines);await upsertRT(key,cl);await learnLib(cl);setSaving(false);setMsg("Saved ✓");setTimeout(()=>setMsg(""),2500);}
   async function saveGlobal(){
     const cleaned=clean(routines);
     if(!cleaned.length){setMsg("Nothing to save.");setTimeout(()=>setMsg(""),2500);return;}
     if(!window.confirm("Update these routines for EVERY member who has a routine with the same name? This overwrites their copy."))return;
     setSaving(true);
     await upsertRT(key,cleaned);
+    await learnLib(cleaned);
     const bySid={},byTitle={};cleaned.forEach(r=>{if(r.sid)bySid[r.sid]=r;byTitle[(r.title||"").toLowerCase()]=r;});
     const rows=await sbGet("coaching_notes","class_name=like.__RT__*&select=class_name,content");
     let n=0;
@@ -4735,9 +4748,9 @@ function RoutinesView({session,ttl}){
           ? React.createElement("div",{style:{marginBottom:12}},
               React.createElement("div",{style:{display:"flex",gap:6,padding:"3px 0 5px",borderBottom:"1px solid #222"}},
                 React.createElement("span",{style:{flex:2.2,fontSize:8,letterSpacing:"0.06em",color:"#666",fontWeight:600}},"EXERCISE"),
-                React.createElement("span",{style:{flex:1,fontSize:8,letterSpacing:"0.04em",color:"#8cd0ff",fontWeight:600,textAlign:"right"}},"COMMIT"),
-                React.createElement("span",{style:{flex:1,fontSize:8,letterSpacing:"0.04em",color:"#8cd0ff",fontWeight:600,textAlign:"right"}},"CONSIST"),
-                React.createElement("span",{style:{flex:1,fontSize:8,letterSpacing:"0.04em",color:"#8cd0ff",fontWeight:600,textAlign:"right"}},"DETERM")
+                React.createElement("span",{style:{flex:1,fontSize:7.5,letterSpacing:"0",color:"#8cd0ff",fontWeight:600,textAlign:"right"}},"COMMITMENT"),
+                React.createElement("span",{style:{flex:1,fontSize:7.5,letterSpacing:"0",color:"#8cd0ff",fontWeight:600,textAlign:"right"}},"CONSISTENCY"),
+                React.createElement("span",{style:{flex:1,fontSize:7.5,letterSpacing:"0",color:"#8cd0ff",fontWeight:600,textAlign:"right"}},"DETERMINATION")
               ),
               ...(r.exercises||[]).map(e=>React.createElement("div",{key:e.id,style:{display:"flex",gap:6,padding:"6px 0",borderBottom:"1px solid #161616",alignItems:"baseline"}},
                 React.createElement("span",{style:{flex:2.2,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.04em",color:"#eee"}},e.name),
