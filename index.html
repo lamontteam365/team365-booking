@@ -4733,7 +4733,7 @@ function RoutineTV({routines,onClose}){
   const PL=[["c","COMMITMENT"],["o","CONSISTENCY"],["d","DETERMINATION"]];
   const tvBtn={background:"none",border:"1px solid #24506e",color:"#8cd0ff",fontSize:22,lineHeight:1,padding:"4px 13px",cursor:"pointer",borderRadius:0,flexShrink:0,fontFamily:"'DM Sans',sans-serif"};
   const baseStyle={zIndex:99999,background:"#000",color:"#fff",display:"flex",flexDirection:"column",fontFamily:"'DM Sans',sans-serif",overflow:"hidden"};
-  const rootStyle=(rot&&dim.w)?{...baseStyle,position:"fixed",left:dim.w+"px",top:0,width:dim.h+"px",height:dim.w+"px",transformOrigin:"top left",transform:"rotate(90deg)"}:{...baseStyle,position:"fixed",inset:0};
+  const rootStyle=(rot&&dim.w)?{...baseStyle,position:"fixed",top:"50%",left:"50%",width:dim.h+"px",height:dim.w+"px",transformOrigin:"center center",transform:"translate(-50%,-50%) rotate(90deg)"}:{...baseStyle,position:"fixed",inset:0};
   return React.createElement("div",{style:rootStyle},
     React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,padding:"10px 18px",borderBottom:"1px solid #14202c",flexShrink:0}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,flex:"0 0 auto"}},
@@ -4761,7 +4761,7 @@ function RoutineTV({routines,onClose}){
           ),
           React.createElement("div",{style:{position:"relative",width:"100%",flex:"1 1 34%",minHeight:0,overflow:"hidden"}},
             React.createElement("div",{className:"rtph",style:{position:"absolute",inset:0,display:"none",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(10px,1vw,14px)",letterSpacing:"0.12em",color:"#33414d"}},"VIDEO COMING SOON"),
-            React.createElement("video",{src:RT_VBASE+rtSlug(e.name)+".webm",autoPlay:true,muted:true,loop:true,playsInline:true,onError:ev=>{ev.currentTarget.style.display="none";const ph=ev.currentTarget.parentNode.querySelector(".rtph");if(ph)ph.style.display="flex";},style:{width:"100%",height:"100%",objectFit:"contain",objectPosition:"center 78%",display:"block",opacity:0.78}}),
+            React.createElement("video",{src:RT_VBASE+rtSlug(e.name)+".webm",autoPlay:true,muted:true,loop:true,playsInline:true,onError:ev=>{ev.currentTarget.style.display="none";const ph=ev.currentTarget.parentNode.querySelector(".rtph");if(ph)ph.style.display="flex";},style:{width:"100%",height:"100%",objectFit:"contain",objectPosition:"center 96%",display:"block",opacity:0.78}}),
             React.createElement("div",{style:{position:"absolute",inset:0,background:"#8cd0ff",mixBlendMode:"overlay",opacity:0.45,pointerEvents:"none"}})
           ),
           React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,padding:"7px 8px 9px",flexShrink:0}},
