@@ -4439,6 +4439,9 @@ function rtCmp(a,b){const s=t=>{const p=(t||"").split(":").map(Number);return p.
 const rtNm=s=>(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"").replace(/S$/,"");
 const rtKg=v=>{const m=String(v||"").match(/(\d+(?:\s*[-–]\s*\d+)?)\s*kg/i);return m?m[1].replace(/\s*[-–]\s*/,"–"):"";};
 function rtBuildWtLib(content){let L={};try{L=JSON.parse(content)||{};}catch{}const presc=(L&&L.presc)||{};const out={};Object.keys(presc).forEach(k=>{const nm=rtNm(k.split("|")[0]);if(!nm)return;const p=presc[k]||{};const c=rtKg(p.c),o=rtKg(p.o),d=rtKg(p.d);if(!(c||o||d))return;const s=(c?1:0)+(o?1:0)+(d?1:0);const cur=out[nm];if(!cur||s>cur._s)out[nm]={c,o,d,_s:s};});return out;}
+// Exercise videos — same location/naming as the TV cast page (tv.html): tv-videos/exercises/<slug>.webm
+const RT_VBASE="tv-videos/exercises/";
+const rtSlug=x=>String(x||"").toLowerCase().replace(/&ndash;/g,"-").replace(/&amp;/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
 function RoutinesAdmin({member}){
   const [routines,setRoutines]=useState([]);
   const [open,setOpen]=useState(new Set());
@@ -4548,6 +4551,7 @@ function RoutinesAdmin({member}){
     setSaving(false);setShowAssign(false);setMsg("Assigned to "+emails.length+" member(s) ✓");setTimeout(()=>setMsg(""),3500);
   }
   function openTV(){const inc=clean(routines.filter(r=>!excl.has(r.id)));if(!inc.length){setMsg("Tick at least one routine to play to the TV.");setTimeout(()=>setMsg(""),3000);return;}setTv(inc);}
+  function openTVOne(r){const cl=clean([r]);if(!cl.length){setMsg("Add an exercise first.");setTimeout(()=>setMsg(""),2500);return;}setTv(cl);}
   const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",padding:"7px 9px",outline:"none",boxSizing:"border-box"};
   return React.createElement(React.Fragment,null,
     tv&&React.createElement(RoutineTV,{routines:tv,onClose:()=>setTv(null)}),
@@ -4607,6 +4611,7 @@ function RoutinesAdmin({member}){
           React.createElement("input",{value:r.title,onChange:e=>updR(r.id,"title",e.target.value),placeholder:"Routine title e.g. AMRAP 1",style:{flex:1,background:"transparent",border:"none",color:"#000",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",outline:"none"}}),
           React.createElement("button",{onClick:()=>updR(r.id,"hidden",!r.hidden),title:"Show or hide this routine for THIS member. Hiding keeps their logged times.",style:{background:"none",border:"1px solid "+(r.hidden?"#c9a227":"#ccc"),borderRadius:0,color:r.hidden?"#c9a227":"#4aaa66",fontSize:9,fontWeight:600,letterSpacing:"0.03em",padding:"4px 7px",cursor:"pointer",flexShrink:0,fontFamily:"'DM Sans',sans-serif"}},r.hidden?"HIDDEN":"VISIBLE"),
           React.createElement("button",{onClick:()=>updR(r.id,"mode",r.mode==="pillar"?"":"pillar"),title:"3-pillar targets (Commitment / Consistency / Determination). On = member picks a pillar; off = simple time only.",style:{background:r.mode==="pillar"?"#1d5a34":"none",border:"1px solid "+(r.mode==="pillar"?"#1d5a34":"#ccc"),borderRadius:0,color:r.mode==="pillar"?"#fff":"#666",fontSize:9,fontWeight:600,letterSpacing:"0.03em",padding:"4px 7px",cursor:"pointer",flexShrink:0,fontFamily:"'DM Sans',sans-serif"}},"3 PILLAR"),
+          React.createElement("button",{onClick:()=>openTVOne(r),title:"Play THIS routine full-screen for the class — cast/mirror to the TV.",style:{background:"#1d9bf0",border:"1px solid #1d9bf0",borderRadius:0,color:"#fff",fontSize:9,fontWeight:700,letterSpacing:"0.04em",padding:"4px 8px",cursor:"pointer",flexShrink:0,fontFamily:"'DM Sans',sans-serif"}},"▶ CLASS VIEW"),
           React.createElement("button",{onClick:()=>dupRoutine(r.id),title:"Duplicate routine",style:{background:"none",border:"1px solid #ccc",borderRadius:0,color:"#333",fontSize:12,padding:"3px 8px",cursor:"pointer",flexShrink:0}},"⧉"),
           React.createElement("button",{onClick:()=>removeRoutine(r.id),style:{background:"none",border:"1px solid #ccc",borderRadius:0,color:"#8a2515",fontSize:11,padding:"3px 8px",cursor:"pointer",flexShrink:0}},"✕")
         ),
@@ -4656,7 +4661,6 @@ function RoutinesAdmin({member}){
       React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
         React.createElement("button",{onClick:save,disabled:saving,style:{flex:"2 1 100%",background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",padding:"12px",borderRadius:0,cursor:"pointer"}},saving?"SAVING...":"SAVE ROUTINES"),
         React.createElement("button",{onClick:openAssign,disabled:saving,style:{flex:1,minWidth:84,background:"none",color:"#1d9bf0",border:"1px solid #1d3a5a",fontFamily:"'DM Sans',sans-serif",fontSize:10,letterSpacing:"0.08em",fontWeight:600,padding:"12px 6px",borderRadius:0,cursor:"pointer"}},"ASSIGN…"),
-        React.createElement("button",{onClick:openTV,disabled:saving,title:"Play the ticked routine(s) full-screen for the class — cast or mirror your screen to the TV.",style:{flex:1,minWidth:96,background:"#1d9bf0",color:"#fff",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.06em",padding:"12px 6px",borderRadius:0,cursor:"pointer"}},"▶ CLASS VIEW"),
         React.createElement("button",{onClick:saveGlobal,disabled:saving,title:"Save these edits to every member who already has a routine with the same name",style:{flex:1,minWidth:84,background:"none",color:"#c9a227",border:"1px solid #4a3f15",fontFamily:"'DM Sans',sans-serif",fontSize:10,letterSpacing:"0.08em",fontWeight:600,padding:"12px 6px",borderRadius:0,cursor:"pointer"}},"UPDATE ALL")
       ),
       showAssign&&React.createElement("div",{style:{border:"1px solid #1d3a5a",background:"#0a1520",padding:"12px",marginTop:10}},
@@ -4706,15 +4710,21 @@ function RoutineTV({routines,onClose}){
       list.length>1&&React.createElement("button",{onClick:()=>setIdx(i=>(i+1)%list.length),style:tvBtn,title:"Next routine"},"›"),
       React.createElement("button",{onClick:onClose,style:{...tvBtn,color:"#e06040",borderColor:"#5a2018"},title:"Close (Esc)"},"✕")
     ),
-    React.createElement("div",{style:{flex:1,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gridAutoRows:"1fr",gap:10,padding:14,overflow:"auto"}},
-      ...exs.map((e,i)=>React.createElement("div",{key:e.id||i,style:{background:"#0b0f14",border:"1px solid #16222e",display:"flex",flexDirection:"column",padding:"14px 14px 12px",minHeight:0}},
-        React.createElement("div",{style:{fontSize:10,letterSpacing:"0.16em",color:"#4a6076",fontWeight:700,marginBottom:6}},"STATION "+(i+1)),
-        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(18px,2.1vw,32px)",letterSpacing:"0.04em",color:"#fff",lineHeight:1.05,marginBottom:10}},e.name),
-        React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:"auto"}},
-          ...PL.map(p=>React.createElement("div",{key:p[0],style:{background:"#111a24",border:"1px solid #16222e",padding:"7px 4px",textAlign:"center"}},
-            React.createElement("div",{style:{fontSize:8,letterSpacing:"0.03em",color:"#8cd0ff",fontWeight:700,marginBottom:4}},p[1]),
-            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(14px,1.5vw,22px)",letterSpacing:"0.03em",color:"#fff"}},e[p[0]]?(e[p[0]]+(e.unit?(" "+e.unit):"")):"—"),
-            e["w"+p[0]]&&React.createElement("div",{style:{fontSize:"clamp(9px,1vw,12px)",color:"#6ba3d6",fontWeight:600,marginTop:2}},e["w"+p[0]]+" kg")
+    React.createElement("div",{style:{flex:1,display:"grid",gridTemplateColumns:"repeat(4,1fr)",gridTemplateRows:"1fr 1fr",gap:8,padding:10,overflow:"hidden"}},
+      ...exs.map((e,i)=>React.createElement("div",{key:e.id||i,style:{background:"#141414",border:"1px solid #565656",display:"flex",flexDirection:"column",minHeight:0,overflow:"hidden"}},
+        React.createElement("div",{style:{position:"relative",width:"100%",flex:"1 1 46%",minHeight:0,background:"#0b0f14",overflow:"hidden"}},
+          React.createElement("div",{style:{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(10px,1vw,14px)",letterSpacing:"0.12em",color:"#33414d"}},"VIDEO COMING SOON"),
+          React.createElement("video",{src:RT_VBASE+rtSlug(e.name)+".webm",autoPlay:true,muted:true,loop:true,playsInline:true,onError:ev=>{ev.currentTarget.style.display="none";},style:{position:"relative",width:"100%",height:"100%",objectFit:"cover",display:"block"}}),
+          React.createElement("div",{style:{position:"absolute",top:5,left:8,fontSize:"clamp(8px,0.8vw,11px)",letterSpacing:"0.14em",color:"#8cd0ff",fontWeight:700,textShadow:"0 1px 3px #000"}},"STATION "+(i+1))
+        ),
+        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(14px,1.6vw,26px)",letterSpacing:"0.04em",color:"#fff",lineHeight:1.05,padding:"7px 8px 5px",textAlign:"center"}},e.name),
+        React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,padding:"0 8px 9px"}},
+          ...PL.map(p=>React.createElement("div",{key:p[0],style:{display:"flex",flexDirection:"column",textAlign:"center"}},
+            React.createElement("div",{style:{fontSize:"clamp(7px,0.75vw,10px)",letterSpacing:"0.02em",color:"#8cd0ff",fontWeight:700,marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},p[1]),
+            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(12px,1.35vw,20px)",color:"#fff",lineHeight:1,marginBottom:4}},e[p[0]]?(e[p[0]]+(e.unit?(" "+e.unit):"")):"—"),
+            React.createElement("div",{style:{background:"#0b0f14",border:"1px solid #565656",minHeight:24,display:"flex",alignItems:"center",justifyContent:"center",padding:"4px 2px"}},
+              React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(11px,1.2vw,17px)",letterSpacing:"0.02em",color:e["w"+p[0]]?"#6ba3d6":"#33414d"}},e["w"+p[0]]?(e["w"+p[0]]+" kg"):"—")
+            )
           ))
         )
       ))
