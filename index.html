@@ -4691,13 +4691,18 @@ function RoutineTV({routines,onClose}){
   const [run,setRun]=useState(true);
   useEffect(()=>{if(!run)return;const t=setInterval(()=>setSec(s=>s+1),1000);return ()=>clearInterval(t);},[run]);
   useEffect(()=>{const onKey=e=>{if(e.key==="Escape")onClose();else if(e.key===" "){e.preventDefault();setRun(x=>!x);}};window.addEventListener("keydown",onKey);return ()=>window.removeEventListener("keydown",onKey);},[]);
+  const [rot,setRot]=useState(false);
+  useEffect(()=>{const chk=()=>{try{setRot(window.matchMedia("(orientation: portrait)").matches&&window.innerWidth<=820);}catch(e){setRot(false);}};chk();window.addEventListener("resize",chk);window.addEventListener("orientationchange",chk);return ()=>{window.removeEventListener("resize",chk);window.removeEventListener("orientationchange",chk);};},[]);
+  function toggleFull(){try{if(document.fullscreenElement){(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}else{const el=document.documentElement;(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}}catch(e){}}
   if(!list.length)return null;
   const r=list[Math.min(idx,list.length-1)];
   const exs=(r.exercises||[]).slice(0,8);
   const fmt=s=>{const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60,p=n=>String(n).padStart(2,"0");return h>0?(h+":"+p(m)+":"+p(ss)):(p(m)+":"+p(ss));};
   const PL=[["c","COMMITMENT"],["o","CONSISTENCY"],["d","DETERMINATION"]];
   const tvBtn={background:"none",border:"1px solid #24506e",color:"#8cd0ff",fontSize:22,lineHeight:1,padding:"4px 13px",cursor:"pointer",borderRadius:0,flexShrink:0,fontFamily:"'DM Sans',sans-serif"};
-  return React.createElement("div",{style:{position:"fixed",inset:0,zIndex:99999,background:"#000",color:"#fff",display:"flex",flexDirection:"column",fontFamily:"'DM Sans',sans-serif"}},
+  const baseStyle={zIndex:99999,background:"#000",color:"#fff",display:"flex",flexDirection:"column",fontFamily:"'DM Sans',sans-serif",overflow:"hidden"};
+  const rootStyle=rot?{...baseStyle,position:"fixed",left:"100vw",top:0,width:"100vh",height:"100vw",transformOrigin:"top left",transform:"rotate(90deg)"}:{...baseStyle,position:"fixed",inset:0};
+  return React.createElement("div",{style:rootStyle},
     React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,padding:"10px 18px",borderBottom:"1px solid #14202c",flexShrink:0}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,flex:"0 0 auto"}},
         React.createElement("div",{onClick:()=>setRun(x=>!x),title:"Tap to start / stop (spacebar)",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(32px,6.5vw,80px)",letterSpacing:"0.05em",color:run?"#8cd0ff":"#c9a227",cursor:"pointer",lineHeight:1,fontVariantNumeric:"tabular-nums"}},fmt(sec)),
@@ -4710,6 +4715,7 @@ function RoutineTV({routines,onClose}){
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,flex:"0 0 auto"}},
         list.length>1&&React.createElement("button",{onClick:()=>setIdx(i=>(i+1)%list.length),style:tvBtn,title:"Next routine"},"›"),
         React.createElement("button",{onClick:()=>{setSec(0);setRun(true);},style:tvBtn,title:"Reset timer to 0"},"⟲"),
+        React.createElement("button",{onClick:toggleFull,style:tvBtn,title:"Full screen"},"⛶"),
         React.createElement("button",{onClick:onClose,style:{...tvBtn,color:"#e06040",borderColor:"#5a2018"},title:"Close (Esc)"},"✕")
       )
     ),
@@ -4723,7 +4729,8 @@ function RoutineTV({routines,onClose}){
           ),
           React.createElement("div",{style:{position:"relative",width:"100%",flex:"1 1 34%",minHeight:0,overflow:"hidden"}},
             React.createElement("div",{className:"rtph",style:{position:"absolute",inset:0,display:"none",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(10px,1vw,14px)",letterSpacing:"0.12em",color:"#33414d"}},"VIDEO COMING SOON"),
-            React.createElement("video",{src:RT_VBASE+rtSlug(e.name)+".webm",autoPlay:true,muted:true,loop:true,playsInline:true,onError:ev=>{ev.currentTarget.style.display="none";const ph=ev.currentTarget.parentNode.querySelector(".rtph");if(ph)ph.style.display="flex";},style:{width:"100%",height:"100%",objectFit:"contain",objectPosition:"center 78%",display:"block",opacity:0.78}})
+            React.createElement("video",{src:RT_VBASE+rtSlug(e.name)+".webm",autoPlay:true,muted:true,loop:true,playsInline:true,onError:ev=>{ev.currentTarget.style.display="none";const ph=ev.currentTarget.parentNode.querySelector(".rtph");if(ph)ph.style.display="flex";},style:{width:"100%",height:"100%",objectFit:"contain",objectPosition:"center 78%",display:"block",opacity:0.78}}),
+            React.createElement("div",{style:{position:"absolute",inset:0,background:"#8cd0ff",mixBlendMode:"overlay",opacity:0.45,pointerEvents:"none"}})
           ),
           React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,padding:"7px 8px 9px",flexShrink:0}},
             ...PL.map(p=>{const k=p[0];const val=e[k]?(e[k]+unit):"—";const wt=e["w"+k];
