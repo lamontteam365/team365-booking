@@ -4692,7 +4692,8 @@ function RoutineTV({routines,onClose}){
   useEffect(()=>{if(!run)return;const t=setInterval(()=>setSec(s=>s+1),1000);return ()=>clearInterval(t);},[run]);
   useEffect(()=>{const onKey=e=>{if(e.key==="Escape")onClose();else if(e.key===" "){e.preventDefault();setRun(x=>!x);}};window.addEventListener("keydown",onKey);return ()=>window.removeEventListener("keydown",onKey);},[]);
   const [rot,setRot]=useState(false);
-  useEffect(()=>{const chk=()=>{try{setRot(window.matchMedia("(orientation: portrait)").matches&&window.innerWidth<=820);}catch(e){setRot(false);}};chk();window.addEventListener("resize",chk);window.addEventListener("orientationchange",chk);return ()=>{window.removeEventListener("resize",chk);window.removeEventListener("orientationchange",chk);};},[]);
+  const [mob,setMob]=useState(false);
+  useEffect(()=>{const chk=()=>{try{setRot(window.matchMedia("(orientation: portrait)").matches&&window.innerWidth<=820);setMob(Math.min(window.innerWidth,window.innerHeight)<=600);}catch(e){setRot(false);setMob(false);}};chk();window.addEventListener("resize",chk);window.addEventListener("orientationchange",chk);return ()=>{window.removeEventListener("resize",chk);window.removeEventListener("orientationchange",chk);};},[]);
   function toggleFull(){try{if(document.fullscreenElement){(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}else{const el=document.documentElement;(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}}catch(e){}}
   if(!list.length)return null;
   const r=list[Math.min(idx,list.length-1)];
@@ -4724,8 +4725,8 @@ function RoutineTV({routines,onClose}){
         const unit=e.unit?(" "+e.unit):"";
         return React.createElement("div",{key:e.id||i,style:{background:"#141414",border:"1px solid #565656",display:"flex",flexDirection:"column",minHeight:0,overflow:"hidden"}},
           React.createElement("div",{style:{position:"relative",padding:"7px 10px 5px",flexShrink:0,minHeight:24,display:"flex",alignItems:"center",justifyContent:"center"}},
-            React.createElement("div",{style:{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:"clamp(8px,0.8vw,11px)",letterSpacing:"0.14em",color:"#8cd0ff",fontWeight:700}},"EXERCISE "+(i+1)),
-            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(14px,1.6vw,26px)",letterSpacing:"0.04em",color:"#fff",lineHeight:1.05,textAlign:"center",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:"72%"}},e.name)
+            React.createElement("div",{style:{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:mob?"clamp(11px,3vw,15px)":"clamp(8px,0.8vw,11px)",letterSpacing:mob?"0.04em":"0.14em",color:"#8cd0ff",fontWeight:700}},mob?String(i+1):("EXERCISE "+(i+1))),
+            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(14px,1.6vw,26px)",letterSpacing:"0.04em",color:"#fff",lineHeight:1.05,textAlign:"center",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:mob?"84%":"72%"}},e.name)
           ),
           React.createElement("div",{style:{position:"relative",width:"100%",flex:"1 1 34%",minHeight:0,overflow:"hidden"}},
             React.createElement("div",{className:"rtph",style:{position:"absolute",inset:0,display:"none",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(10px,1vw,14px)",letterSpacing:"0.12em",color:"#33414d"}},"VIDEO COMING SOON"),
