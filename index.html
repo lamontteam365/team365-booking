@@ -571,7 +571,7 @@ function ImageCropper({imageSrc,onSave,onCancel}){
   );
 }
 // ── Member Profile Overlay (Admin) ────────────────────────────────────────────
-function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,isMaster,mfPasteAI}){
+function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,isMaster,mfPasteAI,selfEmail}){
   const upcomingBks=bookings.filter(b=>b.email===member.email&&b.date_key>=toDS(new Date())).length;
   const attendedBks=bookings.filter(b=>b.email===member.email&&b.date_key<toDS(new Date())).length;
   const joinDate=fmtJoinDate(member.joined_at);
@@ -966,7 +966,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
       )
       ),
       currentUserIsAdmin&&(isMaster||mfWk!==false)&&React.createElement(MemberWorkoutAdmin,{member,memberView:wkMemberView,setMemberView:setWkMemberView,isMaster,mfPasteAI}),
-      currentUserIsAdmin&&React.createElement(RoutinesAdmin,{member}),
+      currentUserIsAdmin&&React.createElement(RoutinesAdmin,{member,selfEmail}),
       currentUserIsAdmin&&React.createElement(MemberPBAdmin,{member}),
       currentUserIsAdmin&&React.createElement(React.Fragment,null,
         React.createElement("div",{className:"mp-section"},"ADMIN CONTROLS"),
@@ -1385,7 +1385,7 @@ function MilestoneAdminPanel({milestoneConfig,saveMilestoneConfig,showToast}){
     )
   );
 }
-function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg}){
+function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail}){
   const [expandedTier,setExpandedTier]=useState(null);
   const [admDate,setAdmDate]=useState(new Date());
   const [expanded,setExpanded]=useState({});
@@ -1513,7 +1513,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   }
   const admDateLabel=`${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][admDOW]} ${admDate.getDate()} ${MONTHS[admDate.getMonth()]} ${admDate.getFullYear()}`;
   return React.createElement("div",{className:"adm-wrap"},
-    selectedMember&&React.createElement(MemberProfileOverlay,{member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin,mfWk:mFlags.wk,isMaster,mfPasteAI:mFlags.pasteAI}),
+    selectedMember&&React.createElement(MemberProfileOverlay,{member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin,mfWk:mFlags.wk,isMaster,mfPasteAI:mFlags.pasteAI,selfEmail}),
     React.createElement("div",{className:"adm-title"},"ADMIN"),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"0 0 6px"}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
@@ -4442,7 +4442,8 @@ function rtBuildWtLib(content){let L={};try{L=JSON.parse(content)||{};}catch{}co
 // Exercise videos — same location/naming as the TV cast page (tv.html): tv-videos/exercises/<slug>.webm
 const RT_VBASE="tv-videos/exercises/";
 const rtSlug=x=>String(x||"").toLowerCase().replace(/&ndash;/g,"-").replace(/&amp;/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
-function RoutinesAdmin({member}){
+function RoutinesAdmin({member,selfEmail}){
+  const isSelf=!!selfEmail&&(selfEmail||"").toLowerCase()===((member.email||"").toLowerCase());
   const [routines,setRoutines]=useState([]);
   const [open,setOpen]=useState(new Set());
   const [loading,setLoading]=useState(true);
@@ -4498,6 +4499,21 @@ function RoutinesAdmin({member}){
   function addRoutine(){const id=mwGenId();setRoutines(p=>[...p,{id,sid:mwGenId(),title:"",exercises:[]}]);setOpen(p=>new Set([...p,id]));}
   function removeRoutine(rid){if(!window.confirm("Remove this routine?"))return;setRoutines(p=>p.filter(r=>r.id!==rid));}
   function updR(rid,f,v){setRoutines(p=>p.map(r=>r.id===rid?{...r,[f]:v}:r));}
+  async function toggleVV(r){
+    const nv=!r.vvoff;
+    updR(r.id,"vvoff",nv);
+    if(isSelf&&r.sid){
+      setSaving(true);
+      const rows=await sbGet("coaching_notes","class_name=like.__RT__*&select=class_name,content");
+      for(const row of (rows||[])){
+        if(!row||!row.class_name||row.class_name.indexOf("__RT__")!==0)continue;
+        let arr=[];try{const o=JSON.parse(row.content);arr=Array.isArray(o)?o:(o.routines||[]);}catch{}
+        let ch=false;const upd=(arr||[]).map(x=>{if(x.sid===r.sid){ch=true;return {...x,vvoff:nv};}return x;});
+        if(ch)await upsertRT(row.class_name,upd);
+      }
+      setSaving(false);setMsg(nv?"Video View OFF for everyone ✓":"Video View ON for everyone ✓");setTimeout(()=>setMsg(""),3000);
+    }
+  }
   function addEx(rid){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:[...(r.exercises||[]),{id:mwGenId(),name:"",sets:"",reps:"",duration:"",unit:"",c:"",o:"",d:"",wc:"",wo:"",wd:""}]}:r));}
   function updEx(rid,eid,f,v){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:r.exercises.map(e=>{if(e.id!==eid)return e;const ne={...e,[f]:v};if(f==="name"){const hit=wtLib[rtNm(v)];if(hit&&!(ne.wc||ne.wo||ne.wd)){ne.wc=hit.c||"";ne.wo=hit.o||"";ne.wd=hit.d||"";}}return ne;})}:r));}
   function removeEx(rid,eid){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:r.exercises.filter(e=>e.id!==eid)}:r));}
@@ -4622,7 +4638,7 @@ function RoutinesAdmin({member}){
           React.createElement("button",{onClick:()=>toggleExcl(r.id),title:"Include when assigning to all members",style:{background:excl.has(r.id)?"#fff":"#1d9bf0",border:"1px solid "+(excl.has(r.id)?"#999":"#1d9bf0"),borderRadius:0,width:17,height:17,color:"#fff",fontSize:11,lineHeight:1,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",padding:0}},excl.has(r.id)?"":"✓"),
           React.createElement("button",{onClick:()=>toggle(r.id),style:{background:"none",border:"none",color:"#000",fontSize:12,cursor:"pointer",transform:isOpen?"none":"rotate(-90deg)",transition:"transform .15s",padding:"0 2px",flexShrink:0}},"▾"),
           React.createElement("input",{value:r.title,onChange:e=>updR(r.id,"title",e.target.value),placeholder:"Routine title e.g. AMRAP 1",style:{flex:"1 1 auto",minWidth:40,background:"transparent",border:"none",color:"#000",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",outline:"none"}}),
-          React.createElement("button",{onClick:()=>updR(r.id,"vvoff",!r.vvoff),title:"Show or hide the VIDEO VIEW button for this routine in the Timed Exercises tab.",style:{background:r.vvoff?"none":"#1d9bf0",border:"1px solid "+(r.vvoff?"#ccc":"#1d9bf0"),borderRadius:0,color:r.vvoff?"#888":"#fff",fontSize:8,fontWeight:600,letterSpacing:"0.02em",padding:"3px 5px",cursor:"pointer",flexShrink:0,fontFamily:"'DM Sans',sans-serif"}},r.vvoff?"VIDEO OFF":"VIDEO ON"),
+          React.createElement("button",{onClick:()=>toggleVV(r),title:isSelf?"YOUR profile — toggles the VIDEO VIEW button for EVERYONE on this routine.":"Toggles the VIDEO VIEW button for THIS member on this routine.",style:{background:r.vvoff?"none":"#1d9bf0",border:"1px solid "+(r.vvoff?"#ccc":"#1d9bf0"),borderRadius:0,color:r.vvoff?"#888":"#fff",fontSize:8,fontWeight:600,letterSpacing:"0.02em",padding:"3px 5px",cursor:"pointer",flexShrink:0,fontFamily:"'DM Sans',sans-serif"}},r.vvoff?"VIDEO OFF":"VIDEO ON"),
           React.createElement("button",{onClick:()=>updR(r.id,"hidden",!r.hidden),title:"Show or hide this routine for THIS member. Hiding keeps their logged times.",style:{background:"none",border:"1px solid "+(r.hidden?"#c9a227":"#ccc"),borderRadius:0,color:r.hidden?"#c9a227":"#4aaa66",fontSize:8,fontWeight:600,letterSpacing:"0.02em",padding:"3px 5px",cursor:"pointer",flexShrink:0,fontFamily:"'DM Sans',sans-serif"}},r.hidden?"HIDDEN":"VISIBLE"),
           React.createElement("button",{onClick:()=>updR(r.id,"mode",r.mode==="pillar"?"":"pillar"),title:"3-pillar targets (Commitment / Consistency / Determination). On = member picks a pillar; off = simple time only.",style:{background:r.mode==="pillar"?"#1d5a34":"none",border:"1px solid "+(r.mode==="pillar"?"#1d5a34":"#ccc"),borderRadius:0,color:r.mode==="pillar"?"#fff":"#666",fontSize:8,fontWeight:600,letterSpacing:"0.02em",padding:"3px 5px",cursor:"pointer",flexShrink:0,fontFamily:"'DM Sans',sans-serif"}},"3 PILLAR"),
           React.createElement("button",{onClick:()=>dupRoutine(r.id),title:"Duplicate routine",style:{background:"none",border:"1px solid #ccc",borderRadius:0,color:"#333",fontSize:11,padding:"2px 6px",cursor:"pointer",flexShrink:0}},"⧉"),
@@ -4707,7 +4723,8 @@ function RoutineTV({routines,onClose}){
   useEffect(()=>{const onKey=e=>{if(e.key==="Escape")onClose();else if(e.key===" "){e.preventDefault();setRun(x=>!x);}};window.addEventListener("keydown",onKey);return ()=>window.removeEventListener("keydown",onKey);},[]);
   const [rot,setRot]=useState(false);
   const [mob,setMob]=useState(false);
-  useEffect(()=>{const chk=()=>{try{setRot(window.matchMedia("(orientation: portrait)").matches&&window.innerWidth<=820);setMob(Math.min(window.innerWidth,window.innerHeight)<=600);}catch(e){setRot(false);setMob(false);}};chk();window.addEventListener("resize",chk);window.addEventListener("orientationchange",chk);return ()=>{window.removeEventListener("resize",chk);window.removeEventListener("orientationchange",chk);};},[]);
+  const [dim,setDim]=useState({w:0,h:0});
+  useEffect(()=>{const chk=()=>{try{const w=window.innerWidth,h=window.innerHeight;setDim({w,h});setRot(window.matchMedia("(orientation: portrait)").matches&&w<=820);setMob(Math.min(w,h)<=600);}catch(e){setRot(false);setMob(false);}};chk();window.addEventListener("resize",chk);window.addEventListener("orientationchange",chk);document.addEventListener("fullscreenchange",chk);return ()=>{window.removeEventListener("resize",chk);window.removeEventListener("orientationchange",chk);document.removeEventListener("fullscreenchange",chk);};},[]);
   function toggleFull(){try{if(document.fullscreenElement){(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}else{const el=document.documentElement;(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}}catch(e){}}
   if(!list.length)return null;
   const r=list[Math.min(idx,list.length-1)];
@@ -4716,7 +4733,7 @@ function RoutineTV({routines,onClose}){
   const PL=[["c","COMMITMENT"],["o","CONSISTENCY"],["d","DETERMINATION"]];
   const tvBtn={background:"none",border:"1px solid #24506e",color:"#8cd0ff",fontSize:22,lineHeight:1,padding:"4px 13px",cursor:"pointer",borderRadius:0,flexShrink:0,fontFamily:"'DM Sans',sans-serif"};
   const baseStyle={zIndex:99999,background:"#000",color:"#fff",display:"flex",flexDirection:"column",fontFamily:"'DM Sans',sans-serif",overflow:"hidden"};
-  const rootStyle=rot?{...baseStyle,position:"fixed",left:"100vw",top:0,width:"100vh",height:"100vw",transformOrigin:"top left",transform:"rotate(90deg)"}:{...baseStyle,position:"fixed",inset:0};
+  const rootStyle=(rot&&dim.w)?{...baseStyle,position:"fixed",left:dim.w+"px",top:0,width:dim.h+"px",height:dim.w+"px",transformOrigin:"top left",transform:"rotate(90deg)"}:{...baseStyle,position:"fixed",inset:0};
   return React.createElement("div",{style:rootStyle},
     React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,padding:"10px 18px",borderBottom:"1px solid #14202c",flexShrink:0}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,flex:"0 0 auto"}},
@@ -5670,7 +5687,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       effWkSub==="routines"&&showRoutines&&React.createElement(RoutinesView,{session,ttl:wkTitles.rt,isAdmin})
     ),
     effTab==="progress"&&acc("progress")&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}),
-    effTab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg}),
+    effTab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:""}),
     ),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
