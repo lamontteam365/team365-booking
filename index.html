@@ -4484,10 +4484,10 @@ function RoutinesAdmin({member}){
   function addRoutine(){const id=mwGenId();setRoutines(p=>[...p,{id,sid:mwGenId(),title:"",exercises:[]}]);setOpen(p=>new Set([...p,id]));}
   function removeRoutine(rid){if(!window.confirm("Remove this routine?"))return;setRoutines(p=>p.filter(r=>r.id!==rid));}
   function updR(rid,f,v){setRoutines(p=>p.map(r=>r.id===rid?{...r,[f]:v}:r));}
-  function addEx(rid){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:[...(r.exercises||[]),{id:mwGenId(),name:"",sets:"",reps:"",duration:"",c:"",o:"",d:""}]}:r));}
+  function addEx(rid){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:[...(r.exercises||[]),{id:mwGenId(),name:"",sets:"",reps:"",duration:"",unit:"",c:"",o:"",d:""}]}:r));}
   function updEx(rid,eid,f,v){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:r.exercises.map(e=>e.id===eid?{...e,[f]:v}:e)}:r));}
   function removeEx(rid,eid){setRoutines(p=>p.map(r=>r.id===rid?{...r,exercises:r.exercises.filter(e=>e.id!==eid)}:r));}
-  function clean(arr){return (arr||[]).map(r=>({id:r.id||mwGenId(),sid:(r.sid||mwGenId()),title:(r.title||"").trim(),mode:(r.mode==="pillar"?"pillar":""),hidden:!!r.hidden,exercises:(r.exercises||[]).map(e=>({id:e.id||mwGenId(),name:(e.name||"").trim().toUpperCase(),sets:(e.sets||"").trim(),reps:(e.reps||"").trim(),duration:(e.duration||"").trim(),c:(e.c||"").trim(),o:(e.o||"").trim(),d:(e.d||"").trim()})).filter(e=>e.name)})).filter(r=>r.title||r.exercises.length);}
+  function clean(arr){return (arr||[]).map(r=>({id:r.id||mwGenId(),sid:(r.sid||mwGenId()),title:(r.title||"").trim(),mode:(r.mode==="pillar"?"pillar":""),hidden:!!r.hidden,exercises:(r.exercises||[]).map(e=>({id:e.id||mwGenId(),name:(e.name||"").trim().toUpperCase(),sets:(e.sets||"").trim(),reps:(e.reps||"").trim(),duration:(e.duration||"").trim(),unit:(e.unit||"").trim(),c:(e.c||"").trim(),o:(e.o||"").trim(),d:(e.d||"").trim()})).filter(e=>e.name)})).filter(r=>r.title||r.exercises.length);}
   async function upsertRT(k,arr){
     const json=JSON.stringify(arr);
     const ex=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(k)}&select=class_name`);
@@ -4607,7 +4607,14 @@ function RoutinesAdmin({member}){
             ),
             r.mode==="pillar"
             ? React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
-                React.createElement("input",{value:e.reps||"",onChange:v=>updEx(r.id,e.id,"reps",v.target.value),placeholder:"Reps",style:{...inS,width:64,textAlign:"center"}}),
+                React.createElement("select",{value:e.unit||"",onChange:v=>updEx(r.id,e.id,"unit",v.target.value),title:"Measure for the three target values",style:{...inS,width:80,cursor:"pointer"}},
+                  React.createElement("option",{value:""},"unit…"),
+                  React.createElement("option",{value:"reps"},"reps"),
+                  React.createElement("option",{value:"cals"},"cals"),
+                  React.createElement("option",{value:"m"},"metres"),
+                  React.createElement("option",{value:"kgs"},"kgs"),
+                  React.createElement("option",{value:"sec"},"secs")
+                ),
                 React.createElement("input",{value:e.c||"",onChange:v=>updEx(r.id,e.id,"c",v.target.value),placeholder:"Commitment",style:{...inS,flex:1,minWidth:78,borderColor:"#2a4a2a"}}),
                 React.createElement("input",{value:e.o||"",onChange:v=>updEx(r.id,e.id,"o",v.target.value),placeholder:"Consistency",style:{...inS,flex:1,minWidth:78,borderColor:"#2a4a2a"}}),
                 React.createElement("input",{value:e.d||"",onChange:v=>updEx(r.id,e.id,"d",v.target.value),placeholder:"Determination",style:{...inS,flex:1,minWidth:78,borderColor:"#2a4a2a"}})
@@ -4721,10 +4728,10 @@ function RoutinesView({session,ttl}){
                 React.createElement("span",{style:{flex:1,fontSize:8,letterSpacing:"0.04em",color:"#4aaa66",fontWeight:600,textAlign:"right"}},"DETERM")
               ),
               ...(r.exercises||[]).map(e=>React.createElement("div",{key:e.id,style:{display:"flex",gap:6,padding:"6px 0",borderBottom:"1px solid #161616",alignItems:"baseline"}},
-                React.createElement("span",{style:{flex:2.2,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.04em",color:"#eee"}},e.name+(e.reps?(" · "+e.reps):"")),
-                React.createElement("span",{style:{flex:1,fontSize:10,color:"#9aa6b1",textAlign:"right"}},e.c||"—"),
-                React.createElement("span",{style:{flex:1,fontSize:10,color:"#9aa6b1",textAlign:"right"}},e.o||"—"),
-                React.createElement("span",{style:{flex:1,fontSize:10,color:"#9aa6b1",textAlign:"right"}},e.d||"—")
+                React.createElement("span",{style:{flex:2.2,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.04em",color:"#eee"}},e.name),
+                React.createElement("span",{style:{flex:1,fontSize:10,color:"#9aa6b1",textAlign:"right"}},e.c?(e.c+(e.unit?(" "+e.unit):"")):"—"),
+                React.createElement("span",{style:{flex:1,fontSize:10,color:"#9aa6b1",textAlign:"right"}},e.o?(e.o+(e.unit?(" "+e.unit):"")):"—"),
+                React.createElement("span",{style:{flex:1,fontSize:10,color:"#9aa6b1",textAlign:"right"}},e.d?(e.d+(e.unit?(" "+e.unit):"")):"—")
               ))
             )
           : React.createElement("div",{style:{marginBottom:12}},
