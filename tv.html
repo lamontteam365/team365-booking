@@ -45,7 +45,7 @@ body.paused .mtrack,body.paused .inarrow{animation-play-state:paused}
 .body.pil .pbh{font-weight:600;font-size:1.35cqw;margin-bottom:0.4cqw;letter-spacing:0.03em}
 .body.pil .pbl{font-size:1.2cqw;line-height:1.55}
 .body.sess{font-style:italic;font-size:1.15cqw;line-height:1.3}
-.body.sess .sessbrief{text-align:left;padding:0 1.8cqw}
+.body.sess .sessbrief{text-align:left;padding:0 1.8cqw}.col.sessbox .bh{padding-left:1.8cqw}
 .body.sess .sessbrief .bp{margin-bottom:1.15cqw;line-height:1.45}
 .tag2c{font-style:italic;color:#9aa6b1;font-size:0.9cqw;line-height:1.3;margin-bottom:10px;white-space:nowrap}
 .tag2c.low{margin-top:20px;margin-bottom:0}
@@ -328,8 +328,8 @@ function buildFlow(name,rows,opts){
  var warmBody='<div class="wlist">'+warmrows()+'</div>';
  var S=[];
  S.push(screenWrap('<div class="logo">TEAM 365</div><div class="subttl">CLASS BRIEF STARTING IN</div><div class="bigtimer" data-count>0:30</div>','brand','data-dur="30"'));
- S.push(screenWrap('<div class="cols">'+box("active","PILLAR BRIEF",'<div class="body pil">'+(opts.pillar?pillarHTML(opts.pillar):PILLAR)+'</div>')+box("faded","SESSION BRIEF",'<div class="body sess">'+sb+'</div>')+'</div>'+footer("PILLAR BRIEF","SESSION BRIEF","0:30",wname),'split','data-dur="30"'));
- S.push(screenWrap('<div class="cols">'+box("active","SESSION BRIEF",'<div class="body sess">'+sb+'</div>')+box("faded","WARM UP",'<div class="body warm">'+warmBody+'</div>')+'</div>'+footer("SESSION BRIEF","WARM UP","0:30",wname),'split','data-dur="30"'));
+ S.push(screenWrap('<div class="cols">'+box("active","PILLAR BRIEF",'<div class="body pil">'+(opts.pillar?pillarHTML(opts.pillar):PILLAR)+'</div>')+box("faded sessbox","SESSION BRIEF",'<div class="body sess">'+sb+'</div>')+'</div>'+footer("PILLAR BRIEF","SESSION BRIEF","0:30",wname),'split','data-dur="30"'));
+ S.push(screenWrap('<div class="cols">'+box("active sessbox","SESSION BRIEF",'<div class="body sess">'+sb+'</div>')+box("faded","WARM UP",'<div class="body warm">'+warmBody+'</div>')+'</div>'+footer("SESSION BRIEF","WARM UP","0:30",wname),'split','data-dur="30"'));
  S.push(screenWrap('<div class="cols">'+box("active","WARM UP",'<div class="body warm">'+warmBody+'</div>')+'<div class="col vidcol"><div class="media"><video id="warmvid" src="'+WUV+encodeURIComponent(WARMNAMES[0])+'.webm" autoplay muted loop playsinline onerror="var p=this.parentNode;p.className=\'media ph\';p.textContent=\'VIDEO COMING SOON\'"></video></div><div class="vcap"><span id="wcap">'+WARMDISP[0]+'</span></div></div></div>'+footer("WARM UP","30 SECS FINAL PREP","3:00",wname),'split','data-dur="180" data-warm'));
  var g0=groups[0];
  S.push(screenWrap('<div class="cols"><div class="col cen"><div class="boxin cenin"><div class="bh">CLASS STARTING IN</div><div class="bigtimer mid" data-count>0:30</div><div class="startwith"><span class="swtext">STARTING WITH YOUR FIRST STATION</span> <span class="inarrow">&#10142;</span></div></div></div>'+previewcard(g0.hdr.toUpperCase(),fmtMinLabel(g0.dur||mmss(roundSum(g0))),previewBody(dispG(g0),1),false)+'</div>'+footer("CLASS STARTING IN",g0.hdr.toUpperCase(),"0:30",wname),'split','data-dur="30" data-cue'));
