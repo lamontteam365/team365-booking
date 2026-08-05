@@ -76,7 +76,7 @@ body.paused .mtrack,body.paused .inarrow{animation-play-state:paused}
 .fnext{font-family:'Bebas Neue',sans-serif;font-style:italic;font-size:34px;line-height:0.95;color:#8cd0ff}
 .ftitle{font-size:19px}
 .startwith{font-family:'Bebas Neue',sans-serif;font-style:normal;font-size:1.7cqw;letter-spacing:0.05em;color:#e8eef4;margin-top:8px}
-.boxin.cenin .bh{font-style:normal}.boxin.cenin .bh.psh{font-size:3.1cqw;font-style:italic}
+.boxin.cenin .bh{font-style:normal}.boxin.cenin .bh.psh{font-size:2.8cqw;font-style:italic;letter-spacing:0.02em;animation:lvnshine 2.4s linear infinite}.stretchpg .bh{animation-duration:2.4s}.stretchpg .bigtimer{animation-duration:2.4s,1.6s}
 .inarrow{-webkit-text-fill-color:#8cd0ff;color:#8cd0ff;font-size:2.2cqw;margin-left:14px;display:inline-block;vertical-align:-0.15em;animation:arrowpush 1.4s ease-in-out infinite}
 @keyframes arrowpush{0%,100%{transform:translateX(0)}50%{transform:translateX(12px)}}
 /* keep-working coming-up */
@@ -331,7 +331,7 @@ function buildFlow(name,rows,opts){
  S.push(screenWrap('<div class="cols">'+box("active","PILLAR BRIEF",'<div class="body pil">'+(opts.pillar?pillarHTML(opts.pillar):PILLAR)+'</div>')+box("faded sessbox","SESSION BRIEF",'<div class="body sess">'+sb+'</div>')+'</div>'+footer("PILLAR BRIEF","SESSION BRIEF","0:30",wname),'split','data-dur="30"'));
  S.push(screenWrap('<div class="cols">'+box("active sessbox","SESSION BRIEF",'<div class="body sess">'+sb+'</div>')+box("faded","WARM UP",'<div class="body warm">'+warmBody+'</div>')+'</div>'+footer("SESSION BRIEF","WARM UP","0:30",wname),'split','data-dur="30"'));
  S.push(screenWrap('<div class="cols">'+box("active","WARM UP",'<div class="body warm">'+warmBody+'</div>')+'<div class="col vidcol"><div class="media"><video id="warmvid" src="'+WUV+encodeURIComponent(WARMNAMES[0])+'.webm" autoplay muted loop playsinline onerror="var p=this.parentNode;p.className=\'media ph\';p.textContent=\'VIDEO COMING SOON\'"></video></div><div class="vcap"><span id="wcap">'+WARMDISP[0]+'</span></div></div></div>'+footer("WARM UP","30 SECS FINAL PREP","3:00",wname),'split','data-dur="180" data-warm'));
- S.push(screenWrap('<div class="cols">'+'<div class="col cen"><div class="boxin cenin"><div class="bh psh">PERSONAL STRETCHES</div><div class="bigtimer mid" data-count>0:30</div></div></div>'+'<div class="col cen faded"><div class="boxin cenin"><div class="bh">CLASS STARTING IN 1 MINUTE</div></div></div>'+'</div>'+footer("PERSONAL STRETCHES","CLASS STARTING IN 1 MINUTE","0:30",wname),'split','data-dur="30"'));
+ S.push(screenWrap('<div class="cols">'+'<div class="col cen"><div class="boxin cenin"><div class="bh psh">PERSONAL STRETCHES</div><div class="bigtimer mid" data-count>0:30</div></div></div>'+'<div class="col cen faded"><div class="boxin cenin"><div class="bh">CLASS STARTING IN 1 MINUTE</div></div></div>'+'</div>'+footer("PERSONAL STRETCHES","CLASS STARTING IN 1 MINUTE","0:30",wname),'split stretchpg','data-dur="30"'));
  var g0=groups[0];
  S.push(screenWrap('<div class="cols"><div class="col cen"><div class="boxin cenin"><div class="bh">CLASS STARTING IN</div><div class="bigtimer mid" data-count>0:30</div><div class="startwith"><span class="swtext">STARTING WITH YOUR FIRST STATION</span> <span class="inarrow">&#10142;</span></div></div></div>'+previewcard(g0.hdr.toUpperCase(),fmtMinLabel(g0.dur||mmss(roundSum(g0))),previewBody(dispG(g0),1),false)+'</div>'+footer("CLASS STARTING IN",g0.hdr.toUpperCase(),"0:30",wname),'split','data-dur="30" data-cue'));
  var elapsed=0, acc=0;
