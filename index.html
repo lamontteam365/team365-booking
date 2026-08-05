@@ -2331,7 +2331,7 @@ function WorkoutDetailsEditor({className,showToast}){
     (function(){let hd=null,segs=[];const flush=()=>{if(hd&&hd.st==null){const u={};segs.forEach(s=>{u[s.duration||""]=1;});hd.st=(/round/i.test(hd.hdr||"")&&Object.keys(u).length<=1&&segs.length>2);}hd=null;segs=[];};rws.forEach(r=>{if(r.hdr!=null){flush();hd=r;}else segs.push(r);});flush();})();
     const scr=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(SCROLL_KEY)+"&select=content");
     setScroll(scr&&scr.length&&scr[0].content?scr[0].content:"");
-    setRows(rws);setLegacy(leg);setEditing(rws.length===0);setLoaded(true);
+    setRows(rws);setCollapsed(new Set(rws.filter(r=>r.hdr!=null).map(r=>r.id)));setLegacy(leg);setEditing(rws.length===0);setLoaded(true);
   })();},[className]);
   function autofill(row){
     const exU=(row.exercise||"").trim().toUpperCase();
