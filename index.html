@@ -2204,6 +2204,55 @@ function OnboardingView({showToast}){
 // ── Coaching Notes ────────────────────────────────────────────────────────────
 // Standalone per-class coaching note editor — sections with title + body (no numbers)
 // MUST be defined outside CoachingView to avoid focus-loss bug
+function FinalPageEditor({className,showToast}){
+  const m=(className||"").match(/^(.*?)\s*(\d+)\s*$/);
+  const style=((m?m[1]:className)||"").trim().toUpperCase();
+  const isFirst=m?parseInt(m[2])===1:true;
+  const key="__FINAL__"+style;
+  const [t,setT]=useState("");
+  const [su,setSu]=useState("");
+  const [b,setB]=useState("");
+  const [loaded,setLoaded]=useState(false);
+  const [saving,setSaving]=useState(false);
+  const [msg,setMsg]=useState("");
+  useEffect(()=>{(async()=>{
+    if(!isFirst){setLoaded(true);return;}
+    setLoaded(false);
+    const d=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(key)}&select=content`);
+    let v=null;if(d&&d.length&&d[0].content){try{v=JSON.parse(d[0].content);}catch{}}
+    setT(v&&v.title!=null?v.title:"WELL DONE!");
+    setSu(v&&v.sub!=null?v.sub:(style+" WITH TEAM 365"));
+    setB(v&&v.bot!=null?v.bot:"I'M GRATEFUL");
+    setLoaded(true);
+  })();},[key,isFirst]);
+  async function save(){
+    setSaving(true);
+    const json=JSON.stringify({title:(t||"").trim(),sub:(su||"").trim(),bot:(b||"").trim()});
+    const ex=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(key)}&select=class_name`);
+    if(ex&&ex.length)await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(key)}`,{content:json,updated_at:Date.now()});
+    else await sbPost("coaching_notes",{class_name:key,content:json,updated_at:Date.now()});
+    setSaving(false);setMsg("Saved ✓");setTimeout(()=>setMsg(""),2500);if(showToast)showToast("Final page saved ✓");
+  }
+  const lbl={fontSize:9,letterSpacing:"0.12em",color:"#666",marginBottom:4,fontWeight:600};
+  const inp={width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:0,color:"#ccc",fontSize:12,padding:"7px 10px",fontFamily:"'DM Sans',sans-serif",outline:"none",boxSizing:"border-box",marginBottom:12};
+  const wrap={marginTop:22,paddingTop:16,borderTop:"1px solid #222"};
+  if(!isFirst)return React.createElement("div",{style:{...wrap,fontSize:10,color:"#555",letterSpacing:"0.04em",lineHeight:1.6}},"The class ENDING (final page) for this style is edited on "+style+" 1.");
+  return React.createElement("div",{style:wrap},
+    React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",color:"#fff",marginBottom:3}},"FINAL PAGE — CLASS ENDING"),
+    React.createElement("div",{style:{fontSize:9,color:"#555",marginBottom:14,letterSpacing:"0.03em",lineHeight:1.5}},"The last screen when the class finishes. Applies to the whole "+style+" style."),
+    !loaded?React.createElement("div",{style:{fontSize:10,color:"#444"}},"LOADING..."):React.createElement(React.Fragment,null,
+      React.createElement("div",{style:lbl},"TOP LINE"),
+      React.createElement("input",{value:t,onChange:e=>setT(e.target.value),placeholder:"e.g. WELL DONE!",style:inp}),
+      React.createElement("div",{style:lbl},"SUBTITLE"),
+      React.createElement("input",{value:su,onChange:e=>setSu(e.target.value),placeholder:"e.g. RISE UP WITH TEAM 365",style:inp}),
+      React.createElement("div",{style:lbl},"AFFIRMATION"),
+      React.createElement("input",{value:b,onChange:e=>setB(e.target.value),placeholder:"e.g. I'M GRATEFUL",style:inp}),
+      React.createElement("div",{style:{fontSize:9,color:"#444",marginTop:-4,marginBottom:12,lineHeight:1.5}},"The EVERYDAY. ALL YEAR ROUND. line is added automatically under the affirmation."),
+      React.createElement("button",{onClick:save,disabled:saving,style:{background:"#1d9bf0",border:"none",borderRadius:0,padding:"7px 16px",color:"#fff",fontSize:10,letterSpacing:"0.1em",cursor:"pointer",fontWeight:600}},saving?"SAVING...":"SAVE FINAL PAGE"),
+      msg&&React.createElement("span",{style:{fontSize:10,color:"#4aaa88",marginLeft:10}},msg)
+    )
+  );
+}
 function CoachingNoteEditor({className,showToast}){
   const [sections,setSections]=useState([]);
   const [editing,setEditing]=useState(false);
@@ -2267,7 +2316,8 @@ function CoachingNoteEditor({className,showToast}){
     sections.map((s,i)=>React.createElement("div",{key:i,style:{marginBottom:16,paddingBottom:16,borderBottom:i<sections.length-1?"1px solid #141414":"none"}},
       React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",color:"#fff",marginBottom:s.body?6:0}},s.title),
       s.body&&React.createElement("div",{style:{fontSize:12,color:"#777",lineHeight:1.7,fontWeight:300,whiteSpace:"pre-wrap"}},s.body)
-    ))
+    )),
+    React.createElement(FinalPageEditor,{className,showToast})
   );
 }
 function renderBoldText(str){
