@@ -285,12 +285,12 @@ function screenWrap(inner,cls,extra){return '<div class="screen '+(cls||"")+'" '
 function fmtMinShort(d){var p=String(d||"").split(":");var m=parseInt(p[0])||0,s=parseInt(p[1])||0;return s===0?(m+"MIN"):(m+":"+(s<10?"0"+s:s)+"MIN");}
 function isStationG(g){ if(g.st===true)return true; if(g.st===false)return false; var u={};g.sts.forEach(function(s){u[s.duration||""]=1;});return Object.keys(u).length<=1 && g.sts.length>2; }
 function distinctEx(g){var seen={},o=[];g.sts.forEach(function(s){if(!seen[s.exercise]){seen[s.exercise]=1;o.push(s.exercise);}});return o;}
-function roundSub(g){ var SEP='<span class="rsep">&middot;</span>'; if(isStationG(g)) return g.sts.length+" STATIONS"+SEP+fmtDur1(g.sts[0].duration)+" EACH"+SEP+fmtMinLabel(g.dur||mmss(roundSum(g))); var d=distinctEx(g); var s="A: "+d[0]; if(d.length>1)s+=SEP+"B: "+d.slice(1).join(", "); return s+SEP+fmtMinLabel(g.dur||mmss(roundSum(g))); }
+function roundSub(g){ var SEP='<span class="rsep">&middot;</span>'; if(isStationG(g)) return g.sts.length+" STATIONS"+SEP+fmtDur1(g.sts[0].duration)+" EACH"+SEP+fmtMinLabel(g.dur||mmss(roundSum(g))); var d=distinctEx(g); var s=(d.length>1?("A: "+d[0]):d[0]); if(d.length>1)s+=SEP+"B: "+d.slice(1).join(", "); return s+SEP+fmtMinLabel(g.dur||mmss(roundSum(g))); }
 function runpushSess(g){var order=[],mp={};g.sts.forEach(function(s){if(!mp[s.exercise]){mp[s.exercise]={row:s,c:0};order.push(s.exercise);}mp[s.exercise].c++;});
- var cols=order.map(function(ex){var m=mp[ex],s=m.row;
-  var h='<div class="r3h">A: '+E(ex)+' <span class="lt">'+fmtMinShort(s.duration)+'</span></div>';
+ var single=(order.length===1); var cols=order.map(function(ex){var m=mp[ex],s=m.row;
+  var h='<div class="r3h">'+(single?'':'A: ')+E(ex)+' <span class="lt">'+fmtMinShort(s.duration)+'</span></div>';
   var t='<div class="r3t"><span>COMMITMENT</span><b>'+E(s.c)+'</b></div><div class="r3t"><span>CONSISTENCY</span><b>'+E(s.o)+'</b></div><div class="r3t"><span>DETERMINATION</span><b>'+E(s.d)+'</b></div>';
-  var b=m.c>1?'<div class="r3h b">B: '+E(ex)+' '+fmtMinShort(s.duration)+' <span class="lt">&middot; AS ABOVE</span></div>':'';
+  var b=(!single&&m.c>1)?'<div class="r3h b">B: '+E(ex)+' '+fmtMinShort(s.duration)+' <span class="lt">&middot; AS ABOVE</span></div>':'';
   return '<div class="scol">'+h+t+b+'</div>';}).join("");
  return '<div class="scols r3" style="grid-template-columns:repeat('+order.length+',minmax(0,17cqw))">'+cols+'</div>';}
 function listOrBlock(g,startNum){ if(isStationG(g)){var items=g.sts.map(function(s,i){return {n:startNum+i,name:s.exercise};});return two_col(items);} return runpushSess(g); }
@@ -352,6 +352,15 @@ function buildFlow(name,rows,opts){
      S.push(screenWrap('<div class="sts">'+cards+'</div>'+clockbar({rlabel:rlab,rnum:rnum,rtot:rtot,ss:_ss,sm:_sm,tot:_tot,elapsed:elapsed,total:total,sttime:sttime,stloop:true,roundtime:rsec,adv:false,wname:wname}),'board','data-final'));
      if(!isLast) S.push(transitionScreen(rlab,rnum,rtot,acc+g.sts.length,totStn,elapsed+rsec-30,total,dispG(nextg),pvStart(nextg,nextStart),scroll,wname));
      else S.push(ccScreen(rlab,rnum,rtot,totStn,elapsed+rsec-30,total,scroll,wname));
+   } else if(distinctEx(g).length===1 && g.sts.length>1 && !g.sts.some(function(s){return isRec(s.exercise);})){
+     // Single-exercise repeated finisher (e.g. Burpees) -> one continuous board, whole-round countdown on the right
+     var fseg=g.sts[0];
+     var fleft=excard(rlab,fseg.exercise,fseg.maori,fmtMinShort(fseg.duration),fseg.c,fseg.o,fseg.d,true,true,false,rsec);
+     var flabel=isLast?"CLASS COMPLETE IN":(rlab+" TIME REMAINING");
+     var fright='<div class="r3col"><div class="st r3card kwcard"><div class="kwmid"><div class="kwlabel">'+flabel+'</div><span class="timer bigtimer mid" data-secs="'+rsec+'" data-dir="down" data-adv="1">'+mmss(rsec)+'</span></div></div></div>';
+     var fsttime=durSecs(fseg.duration)||60;
+     S.push(screenWrap(motbar(scroll)+'<div class="cols">'+fleft+fright+'</div>'+clockbar({rlabel:rlab,rnum:rnum,rtot:rtot,ss:acc+1,sm:acc+g.sts.length,tot:totStn,elapsed:elapsed,total:total,sttime:fsttime,stloop:true,roundtime:rsec,adv:false,wname:wname}),'board r3board','data-final'));
+     if(!isLast) S.push(transitionScreen(rlab,rnum,rtot,acc+g.sts.length,totStn,elapsed+rsec-30,total,dispG(nextg),pvStart(nextg,nextStart),scroll,wname));
    } else {
      var segEl=elapsed;
      g.sts.forEach(function(seg,si){
