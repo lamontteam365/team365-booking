@@ -2592,7 +2592,7 @@ function LibraryDetailsEditor({showToast,allWorkoutNames}){
   const [loaded,setLoaded]=useState(false);
   const [saving,setSaving]=useState(false);
   const [q,setQ]=useState("");
-  const [open,setOpen]=useState({});
+  const [open,setOpen]=useState({});const [lang,setLang]=useState({morioriOn:false,featured:null,bank:[],shades:["#1d9bf0","#5bb8f5","#9dd4fb"]});
   function splitReps(v){const m=(v||"").match(/^\s*((?:\d+(?:\s*-\s*\d+)?\s*reps?)|(?:x\s*\d+))\s*\/\s*(.+)$/i);return m?{reps:m[1].trim(),weight:m[2].trim()}:{reps:"",weight:(v||"")};}
   function readPresc(p){if(!p)return{reps:"",c:"",o:"",d:""};if(p.reps!==undefined)return{reps:p.reps||"",c:p.c||"",o:p.o||"",d:p.d||""};const sc=splitReps(p.c||""),so=splitReps(p.o||""),sd=splitReps(p.d||"");return{reps:(sc.reps||so.reps||sd.reps||""),c:sc.weight,o:so.weight,d:sd.weight};}
   function recomb(reps,wt){reps=(reps||"").trim();wt=(wt||"").trim();return reps&&wt?reps+" / "+wt:(reps||wt);}
@@ -2615,9 +2615,9 @@ function LibraryDetailsEditor({showToast,allWorkoutNames}){
     });
     const arr=Object.values(map).sort((a,b)=>a.ex.localeCompare(b.ex));
     arr.forEach(it=>it.durs.sort((a,b)=>durVal(a.dur)-durVal(b.dur)));
-    setItems(arr);setLoaded(true);
+    var _lr2=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__LANGS__")+"&select=content");var _lc={morioriOn:false,featured:null,bank:[],shades:["#1d9bf0","#5bb8f5","#9dd4fb"]};if(_lr2&&_lr2.length&&_lr2[0].content){try{_lc=Object.assign(_lc,JSON.parse(_lr2[0].content));}catch(e){}}if(!_lc.shades||!_lc.shades.length)_lc.shades=["#1d9bf0","#5bb8f5","#9dd4fb"];var _bk=(_lc.bank||[]).map(function(b){return b.key;});arr.forEach(function(it){it.tr={moriori:((L.moriori||{})[it.ex]||"")};_bk.forEach(function(k){it.tr[k]=((L[k]||{})[it.ex]||"");});});setLang(_lc);setItems(arr);setLoaded(true);
   })();},[]);
-  function setField(ex,field,val){setItems(its=>its.map(it=>it.ex===ex?{...it,[field]:val}:it));}
+  function setField(ex,field,val){setItems(its=>its.map(it=>it.ex===ex?{...it,[field]:val}:it));}function setTr(ex,lk,val){setItems(its=>its.map(it=>it.ex===ex?{...it,tr:{...(it.tr||{}),[lk]:val}}:it));}
   function setDur(ex,dur,field,val){setItems(its=>its.map(it=>it.ex!==ex?it:{...it,durs:it.durs.map(d=>d.dur===dur?{...d,[field]:val}:d)}));}
   function removeExercise(ex){setItems(its=>its.filter(it=>it.ex!==ex));}
   const DUR_CHOICES=["0:30","1:00","1:30","2:00","2:30","3:00","4:00","5:00","6:00","8:00","10:00"];
@@ -2626,17 +2626,17 @@ function LibraryDetailsEditor({showToast,allWorkoutNames}){
   function removeDuration(ex,dur){setItems(its=>its.map(it=>it.ex===ex?{...it,durs:it.durs.filter(d=>d.dur!==dur)}:it));}
   async function save(){
     setSaving(true);
-    const maori={},presc={};
+    const maori={},presc={},moriori={},bankMaps={};(lang.bank||[]).forEach(function(b){bankMaps[b.key]={};});
     items.forEach(it=>{
       const nm=(it.name||it.ex||"").trim().toUpperCase();
       if(!nm)return;
-      if(it.maori&&it.maori.trim())maori[nm]=it.maori.trim();
+      if(it.maori&&it.maori.trim())maori[nm]=it.maori.trim();var _tr=it.tr||{};if(_tr.moriori&&(""+_tr.moriori).trim())moriori[nm]=(""+_tr.moriori).trim();(lang.bank||[]).forEach(function(b){var v=_tr[b.key];if(v&&(""+v).trim())bankMaps[b.key][nm]=(""+v).trim();});
       it.durs.forEach(d=>{presc[nm+"|"+d.dur]={reps:(d.reps||"").trim(),c:(d.c||"").trim(),o:(d.o||"").trim(),d:(d.d||"").trim()};});
     });
-    const newLib={maori,presc};
+    const newLib=Object.assign({maori:maori,presc:presc,moriori:moriori},bankMaps);
     const ex=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(LIB_KEY)+"&select=class_name");
     if(ex&&ex.length)await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent(LIB_KEY),{content:JSON.stringify(newLib),updated_at:Date.now()});
-    else await sbPost("coaching_notes",{class_name:LIB_KEY,content:JSON.stringify(newLib),updated_at:Date.now()});
+    else await sbPost("coaching_notes",{class_name:LIB_KEY,content:JSON.stringify(newLib),updated_at:Date.now()});var _lx=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__LANGS__")+"&select=class_name");if(_lx&&_lx.length)await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent("__LANGS__"),{content:JSON.stringify(lang),updated_at:Date.now()});else await sbPost("coaching_notes",{class_name:"__LANGS__",content:JSON.stringify(lang),updated_at:Date.now()});
     let updated=0;
     for(const name of (allWorkoutNames||[])){
       const key="__WORKOUT__"+name;
@@ -2669,7 +2669,7 @@ function LibraryDetailsEditor({showToast,allWorkoutNames}){
   const ql=q.trim().toUpperCase();
   const filtered=(items||[]).filter(it=>!ql||(it.name||it.ex).toUpperCase().includes(ql)||(it.maori||"").toUpperCase().includes(ql));
   return React.createElement("div",null,
-    React.createElement("div",{style:{fontSize:11,color:"#777",lineHeight:1.5,marginBottom:10}},"Edit the master exercise library. Saving updates every SAVED workout that uses each exercise + duration."),
+    React.createElement("div",{style:{fontSize:11,color:"#777",lineHeight:1.5,marginBottom:10}},"Edit the master exercise library. Saving updates every SAVED workout that uses each exercise + duration."),React.createElement("div",{style:{border:"1px solid #1d3a5a",background:"#0a1a2a",padding:"10px 12px",marginBottom:12}},React.createElement("div",{style:{fontSize:9,letterSpacing:"0.1em",color:"#8cd0ff",fontWeight:700,marginBottom:8}},"LANGUAGES ON THE BOARD (STATION SCREEN)"),React.createElement("div",{style:{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}},React.createElement("span",{style:{fontSize:12,color:lang.shades[0],fontStyle:"italic"}},"Māori — always on"),React.createElement("label",{style:{fontSize:12,color:lang.shades[1],fontStyle:"italic",display:"flex",alignItems:"center",gap:5,cursor:"pointer"}},React.createElement("input",{type:"checkbox",checked:!!lang.morioriOn,onChange:e=>setLang(l=>({...l,morioriOn:e.target.checked}))}),"Moriori"),React.createElement("span",{style:{fontSize:12,color:lang.shades[2],display:"flex",alignItems:"center",gap:6}},"Featured:",React.createElement("select",{value:lang.featured||"",onChange:e=>setLang(l=>({...l,featured:e.target.value||null})),style:{background:"#141414",color:"#fff",border:"1px solid #2a2a2a",fontSize:11,padding:"3px 6px"}},React.createElement("option",{value:""},"\u2014 none \u2014"),(lang.bank||[]).map(b=>React.createElement("option",{key:b.key,value:b.key},b.name)))),React.createElement("button",{onClick:()=>{var n=(typeof window!=="undefined"&&window.prompt)?window.prompt("Add a language (e.g. Samoan):"):"";n=(n||"").trim();if(!n)return;var key=n.toLowerCase().replace(/[^a-z0-9]/g,"");if(!key)return;setLang(l=>((l.bank||[]).some(b=>b.key===key)?l:{...l,bank:[...(l.bank||[]),{key:key,name:n}]}));},style:{background:"#161616",color:"#9fb3c4",border:"1px solid #35424d",fontSize:10,letterSpacing:"0.06em",padding:"4px 9px",cursor:"pointer"}},"+ ADD LANGUAGE")),React.createElement("div",{style:{fontSize:10,color:"#5f6b76",marginTop:7,lineHeight:1.4}},"Fill the translations below. A language only appears on the board once it\u2019s switched on here AND has a translation for that exercise.")),
     React.createElement("input",{value:q,onChange:e=>setQ(e.target.value),placeholder:"Search exercise…",style:{...inS,width:"100%",marginBottom:12}}),
     filtered.length===0&&React.createElement("div",{style:{fontSize:11,color:"#444",textAlign:"center",padding:"16px 0"}},"No exercises match."),
     filtered.map(it=>{
@@ -2689,7 +2689,7 @@ function LibraryDetailsEditor({showToast,allWorkoutNames}){
           React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3}},"EXERCISE NAME"),
           React.createElement("input",{value:it.name||"",onChange:e=>setField(it.ex,"name",e.target.value.toUpperCase()),placeholder:"Exercise name",style:{...inS,width:"100%",marginBottom:12,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.05em",fontSize:14}}),
           React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3}},"MĀORI NAME"),
-          React.createElement("input",{value:it.maori,onChange:e=>setField(it.ex,"maori",e.target.value),placeholder:"—",style:{...inS,width:"100%",marginBottom:12,color:"#1d9bf0",fontStyle:"italic"}}),
+          React.createElement("input",{value:it.maori,onChange:e=>setField(it.ex,"maori",e.target.value),placeholder:"—",style:{...inS,width:"100%",marginBottom:12,color:"#1d9bf0",fontStyle:"italic"}}),React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3}},"MORIORI NAME"),React.createElement("input",{value:(it.tr&&it.tr.moriori)||"",onChange:e=>setTr(it.ex,"moriori",e.target.value),placeholder:"—",style:{...inS,width:"100%",marginBottom:12,color:lang.shades[1],fontStyle:"italic"}}),(lang.bank||[]).map(b=>React.createElement("div",{key:b.key},React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3}},(b.name||b.key).toUpperCase()+" NAME"),React.createElement("input",{value:(it.tr&&it.tr[b.key])||"",onChange:e=>setTr(it.ex,b.key,e.target.value),placeholder:"—",style:{...inS,width:"100%",marginBottom:12,color:lang.shades[2],fontStyle:"italic"}}))),
           it.durs.length===0&&React.createElement("div",{style:{fontSize:10,color:"#444",marginBottom:8}},"No durations yet — add one below."),
           it.durs.map(d=>React.createElement("div",{key:d.dur,style:{marginBottom:12,paddingBottom:12,borderBottom:"1px solid #161616"}},
             React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}},
