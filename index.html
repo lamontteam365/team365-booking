@@ -2095,8 +2095,8 @@ function TrainingTierEditor({showToast}){
       if(!list.length)return null;
       const catObj=cats.find(c=>c.cat===cat)||{cat:cat,intro:""};
       const catEditing=catDraft&&catDraft.cat===cat;
-      return React.createElement("div",{key:cat,style:{marginBottom:24}},
-        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:19,letterSpacing:"0.1em",color:"#8cd0ff",marginBottom:5}},cat),
+      return React.createElement("div",{key:cat,style:{marginBottom:22}},
+        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.1em",color:"#8cd0ff",marginBottom:5}},cat),
         catEditing
           ?React.createElement("div",{style:{marginBottom:12}},
               React.createElement("textarea",{value:catDraft.intro,onChange:e=>setCatDraft(d=>({...d,intro:e.target.value})),style:{...fld,minHeight:72,resize:"vertical"}}),
@@ -2114,8 +2114,8 @@ function TrainingTierEditor({showToast}){
           return React.createElement("div",{key:tier.id,style:{background:"#1a1a1a",border:"1px solid #2e2e2e",marginBottom:6,overflow:"hidden"}},
             React.createElement("button",{onClick:()=>{setExpanded(isOpen?null:tier.id);setEditing(null);},style:{width:"100%",background:"none",border:"none",padding:"12px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",textAlign:"left"}},
               React.createElement("div",null,
-                React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.08em",color:"#ccc"}},tier.name),
-                tier.sub&&React.createElement("span",{style:{fontSize:11,color:"#777",letterSpacing:"0.04em",marginLeft:10}},tier.sub)
+                React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.08em",color:"#ccc"}},tier.name),
+                tier.sub&&React.createElement("div",{style:{fontSize:10,color:"#666",letterSpacing:"0.06em",marginTop:1}},tier.sub)
               ),
               React.createElement("div",{style:{color:"#444",fontSize:12,transform:isOpen?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
             ),
@@ -2125,13 +2125,15 @@ function TrainingTierEditor({showToast}){
                     React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:10}},
                       React.createElement("button",{onClick:()=>startEdit(tier),style:{background:"none",border:"1px solid #333",padding:"4px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT")
                     ),
-                    React.createElement("div",{style:{fontSize:11,color:"#888",letterSpacing:"0.04em",lineHeight:1.5,marginBottom:10}},tier.desc_text),
-                    React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8,marginBottom:tier.addon?8:0}},
-                      tier.price_label&&React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.08em",color:"#8cd0ff"}},tier.price_label),
-                      React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#fff"}},"$"+(parseFloat(tier.price)||0).toFixed(0)),
-                      React.createElement("span",{style:{fontSize:9,color:"#666",letterSpacing:"0.08em"}},"per week")
-                    ),
-                    tier.addon&&React.createElement("div",{style:{fontSize:10,color:"#6a9c8a",letterSpacing:"0.03em",fontStyle:"italic"}},tier.addon)
+                    React.createElement("div",{style:{fontSize:11,color:"#888",letterSpacing:"0.06em",marginBottom:6,fontWeight:400,lineHeight:1.5}},tier.desc_text),
+                    tier.addon&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.06em",marginBottom:10}},tier.addon),
+                    React.createElement("div",{style:{display:"flex",gap:6}},
+                      React.createElement("div",{style:{flex:"0 0 132px",background:"#141414",border:"1px solid #222",borderRadius:0,padding:"7px 4px",textAlign:"center"}},
+                        React.createElement("div",{style:{fontSize:8,letterSpacing:"0.1em",color:"#555",fontWeight:600,marginBottom:2}},tier.price_label||"PER WEEK"),
+                        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#aaa"}},"$"+(parseFloat(tier.price)||0).toFixed(2)),
+                        React.createElement("div",{style:{fontSize:7,color:"#444",letterSpacing:"0.08em"}},"per week")
+                      )
+                    )
                   )
                 :React.createElement("div",null,
                     React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:10}},
