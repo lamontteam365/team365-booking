@@ -1526,7 +1526,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
       (isMaster||mFlags.welladm)&&React.createElement("button",{"data-adm":"wellness",className:`adm-seg-btn${admSeg==="wellness"?" aas":""}`,onClick:()=>setAdmSeg("wellness")},"WELLNESS"),
       React.createElement("button",{"data-adm":"sections",className:`adm-seg-btn${admSeg==="sections"?" aas":""}`,onClick:()=>setAdmSeg("sections")},"SECTIONS"),
       React.createElement("button",{"data-adm":"onboarding",className:`adm-seg-btn${admSeg==="onboarding"?" aas":""}`,onClick:()=>setAdmSeg("onboarding")},"ONBOARDING"),
-      React.createElement("button",{"data-adm":"coaching",className:`adm-seg-btn${admSeg==="coaching"?" aas":""}`,onClick:()=>setAdmSeg("coaching")},"DETAILS")
+      (isMaster||!mFlags.dt)&&React.createElement("button",{"data-adm":"coaching",className:`adm-seg-btn${admSeg==="coaching"?" aas":""}`,onClick:()=>setAdmSeg("coaching")},"DETAILS")
     ),
     admSeg==="members"&&(!membersLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
     :React.createElement(React.Fragment,null,
@@ -1544,7 +1544,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
         ),
         React.createElement("button",{onClick:()=>saveMFlag("wk",!mFlags.wk),style:{background:!mFlags.wk?"#fff":"#222",color:!mFlags.wk?"#000":"#555",border:"1px solid "+(!mFlags.wk?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},!mFlags.wk?"HIDE":"VISIBLE")
       ),
-      isMaster&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(!mFlags.pasteAI?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
+      isMaster&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(mFlags.dt?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},React.createElement("div",null,React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"DETAILS SECTION"),React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides it from admins (master keeps access)")),React.createElement("button",{onClick:()=>saveMFlag("dt",!mFlags.dt),style:{background:mFlags.dt?"#fff":"#222",color:mFlags.dt?"#000":"#555",border:"1px solid "+(mFlags.dt?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},mFlags.dt?"HIDE":"VISIBLE")),isMaster&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(!mFlags.pasteAI?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
         React.createElement("div",null,
           React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"PASTE FROM AI"),
           React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides it from admins (master keeps access)")
@@ -1915,7 +1915,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
       )
     ),
   admSeg==="onboarding"&&React.createElement(OnboardingView,{showToast}),
-  admSeg==="coaching"&&React.createElement(CoachingView,{showToast})
+  admSeg==="coaching"&&(isMaster||!mFlags.dt)&&React.createElement(CoachingView,{showToast})
   );
 }
 // ── Onboarding View ──────────────────────────────────────────────────────────
@@ -2048,6 +2048,113 @@ function InviteForm(props){
     msg&&React.createElement("div",{style:{marginTop:10,fontSize:10,letterSpacing:"0.1em",color:msg.startsWith("✓")?"#4aaa66":"#e05",textAlign:"center"}},msg)
   );
 }
+function TrainingTierEditor({showToast}){
+  const [tiers,setTiers]=useState([]);
+  const [cats,setCats]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [expanded,setExpanded]=useState(null);
+  const [editing,setEditing]=useState(null);
+  const [draft,setDraft]=useState({});
+  const [saving,setSaving]=useState(false);
+  const [catDraft,setCatDraft]=useState(null);
+  const [catSaving,setCatSaving]=useState(false);
+  useEffect(()=>{load();},[]);
+  async function load(){
+    setLoading(true);
+    const d=await sbGet("training_tiers","select=*&order=sort_order.asc");
+    setTiers(d||[]);
+    const cr=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__PT_CATS__")+"&select=content");
+    let c=[];if(cr&&cr.length&&cr[0].content){try{c=JSON.parse(cr[0].content)||[];}catch(e){}}
+    setCats(c);setLoading(false);
+  }
+  function startEdit(t){setDraft({name:t.name||"",sub:t.sub||"",desc_text:t.desc_text||"",price_label:t.price_label||"",price:t.price,addon:t.addon||""});setEditing(t.id);}
+  async function save(id){
+    setSaving(true);
+    await sbPatch("training_tiers","id=eq."+encodeURIComponent(id),{name:draft.name,sub:draft.sub,desc_text:draft.desc_text,price_label:draft.price_label,price:parseFloat(draft.price)||0,addon:draft.addon});
+    setTiers(ts=>ts.map(t=>t.id===id?{...t,...draft,price:parseFloat(draft.price)||0}:t));
+    setSaving(false);setEditing(null);showToast("Price saved ✓");
+  }
+  async function saveCat(cat){
+    setCatSaving(true);
+    const next=cats.map(c=>c.cat===cat?{...c,intro:catDraft.intro}:c);
+    const q="class_name=eq."+encodeURIComponent("__PT_CATS__");
+    const ex=await sbGet("coaching_notes",q+"&select=class_name");
+    if(ex&&ex.length)await sbPatch("coaching_notes",q,{content:JSON.stringify(next),updated_at:Date.now()});
+    else await sbPost("coaching_notes",{class_name:"__PT_CATS__",content:JSON.stringify(next),updated_at:Date.now()});
+    setCats(next);setCatSaving(false);setCatDraft(null);showToast("Intro saved ✓");
+  }
+  const fld={width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:0,color:"#ccc",fontSize:13,padding:"8px 10px",fontFamily:"'DM Sans',sans-serif",boxSizing:"border-box",marginBottom:8,outline:"none"};
+  const lbl={fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,marginBottom:4,marginTop:4};
+  const inp=(f,ph,ml)=>React.createElement(ml?"textarea":"input",{value:draft[f]??"",onChange:e=>setDraft(d=>({...d,[f]:e.target.value})),placeholder:ph,style:ml?{...fld,minHeight:64,resize:"vertical"}:fld});
+  if(loading)return React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"10px 0"}},"LOADING...");
+  let order=cats.map(c=>c.cat);const seen={};
+  tiers.forEach(t=>{if(order.indexOf(t.category)<0&&!seen[t.category]){order.push(t.category);seen[t.category]=1;}});
+  return React.createElement("div",null,
+    order.map(function(cat){
+      const list=tiers.filter(t=>t.category===cat);
+      if(!list.length)return null;
+      const catObj=cats.find(c=>c.cat===cat)||{cat:cat,intro:""};
+      const catEditing=catDraft&&catDraft.cat===cat;
+      return React.createElement("div",{key:cat,style:{marginBottom:24}},
+        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:19,letterSpacing:"0.1em",color:"#8cd0ff",marginBottom:5}},cat),
+        catEditing
+          ?React.createElement("div",{style:{marginBottom:12}},
+              React.createElement("textarea",{value:catDraft.intro,onChange:e=>setCatDraft(d=>({...d,intro:e.target.value})),style:{...fld,minHeight:72,resize:"vertical"}}),
+              React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",gap:8}},
+                React.createElement("button",{onClick:()=>setCatDraft(null),style:{background:"none",border:"1px solid #333",padding:"4px 12px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
+                React.createElement("button",{onClick:()=>saveCat(cat),disabled:catSaving,style:{background:"#1d9bf0",border:"none",padding:"4px 14px",color:"#fff",fontSize:10,letterSpacing:"0.1em",cursor:"pointer",fontWeight:600}},catSaving?"SAVING...":"SAVE")
+              )
+            )
+          :React.createElement("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10,marginBottom:12}},
+              React.createElement("div",{style:{fontSize:11,color:"#888",lineHeight:1.5,letterSpacing:"0.03em"}},catObj.intro),
+              React.createElement("button",{onClick:()=>setCatDraft({cat:cat,intro:catObj.intro||""}),style:{background:"none",border:"1px solid #333",padding:"3px 10px",color:"#aaa",fontSize:9,letterSpacing:"0.1em",cursor:"pointer",flexShrink:0}},"EDIT")
+            ),
+        list.map(function(tier){
+          const isOpen=expanded===tier.id,isEditing=editing===tier.id;
+          return React.createElement("div",{key:tier.id,style:{background:"#1a1a1a",border:"1px solid #2e2e2e",marginBottom:6,overflow:"hidden"}},
+            React.createElement("button",{onClick:()=>{setExpanded(isOpen?null:tier.id);setEditing(null);},style:{width:"100%",background:"none",border:"none",padding:"12px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",textAlign:"left"}},
+              React.createElement("div",null,
+                React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.08em",color:"#ccc"}},tier.name),
+                tier.sub&&React.createElement("span",{style:{fontSize:11,color:"#777",letterSpacing:"0.04em",marginLeft:10}},tier.sub)
+              ),
+              React.createElement("div",{style:{color:"#444",fontSize:12,transform:isOpen?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
+            ),
+            isOpen&&React.createElement("div",{style:{padding:"0 12px 14px"}},
+              !isEditing
+                ?React.createElement("div",null,
+                    React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:10}},
+                      React.createElement("button",{onClick:()=>startEdit(tier),style:{background:"none",border:"1px solid #333",padding:"4px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT")
+                    ),
+                    React.createElement("div",{style:{fontSize:11,color:"#888",letterSpacing:"0.04em",lineHeight:1.5,marginBottom:10}},tier.desc_text),
+                    React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8,marginBottom:tier.addon?8:0}},
+                      tier.price_label&&React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.08em",color:"#8cd0ff"}},tier.price_label),
+                      React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#fff"}},"$"+(parseFloat(tier.price)||0).toFixed(0)),
+                      React.createElement("span",{style:{fontSize:9,color:"#666",letterSpacing:"0.08em"}},"per week")
+                    ),
+                    tier.addon&&React.createElement("div",{style:{fontSize:10,color:"#6a9c8a",letterSpacing:"0.03em",fontStyle:"italic"}},tier.addon)
+                  )
+                :React.createElement("div",null,
+                    React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:10}},
+                      React.createElement("button",{onClick:()=>setEditing(null),style:{background:"none",border:"1px solid #333",padding:"4px 12px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
+                      React.createElement("button",{onClick:()=>save(tier.id),disabled:saving,style:{background:"#1d9bf0",border:"none",padding:"4px 14px",color:"#fff",fontSize:10,letterSpacing:"0.1em",cursor:"pointer",fontWeight:600}},saving?"SAVING...":"SAVE")
+                    ),
+                    React.createElement("div",{style:lbl},"NAME"),inp("name","e.g. START"),
+                    React.createElement("div",{style:lbl},"SUBTITLE"),inp("sub","e.g. Your Journey"),
+                    React.createElement("div",{style:lbl},"DESCRIPTION"),inp("desc_text","",true),
+                    React.createElement("div",{style:{display:"flex",gap:8}},
+                      React.createElement("div",{style:{flex:2}},React.createElement("div",{style:lbl},"PRICE LABEL"),inp("price_label","e.g. 1 SESSION")),
+                      React.createElement("div",{style:{flex:1}},React.createElement("div",{style:lbl},"$ / WEEK"),inp("price","59"))
+                    ),
+                    React.createElement("div",{style:lbl},"ADD-ON NOTE"),inp("addon","")
+                  )
+            )
+          );
+        })
+      );
+    })
+  );
+}
+
 function TierEditor({showToast}){
   const [tiers,setTiers]=useState([]);
   const [loading,setLoading]=useState(true);
@@ -2179,7 +2286,7 @@ function OnboardingView({showToast}){
     React.createElement(OnboardingPanel,{id:"journey",title:"MEMBER JOURNEY",openPanel,setOpenPanel,titles,onSaveTitle},
       React.createElement(MemberJourneyEditor,{showToast})
     ),
-    React.createElement(OnboardingPanel,{id:"tiers",title:"MEMBERSHIP TIERS",openPanel,setOpenPanel,titles,onSaveTitle},
+    React.createElement(OnboardingPanel,{id:"training",title:"TRAINING & COACHING PRICES",openPanel,setOpenPanel,titles,onSaveTitle},React.createElement(TrainingTierEditor,{showToast})),React.createElement(OnboardingPanel,{id:"tiers",title:"MEMBERSHIP TIERS",openPanel,setOpenPanel,titles,onSaveTitle},
       React.createElement(TierEditor,{showToast})
     ),
     React.createElement(OnboardingPanel,{id:"invite",title:"SEND REGISTRATION FORM",openPanel,setOpenPanel,titles,onSaveTitle},
