@@ -2127,7 +2127,7 @@ function TrainingTierEditor({showToast}){
                 ?React.createElement("div",null,
                     React.createElement("div",{style:{fontSize:11,color:"#888",letterSpacing:"0.06em",marginBottom:6,fontWeight:400,lineHeight:1.5}},tier.desc_text),
                     tier.addon&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.06em",marginBottom:10}},tier.addon),
-                    React.createElement("div",{style:{background:"#141414",border:"1px solid #222",borderRadius:0,padding:"9px 4px",textAlign:"center"}},
+                    React.createElement("div",{style:{background:"#141414",border:"1px solid rgba(29,155,240,0.45)",borderRadius:0,padding:"9px 4px",textAlign:"center"}},
                       React.createElement("div",{style:{fontSize:8,letterSpacing:"0.1em",color:"#555",fontWeight:600,marginBottom:2}},tier.price_label||"PER WEEK"),
                       React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:"#aaa"}},"$"+(parseFloat(tier.price)||0).toFixed(2)),
                       React.createElement("div",{style:{fontSize:7,color:"#444",letterSpacing:"0.08em"}},"per week")
@@ -2205,7 +2205,7 @@ function TierEditor({showToast}){
                 React.createElement("div",{style:{fontSize:11,color:"#888",letterSpacing:"0.06em",marginBottom:6,fontWeight:400}},tier.desc_text),
                 tier.note&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.06em",marginBottom:10}},tier.note),
                 React.createElement("div",{style:{display:"flex",gap:6}},
-                  [[12,"12 MO","price_12"],[6,"6 MO","price_6"],[3,"3 MO","price_3"]].map(([t,lbl,k])=>React.createElement("div",{key:t,style:{flex:1,background:"#141414",border:"1px solid #222",borderRadius:0,padding:"7px 4px",textAlign:"center"}},
+                  [[12,"12 MO","price_12"],[6,"6 MO","price_6"],[3,"3 MO","price_3"]].map(([t,lbl,k])=>React.createElement("div",{key:t,style:{flex:1,background:"#141414",border:"1px solid rgba(29,155,240,0.45)",borderRadius:0,padding:"7px 4px",textAlign:"center"}},
                     React.createElement("div",{style:{fontSize:8,letterSpacing:"0.1em",color:"#555",fontWeight:600,marginBottom:2}},lbl),
                     React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#aaa"}},"$"+parseFloat(tier[k]).toFixed(2)),
                     React.createElement("div",{style:{fontSize:7,color:"#444",letterSpacing:"0.08em"}},"per week")
