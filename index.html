@@ -2118,7 +2118,7 @@ function TrainingTierEditor({showToast}){
                 tier.sub&&React.createElement("div",{style:{fontSize:10,color:"#666",letterSpacing:"0.06em",marginTop:1}},tier.sub)
               ),
               React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,flexShrink:0,marginLeft:10}},
-                React.createElement("button",{onClick:()=>{setExpanded(tier.id);startEdit(tier);},style:{background:"none",border:"1px solid #333",borderRadius:0,padding:"4px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT"),
+                (isOpen&&!isEditing)&&React.createElement("button",{onClick:()=>{setExpanded(tier.id);startEdit(tier);},style:{background:"none",border:"1px solid #333",borderRadius:0,padding:"4px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT"),
                 React.createElement("div",{onClick:()=>{setExpanded(isOpen?null:tier.id);setEditing(null);},style:{color:"#444",fontSize:12,transform:isOpen?"rotate(180deg)":"rotate(0deg)",lineHeight:1,cursor:"pointer"}},"▾")
               )
             ),
@@ -2197,16 +2197,11 @@ function TierEditor({showToast}){
       const isOpen=expanded===tier.id;
       const isEditing=editing===tier.id;
       return React.createElement("div",{key:tier.id,style:{background:"#1a1a1a",border:"1px solid #2e2e2e",borderRadius:0,marginBottom:6,overflow:"hidden"}},
-        React.createElement("button",{onClick:()=>{setExpanded(isOpen?null:tier.id);setEditing(null);},style:{width:"100%",background:"none",border:"none",padding:"12px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",textAlign:"left"}},
-          React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.08em",color:"#ccc"}},tier.name),
-          React.createElement("div",{style:{color:"#444",fontSize:12,transition:"transform .2s",transform:isOpen?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
-        ),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px"}},React.createElement("div",{onClick:()=>{setExpanded(isOpen?null:tier.id);setEditing(null);},style:{flex:1,minWidth:0,cursor:"pointer"}},React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.08em",color:"#ccc"}},tier.name)),React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,flexShrink:0,marginLeft:10}},(isOpen&&!isEditing)&&React.createElement("button",{onClick:()=>{setExpanded(tier.id);startEdit(tier);},style:{background:"none",border:"1px solid #333",borderRadius:0,padding:"4px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT"),React.createElement("div",{style:{color:"#444",fontSize:12,transition:"transform .2s",transform:isOpen?"rotate(180deg)":"rotate(0deg)",lineHeight:1,cursor:"pointer"}},"▾"))),
         isOpen&&React.createElement("div",{style:{padding:"0 12px 14px"}},
           !isEditing
             ?React.createElement("div",null,
-                React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:10}},
-                  React.createElement("button",{onClick:()=>startEdit(tier),style:{background:"none",border:"1px solid #333",borderRadius:0,padding:"4px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT")
-                ),
+                
                 React.createElement("div",{style:{fontSize:11,color:"#888",letterSpacing:"0.06em",marginBottom:6,fontWeight:400}},tier.desc_text),
                 tier.note&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.06em",marginBottom:10}},tier.note),
                 React.createElement("div",{style:{display:"flex",gap:6}},
