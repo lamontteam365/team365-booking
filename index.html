@@ -3075,12 +3075,14 @@ function CoachingView({showToast}){
 function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}){
   const [exercises,setExercises]=useState([]);
   const [myPBs,setMyPBs]=useState({});
-  const [communityBests,setCommunityBests]=useState({});
+  const [communityBestsMale,setCommunityBestsMale]=useState({});
+  const [communityBestsFemale,setCommunityBestsFemale]=useState({});
   const [loading,setLoading]=useState(true);
   const [editingPB,setEditingPB]=useState(null);
   const [pbDraft,setPBDraft]=useState({weight_kg:"",achieved_date:""});
   const [savingPB,setSavingPB]=useState(false);
   const [editingCB,setEditingCB]=useState(null);
+  const [editingCBSec,setEditingCBSec]=useState(null);
   const [cbDraft,setCBDraft]=useState({weight_kg:"",holder_name:"",holder_email:"",achieved_date:""});
   const [savingCB,setSavingCB]=useState(false);
   const [showExAdmin,setShowExAdmin]=useState(false);
@@ -3102,7 +3104,7 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
       session?sbGet("personal_bests",`email=eq.${encodeURIComponent(session.email)}&select=*`):Promise.resolve([]),
       sbGet("community_bests","select=*"),
       sbGet("personal_bests","select=email,exercise_id,weight_kg,achieved_date"),
-      sbGet("members_public","select=email")
+      sbGet("members_public","select=email,name,gender")
     ]);
     setExercises(exData||[]);
     const pbMap={};
@@ -3111,36 +3113,48 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
     // Self-heal: purge Progress records left behind by removed members
     const memberEmails=new Set((memData||[]).map(m=>m.email));
     const haveMembers=memberEmails.size>0;
+    const genderByEmail={},nameByEmail={};
+    (memData||[]).forEach(m=>{genderByEmail[m.email]=m.gender||"";nameByEmail[m.email]=m.name||"";});
     const orphanEmails=haveMembers?[...new Set((allPBData||[]).filter(r=>!memberEmails.has(r.email)).map(r=>r.email))]:[];
     for(const em of orphanEmails){await sbDelete("personal_bests",`email=eq.${encodeURIComponent(em)}`);}
-    const cbMap={};
-    (cbData||[]).forEach(cb=>{cbMap[cb.exercise_id]=cb;});
+    // Build per-gender community-best maps from stored records
+    const maleMap={},femaleMap={};
+    (cbData||[]).forEach(cb=>{if(cb.gender==="Male")maleMap[cb.exercise_id]=cb;else if(cb.gender==="Female")femaleMap[cb.exercise_id]=cb;});
+    // Remove gendered records whose holder is no longer a member
     if(haveMembers){
       for(const cb of (cbData||[])){
-        if(cb.holder_email&&!memberEmails.has(cb.holder_email)){
-          await sbDelete("community_bests",`exercise_id=eq.${cb.exercise_id}`);
-          delete cbMap[cb.exercise_id];
+        if(cb.gender&&cb.holder_email&&!memberEmails.has(cb.holder_email)){
+          await sbDelete("community_bests",`id=eq.${cb.id}`);
+          if(cb.gender==="Male")delete maleMap[cb.exercise_id];else if(cb.gender==="Female")delete femaleMap[cb.exercise_id];
         }
       }
     }
-    const topPerEx={};
-    (allPBData||[]).filter(r=>!haveMembers||memberEmails.has(r.email)).forEach(r=>{
+    // Recompute top per gender from visible personal bests (admins see all; members see own).
+    // Only raises a record when a higher result appears, so admin manual overrides are preserved.
+    const visiblePB=(allPBData||[]).filter(r=>!haveMembers||memberEmails.has(r.email));
+    const topByGenderEx={Male:{},Female:{}};
+    visiblePB.forEach(r=>{
+      const g=genderByEmail[r.email];
+      if(g!=="Male"&&g!=="Female")return;
       const w=parseFloat(r.weight_kg)||0;
-      if(!topPerEx[r.exercise_id]||w>parseFloat(topPerEx[r.exercise_id].weight_kg)){topPerEx[r.exercise_id]=r;}
+      const cur=topByGenderEx[g][r.exercise_id];
+      if(!cur||w>parseFloat(cur.weight_kg)){topByGenderEx[g][r.exercise_id]=r;}
     });
-    for(const[exId,top] of Object.entries(topPerEx)){
-      const stored=cbMap[exId];
-      if(!stored||!stored.weight_kg||parseFloat(top.weight_kg)>parseFloat(stored.weight_kg)){
-        const holderRows=await sbGet("members",`email=eq.${encodeURIComponent(top.email)}&select=name`);
-        const holderName=(holderRows&&holderRows[0]&&holderRows[0].name)||top.email;
-        const cbEntry={exercise_id:exId,weight_kg:parseFloat(top.weight_kg),holder_name:holderName,holder_email:top.email,achieved_date:top.achieved_date||"",updated_at:Date.now()};
-        if(stored){await sbPatch("community_bests",`exercise_id=eq.${exId}`,cbEntry);}
-        else{await sbPost("community_bests",cbEntry);}
-        cbMap[exId]=cbEntry;
+    for(const g of ["Male","Female"]){
+      const map=g==="Male"?maleMap:femaleMap;
+      for(const[exId,top] of Object.entries(topByGenderEx[g])){
+        const stored=map[exId];
+        if(!stored||!stored.weight_kg||parseFloat(top.weight_kg)>parseFloat(stored.weight_kg)){
+          const holderName=nameByEmail[top.email]||top.email;
+          const cbEntry={exercise_id:exId,gender:g,weight_kg:parseFloat(top.weight_kg),holder_name:holderName,holder_email:top.email,achieved_date:top.achieved_date||"",updated_at:Date.now()};
+          if(stored){await sbPatch("community_bests",`exercise_id=eq.${exId}&gender=eq.${g}`,cbEntry);}
+          else{await sbPost("community_bests",cbEntry);}
+          map[exId]=cbEntry;
+        }
       }
     }
-    setCommunityBests(cbMap);
-    const holderEmails=[...new Set(Object.values(cbMap).filter(c=>c.holder_email).map(c=>c.holder_email))];
+    setCommunityBestsMale(maleMap);setCommunityBestsFemale(femaleMap);
+    const holderEmails=[...new Set([...Object.values(maleMap),...Object.values(femaleMap)].filter(c=>c&&c.holder_email).map(c=>c.holder_email))];
     if(holderEmails.length>0){
       const photoData=await sbGet("members",`email=in.(${holderEmails.join(",")})&select=email,photo`);
       const pMap={};
@@ -3169,20 +3183,19 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
     }
     if(ok){
       setMyPBs(prev=>({...prev,[exerciseId]:{...existing,...data}}));
-      const allPBs=await sbGet("personal_bests",`exercise_id=eq.${exerciseId}&select=email,weight_kg,achieved_date&order=weight_kg.desc&limit=1`);
-      if(allPBs&&allPBs.length>0){
-        const top=allPBs[0];
-        const holderRows=await sbGet("members",`email=eq.${encodeURIComponent(top.email)}&select=name`);
-        const holderName=(holderRows&&holderRows[0]&&holderRows[0].name)||top.email;
-        const cbData={exercise_id:exerciseId,weight_kg:parseFloat(top.weight_kg),holder_name:holderName,holder_email:top.email,achieved_date:top.achieved_date||"",updated_at:Date.now()};
-        const currentCB=communityBests[exerciseId];
-        let cbOk;
-        if(currentCB){
-          cbOk=await sbPatch("community_bests",`exercise_id=eq.${exerciseId}`,cbData);
-        }else{
-          cbOk=await sbPost("community_bests",cbData);
+      // Update the community best for this member's gender category (if a higher result).
+      const g=memberData?.gender;
+      if(g==="Male"||g==="Female"){
+        const map=g==="Male"?communityBestsMale:communityBestsFemale;
+        const setMap=g==="Male"?setCommunityBestsMale:setCommunityBestsFemale;
+        const stored=map[exerciseId];
+        if(!stored||!stored.weight_kg||newWeight>parseFloat(stored.weight_kg)){
+          const cbData={exercise_id:exerciseId,gender:g,weight_kg:newWeight,holder_name:session.name||session.email,holder_email:session.email,achieved_date:newDate,updated_at:Date.now()};
+          let cbOk;
+          if(stored){cbOk=await sbPatch("community_bests",`exercise_id=eq.${exerciseId}&gender=eq.${g}`,cbData);}
+          else{cbOk=await sbPost("community_bests",cbData);}
+          if(cbOk){setMap(prev=>({...prev,[exerciseId]:{...stored,...cbData}}));}
         }
-        if(cbOk){setCommunityBests(prev=>({...prev,[exerciseId]:{...currentCB,...cbData}}));}
       }
       showToast("Personal best saved ✓");setEditingPB(null);
     }else showToast("Save failed — try again");
@@ -3195,19 +3208,17 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
     const ok=await sbDelete("personal_bests",`email=eq.${encodeURIComponent(session.email)}&exercise_id=eq.${exerciseId}`);
     if(ok){
       setMyPBs(prev=>{const n={...prev};delete n[exerciseId];return n;});
-      const allPBs=await sbGet("personal_bests",`exercise_id=eq.${exerciseId}&select=email,weight_kg,achieved_date&order=weight_kg.desc&limit=1`);
-      const currentCB=communityBests[exerciseId];
-      if(allPBs&&allPBs.length>0){
-        const top=allPBs[0];
-        const holderRows=await sbGet("members",`email=eq.${encodeURIComponent(top.email)}&select=name`);
-        const holderName=(holderRows&&holderRows[0]&&holderRows[0].name)||top.email;
-        const cbData={exercise_id:exerciseId,weight_kg:parseFloat(top.weight_kg),holder_name:holderName,holder_email:top.email,achieved_date:top.achieved_date||"",updated_at:Date.now()};
-        if(currentCB){await sbPatch("community_bests",`exercise_id=eq.${exerciseId}`,cbData);}
-        else{await sbPost("community_bests",cbData);}
-        setCommunityBests(prev=>({...prev,[exerciseId]:{...currentCB,...cbData}}));
-      }else if(currentCB&&currentCB.holder_email===session.email){
-        await sbDelete("community_bests",`exercise_id=eq.${exerciseId}`);
-        setCommunityBests(prev=>{const n={...prev};delete n[exerciseId];return n;});
+      // A member has one PB per exercise; removing it drops them from their gender category.
+      // Their true replacement (if any) is restored the next time an admin opens this tab.
+      const g=memberData?.gender;
+      if(g==="Male"||g==="Female"){
+        const map=g==="Male"?communityBestsMale:communityBestsFemale;
+        const setMap=g==="Male"?setCommunityBestsMale:setCommunityBestsFemale;
+        const stored=map[exerciseId];
+        if(stored&&stored.holder_email===session.email){
+          await sbDelete("community_bests",`exercise_id=eq.${exerciseId}&gender=eq.${g}`);
+          setMap(prev=>{const n={...prev};delete n[exerciseId];return n;});
+        }
       }
       showToast("Personal best removed");setEditingPB(null);
     }else showToast("Remove failed — try again");
@@ -3216,15 +3227,21 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
   async function saveCB(exerciseId){
     if(!isAdmin)return;
     setSavingCB(true);
-    const existing=communityBests[exerciseId];
-    const data={exercise_id:exerciseId,weight_kg:parseFloat(cbDraft.weight_kg)||null,holder_name:cbDraft.holder_name||"",holder_email:cbDraft.holder_email||"",achieved_date:cbDraft.achieved_date||"",updated_at:Date.now()};
-    let ok;
-    if(existing){
-      ok=await sbPatch("community_bests",`exercise_id=eq.${exerciseId}`,data);
-    }else{
-      ok=await sbPost("community_bests",data);
+    // Admin manual override is applied to BOTH the Male and Female categories.
+    const base={weight_kg:parseFloat(cbDraft.weight_kg)||null,holder_name:cbDraft.holder_name||"",holder_email:cbDraft.holder_email||"",achieved_date:cbDraft.achieved_date||"",updated_at:Date.now()};
+    let allOk=true;
+    for(const g of ["Male","Female"]){
+      const map=g==="Male"?communityBestsMale:communityBestsFemale;
+      const setMap=g==="Male"?setCommunityBestsMale:setCommunityBestsFemale;
+      const existing=map[exerciseId];
+      const data={exercise_id:exerciseId,gender:g,...base};
+      let ok;
+      if(existing){ok=await sbPatch("community_bests",`exercise_id=eq.${exerciseId}&gender=eq.${g}`,data);}
+      else{ok=await sbPost("community_bests",data);}
+      if(ok){setMap(prev=>({...prev,[exerciseId]:{...existing,...data}}));}
+      else allOk=false;
     }
-    if(ok){setCommunityBests(prev=>({...prev,[exerciseId]:{...existing,...data}}));showToast("Community best updated ✓");setEditingCB(null);}
+    if(allOk){showToast("Community best updated ✓");setEditingCB(null);setEditingCBSec(null);}
     else showToast("Save failed — try again");
     setSavingCB(false);
   }
@@ -3250,7 +3267,8 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
     if(ok){
       setExercises(prev=>prev.filter(e=>e.id!==ex.id));
       setMyPBs(prev=>{const n={...prev};delete n[ex.id];return n;});
-      setCommunityBests(prev=>{const n={...prev};delete n[ex.id];return n;});
+      setCommunityBestsMale(prev=>{const n={...prev};delete n[ex.id];return n;});
+      setCommunityBestsFemale(prev=>{const n={...prev};delete n[ex.id];return n;});
       showToast(`${ex.name} deleted`);
     }
   }
@@ -3417,63 +3435,74 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
     ),
     showCBSection&&(enabledExercises.length===0
       ?null
-      :enabledExercises.map(ex=>{
-          const cb=communityBests[ex.id];
-          const isEditing=isAdmin&&editingCB===ex.id;
-          return React.createElement("div",{key:ex.id,style:{...CS.card,borderColor:"#888"}},
-            isEditing
-              ?React.createElement("div",null,
-                  React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.08em",color:"#fff",marginBottom:12}},ex.name),
-                  React.createElement("label",{style:CS.label},"COMMUNITY RECORD (KG)"),
-                  React.createElement("input",{
-                    type:"number",step:"0.5",min:"0",
-                    value:cbDraft.weight_kg,onChange:e=>setCBDraft(p=>({...p,weight_kg:e.target.value})),
-                    placeholder:"0.0",autoFocus:true,
-                    style:{...CS.input,colorScheme:"dark"}
-                  }),
-                  React.createElement("label",{style:CS.label},"RECORD HOLDER"),
-                  React.createElement("input",{
-                    type:"text",
-                    value:cbDraft.holder_name,onChange:e=>setCBDraft(p=>({...p,holder_name:e.target.value})),
-                    placeholder:"Member name",
-                    style:CS.input
-                  }),
-                  React.createElement("label",{style:CS.label},"DATE ACHIEVED"),
-                  React.createElement("input",{
-                    type:"date",
-                    value:cbDraft.achieved_date,onChange:e=>setCBDraft(p=>({...p,achieved_date:e.target.value})),
-                    style:{...CS.input,colorScheme:"dark"}
-                  }),
-                  React.createElement("div",{style:{display:"flex",gap:8,marginTop:4}},
-                    React.createElement("button",{onClick:()=>saveCB(ex.id),disabled:savingCB,style:CS.saveBtn},savingCB?"SAVING...":"SAVE"),
-                    React.createElement("button",{onClick:()=>setEditingCB(null),style:CS.cancelBtn},"CANCEL")
+      :(()=>{
+          const cbCard=(ex,sec)=>{
+            const map=sec==="Male"?communityBestsMale:communityBestsFemale;
+            const cb=map[ex.id];
+            const isEditing=isAdmin&&editingCB===ex.id&&editingCBSec===sec;
+            return React.createElement("div",{key:sec+"-"+ex.id,style:{...CS.card,borderColor:"#888"}},
+              isEditing
+                ?React.createElement("div",null,
+                    React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.08em",color:"#fff",marginBottom:6}},ex.name),
+                    React.createElement("div",{style:{fontSize:9,letterSpacing:"0.1em",color:"#1d9bf0",marginBottom:12}},"APPLIES TO MALE & FEMALE"),
+                    React.createElement("label",{style:CS.label},"COMMUNITY RECORD (KG)"),
+                    React.createElement("input",{
+                      type:"number",step:"0.5",min:"0",
+                      value:cbDraft.weight_kg,onChange:e=>setCBDraft(p=>({...p,weight_kg:e.target.value})),
+                      placeholder:"0.0",autoFocus:true,
+                      style:{...CS.input,colorScheme:"dark"}
+                    }),
+                    React.createElement("label",{style:CS.label},"RECORD HOLDER"),
+                    React.createElement("input",{
+                      type:"text",
+                      value:cbDraft.holder_name,onChange:e=>setCBDraft(p=>({...p,holder_name:e.target.value})),
+                      placeholder:"Member name",
+                      style:CS.input
+                    }),
+                    React.createElement("label",{style:CS.label},"DATE ACHIEVED"),
+                    React.createElement("input",{
+                      type:"date",
+                      value:cbDraft.achieved_date,onChange:e=>setCBDraft(p=>({...p,achieved_date:e.target.value})),
+                      style:{...CS.input,colorScheme:"dark"}
+                    }),
+                    React.createElement("div",{style:{display:"flex",gap:8,marginTop:4}},
+                      React.createElement("button",{onClick:()=>saveCB(ex.id),disabled:savingCB,style:CS.saveBtn},savingCB?"SAVING...":"SAVE"),
+                      React.createElement("button",{onClick:()=>{setEditingCB(null);setEditingCBSec(null);},style:CS.cancelBtn},"CANCEL")
+                    )
                   )
-                )
-              :React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
-                  React.createElement("div",{style:{flex:1,minWidth:0}},
-                    React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",marginBottom:4,display:"flex",alignItems:"center",gap:4}},ex.name,cb&&cb.weight_kg&&React.createElement("span",{style:{fontSize:12,lineHeight:1}},"🏆")),
-                    cb&&cb.weight_kg
-                      ?React.createElement("div",null,
-                          React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8,marginBottom:4}},
-                            React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:18,color:"#1d9bf0",lineHeight:1}},`${cb.weight_kg}kg`),
-                            React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.08em"}},fmtDate(cb.achieved_date))
-                          ),
-                          cb.holder_name&&React.createElement("div",{style:{fontSize:10,letterSpacing:"0.08em",color:"#ffffff"}},cb.holder_name.toUpperCase())
-                        )
-                      :React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",marginTop:2}},"NO RECORD SET")
-                  ),
-                  cb&&cb.weight_kg&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginLeft:8,flexShrink:0}},
-                    holderPhotos[cb.holder_email]
-                      ?React.createElement("img",{src:holderPhotos[cb.holder_email],style:{width:40,height:40,borderRadius:"50%",objectFit:"cover",border:"1px solid #1d9bf0"},alt:""})
-                      :React.createElement("div",{style:{width:40,height:40,borderRadius:"50%",background:"#1e1e1e",border:"1px solid #1d9bf0",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#aaa",flexShrink:0}},cb.holder_name?(cb.holder_name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()):"?")
-                  ),
-                  isAdmin&&React.createElement("button",{
-                    onClick:()=>{setCBDraft({weight_kg:cb?.weight_kg||"",holder_name:cb?.holder_name||"",holder_email:cb?.holder_email||"",achieved_date:cb?.achieved_date||toDS(new Date())});setEditingCB(ex.id);},
-                    style:{...CS.editBtn,color:"#1d9bf0"}
-                  },cb&&cb.weight_kg?"EDIT":"SET")
-                )
+                :React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
+                    React.createElement("div",{style:{flex:1,minWidth:0}},
+                      React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",marginBottom:4,display:"flex",alignItems:"center",gap:4}},ex.name,cb&&cb.weight_kg&&React.createElement("span",{style:{fontSize:12,lineHeight:1}},"🏆")),
+                      cb&&cb.weight_kg
+                        ?React.createElement("div",null,
+                            React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:8,marginBottom:4}},
+                              React.createElement("div",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:300,fontSize:18,color:"#1d9bf0",lineHeight:1}},`${cb.weight_kg}kg`),
+                              React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.08em"}},fmtDate(cb.achieved_date))
+                            ),
+                            cb.holder_name&&React.createElement("div",{style:{fontSize:10,letterSpacing:"0.08em",color:"#ffffff"}},cb.holder_name.toUpperCase())
+                          )
+                        :React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",marginTop:2}},"NO RECORD SET")
+                    ),
+                    cb&&cb.weight_kg&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginLeft:8,flexShrink:0}},
+                      holderPhotos[cb.holder_email]
+                        ?React.createElement("img",{src:holderPhotos[cb.holder_email],style:{width:40,height:40,borderRadius:"50%",objectFit:"cover",border:"1px solid #1d9bf0"},alt:""})
+                        :React.createElement("div",{style:{width:40,height:40,borderRadius:"50%",background:"#1e1e1e",border:"1px solid #1d9bf0",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#aaa",flexShrink:0}},cb.holder_name?(cb.holder_name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()):"?")
+                    ),
+                    isAdmin&&React.createElement("button",{
+                      onClick:()=>{setCBDraft({weight_kg:cb?.weight_kg||"",holder_name:cb?.holder_name||"",holder_email:cb?.holder_email||"",achieved_date:cb?.achieved_date||toDS(new Date())});setEditingCB(ex.id);setEditingCBSec(sec);},
+                      style:{...CS.editBtn,color:"#1d9bf0"}
+                    },cb&&cb.weight_kg?"EDIT":"SET")
+                  )
+            );
+          };
+          const secHdr=txt=>React.createElement("div",{key:"hdr-"+txt,style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.2em",color:"#1d9bf0",margin:"8px 2px 8px"}},txt);
+          return React.createElement(React.Fragment,null,
+            secHdr("MALE"),
+            ...enabledExercises.map(ex=>cbCard(ex,"Male")),
+            secHdr("FEMALE"),
+            ...enabledExercises.map(ex=>cbCard(ex,"Female"))
           );
-        })),
+        })()),
     (()=>{
       if(!session)return null;
       const checkedInSorted=(bookings||[]).filter(b=>b.email===session.email&&b.checked_in&&b.date_key).sort((a,b)=>a.date_key.localeCompare(b.date_key));
@@ -3852,16 +3881,31 @@ function MemberPBAdmin({member}){
     setPbs(m);setLoading(false);
   }
   async function recomputeCB(exId){
-    const top=await sbGet("personal_bests",`exercise_id=eq.${exId}&select=email,weight_kg,achieved_date&order=weight_kg.desc&limit=1`);
-    const cur=await sbGet("community_bests",`exercise_id=eq.${exId}&select=exercise_id`);
-    if(top&&top.length){
-      const t=top[0];
-      const hr=await sbGet("members_public",`email=eq.${encodeURIComponent(t.email)}&select=name`);
-      const hn=(hr&&hr[0]&&hr[0].name)||t.email;
-      const data={exercise_id:exId,weight_kg:parseFloat(t.weight_kg),holder_name:hn,holder_email:t.email,achieved_date:t.achieved_date||"",updated_at:Date.now()};
-      if(cur&&cur.length)await sbPatch("community_bests",`exercise_id=eq.${exId}`,data);
-      else await sbPost("community_bests",data);
-    }else if(cur&&cur.length){await sbDelete("community_bests",`exercise_id=eq.${exId}`);}
+    // Admin context: recompute the top Male and top Female record for this exercise.
+    const [pbAll,memAll,cbRows]=await Promise.all([
+      sbGet("personal_bests",`exercise_id=eq.${exId}&select=email,weight_kg,achieved_date`),
+      sbGet("members_public","select=email,name,gender"),
+      sbGet("community_bests",`exercise_id=eq.${exId}&select=exercise_id,gender`)
+    ]);
+    const gByEmail={},nByEmail={},memberEmails=new Set();
+    (memAll||[]).forEach(m=>{gByEmail[m.email]=m.gender||"";nByEmail[m.email]=m.name||"";memberEmails.add(m.email);});
+    for(const g of ["Male","Female"]){
+      const exists=!!(cbRows&&cbRows.some(r=>r.gender===g));
+      let top=null;
+      (pbAll||[]).forEach(r=>{
+        if(gByEmail[r.email]!==g)return;
+        if(memberEmails.size&&!memberEmails.has(r.email))return;
+        const w=parseFloat(r.weight_kg)||0;
+        if(!top||w>parseFloat(top.weight_kg))top=r;
+      });
+      if(top){
+        const data={exercise_id:exId,gender:g,weight_kg:parseFloat(top.weight_kg),holder_name:nByEmail[top.email]||top.email,holder_email:top.email,achieved_date:top.achieved_date||"",updated_at:Date.now()};
+        if(exists)await sbPatch("community_bests",`exercise_id=eq.${exId}&gender=eq.${g}`,data);
+        else await sbPost("community_bests",data);
+      }else if(exists){
+        await sbDelete("community_bests",`exercise_id=eq.${exId}&gender=eq.${g}`);
+      }
+    }
   }
   async function save(exId){
     if(!draft.weight_kg)return;
@@ -5543,7 +5587,7 @@ function App(){
     return(h*60+m+45)<(now.getHours()*60+now.getMinutes());
   }
   function openProf(){
-    setProfForm({name:session.name,email:session.email,phone:memberData?.phone||"",photo:memberData?.photo||"",newPw:"",confirmPw:"",emergencyName:memberData?.emergency_name||"",emergencyPhone:memberData?.emergency_phone||""});
+    setProfForm({name:session.name,email:session.email,phone:memberData?.phone||"",photo:memberData?.photo||"",newPw:"",confirmPw:"",emergencyName:memberData?.emergency_name||"",emergencyPhone:memberData?.emergency_phone||"",gender:memberData?.gender||""});
     setProfErr("");setProfOk("");setProfTab("details");setShowProf(true);
     window.history.pushState({overlay:"profile"},"");
   }
@@ -5563,12 +5607,37 @@ function App(){
     setProfBusy(true);
     const photoChanged=(photo||"")!==(memberData?.photo||"");
     const photoTs=Date.now();
-    const upd={name:name.trim(),phone:phone.trim(),photo:photo||"",emergency_name:profForm.emergencyName||"",emergency_phone:profForm.emergencyPhone||""};
+    const upd={name:name.trim(),phone:phone.trim(),photo:photo||"",emergency_name:profForm.emergencyName||"",emergency_phone:profForm.emergencyPhone||"",gender:profForm.gender||null};
     if(photoChanged)upd.photo_updated_at=photoTs;
     if(newPw)upd.password=hashPw(newPw);if(em!==session.email)upd.email=em;
     if(newPw&&AUTH_TOKEN){try{const ar=await fetch(`${SB_URL}/auth/v1/user`,{method:"PUT",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${AUTH_TOKEN}`,"Content-Type":"application/json"},body:JSON.stringify({password:newPw})});if(!ar.ok){setProfErr("Password update failed. Please try again.");setProfBusy(false);return;}}catch(e){setProfErr("Password update failed. Please try again.");setProfBusy(false);return;}}
     const ok=await sbPatch("members",`email=eq.${encodeURIComponent(session.email)}`,upd);
     if(!ok){setProfErr("Update failed. Please try again.");setProfBusy(false);return;}
+    // Re-categorise this member's community bests when their gender is set or changed.
+    const oldGender=memberData?.gender||"";
+    const newGender=profForm.gender||"";
+    if(newGender!==oldGender){
+      try{
+        const myPBRows=await sbGet("personal_bests",`email=eq.${encodeURIComponent(session.email)}&select=exercise_id,weight_kg,achieved_date`);
+        const cbAll=await sbGet("community_bests","select=*");
+        const byKey={};(cbAll||[]).forEach(r=>{byKey[r.exercise_id+"|"+(r.gender||"")]=r;});
+        for(const pb of (myPBRows||[])){
+          const w=parseFloat(pb.weight_kg)||0;
+          if(oldGender==="Male"||oldGender==="Female"){
+            const o=byKey[pb.exercise_id+"|"+oldGender];
+            if(o&&o.holder_email===session.email){await sbDelete("community_bests",`exercise_id=eq.${pb.exercise_id}&gender=eq.${oldGender}`);}
+          }
+          if(newGender==="Male"||newGender==="Female"){
+            const n=byKey[pb.exercise_id+"|"+newGender];
+            if(!n||!n.weight_kg||w>parseFloat(n.weight_kg)){
+              const cbData={exercise_id:pb.exercise_id,gender:newGender,weight_kg:w,holder_name:name.trim(),holder_email:session.email,achieved_date:pb.achieved_date||"",updated_at:Date.now()};
+              if(n){await sbPatch("community_bests",`exercise_id=eq.${pb.exercise_id}&gender=eq.${newGender}`,cbData);}
+              else{await sbPost("community_bests",cbData);}
+            }
+          }
+        }
+      }catch(e){}
+    }
     const ns={email:em,name:name.trim()};
     lsSet("t365-session",ns);setSession(ns);setMemberData(d=>({...d,...upd,email:em}));
     if(photoChanged)setMemberPhotos(p=>{const n={...p};if(photo)n[em]=photo;else delete n[em];return n;});
@@ -5713,7 +5782,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
           const subCls=userBkd?"cg":full?"cf":atLimit?"cf":left<=3?"cl":"co";
           const isExpanded=expandedClass===time;
           return React.createElement("div",{key:time,style:{borderRadius:0,overflow:"hidden",marginBottom:0}},
-            React.createElement("div",{className:`c-row${userBkd?" cb":""}${past?" cp":""}`,style:{cursor:isAdmin?"pointer":"default"},onClick:isAdmin?()=>setExpandedClass(isExpanded?null:time):undefined},
+            React.createElement("div",{className:`c-row${userBkd?" cb":""}${past?" cp":""}`,style:{cursor:"pointer"},onClick:()=>setExpandedClass(isExpanded?null:time)},
               React.createElement("div",{style:{display:"flex",flexDirection:"column",minWidth:72}},
                 React.createElement("div",{className:"c-time",style:{minWidth:"unset"}},fmt12(time)),
                 (slotNames[`${selDK}:${time}`]||getDayClassName(selDK))&&React.createElement("div",{style:{fontSize:7,letterSpacing:"0.12em",color:"#555",fontWeight:600,marginTop:1,fontFamily:"'DM Sans',sans-serif"}},slotNames[`${selDK}:${time}`]||getDayClassName(selDK))
@@ -5722,7 +5791,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
                 React.createElement("div",{className:`c-bars${userBkd?" cb-mine":""}`},Array.from({length:maxSp}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}`}))),
                 React.createElement("div",{className:`c-sub ${subCls}`},subText)
               ),
-              isAdmin&&React.createElement("div",{style:{fontSize:10,color:"#555",marginRight:4,flexShrink:0}},isExpanded?"▴":"▾"),
+              React.createElement("div",{style:{fontSize:10,color:"#555",marginRight:4,flexShrink:0}},isExpanded?"▴":"▾"),
               !past&&(userBkd
                 ?React.createElement("button",{className:"c-btn bc",onClick:e=>{e.stopPropagation();handleCancel(time,selDK);}},"Cancel")
                 :full?React.createElement("button",{className:"c-btn bf",disabled:true},"Full")
@@ -5730,15 +5799,25 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
                 :React.createElement("button",{className:"c-btn bb",onClick:e=>{e.stopPropagation();(!isAdmin&&repeatWeeks>1)?handleBookRecurring(time,repeatWeeks):handleBook(time);},disabled:busy},busy?"...":((!isAdmin&&repeatWeeks>1)?`Book ×${repeatWeeks}`:"Book"))
               )
             ),
-            isAdmin&&isExpanded&&React.createElement("div",{className:"adm-members-list",style:{borderTop:"1px solid #222"}},
-              list.length===0
-                ?React.createElement("div",{className:"adm-empty"},"NO BOOKINGS YET")
-                :list.map((bk,i)=>React.createElement("div",{key:i,className:"adm-member-row"},
-                    React.createElement("div",null,
-                      React.createElement("div",{className:"adm-member-name"},bk.name),
-                      React.createElement("div",{className:"adm-member-email"},bk.email)
-                    )
-                  ))
+            isExpanded&&React.createElement("div",{className:"adm-members-list",style:{borderTop:"1px solid #222"}},
+              isAdmin
+                ?(list.length===0
+                    ?React.createElement("div",{className:"adm-empty"},"NO BOOKINGS YET")
+                    :list.map((bk,i)=>React.createElement("div",{key:i,className:"adm-member-row"},
+                        React.createElement("div",null,
+                          React.createElement("div",{className:"adm-member-name"},bk.name),
+                          React.createElement("div",{className:"adm-member-email"},bk.email)
+                        )
+                      )))
+                :React.createElement(React.Fragment,null,
+                    React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,padding:"10px 13px 6px"}},"WHO'S ATTENDING"),
+                    list.length===0
+                      ?React.createElement("div",{className:"adm-empty"},"NO ONE BOOKED YET")
+                      :list.map((bk,i)=>React.createElement("div",{key:i,className:"adm-member-row"},
+                          React.createElement("div",null,
+                            React.createElement("div",{className:"adm-member-name"},bk.name)
+                          )
+                        )))
             )
           );
         })
@@ -5886,6 +5965,12 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         React.createElement("input",{className:"fi",type:"email",value:profForm.email,autoComplete:"email",onChange:e=>{setProfForm(f=>({...f,email:e.target.value}));setProfErr("");setProfOk("");}}),
         React.createElement("label",{className:"fl"},"PHONE NUMBER"),
         React.createElement("input",{className:"fi",type:"tel",value:profForm.phone,autoComplete:"tel",onChange:e=>{setProfForm(f=>({...f,phone:e.target.value}));setProfErr("");setProfOk("");}}),
+        React.createElement("label",{className:"fl"},"GENDER"),
+        React.createElement("div",{style:{display:"flex",gap:8,marginBottom:14}},
+          ["Male","Female"].map(g=>React.createElement("button",{key:g,type:"button",
+            onClick:()=>{setProfForm(f=>({...f,gender:g}));setProfErr("");setProfOk("");},
+            style:{flex:1,background:profForm.gender===g?"#0a1a2a":"#0e0e0e",border:"1px solid "+(profForm.gender===g?"#1d9bf0":"#2a2a2a"),color:profForm.gender===g?"#1d9bf0":"#aaa",fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:300,padding:"10px 12px",borderRadius:0,cursor:"pointer",letterSpacing:"0.04em"}},g)
+          )),
         memberData?.membership_type&&React.createElement("div",{style:{marginBottom:14}},
           React.createElement("label",{className:"fl"},"MEMBERSHIP TYPE"),
           React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1a1a1a",borderRadius:0,padding:"10px 12px",fontSize:14,fontWeight:300,color:"#1d9bf0",letterSpacing:"0.04em"}},memberData.membership_type)
