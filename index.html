@@ -547,6 +547,17 @@ function getTierLimits(membershipType){
 // AND no real membership plan (membership_type empty). Getting a plan auto-ends it.
 const CONCESSION_LIMIT=10;
 function isConcessionActive(m){return !!(m&&m.concession===true&&!m.membership_type);}
+// Training-type tag (PT / ONLINE TRAINING). Independent of membership, so it can show
+// on its own (health-screening client) OR alongside a studio plan (member who also trains
+// online). "NONE" = explicitly hidden. Blank = defaults to PT only when they have no plan.
+function trainingLabel(m){
+  if(!m||m.is_admin||isConcessionActive(m))return null;
+  const ct=m.client_type;
+  if(ct==="NONE")return null;
+  if(ct==="PT"||ct==="ONLINE TRAINING")return ct;
+  if(!m.membership_type)return "PT"; // health-screening client with no explicit tag
+  return null;
+}
 // Tuesday=2, Thursday=4 are Strength days
 const isStrengthDay=dk=>{const d=new Date(dk+"T00:00:00");return d.getDay()===2||d.getDay()===4;};;
 // ── Image Cropper ─────────────────────────────────────────────────────────────
@@ -881,21 +892,21 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
           style:{width:"100%",background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.15em",padding:"12px",borderRadius:0,cursor:"pointer",marginBottom:4}
         },savingMembership?"SAVING...":membershipOk?"SAVED ✓":"SAVE MEMBERSHIP")
       ),
-      (!member.membership_type&&!isConcessionActive(member))&&React.createElement(React.Fragment,null,
+      (!member.is_admin&&!isConcessionActive(member))&&React.createElement(React.Fragment,null,
         React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #0f0f0f"}},
           React.createElement("div",{className:"mp-label"},"Training Type"),
           React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
-            !editingClientType&&React.createElement("div",{className:"mp-value",style:{color:"#1d9bf0"}},(member.client_type||"PT").toUpperCase()),
+            !editingClientType&&React.createElement("div",{className:"mp-value",style:{color:trainingLabel(member)?"#1d9bf0":"#555"}},trainingLabel(member)?trainingLabel(member).toUpperCase():"—"),
             currentUserIsAdmin&&React.createElement("button",{
-              onClick:()=>{setClientTypeEdit(member.client_type||"PT");setEditingClientType(e=>!e);},
+              onClick:()=>{setClientTypeEdit(member.client_type||(member.membership_type?"NONE":"PT"));setEditingClientType(e=>!e);},
               style:{background:"none",border:"1px solid #333",color:"#888",fontSize:9,letterSpacing:"0.12em",padding:"3px 8px",borderRadius:0,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600,flexShrink:0}
             },editingClientType?"CANCEL":"EDIT")
           )
         ),
         editingClientType&&React.createElement("div",{style:{padding:"10px 0 4px"}},
           React.createElement("div",{style:{display:"flex",gap:6,marginBottom:8}},
-            ["PT","ONLINE TRAINING"].map(opt=>React.createElement("button",{key:opt,onClick:()=>setClientTypeEdit(opt),
-              style:{flex:1,background:clientTypeEdit===opt?"#1d9bf0":"transparent",color:clientTypeEdit===opt?"#fff":"#888",border:"1px solid "+(clientTypeEdit===opt?"#1d9bf0":"#333"),borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.08em",padding:"9px 4px",cursor:"pointer"}},opt))
+            [["PT","PT"],["ONLINE TRAINING","ONLINE"],["NONE","NONE"]].map(([opt,lbl])=>React.createElement("button",{key:opt,onClick:()=>setClientTypeEdit(opt),
+              style:{flex:1,background:clientTypeEdit===opt?"#1d9bf0":"transparent",color:clientTypeEdit===opt?"#fff":"#888",border:"1px solid "+(clientTypeEdit===opt?"#1d9bf0":"#333"),borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.06em",padding:"9px 4px",cursor:"pointer"}},lbl))
           ),
           React.createElement("button",{onClick:saveClientType,disabled:savingClientType,
             style:{width:"100%",background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.15em",padding:"12px",borderRadius:0,cursor:"pointer",marginBottom:4}
@@ -1755,7 +1766,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
           React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.email)),
           mb.phone&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.phone)),
           isConcessionActive(mb)&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",{style:{color:"#1d9bf0",fontWeight:700,letterSpacing:"0.1em"}},"CONCESSION")),
-          (!mb.membership_type&&!isConcessionActive(mb)&&!mb.is_admin)&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",{style:{color:"#1d9bf0",fontWeight:700,letterSpacing:"0.1em"}},(mb.client_type||"PT").toUpperCase())),
+          trainingLabel(mb)&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",{style:{color:"#1d9bf0",fontWeight:700,letterSpacing:"0.1em"}},trainingLabel(mb).toUpperCase())),
           mb.membership_type&&React.createElement("div",{className:"adm-mc-detail",style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}},
             React.createElement("span",{style:{color:"#1d9bf0"}},mb.membership_type),
             mb.expiry_date&&(()=>{
