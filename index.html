@@ -541,6 +541,12 @@ function getTierLimits(membershipType){
   if(mt.includes("COMMUNITY")||mt.includes("ESSENTIAL"))return{hiit:3,strength:1,wellness:1};
   return{hiit:3,strength:1,wellness:1}; // Foundation and any other tier
 }
+// ── Concession (10-class card) ──
+// A concession member holds a flat 10-class card and BYPASSES the weekly tier
+// caps above ("10 classes, use them how you like"). Marked by members.concession=true
+// AND no real membership plan (membership_type empty). Getting a plan auto-ends it.
+const CONCESSION_LIMIT=10;
+function isConcessionActive(m){return !!(m&&m.concession===true&&!m.membership_type);}
 // Tuesday=2, Thursday=4 are Strength days
 const isStrengthDay=dk=>{const d=new Date(dk+"T00:00:00");return d.getDay()===2||d.getDay()===4;};;
 // ── Image Cropper ─────────────────────────────────────────────────────────────
@@ -571,7 +577,7 @@ function ImageCropper({imageSrc,onSave,onCancel}){
   );
 }
 // ── Member Profile Overlay (Admin) ────────────────────────────────────────────
-function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,isMaster,mfPasteAI,selfEmail}){
+function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,isMaster,mfPasteAI,selfEmail,canManageWk}){
   const upcomingBks=bookings.filter(b=>b.email===member.email&&b.date_key>=toDS(new Date())).length;
   const attendedBks=bookings.filter(b=>b.email===member.email&&b.date_key<toDS(new Date())).length;
   const joinDate=fmtJoinDate(member.joined_at);
@@ -629,6 +635,45 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
     await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,{routines_enabled:v});
     member.routines_enabled=v;setRtEnabled(v);
     setSavingAcc(false);setAccMsg("Access updated ✓");setTimeout(()=>setAccMsg(""),2500);
+  }
+  // ── Concession pass (admin controls) ──
+  const [concInfo,setConcInfo]=useState(null); // {checkins, baseline}
+  const [concActive,setConcActive]=useState(isConcessionActive(member));
+  const [concBusy,setConcBusy]=useState(false);
+  const [concMsg,setConcMsg]=useState("");
+  useEffect(()=>{
+    if(!currentUserIsAdmin)return;
+    (async()=>{
+      const [ci,base]=await Promise.all([
+        sbGet("bookings",`email=eq.${encodeURIComponent(member.email)}&checked_in=is.true&select=date_key`),
+        sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__CONCESSION__"+member.email)}&select=content`)
+      ]);
+      let b=0;if(base&&base.length&&base[0].content){try{b=parseInt(JSON.parse(base[0].content).baseline)||0;}catch{}}
+      setConcInfo({checkins:(ci||[]).length,baseline:b});
+    })();
+  },[]);
+  async function writeConcBaseline(b){
+    const k="__CONCESSION__"+member.email;const q=`class_name=eq.${encodeURIComponent(k)}`;
+    const ex=await sbGet("coaching_notes",q+"&select=class_name");
+    const body={content:JSON.stringify({baseline:b}),updated_at:Date.now()};
+    if(ex&&ex.length)await sbPatch("coaching_notes",q,body);else await sbPost("coaching_notes",{class_name:k,...body});
+  }
+  async function activateConcession(){
+    setConcBusy(true);
+    const ci=(concInfo&&concInfo.checkins)||0;
+    // Concession and a plan are mutually exclusive — clear any membership so the card is active.
+    await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,{concession:true,membership_type:""});
+    member.concession=true;member.membership_type="";
+    await writeConcBaseline(ci);
+    setConcInfo({checkins:ci,baseline:ci});setConcActive(true);
+    setConcBusy(false);setConcMsg("Concession activated — 10 classes ✓");setTimeout(()=>setConcMsg(""),2600);
+  }
+  async function topUpConcession(){
+    setConcBusy(true);
+    const ci=(concInfo&&concInfo.checkins)||0;
+    await writeConcBaseline(ci);
+    setConcInfo({checkins:ci,baseline:ci});
+    setConcBusy(false);setConcMsg("Topped up — 10 classes again ✓");setTimeout(()=>setConcMsg(""),2600);
   }
   async function setNoAccess(){await saveAccess([]);await setWorkoutsFlag(false);}
   function toggleAccTab(id){
@@ -1003,7 +1048,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
               (on?"✓ ":"")+t.label);
           })
         ),
-        (isMaster||mfWk!==false)&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(wkEnabled?"#1d3a5a":"#222"),borderRadius:0,padding:"11px 14px",marginBottom:6}},
+        canManageWk&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(wkEnabled?"#1d3a5a":"#222"),borderRadius:0,padding:"11px 14px",marginBottom:6}},
           React.createElement("div",null,
             React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"WORKOUTS"),
             React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"Add-on · personal training programs")
@@ -1021,10 +1066,26 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
             style:{background:rtEnabled?"#fff":"#222",color:rtEnabled?"#000":"#555",border:"1px solid "+(rtEnabled?"#fff":"#333"),borderRadius:0,padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},
             rtEnabled?"ON":"OFF")
         ),
+        React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid "+(concActive?"#1d3a5a":"#222"),borderRadius:0,padding:"11px 14px",marginBottom:6}},
+          React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
+            React.createElement("div",null,
+              React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"CONCESSION CARD"),
+              React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},concActive?("Attended "+Math.max(0,((concInfo&&concInfo.checkins)||0)-((concInfo&&concInfo.baseline)||0))+" of "+CONCESSION_LIMIT+" · classes, no weekly caps"):("10-class card — bypasses weekly caps"))
+            ),
+            concActive&&React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:"#1d9bf0",letterSpacing:"0.08em",flexShrink:0}},Math.max(0,CONCESSION_LIMIT-Math.max(0,((concInfo&&concInfo.checkins)||0)-((concInfo&&concInfo.baseline)||0)))+" left")
+          ),
+          React.createElement("div",{style:{display:"flex",gap:6,marginTop:10,flexWrap:"wrap"}},
+            concActive
+              ?React.createElement("button",{onClick:topUpConcession,disabled:concBusy,style:{flex:1,background:"none",color:"#1d9bf0",border:"1px solid #1d3a5a",borderRadius:0,fontFamily:"'DM Sans',sans-serif",fontSize:10,letterSpacing:"0.08em",fontWeight:600,padding:"10px 6px",cursor:"pointer"}},concBusy?"...":"TOP UP +10 CLASSES")
+              :React.createElement("button",{onClick:activateConcession,disabled:concBusy,style:{flex:1,background:"none",color:"#1d9bf0",border:"1px solid #1d3a5a",borderRadius:0,fontFamily:"'DM Sans',sans-serif",fontSize:10,letterSpacing:"0.1em",fontWeight:600,padding:"10px",cursor:"pointer"}},concBusy?"...":"SET AS CONCESSION (10 CLASSES)")
+          ),
+          concActive&&React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.04em",marginTop:8,lineHeight:1.5}},"To move them onto a plan, send the Registration Form — signing up ends the card automatically."),
+          concMsg&&React.createElement("div",{style:{fontSize:10,color:"#4aaa88",letterSpacing:"0.04em",marginTop:8}},concMsg)
+        ),
         accMsg&&React.createElement("div",{style:{fontSize:10,color:"#4aaa88",letterSpacing:"0.04em",marginBottom:4}},accMsg)
       )
       ),
-      currentUserIsAdmin&&(isMaster||mfWk!==false)&&React.createElement(MemberWorkoutAdmin,{member,memberView:wkMemberView,setMemberView:setWkMemberView,isMaster,mfPasteAI}),
+      currentUserIsAdmin&&canManageWk&&React.createElement(MemberWorkoutAdmin,{member,memberView:wkMemberView,setMemberView:setWkMemberView,isMaster,mfPasteAI}),
       currentUserIsAdmin&&React.createElement(RoutinesAdmin,{member,selfEmail}),
       currentUserIsAdmin&&React.createElement(MemberPBAdmin,{member}),
       currentUserIsAdmin&&React.createElement(React.Fragment,null,
@@ -1452,6 +1513,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   const [membersLoaded,setMembersLoaded]=useState(false);
   const [masterHidden,setMasterHidden]=useState(false);
   const [mhSaving,setMhSaving]=useState(false);
+  const [showWkAdmins,setShowWkAdmins]=useState(false);
   const [wellAdmBks,setWellAdmBks]=useState([]);
   const [wellAdmLoaded,setWellAdmLoaded]=useState(false);
   const [selectedMember,setSelectedMember]=useState(null);
@@ -1536,7 +1598,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
     return()=>window.removeEventListener("popstate",handlePop);
   },[selectedMember]);
   useEffect(()=>{
-    if(admSeg==="members"&&!membersLoaded){
+    if((admSeg==="members"||(admSeg==="sections"&&isMaster))&&!membersLoaded){
       sbGet("members","select=*&order=name.asc").then(data=>{setMembers(data||[]);setMembersLoaded(true);});
       sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__MASTER_HIDDEN__")+"&select=content").then(r=>{setMasterHidden(!!(r&&r.length&&r[0].content==="1"));});
     }
@@ -1572,7 +1634,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   }
   const admDateLabel=`${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][admDOW]} ${admDate.getDate()} ${MONTHS[admDate.getMonth()]} ${admDate.getFullYear()}`;
   return React.createElement("div",{className:"adm-wrap"},
-    selectedMember&&React.createElement(MemberProfileOverlay,{member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin,mfWk:mFlags.wk,isMaster,mfPasteAI:mFlags.pasteAI,selfEmail}),
+    selectedMember&&React.createElement(MemberProfileOverlay,{member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin,mfWk:mFlags.wk,isMaster,mfPasteAI:mFlags.pasteAI,selfEmail,canManageWk:(isMaster||(mFlags.wk!==false&&!(mFlags.wkAdminHide||[]).includes(selfEmail)))}),
     React.createElement("div",{className:"adm-title"},"ADMIN"),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"0 0 6px"}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
@@ -1602,6 +1664,24 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
           React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides it from admins (master keeps access)")
         ),
         React.createElement("button",{onClick:()=>saveMFlag("wk",!mFlags.wk),style:{background:!mFlags.wk?"#fff":"#222",color:!mFlags.wk?"#000":"#555",border:"1px solid "+(!mFlags.wk?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},!mFlags.wk?"HIDE":"VISIBLE")
+      ),
+      isMaster&&React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #222",padding:"11px 14px",marginBottom:10}},
+        React.createElement("div",{onClick:()=>setShowWkAdmins(v=>!v),style:{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",userSelect:"none"}},
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"WHO CAN CREATE WORKOUTS"),
+          React.createElement("span",{style:{fontSize:11,color:"#1d9bf0",transform:showWkAdmins?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
+        ),
+        showWkAdmins&&React.createElement(React.Fragment,null,
+          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:6,marginBottom:8,letterSpacing:"0.04em"}},"Untick an admin to stop them building workout programs. You (master) always have access."),
+          (members.filter(m=>m.is_admin&&m.email!==ADMIN_EMAIL).length===0)
+            ?React.createElement("div",{style:{fontSize:10,color:"#555"}},"No other admins yet.")
+            :members.filter(m=>m.is_admin&&m.email!==ADMIN_EMAIL).map(a=>{
+                const wkHidden=(mFlags.wkAdminHide||[]).includes(a.email);
+                return React.createElement("div",{key:a.email,style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderTop:"1px solid #181818"}},
+                  React.createElement("div",{style:{fontSize:12,color:"#ccc"}},a.name||a.email),
+                  React.createElement("button",{onClick:()=>{const list=(mFlags.wkAdminHide||[]).slice();const i=list.indexOf(a.email);if(i>=0)list.splice(i,1);else list.push(a.email);saveMFlag("wkAdminHide",list);},style:{width:26,height:26,borderRadius:0,border:"1px solid "+(wkHidden?"#333":"#1d3a5a"),background:wkHidden?"transparent":"#0a1a2a",color:"#1d9bf0",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},wkHidden?"":"✓")
+                );
+              })
+        )
       ),
       isMaster&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(mFlags.dt?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},React.createElement("div",null,React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"DETAILS SECTION"),React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides it from admins (master keeps access)")),React.createElement("button",{onClick:()=>saveMFlag("dt",!mFlags.dt),style:{background:mFlags.dt?"#fff":"#222",color:mFlags.dt?"#000":"#555",border:"1px solid "+(mFlags.dt?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},mFlags.dt?"HIDE":"VISIBLE")),isMaster&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(!mFlags.pasteAI?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
         React.createElement("div",null,
@@ -2358,6 +2438,15 @@ function OnboardingView({showToast}){
         action:"healthInvite",
         desc:"Enter a personal-training client's email address to send them the health screening form.",
         btnLabel:"SEND HEALTH SCREENING FORM"
+      })
+    ),
+    React.createElement(OnboardingPanel,{id:"concession",title:"SEND CONCESSION FORM",openPanel,setOpenPanel,titles,onSaveTitle},
+      React.createElement(InviteForm,{
+        appsScript:true,
+        endpoint:APPS_SCRIPT_URL,
+        action:"concessionInvite",
+        desc:"Sends the health screening form tagged as a 10-class concession card. On submit they're set up with Classes access and a card that bypasses weekly caps.",
+        btnLabel:"SEND CONCESSION FORM"
       })
     )
   );
@@ -5240,6 +5329,8 @@ function App(){
   const isAdmin=session?.email===ADMIN_EMAIL||memberData?.is_admin===true;
   const isMaster=session?.email===ADMIN_EMAIL;
   const [mFlags,setMFlags]=useState({wk:true,welladm:true});
+  const [concCheckins,setConcCheckins]=useState(0);
+  const [concBase,setConcBase]=useState(0);
   const workoutsEnabled=memberData?.workouts_enabled===true;
   const routinesEnabled=memberData?.routines_enabled===true;
   const [bookSub,setBookSub]=useState(()=>ssGet("t365-booksub","classes"));
@@ -5365,8 +5456,30 @@ function App(){
     const data=await sbGet("bookings",`date_key=in.(${keys.join(",")})&select=email,name,date_key,time,session_type,checked_in`);
     setBookings(data||[]);
   }
+  // Concession card: load this member's all-time class check-ins + their card baseline.
+  useEffect(()=>{
+    if(!session||isAdmin||!isConcessionActive(memberData)){setConcCheckins(0);setConcBase(0);return;}
+    let cancelled=false;
+    (async()=>{
+      const [ci,base]=await Promise.all([
+        sbGet("bookings",`email=eq.${encodeURIComponent(session.email)}&checked_in=is.true&select=date_key`),
+        sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__CONCESSION__"+session.email)}&select=content`)
+      ]);
+      if(cancelled)return;
+      setConcCheckins((ci||[]).length);
+      let b=0;if(base&&base.length&&base[0].content){try{b=parseInt(JSON.parse(base[0].content).baseline)||0;}catch{}}
+      setConcBase(b);
+    })();
+    return ()=>{cancelled=true;};
+  },[session,isAdmin,memberData&&memberData.concession,memberData&&memberData.membership_type]);
   // Per-member access: admins see all; null = full/legacy; else only tabs listed are visible.
   const acc=id=>isAdmin||memberAccess===null||memberAccess.includes(id);
+  // Concession card state (member side): credits = 10 minus (attended since baseline) minus (upcoming reserved).
+  const isConcession=!isAdmin&&isConcessionActive(memberData);
+  const concTodayDS=toDS(new Date());
+  const concUpcoming=(isConcession&&session)?bookings.filter(b=>b.email===session.email&&b.date_key>=concTodayDS&&!b.checked_in).length:0;
+  const concUsed=isConcession?Math.max(0,concCheckins-concBase)+concUpcoming:0;
+  const concRemaining=isConcession?Math.max(0,CONCESSION_LIMIT-concUsed):null;
   // My Bookings appears automatically whenever the member can access any bookable section.
   const canBook=(classesEnabled&&acc("book"))||(strengthEnabled&&acc("strength"))||(wellnessEnabled&&acc("wellness"));
   const showClasses=classesEnabled&&acc("book");
@@ -5494,11 +5607,16 @@ function App(){
     if(list.some(b=>b.email===session.email)){showToast("Already booked");setBkBusy(p=>({...p,[lk]:false}));return;}
     const sessionType=isStrengthDay(selDK)?"Strength":"HIIT";
     if(!isAdmin){
-      const limits=getTierLimits(memberData?.membership_type);
-      const typeLimit=sessionType==="Strength"?limits.strength:limits.hiit;
-      if(typeLimit===0){showToast("No membership — contact admin");setBkBusy(p=>({...p,[lk]:false}));return;}
-      if(typeLimit!==null&&weeklyClassCount(session.email,sessionType,selDK)>=typeLimit){
-        showToast(`Weekly ${sessionType} limit reached`);setBkBusy(p=>({...p,[lk]:false}));return;
+      if(isConcession){
+        // Concession bypasses the weekly tier caps — only the 10-class card cap applies.
+        if(concRemaining<=0){showToast(`All ${CONCESSION_LIMIT} concession classes used — see Team 365`);setBkBusy(p=>({...p,[lk]:false}));return;}
+      }else{
+        const limits=getTierLimits(memberData?.membership_type);
+        const typeLimit=sessionType==="Strength"?limits.strength:limits.hiit;
+        if(typeLimit===0){showToast("No membership — contact admin");setBkBusy(p=>({...p,[lk]:false}));return;}
+        if(typeLimit!==null&&weeklyClassCount(session.email,sessionType,selDK)>=typeLimit){
+          showToast(`Weekly ${sessionType} limit reached`);setBkBusy(p=>({...p,[lk]:false}));return;
+        }
       }
     }
     const newBk={email:session.email,name:session.name,date_key:selDK,time,session_type:sessionType};
@@ -5515,7 +5633,10 @@ function App(){
     const sessionType=isStrengthDay(selDK)?"Strength":"HIIT";
     const limits=getTierLimits(memberData?.membership_type);
     const typeLimit=sessionType==="Strength"?limits.strength:limits.hiit;
-    if(!isAdmin&&typeLimit===0){showToast("No membership — contact admin");setBkBusy(p=>({...p,[lk]:false}));return;}
+    if(!isAdmin&&!isConcession&&typeLimit===0){showToast("No membership — contact admin");setBkBusy(p=>({...p,[lk]:false}));return;}
+    if(!isAdmin&&isConcession&&concRemaining<=0){showToast(`All ${CONCESSION_LIMIT} concession classes used — see Team 365`);setBkBusy(p=>({...p,[lk]:false}));return;}
+    // Concession members book against a running card balance instead of weekly caps.
+    let concBudget=(!isAdmin&&isConcession)?concRemaining:Infinity;
     const added=[];const skipped=[];
     for(let i=0;i<weeks;i++){
       const d=addDays(selDate,i*7);const dk=toDS(d);
@@ -5527,10 +5648,11 @@ function App(){
       const maxSp=Math.min(getMaxSpots(time,dk),freshMax);
       if(list.some(b=>b.email===session.email))continue;
       if(list.length>=maxSp){skipped.push(d);continue;}
-      if(!isAdmin&&typeLimit!==null&&weeklyClassCount(session.email,sessionType,dk)>=typeLimit){skipped.push(d);continue;}
+      if(!isAdmin&&isConcession){if(concBudget<=0){skipped.push(d);continue;}}
+      else if(!isAdmin&&typeLimit!==null&&weeklyClassCount(session.email,sessionType,dk)>=typeLimit){skipped.push(d);continue;}
       const newBk={email:session.email,name:session.name,date_key:dk,time,session_type:sessionType};
       const ok=await sbPost("bookings",newBk);
-      if(ok)added.push(newBk);else skipped.push(d);
+      if(ok){added.push(newBk);if(!isAdmin&&isConcession)concBudget--;}else skipped.push(d);
     }
     if(added.length)setBookings(prev=>[...prev,...added]);
     const n=added.length;
@@ -5804,6 +5926,10 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       effBookSub==="classes"&&showClasses&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"well-hdr"},
         React.createElement("div",{className:"well-title"},"CLASSES")
+      ),
+      isConcession&&React.createElement("div",{style:{margin:"0 20px 4px",padding:"9px 12px",background:"#0a1a2a",border:"1px solid #1d3a5a",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}},
+        React.createElement("span",{style:{fontSize:10,letterSpacing:"0.08em",color:concRemaining>0?"#cfcfcf":"#e06040",fontWeight:600}},concRemaining>0?"CONCESSION CARD":"CARD USED UP"),
+        React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.08em",color:concRemaining>0?"#1d9bf0":"#e06040"}},concRemaining>0?(concRemaining+" of "+CONCESSION_LIMIT+" left"):"See Team 365")
       ),
       React.createElement("div",{className:"week-nav",style:{paddingTop:0}},
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"‹"),

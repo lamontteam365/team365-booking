@@ -108,6 +108,8 @@ const hashPw = s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)^s.charCode
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const today = ()=>{const d=new Date();return`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;};
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz5cruljVDUVScwm14Sj1z5_6cRrNK9cgOaq7Tx8P9LfPAEI7p_kx8ZJnaghF_SmU46Fw/exec";
+// Concession sign-up: register.html?plan=concession sets up a 10-class card (Classes access + concession flag).
+const IS_CONCESSION = (new URLSearchParams(location.search).get("plan")||"").toLowerCase()==="concession";
 async function sendWelcomeEmailViaScript(to, firstName, tempPassword) {
   try {
     const params = new URLSearchParams({action:"welcome",to,firstName,tempPassword});
@@ -248,7 +250,9 @@ async function handleSubmit(){
   let tempPw = "";
   let isExisting = false;
   try{
-    const ur = await fetch(`${SB_URL}/functions/v1/dynamic-api`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({action:"memberUpsert",email,data:regData,defaults:{workouts_enabled:true},accessTabs:["community"]})});
+    const upsertData = IS_CONCESSION ? {...regData, concession:true, membership_type:""} : regData;
+    const accessTabs = IS_CONCESSION ? ["community","book"] : ["community"];
+    const ur = await fetch(`${SB_URL}/functions/v1/dynamic-api`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({action:"memberUpsert",email,data:upsertData,defaults:{workouts_enabled:true},accessTabs})});
     const uj = await ur.json().catch(()=>({}));
     ok = !!(uj&&uj.ok); isExisting = !!(uj&&uj.existing); tempPw = (uj&&uj.tempPw)||"";
   }catch(e){ ok=false; }
@@ -271,6 +275,7 @@ async function handleSubmit(){
           ? `Thanks ${firstName}. Your health screening form has been updated successfully.`
           : `Welcome ${firstName}. A welcome email with your login details has been sent to <strong style="color:#fff;">${email}</strong>.`
         }
+        ${IS_CONCESSION ? `<br/><br/>Your <strong style="color:#fff;">10-class concession card</strong> is ready — book any classes you like, no weekly limits.` : ``}
       </div>
       <a href="https://team365-booking.vercel.app" class="success-link">OPEN BOOKING APP</a>
     </div>`;
@@ -283,7 +288,7 @@ document.getElementById("root").innerHTML = `
   </div>
   <div class="hero-name">LAMONT TEAM 365</div>
   <div class="hero-tag">EVERYDAY. ALL YEAR ROUND.</div>
-  <div class="hero-badge">HEALTH SCREENING</div>
+  <div class="hero-badge">${IS_CONCESSION?"CONCESSION · 10 CLASSES":"HEALTH SCREENING"}</div>
 </div>
 <div class="wrap">
   <div class="form-title">Health Screening Form</div>
