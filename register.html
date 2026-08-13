@@ -250,7 +250,7 @@ async function handleSubmit(){
   let tempPw = "";
   let isExisting = false;
   try{
-    const upsertData = IS_CONCESSION ? {...regData, concession:true, membership_type:""} : regData;
+    const upsertData = IS_CONCESSION ? {...regData, concession:true, membership_type:""} : {...regData, client_type:"PT"};
     const accessTabs = IS_CONCESSION ? ["community","book"] : ["community"];
     const ur = await fetch(`${SB_URL}/functions/v1/dynamic-api`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({action:"memberUpsert",email,data:upsertData,defaults:{workouts_enabled:true},accessTabs})});
     const uj = await ur.json().catch(()=>({}));

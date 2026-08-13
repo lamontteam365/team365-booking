@@ -88,7 +88,7 @@ html,body{background:#080808;min-height:100vh}
 .my-week-sep{font-size:8px;letter-spacing:0.2em;color:#555;font-weight:600;padding:14px 0 8px;margin-top:4px;border-top:1px solid #1e1e1e}
 .my-date{font-size:10px;letter-spacing:0.12em;color:#999;font-weight:500;margin-bottom:2px}
 .my-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff}
-.my-sess{font-size:9px;letter-spacing:0.1em;color:#777;margin-top:1px}
+.my-sess{font-size:9px;letter-spacing:0.1em;color:#1d9bf0;margin-top:1px}
 .my-x{font-size:10px;letter-spacing:0.08em;color:#666;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:color .15s;font-weight:500}
 .my-x:hover{color:#e06040}
 .no-bk{text-align:center;padding:48px 0;font-size:11px;letter-spacing:0.16em;color:#444;line-height:2.4}
@@ -688,6 +688,10 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
   const [membershipEdit,setMembershipEdit]=useState(member.membership_type||"");
   const [savingMembership,setSavingMembership]=useState(false);
   const [membershipOk,setMembershipOk]=useState(false);
+  const [editingClientType,setEditingClientType]=useState(false);
+  const [clientTypeEdit,setClientTypeEdit]=useState(member.client_type||"PT");
+  const [savingClientType,setSavingClientType]=useState(false);
+  const [clientTypeOk,setClientTypeOk]=useState(false);
   const [editingGender,setEditingGender]=useState(false);
   const [genderEdit,setGenderEdit]=useState(member.gender||"");
   const [savingGender,setSavingGender]=useState(false);
@@ -718,6 +722,13 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
     member.expiry_date=expiry;
     setSavingMembership(false);setEditingMembership(false);setMembershipOk(true);
     setTimeout(()=>setMembershipOk(false),2000);
+  }
+  async function saveClientType(){
+    setSavingClientType(true);
+    await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,{client_type:clientTypeEdit});
+    member.client_type=clientTypeEdit;
+    setSavingClientType(false);setEditingClientType(false);setClientTypeOk(true);
+    setTimeout(()=>setClientTypeOk(false),2000);
   }
   async function saveGender(){
     setSavingGender(true);
@@ -869,6 +880,27 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
           onClick:saveMembership,disabled:savingMembership,
           style:{width:"100%",background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.15em",padding:"12px",borderRadius:0,cursor:"pointer",marginBottom:4}
         },savingMembership?"SAVING...":membershipOk?"SAVED ✓":"SAVE MEMBERSHIP")
+      ),
+      (!member.membership_type&&!isConcessionActive(member))&&React.createElement(React.Fragment,null,
+        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #0f0f0f"}},
+          React.createElement("div",{className:"mp-label"},"Training Type"),
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+            !editingClientType&&React.createElement("div",{className:"mp-value",style:{color:"#1d9bf0"}},(member.client_type||"PT").toUpperCase()),
+            currentUserIsAdmin&&React.createElement("button",{
+              onClick:()=>{setClientTypeEdit(member.client_type||"PT");setEditingClientType(e=>!e);},
+              style:{background:"none",border:"1px solid #333",color:"#888",fontSize:9,letterSpacing:"0.12em",padding:"3px 8px",borderRadius:0,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600,flexShrink:0}
+            },editingClientType?"CANCEL":"EDIT")
+          )
+        ),
+        editingClientType&&React.createElement("div",{style:{padding:"10px 0 4px"}},
+          React.createElement("div",{style:{display:"flex",gap:6,marginBottom:8}},
+            ["PT","ONLINE TRAINING"].map(opt=>React.createElement("button",{key:opt,onClick:()=>setClientTypeEdit(opt),
+              style:{flex:1,background:clientTypeEdit===opt?"#1d9bf0":"transparent",color:clientTypeEdit===opt?"#fff":"#888",border:"1px solid "+(clientTypeEdit===opt?"#1d9bf0":"#333"),borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.08em",padding:"9px 4px",cursor:"pointer"}},opt))
+          ),
+          React.createElement("button",{onClick:saveClientType,disabled:savingClientType,
+            style:{width:"100%",background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.15em",padding:"12px",borderRadius:0,cursor:"pointer",marginBottom:4}
+          },savingClientType?"SAVING...":clientTypeOk?"SAVED ✓":"SAVE TRAINING TYPE")
+        )
       ),
       member.expiry_date&&React.createElement(React.Fragment,null,
         (()=>{
@@ -1723,6 +1755,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
           React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.email)),
           mb.phone&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.phone)),
           isConcessionActive(mb)&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",{style:{color:"#1d9bf0",fontWeight:700,letterSpacing:"0.1em"}},"CONCESSION")),
+          (!mb.membership_type&&!isConcessionActive(mb)&&!mb.is_admin)&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",{style:{color:"#1d9bf0",fontWeight:700,letterSpacing:"0.1em"}},(mb.client_type||"PT").toUpperCase())),
           mb.membership_type&&React.createElement("div",{className:"adm-mc-detail",style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}},
             React.createElement("span",{style:{color:"#1d9bf0"}},mb.membership_type),
             mb.expiry_date&&(()=>{
@@ -4649,7 +4682,15 @@ function MemberWorkoutsView({session,memberData,ttl}){
     React.createElement("div",{style:{padding:"14px 16px 80px"}},
       React.createElement("div",{className:"day-hdr",style:{textAlign:"center",marginBottom:12}},React.createElement("span",null,MW_DAY_FULL[dk])),
       loading?React.createElement("div",{className:"sp-loading"},"LOADING...")
-      :exercises.length===0?React.createElement("div",{className:"no-bk"},"No workout set for this day")
+      :exercises.length===0?React.createElement("div",null,
+        React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.08em",textAlign:"center",marginBottom:16}},"No workout set for this day — use the space below as your journal."),
+        React.createElement("div",{style:{marginTop:0}},
+          React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#666",fontWeight:600,marginBottom:6}},"MY NOTES"),
+          React.createElement("textarea",{defaultValue:wNotes[`${dk}__w1`]||"",placeholder:"Use this space as your journal — how are you feeling, sleep, nutrition, energy, soreness, anything you want to note.",rows:4,
+            onBlur:e=>saveNote(dk,1,e.target.value),
+            style:{width:"100%",background:"#141414",border:"1px solid #262626",borderRadius:0,color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:13,lineHeight:1.6,padding:"10px 12px",outline:"none",resize:"vertical",boxSizing:"border-box"}})
+        )
+      )
       :workouts.map(w=>{
         const body=[];let lastSec=null;
         w.exercises.forEach((ex,exIdx)=>{
@@ -5974,7 +6015,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
             React.createElement("div",{className:`c-row${userBkd?" cb":""}${past?" cp":""}`,style:{cursor:"pointer"},onClick:()=>setExpandedClass(isExpanded?null:time)},
               React.createElement("div",{style:{display:"flex",flexDirection:"column",minWidth:72}},
                 React.createElement("div",{className:"c-time",style:{minWidth:"unset"}},fmt12(time)),
-                (slotNames[`${selDK}:${time}`]||getDayClassName(selDK))&&React.createElement("div",{style:{fontSize:7,letterSpacing:"0.12em",color:userBkd?"#1d9bf0":"#555",fontWeight:600,marginTop:1,fontFamily:"'DM Sans',sans-serif"}},slotNames[`${selDK}:${time}`]||getDayClassName(selDK))
+                (slotNames[`${selDK}:${time}`]||getDayClassName(selDK))&&React.createElement("div",{style:{fontSize:7,letterSpacing:"0.12em",color:"#1d9bf0",fontWeight:600,marginTop:1,fontFamily:"'DM Sans',sans-serif"}},slotNames[`${selDK}:${time}`]||getDayClassName(selDK))
               ),
               React.createElement("div",{className:"c-mid"},
                 React.createElement("div",{className:`c-bars${userBkd?" cb-mine":""}`},Array.from({length:maxSp}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}`}))),
