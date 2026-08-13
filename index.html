@@ -69,12 +69,12 @@ html,body{background:#080808;min-height:100vh}
 .c-mid{flex:1;display:flex;flex-direction:column;gap:5px}
 .c-bars{display:flex;gap:2px}
 .c-bar{flex:1;height:2px;border-radius:0;background:#2a2a2a;transition:background .3s}
-.c-bar.ct{background:#fff}.cb-mine .c-bar.ct{background:#4aaa66}
+.c-bar.ct{background:#fff}.cb-mine .c-bar.ct{background:#1d9bf0}
 .c-sub{font-size:10px;letter-spacing:0.1em;color:#999;font-weight:500}
 .c-sub.cl{color:#e06040}
 .c-sub.co{color:#aaa}
 .c-sub.ck{color:#777}
-.c-sub.cf{color:#555}.c-sub.cg{color:#4aaa66}
+.c-sub.cf{color:#555}.c-sub.cg{color:#1d9bf0}
 .c-btn{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:0.12em;padding:8px 12px;border-radius:0;border:none;cursor:pointer;white-space:nowrap;transition:all .15s}
 .c-btn.bb{background:#fff;color:#000}
 .c-btn.bb:hover:not(:disabled){background:#ddd}
@@ -1206,10 +1206,12 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,c
         const tooSoon=!isAdmin&&!past&&within24h(selDK,time);
         const lk=`${selDK}-${time}`;const isBusy=!!busy[lk];
         const wellLimit=isAdmin?null:getTierLimits(memberData?.membership_type).wellness;
+        // Concession members can book wellness freely (separate from their 10-class card).
+        const isConcWell=!isAdmin&&isConcessionActive(memberData);
         const weekMonday=toDS(mondayOf(new Date(selDK+"T00:00:00")));
         const weekSunday=toDS(addDays(mondayOf(new Date(selDK+"T00:00:00")),6));
         const weekWellUsed=!ismine&&session?wellBks.filter(b=>b.email===session.email&&b.date_key>=weekMonday&&b.date_key<=weekSunday).length:0;
-        const wellAtLimit=!ismine&&(wellLimit===0||(wellLimit!==null&&weekWellUsed>=wellLimit));
+        const wellAtLimit=!ismine&&!isConcWell&&(wellLimit===0||(wellLimit!==null&&weekWellUsed>=wellLimit));
         const isExpanded=expandedWell===time;
         const slotBks=wellBks.filter(b=>b.date_key===selDK&&b.time===time);
         return React.createElement("div",{key:time,style:{borderRadius:0,overflow:"hidden"}},
@@ -5484,7 +5486,7 @@ function App(){
   // My Bookings appears automatically whenever the member can access any bookable section.
   const canBook=(classesEnabled&&acc("book"))||(strengthEnabled&&acc("strength"))||(wellnessEnabled&&acc("wellness"));
   const showClasses=classesEnabled&&acc("book");
-  const showWellness=wellnessEnabled&&acc("wellness");
+  const showWellness=wellnessEnabled&&(acc("wellness")||isConcession);
   const showStrength=strengthEnabled&&acc("strength");
   const showPT=workoutsEnabled;
   const showRoutines=routinesEnabled;
@@ -5972,7 +5974,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
             React.createElement("div",{className:`c-row${userBkd?" cb":""}${past?" cp":""}`,style:{cursor:"pointer"},onClick:()=>setExpandedClass(isExpanded?null:time)},
               React.createElement("div",{style:{display:"flex",flexDirection:"column",minWidth:72}},
                 React.createElement("div",{className:"c-time",style:{minWidth:"unset"}},fmt12(time)),
-                (slotNames[`${selDK}:${time}`]||getDayClassName(selDK))&&React.createElement("div",{style:{fontSize:7,letterSpacing:"0.12em",color:"#555",fontWeight:600,marginTop:1,fontFamily:"'DM Sans',sans-serif"}},slotNames[`${selDK}:${time}`]||getDayClassName(selDK))
+                (slotNames[`${selDK}:${time}`]||getDayClassName(selDK))&&React.createElement("div",{style:{fontSize:7,letterSpacing:"0.12em",color:userBkd?"#1d9bf0":"#555",fontWeight:600,marginTop:1,fontFamily:"'DM Sans',sans-serif"}},slotNames[`${selDK}:${time}`]||getDayClassName(selDK))
               ),
               React.createElement("div",{className:"c-mid"},
                 React.createElement("div",{className:`c-bars${userBkd?" cb-mine":""}`},Array.from({length:maxSp}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}`}))),
