@@ -1720,6 +1720,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
           ),
           React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.email)),
           mb.phone&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.phone)),
+          isConcessionActive(mb)&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",{style:{color:"#1d9bf0",fontWeight:700,letterSpacing:"0.1em"}},"CONCESSION")),
           mb.membership_type&&React.createElement("div",{className:"adm-mc-detail",style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}},
             React.createElement("span",{style:{color:"#1d9bf0"}},mb.membership_type),
             mb.expiry_date&&(()=>{
@@ -5962,8 +5963,9 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
           const tierLimits=getTierLimits(memberData?.membership_type);
           const typeLimit=sessionType==="Strength"?tierLimits.strength:tierLimits.hiit;
           const weekUsed=!userBkd&&session?weeklyClassCount(session.email,sessionType,selDK):0;
-          const atLimit=!userBkd&&!isAdmin&&(typeLimit===0||(typeLimit!==null&&weekUsed>=typeLimit));
-          const subText=userBkd?"Booked ✓":full?"Full":atLimit?"Limit reached":`${left} ${left===1?"Spot":"Spots"} Available`;
+          // Concession members ignore weekly caps — blocked only when the 10-class card is used up.
+          const atLimit=!userBkd&&!isAdmin&&(isConcession?(concRemaining<=0):(typeLimit===0||(typeLimit!==null&&weekUsed>=typeLimit)));
+          const subText=userBkd?"Booked ✓":full?"Full":atLimit?(isConcession?"No classes left":"Limit reached"):`${left} ${left===1?"Spot":"Spots"} Available`;
           const subCls=userBkd?"cg":full?"cf":atLimit?"cf":left<=3?"cl":"co";
           const isExpanded=expandedClass===time;
           return React.createElement("div",{key:time,style:{borderRadius:0,overflow:"hidden",marginBottom:0}},
@@ -5980,7 +5982,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
               !past&&(userBkd
                 ?React.createElement("button",{className:"c-btn bc",onClick:e=>{e.stopPropagation();handleCancel(time,selDK);}},"Cancel")
                 :full?React.createElement("button",{className:"c-btn bf",disabled:true},"Full")
-                :atLimit?React.createElement("button",{className:"c-btn bf",disabled:true},typeLimit===0?"No Plan":"Limit")
+                :atLimit?React.createElement("button",{className:"c-btn bf",disabled:true},isConcession?"Used up":(typeLimit===0?"No Plan":"Limit"))
                 :React.createElement("button",{className:"c-btn bb",onClick:e=>{e.stopPropagation();(!isAdmin&&repeatWeeks>1)?handleBookRecurring(time,repeatWeeks):handleBook(time);},disabled:busy},busy?"...":((!isAdmin&&repeatWeeks>1)?`Book ×${repeatWeeks}`:"Book"))
               )
             ),
