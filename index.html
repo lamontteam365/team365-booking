@@ -643,6 +643,10 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
   const [membershipEdit,setMembershipEdit]=useState(member.membership_type||"");
   const [savingMembership,setSavingMembership]=useState(false);
   const [membershipOk,setMembershipOk]=useState(false);
+  const [editingGender,setEditingGender]=useState(false);
+  const [genderEdit,setGenderEdit]=useState(member.gender||"");
+  const [savingGender,setSavingGender]=useState(false);
+  const [genderOk,setGenderOk]=useState(false);
   const [editingExtra,setEditingExtra]=useState(false);
   const [extraEdits,setExtraEdits]=useState({
     medical_conditions: member.medical_conditions||"",
@@ -669,6 +673,36 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
     member.expiry_date=expiry;
     setSavingMembership(false);setEditingMembership(false);setMembershipOk(true);
     setTimeout(()=>setMembershipOk(false),2000);
+  }
+  async function saveGender(){
+    setSavingGender(true);
+    const oldGender=member.gender||"";
+    const newGender=genderEdit||"";
+    await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,{gender:newGender||null});
+    member.gender=newGender||null;
+    if(newGender!==oldGender){
+      try{
+        const myPBRows=await sbGet("personal_bests",`email=eq.${encodeURIComponent(member.email)}&select=exercise_id,weight_kg,achieved_date`);
+        const cbAll=await sbGet("community_bests","select=*");
+        const byKey={};(cbAll||[]).forEach(r=>{byKey[r.exercise_id+"|"+(r.gender||"")]=r;});
+        for(const pb of (myPBRows||[])){
+          const w=parseFloat(pb.weight_kg)||0;
+          if(oldGender==="Male"||oldGender==="Female"){
+            const o=byKey[pb.exercise_id+"|"+oldGender];
+            if(o&&o.holder_email===member.email){await sbDelete("community_bests",`exercise_id=eq.${pb.exercise_id}&gender=eq.${oldGender}`);}
+          }
+          if(newGender==="Male"||newGender==="Female"){
+            const n=byKey[pb.exercise_id+"|"+newGender];
+            if(!n||!n.weight_kg||w>parseFloat(n.weight_kg)){
+              const cbData={exercise_id:pb.exercise_id,gender:newGender,weight_kg:w,holder_name:member.name||member.email,holder_email:member.email,achieved_date:pb.achieved_date||"",updated_at:Date.now()};
+              if(n){await sbPatch("community_bests",`exercise_id=eq.${pb.exercise_id}&gender=eq.${newGender}`,cbData);}
+              else{await sbPost("community_bests",cbData);}
+            }
+          }
+        }
+      }catch(e){}
+    }
+    setSavingGender(false);setEditingGender(false);setGenderOk(true);setTimeout(()=>setGenderOk(false),2000);
   }
   async function saveExtra(){
     setSavingExtra(true);
@@ -736,6 +770,31 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
       React.createElement(Row,{label:"Email",value:member.email}),
       React.createElement(Row,{label:"Phone",value:member.phone}),
       React.createElement(Row,{label:"Date of Birth",value:member.dob}),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #0f0f0f"}},
+        React.createElement("div",{className:"mp-label"},"Gender"),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+          !editingGender&&React.createElement("div",{className:"mp-value",style:{color:member.gender?"#1d9bf0":"#555"}},member.gender||"—"),
+          currentUserIsAdmin&&React.createElement("button",{
+            onClick:()=>{setGenderEdit(member.gender||"");setEditingGender(e=>!e);},
+            style:{background:"none",border:"1px solid #333",color:"#888",fontSize:9,letterSpacing:"0.12em",padding:"3px 8px",borderRadius:0,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600,flexShrink:0}
+          },editingGender?"CANCEL":"EDIT")
+        )
+      ),
+      editingGender&&React.createElement("div",{style:{padding:"10px 0 4px"}},
+        React.createElement("select",{
+          value:genderEdit,
+          onChange:e=>setGenderEdit(e.target.value),
+          style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:300,padding:"10px 12px",borderRadius:0,outline:"none",marginBottom:8,cursor:"pointer"}
+        },
+          React.createElement("option",{value:""},"Not set"),
+          React.createElement("option",{value:"Male"},"Male"),
+          React.createElement("option",{value:"Female"},"Female")
+        ),
+        React.createElement("button",{
+          onClick:saveGender,disabled:savingGender,
+          style:{width:"100%",background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.15em",padding:"12px",borderRadius:0,cursor:"pointer",marginBottom:4}
+        },savingGender?"SAVING...":genderOk?"SAVED ✓":"SAVE GENDER")
+      ),
       React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #0f0f0f"}},
         React.createElement("div",{className:"mp-label"},"Membership"),
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
@@ -5966,11 +6025,19 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         React.createElement("label",{className:"fl"},"PHONE NUMBER"),
         React.createElement("input",{className:"fi",type:"tel",value:profForm.phone,autoComplete:"tel",onChange:e=>{setProfForm(f=>({...f,phone:e.target.value}));setProfErr("");setProfOk("");}}),
         React.createElement("label",{className:"fl"},"GENDER"),
-        React.createElement("div",{style:{display:"flex",gap:8,marginBottom:14}},
-          ["Male","Female"].map(g=>React.createElement("button",{key:g,type:"button",
-            onClick:()=>{setProfForm(f=>({...f,gender:g}));setProfErr("");setProfOk("");},
-            style:{flex:1,background:profForm.gender===g?"#0a1a2a":"#0e0e0e",border:"1px solid "+(profForm.gender===g?"#1d9bf0":"#2a2a2a"),color:profForm.gender===g?"#1d9bf0":"#aaa",fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:300,padding:"10px 12px",borderRadius:0,cursor:"pointer",letterSpacing:"0.04em"}},g)
-          )),
+        memberData?.gender
+          ?React.createElement("div",{style:{marginBottom:14}},
+              React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1a1a1a",borderRadius:0,padding:"10px 12px",fontSize:14,fontWeight:300,color:"#1d9bf0",letterSpacing:"0.04em"}},memberData.gender),
+              React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.06em",marginTop:4}},"To change this, please contact Team 365.")
+            )
+          :React.createElement("div",{style:{marginBottom:14}},
+              React.createElement("div",{style:{display:"flex",gap:8}},
+                ["Male","Female"].map(g=>React.createElement("button",{key:g,type:"button",
+                  onClick:()=>{setProfForm(f=>({...f,gender:g}));setProfErr("");setProfOk("");},
+                  style:{flex:1,background:profForm.gender===g?"#0a1a2a":"#0e0e0e",border:"1px solid "+(profForm.gender===g?"#1d9bf0":"#2a2a2a"),color:profForm.gender===g?"#1d9bf0":"#aaa",fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:300,padding:"10px 12px",borderRadius:0,cursor:"pointer",letterSpacing:"0.04em"}},g)
+                )),
+              React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.06em",marginTop:4}},"Choose carefully — once saved, only Team 365 can change this.")
+            ),
         memberData?.membership_type&&React.createElement("div",{style:{marginBottom:14}},
           React.createElement("label",{className:"fl"},"MEMBERSHIP TYPE"),
           React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1a1a1a",borderRadius:0,padding:"10px 12px",fontSize:14,fontWeight:300,color:"#1d9bf0",letterSpacing:"0.04em"}},memberData.membership_type)
