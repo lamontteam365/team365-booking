@@ -3207,6 +3207,29 @@ function CoachingView({showToast}){
     if(selectedClass===cn){setSelectedClass(null);}
     else{setSelectedClass(cn);setSubTab("notes");}
   }
+  // Duplicate a class: create the next class in the same group and copy this class's saved workout into it.
+  async function duplicateClass(label,base,cn){
+    const existing=extras[label]||[];
+    const allNames=[...(base||[]),...existing];
+    const newName=label+" "+(allNames.length+1);
+    const newExtras=[...existing,newName];
+    const key="__EXTRA__"+label;
+    const dbRows=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(key)+"&select=class_name");
+    if(dbRows&&dbRows.length){await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent(key),{content:JSON.stringify(newExtras),updated_at:Date.now()});}
+    else{await sbPost("coaching_notes",{class_name:key,content:JSON.stringify(newExtras),updated_at:Date.now()});}
+    setExtras(prev=>({...prev,[label]:newExtras}));
+    // Copy the workout details + scrolling text from the source class into the new one.
+    const [wr,sr]=await Promise.all([
+      sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__WORKOUT__"+cn)+"&select=content"),
+      sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__SCROLL__"+cn)+"&select=content")
+    ]);
+    const wc=(wr&&wr[0]&&wr[0].content)||"";
+    if(wc)await sbPost("coaching_notes",{class_name:"__WORKOUT__"+newName,content:wc,updated_at:Date.now()});
+    const sc=(sr&&sr[0]&&sr[0].content)||"";
+    if(sc)await sbPost("coaching_notes",{class_name:"__SCROLL__"+newName,content:sc,updated_at:Date.now()});
+    setSelectedClass(newName);setSubTab("details");
+    showToast("Duplicated to "+newName+" — edit & save ✓");
+  }
   function renderGroup(label,base,isCustom){
     const extraNames=extras[label]||[];
     const names=base?[...base,...extraNames]:extraNames;
@@ -3276,7 +3299,10 @@ function CoachingView({showToast}){
         )
       ),
       groupSelected&&React.createElement("div",{style:{marginTop:10,marginBottom:16,background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:0,padding:14}},
-        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:"0.08em",color:"#fff",marginBottom:14}},selectedClass),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:14}},
+          React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:"0.08em",color:"#fff"}},selectedClass),
+          React.createElement("button",{onClick:()=>{if(window.confirm("Duplicate "+selectedClass+"? This creates the next "+label+" class with a copy of this workout, ready for you to edit."))duplicateClass(label,base,selectedClass);},style:{background:"none",border:"1px solid #1d3a5a",borderRadius:0,color:"#1d9bf0",fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.1em",padding:"6px 11px",cursor:"pointer",flexShrink:0}},"⧉ DUPLICATE")
+        ),
         React.createElement("div",{style:{display:"flex",gap:0,marginBottom:14,background:"#141414",borderRadius:0,padding:3}},
           React.createElement("button",{onClick:()=>setSubTab("notes"),
             style:{flex:1,background:subTab==="notes"?"#222":"transparent",color:subTab==="notes"?"#fff":"#555",
