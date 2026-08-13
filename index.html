@@ -1550,7 +1550,7 @@ function MilestoneAdminPanel({milestoneConfig,saveMilestoneConfig,showToast}){
     )
   );
 }
-function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail}){
+function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail}){
   const [expandedTier,setExpandedTier]=useState(null);
   const [admDate,setAdmDate]=useState(new Date());
   const [expanded,setExpanded]=useState({});
@@ -1575,6 +1575,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   const undoTimerRef=useRef(null);
   const [editingClassName,setEditingClassName]=useState(false);
   const [classNameInput,setClassNameInput]=useState("");
+  const [editingDayLimit,setEditingDayLimit]=useState(false);
+  const [dayLimitInput,setDayLimitInput]=useState("");
   const [addingWell,setAddingWell]=useState(false);
   const [wellNewTime,setWellNewTime]=useState("");
   const [wellScope,setWellScope]=useState(1);
@@ -1812,6 +1814,35 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
                 React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#bbb",letterSpacing:"0.06em",flex:1}},dowNames?.[admDOW]||"—"),
                 React.createElement("button",{
                   onClick:()=>{setClassNameInput(dowNames?.[admDOW]||"");setEditingClassName(true);},
+                  style:{background:"none",border:"none",color:"#555",fontFamily:"'DM Sans',sans-serif",fontSize:9,letterSpacing:"0.08em",cursor:"pointer",padding:"2px 4px",flexShrink:0}
+                },"Edit")
+              )
+        )
+      ),
+      admDOW!==0&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#111",border:"1px solid #222",borderRadius:0,padding:"9px 14px",marginBottom:10}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,flex:1}},
+          React.createElement("div",{style:{fontSize:8,letterSpacing:"0.15em",color:"#555",fontWeight:600,flexShrink:0}},"MAX SPOTS · ALL"),
+          editingDayLimit
+            ?React.createElement(React.Fragment,null,
+                React.createElement("input",{
+                  autoFocus:true,type:"number",min:1,max:99,value:dayLimitInput,
+                  onChange:e=>setDayLimitInput(e.target.value),
+                  onKeyDown:async e=>{if(e.key==="Enter"){await saveDowLimit(admDOW,dayLimitInput);setEditingDayLimit(false);showToast("All "+["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][admDOW]+" classes updated ✓");}if(e.key==="Escape")setEditingDayLimit(false);},
+                  style:{width:70,background:"#1a1a1a",border:"1px solid #444",borderRadius:0,padding:"4px 8px",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:15,textAlign:"center",outline:"none"}
+                }),
+                React.createElement("button",{
+                  onClick:async()=>{await saveDowLimit(admDOW,dayLimitInput);setEditingDayLimit(false);showToast("All "+["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][admDOW]+" classes updated ✓");},
+                  style:{background:"#1d9bf0",color:"#fff",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.1em",padding:"5px 12px",cursor:"pointer",flexShrink:0}
+                },"SAVE ALL"),
+                React.createElement("button",{
+                  onClick:()=>setEditingDayLimit(false),
+                  style:{background:"none",border:"1px solid #333",color:"#666",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.1em",padding:"5px 8px",cursor:"pointer",flexShrink:0}
+                },"✕")
+              )
+            :React.createElement(React.Fragment,null,
+                React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#bbb",letterSpacing:"0.06em",flex:1}},(dowLimits?.[admDOW]||MAX_SPOTS)+" spots"),
+                React.createElement("button",{
+                  onClick:()=>{setDayLimitInput(String(dowLimits?.[admDOW]||MAX_SPOTS));setEditingDayLimit(true);},
                   style:{background:"none",border:"none",color:"#555",fontFamily:"'DM Sans',sans-serif",fontSize:9,letterSpacing:"0.08em",cursor:"pointer",padding:"2px 4px",flexShrink:0}
                 },"Edit")
               )
@@ -5395,6 +5426,8 @@ function App(){
   const [dowSlotNames,setDowSlotNames]=useState({});
   // Recurring per-slot capacity: keyed by "dow:time", applies every week for that weekday+time.
   const [dowSlotLimits,setDowSlotLimits]=useState({});
+  // Whole-weekday default capacity: keyed by dow (0-6), applies to every class that weekday.
+  const [dowLimits,setDowLimits]=useState({});
   const [wellSlots,setWellSlots]=useState({});
   const [repeatWeeks,setRepeatWeeks]=useState(1);
   const [milestoneConfig,setMilestoneConfig]=useState({interval:25,label:"classes completed — keep it up!"});
@@ -5488,6 +5521,8 @@ function App(){
       if(dsnData&&dsnData.length){try{const dsn=JSON.parse(dsnData[0].content);if(dsn&&typeof dsn==="object")setDowSlotNames(dsn);}catch{}}
       const dslData=await sbGet("coaching_notes","class_name=eq.__DOW_SLOT_LIMITS__&select=content");
       if(dslData&&dslData.length){try{const dsl=JSON.parse(dslData[0].content);if(dsl&&typeof dsl==="object")setDowSlotLimits(dsl);}catch{}}
+      const dlData=await sbGet("coaching_notes","class_name=eq.__DOW_LIMITS__&select=content");
+      if(dlData&&dlData.length){try{const dl=JSON.parse(dlData[0].content);if(dl&&typeof dl==="object")setDowLimits(dl);}catch{}}
       const wsData=await sbGet("coaching_notes","class_name=eq.__WELL_SLOTS__&select=content");
       if(wsData&&wsData.length){try{const ws=JSON.parse(wsData[0].content);if(ws&&typeof ws==="object")setWellSlots(ws);}catch{}}
       const mcData=await sbGet("coaching_notes","class_name=eq.__MILESTONE_CONFIG__&select=content");
@@ -5756,9 +5791,19 @@ function App(){
   function getMaxSpots(time,dateKey){
     const k=`${dateKey}:${time}`;
     if(k in classLimits)return classLimits[k]; // specific-date override (incl 0 = hidden)
-    const dk2=new Date(dateKey+"T00:00:00").getDay()+":"+time;
+    const dow=new Date(dateKey+"T00:00:00").getDay();
+    const dk2=dow+":"+time;
     if(dk2 in dowSlotLimits)return dowSlotLimits[dk2]; // recurring weekday+time capacity
+    if(dow in dowLimits)return dowLimits[dow]; // whole-weekday default capacity
     return MAX_SPOTS;
+  }
+  async function saveDowLimit(dow,spots){
+    const n=parseInt(spots);if(isNaN(n)||n<1)return;
+    const newMap={...dowLimits,[dow]:n};
+    setDowLimits(newMap);
+    const existing=await sbGet("coaching_notes","class_name=eq.__DOW_LIMITS__&select=class_name");
+    if(existing&&existing.length){await sbPatch("coaching_notes","class_name=eq.__DOW_LIMITS__",{content:JSON.stringify(newMap),updated_at:Date.now()});}
+    else{await sbPost("coaching_notes",{class_name:"__DOW_LIMITS__",content:JSON.stringify(newMap),updated_at:Date.now()});}
   }
   async function saveDowSlotLimit(dow,time,spots){
     const n=parseInt(spots);const k=dow+":"+time;const newMap={...dowSlotLimits};
@@ -6212,7 +6257,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       effWkSub==="routines"&&showRoutines&&React.createElement(RoutinesView,{session,ttl:wkTitles.rt,isAdmin})
     ),
     effTab==="progress"&&acc("progress")&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}),
-    effTab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:""}),
+    effTab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:""}),
     ),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
