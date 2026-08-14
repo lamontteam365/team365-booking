@@ -349,7 +349,7 @@ function buildFlow(name,rows,opts){
      var cards=_sp?splitCards:g.sts.map(function(r,i){return stCard(r,acc+1+i);}).join("");
      var _ss=_sp?splitRange[ri].ss:(acc+1), _sm=_sp?splitRange[ri].sm:(acc+g.sts.length), _tot=_sp?splitTot:totStn;
      var sttime=durSecs(g.sts[0].duration)||60;
-     S.push(screenWrap('<div class="sts">'+cards+'</div>'+clockbar({rlabel:rlab,rnum:rnum,rtot:rtot,ss:_ss,sm:_sm,tot:_tot,elapsed:elapsed,total:total,sttime:sttime,stloop:true,roundtime:rsec,adv:false,wname:wname}),'board','data-final'));
+     S.push(screenWrap('<div class="sts">'+cards+'</div>'+clockbar({rlabel:rlab,rnum:rnum,rtot:rtot,ss:_ss,sm:_sm,tot:_tot,elapsed:elapsed,total:total,sttime:sttime,stloop:true,roundtime:rsec,adv:false,wname:wname})+'<span class="timer" data-secs="'+Math.max(1,rsec-30)+'" data-dir="down" data-adv="1" style="display:none"></span>','board','data-final'));
      if(!isLast) S.push(transitionScreen(rlab,rnum,rtot,acc+g.sts.length,totStn,elapsed+rsec-30,total,dispG(nextg),pvStart(nextg,nextStart),scroll,wname));
      else S.push(ccScreen(rlab,rnum,rtot,totStn,elapsed+rsec-30,total,scroll,wname));
    } else if(distinctEx(g).length===1 && g.sts.length>1 && !g.sts.some(function(s){return isRec(s.exercise);})){
