@@ -2685,8 +2685,6 @@ function WorkoutDetailsEditor({className,showToast}){
   const [collapsed,setCollapsed]=useState(new Set());
   const [dragId,setDragId]=useState(null);
   const [dragOverId,setDragOverId]=useState(null);
-  const [copyOpen,setCopyOpen]=useState(false);
-  const [copyList,setCopyList]=useState(null); // null=not loaded yet; array of class names with a saved workout
   const wdGenId=()=>Math.random().toString(36).slice(2,9);
   function mapRow(r){
     if(r.t==="h"||r.hdr!=null)return {id:wdGenId(),hdr:((r.label!=null?r.label:r.hdr)||""),hideTv:!!r.hideTv,dur:(r.dur!=null?r.dur:""),st:(r.st===true?true:(r.st===false?false:null)),split:(r.split===true)};
@@ -2814,21 +2812,6 @@ function WorkoutDetailsEditor({className,showToast}){
     }
     setLegacy("");setSaving(false);setEditing(false);showToast("Workout saved ✓");
   }
-  // Load the list of other classes that already have a saved workout, for the "copy from" picker.
-  async function loadCopyList(){
-    const data=await sbGet("coaching_notes","class_name=like.__WORKOUT__*&select=class_name");
-    const names=(data||[]).map(r=>r.class_name||"").filter(cn=>cn.indexOf("__WORKOUT__")===0).map(cn=>cn.slice("__WORKOUT__".length)).filter(n=>n&&n!==className).sort();
-    setCopyList(names);
-  }
-  // Copy another class's saved workout into this editor (unsaved — admin reviews, edits, then Saves).
-  async function doCopyFrom(fromName){
-    const wr=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__WORKOUT__"+fromName)+"&select=content");
-    let p=null;if(wr&&wr.length&&wr[0].content){try{p=JSON.parse(wr[0].content);}catch{p=null;}}
-    if(!Array.isArray(p)||!p.length){showToast("That class has no workout to copy");return;}
-    const mapped=p.map(mapRow);numberStations(mapped);
-    setRows(mapped);setCollapsed(new Set(mapped.filter(r=>r.hdr!=null).map(r=>r.id)));setLegacy("");setEditing(true);setCopyOpen(false);
-    showToast("Copied from "+fromName+" — review & Save ✓");
-  }
   if(!loaded)return React.createElement("div",{style:{color:"#444",fontSize:11,padding:"12px 0"}},"Loading...");
   if(!editing){
     let curSec=null;
@@ -2883,18 +2866,6 @@ function WorkoutDetailsEditor({className,showToast}){
   return React.createElement("div",null,
     React.createElement("datalist",{id:listId},exNames.map(n=>React.createElement("option",{key:n,value:n}))),
     React.createElement("button",{onClick:save,disabled:saving,style:{width:"100%",background:"#fff",color:"#000",border:"none",borderRadius:0,padding:"11px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",cursor:"pointer",marginBottom:8}},saving?"SAVING...":"SAVE WORKOUT"),
-    React.createElement("div",{style:{marginBottom:8}},
-      React.createElement("button",{onClick:async()=>{if(!copyOpen&&copyList===null)await loadCopyList();setCopyOpen(o=>!o);},style:{width:"100%",background:copyOpen?"#0a1a2a":"none",border:"1px dashed "+(copyOpen?"#1d3a5a":"#2a2a2a"),borderRadius:0,color:"#1d9bf0",fontSize:10,letterSpacing:"0.1em",padding:"9px",cursor:"pointer"}},copyOpen?"✕ CLOSE COPY":"⧉ COPY FROM ANOTHER CLASS"),
-      copyOpen&&React.createElement("div",{style:{border:"1px solid #1d3a5a",borderTop:"none",background:"#0a1a2a",padding:"10px 12px"}},
-        React.createElement("div",{style:{fontSize:9,color:"#89a",letterSpacing:"0.06em",lineHeight:1.6,marginBottom:8}},"Loads another class's saved workout here so you can edit it. It won't change the other class, and nothing saves until you hit SAVE WORKOUT."),
-        copyList===null?React.createElement("div",{style:{fontSize:10,color:"#556"}},"Loading…")
-        :copyList.length===0?React.createElement("div",{style:{fontSize:10,color:"#556"}},"No other class workouts saved yet.")
-        :React.createElement("select",{value:"",onChange:e=>{const v=e.target.value;if(!v)return;if(rows.length&&!window.confirm("Replace the current workout with a copy of "+v+"?"))return;doCopyFrom(v);},style:{...inS,width:"100%",cursor:"pointer"}},
-          React.createElement("option",{value:""},"Pick a class to copy…"),
-          copyList.map(n=>React.createElement("option",{key:n,value:n},n))
-        )
-      )
-    ),
     React.createElement("div",{style:{display:"flex",gap:8,marginBottom:8}},
       React.createElement("button",{onClick:addRow,style:{flex:2,background:"none",border:"1px dashed #2a2a2a",borderRadius:0,color:"#666",fontSize:10,letterSpacing:"0.1em",padding:"9px",cursor:"pointer"}},"+ ADD EXERCISE"),
       React.createElement("button",{onClick:addSection,style:{flex:1,background:"none",border:"1px dashed #1d3a5a",borderRadius:0,color:"#1d9bf0",fontSize:10,letterSpacing:"0.08em",padding:"9px",cursor:"pointer"}},"+ SECTION")
@@ -2913,21 +2884,20 @@ function WorkoutDetailsEditor({className,showToast}){
     ...rows.map((r,idx)=>{
       if(r.hdr!=null){editSec=r.id;const isC=collapsed.has(r.id);
       return React.createElement("div",{key:r.id,style:{marginTop:6,marginBottom:6,outline:dragOverId===r.id?"2px solid #1d9bf0":"none",borderRadius:0,padding:dragOverId===r.id?2:0},...dropProps(r.id)},
-          React.createElement("div",{style:{display:"flex",gap:6,alignItems:"center"}},
+          React.createElement("div",{style:{display:"flex",gap:4,alignItems:"center"}},
             React.createElement("span",{...dragHandleProps(r.id)},"⠿"),
-            React.createElement("button",{onClick:()=>setCollapsed(p=>{const n=new Set(p);n.has(r.id)?n.delete(r.id):n.add(r.id);return n;}),style:{background:"none",border:"none",color:"#888",fontSize:14,cursor:"pointer",transition:"transform .2s",transform:isC?"rotate(-90deg)":"rotate(0deg)",padding:"0 2px",flexShrink:0}},"▾"),
-            React.createElement("input",{value:r.hdr,onChange:e=>setRow(r.id,"hdr",e.target.value.toUpperCase()),placeholder:"SECTION (e.g. ROUND 1, WARM UP)",style:{...inS,flex:1,minWidth:0,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.12em",fontSize:14,color:"#1d9bf0",background:"#0a1a2a",borderColor:"#1d3a5a"}}),
-            React.createElement("button",{onClick:()=>removeRow(r.id),title:"Delete this round",style:{background:"none",border:"1px solid #3a1512",borderRadius:0,color:"#e06040",fontSize:13,padding:"6px 10px",cursor:"pointer",flexShrink:0}},"✕")
+            React.createElement("button",{onClick:()=>setCollapsed(p=>{const n=new Set(p);n.has(r.id)?n.delete(r.id):n.add(r.id);return n;}),style:{background:"none",border:"none",color:"#888",fontSize:14,cursor:"pointer",transition:"transform .2s",transform:isC?"rotate(-90deg)":"rotate(0deg)",padding:0,flexShrink:0}},"▾"),
+            React.createElement("input",{value:r.hdr,onChange:e=>setRow(r.id,"hdr",e.target.value.toUpperCase()),placeholder:"ROUND 1",style:{...inS,flex:1,minWidth:0,padding:"7px 6px",fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.08em",fontSize:13,color:"#1d9bf0",background:"#0a1a2a",borderColor:"#1d3a5a"}}),
+            React.createElement("button",{onClick:()=>setRow(r.id,"hideTv",!r.hideTv),title:"Hide this round's title on the TV view",style:{background:"none",border:"1px solid "+(r.hideTv?"#8a2515":"#2a2a2a"),borderRadius:0,color:r.hideTv?"#e06040":"#666",fontSize:9,letterSpacing:"0.04em",fontWeight:600,padding:"5px 5px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},r.hideTv?"TV OFF":"TV"),
+            React.createElement("button",{onClick:()=>setRow(r.id,"st",!(r.st===true)),title:"TV layout: STATIONS = grid; RUN/PUSH = run & push-ups layout",style:{background:"none",border:"1px solid "+((r.st===true)?"#1d5a34":"#4a3f15"),borderRadius:0,color:(r.st===true)?"#3ddc84":"#c9a227",fontSize:9,letterSpacing:"0.04em",fontWeight:600,padding:"5px 5px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},(r.st===true)?"STATIONS":"RUN/PUSH"),
+            React.createElement("button",{onClick:()=>setRow(r.id,"split",!(r.split===true)),title:"Split circuit: show ALL stations from the split rounds on every board. Tick this on both station rounds that share the circuit (e.g. Elevate 2 Round 1 + Round 3).",style:{background:"none",border:"1px solid "+((r.split===true)?"#1d5a34":"#2a2a2a"),borderRadius:0,color:(r.split===true)?"#3ddc84":"#666",fontSize:9,letterSpacing:"0.04em",fontWeight:600,padding:"5px 5px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},"SPLIT"),
+            React.createElement("button",{onClick:()=>moveRow(r.id,-1),disabled:idx===0,style:{background:"none",border:"none",color:idx===0?"#252525":"#666",cursor:idx===0?"default":"pointer",fontSize:12,lineHeight:1,padding:"4px 2px",flexShrink:0}},"▲"),
+            React.createElement("button",{onClick:()=>moveRow(r.id,1),disabled:idx===rows.length-1,style:{background:"none",border:"none",color:idx===rows.length-1?"#252525":"#666",cursor:idx===rows.length-1?"default":"pointer",fontSize:12,lineHeight:1,padding:"4px 2px",flexShrink:0}},"▼"),
+            React.createElement("button",{onClick:()=>removeRow(r.id),title:"Delete this round",style:{background:"none",border:"1px solid #3a1512",borderRadius:0,color:"#e06040",fontSize:12,padding:"5px 7px",cursor:"pointer",flexShrink:0}},"✕")
           ),
-          React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6,alignItems:"center",marginTop:6,paddingLeft:24}},
-            React.createElement("input",{value:r.dur||"",onChange:e=>setRow(r.id,"dur",e.target.value),placeholder:"TIME",title:"Round time shown on TV — leave blank to auto-total the station times",style:{...inS,width:60,fontFamily:"'DM Sans',sans-serif",fontSize:11,textAlign:"center",color:"#cfe3f5",background:"#0a1a2a",borderColor:"#1d3a5a",flexShrink:0}}),
-            React.createElement("button",{onClick:()=>setRow(r.id,"hideTv",!r.hideTv),title:"Hide this round's title on the TV view",style:{background:"none",border:"1px solid "+(r.hideTv?"#8a2515":"#2a2a2a"),borderRadius:0,color:r.hideTv?"#e06040":"#666",fontSize:9,letterSpacing:"0.06em",fontWeight:600,padding:"5px 7px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},r.hideTv?"TV OFF":"TV"),
-            React.createElement("button",{onClick:()=>setRow(r.id,"st",!(r.st===true)),title:"TV layout: STATIONS = grid; RUN/PUSH = run & push-ups layout",style:{background:"none",border:"1px solid "+((r.st===true)?"#1d5a34":"#4a3f15"),borderRadius:0,color:(r.st===true)?"#3ddc84":"#c9a227",fontSize:9,letterSpacing:"0.06em",fontWeight:600,padding:"5px 7px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},(r.st===true)?"STATIONS":"RUN/PUSH"),
-            React.createElement("button",{onClick:()=>setRow(r.id,"split",!(r.split===true)),title:"Split circuit: show ALL stations from the split rounds on every board. Tick this on both station rounds that share the circuit (e.g. Elevate 2 Round 1 + Round 3).",style:{background:"none",border:"1px solid "+((r.split===true)?"#1d5a34":"#2a2a2a"),borderRadius:0,color:(r.split===true)?"#3ddc84":"#666",fontSize:9,letterSpacing:"0.06em",fontWeight:600,padding:"5px 7px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},"SPLIT"),
-            React.createElement("div",{style:{display:"flex",gap:1}},
-              React.createElement("button",{onClick:()=>moveRow(r.id,-1),disabled:idx===0,style:{background:"none",border:"none",color:idx===0?"#252525":"#666",cursor:idx===0?"default":"pointer",fontSize:12,lineHeight:1,padding:"4px"}},"▲"),
-              React.createElement("button",{onClick:()=>moveRow(r.id,1),disabled:idx===rows.length-1,style:{background:"none",border:"none",color:idx===rows.length-1?"#252525":"#666",cursor:idx===rows.length-1?"default":"pointer",fontSize:12,lineHeight:1,padding:"4px"}},"▼")
-            )
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,marginTop:5,paddingLeft:20}},
+            React.createElement("span",{style:{fontSize:8,letterSpacing:"0.1em",color:"#555",fontWeight:600}},"TV TIME"),
+            React.createElement("input",{value:r.dur||"",onChange:e=>setRow(r.id,"dur",e.target.value),placeholder:"auto",title:"Round time shown on the TV — leave blank to auto-total the station times",style:{...inS,width:70,padding:"4px 6px",fontFamily:"'DM Sans',sans-serif",fontSize:11,textAlign:"center",color:"#cfe3f5",background:"#0a1a2a",borderColor:"#1d3a5a"}})
           )
         );}
       if(editSec&&collapsed.has(editSec))return null;
