@@ -373,11 +373,11 @@ function buildFlow(name,rows,opts){
        } else {
          var boardRight = nxt ? excard("COMING UP NEXT",nxt.exercise,nxt.maori,fmtMinShort(nxt.duration),nxt.c,nxt.o,nxt.d,true,true,true)
                               : previewcard(nextg.hdr.toUpperCase(),fmtMinLabel(nextg.dur||mmss(roundSum(nextg))),previewBody(dispG(nextg),pvStart(nextg,nextStart)),true);
-         S.push(screenWrap(motbar(scroll)+'<div class="cols">'+left+boardRight+'</div>'+clockbar({rlabel:rlab,rnum:rnum,rtot:rtot,ss:acc+si+1,sm:acc+si+1,tot:totStn,elapsed:segEl,total:total,sttime:segsec,stloop:false,roundtime:elapsed+rsec-segEl,adv:false,wname:wname}),'board r3board','data-final'));
-         if(nxt){
+         S.push(screenWrap(motbar(scroll)+'<div class="cols">'+left+boardRight+'</div>'+clockbar({rlabel:rlab,rnum:rnum,rtot:rtot,ss:acc+si+1,sm:acc+si+1,tot:totStn,elapsed:segEl,total:total,sttime:segsec,stloop:false,roundtime:elapsed+rsec-segEl,adv:false,wname:wname})+'<span class="timer" data-secs="'+((nxt&&isRec(seg.exercise))?segsec:Math.max(1,segsec-30))+'" data-dir="down" data-adv="1" style="display:none"></span>','board r3board','data-final'));
+         if(nxt&&!isRec(seg.exercise)){
            var kwRight=excard("COMING UP NEXT",nxt.exercise,nxt.maori,fmtMinShort(nxt.duration),nxt.c,nxt.o,nxt.d,true,true,false);
-           S.push(screenWrap(motbar(scroll)+'<div class="cols">'+kwcard(isRec(seg.exercise)?"RECOVERY COMPLETED IN":"KEEP WORKING","COMING UP NEXT",'data-secs="30" data-dir="down"')+kwRight+'</div>'+clockbar({rlabel:rlab,rnum:rnum,rtot:rtot,ss:acc+si+1,sm:acc+si+1,tot:totStn,elapsed:segEnd-30,total:total,sttime:30,stloop:false,roundtime:elapsed+rsec-(segEnd-30),adv:true,advon:"station",wname:wname}),'board r3board','data-final'));
-         } else {
+           S.push(screenWrap(motbar(scroll)+'<div class="cols">'+kwcard("KEEP WORKING","COMING UP NEXT",'data-secs="30" data-dir="down"')+kwRight+'</div>'+clockbar({rlabel:rlab,rnum:rnum,rtot:rtot,ss:acc+si+1,sm:acc+si+1,tot:totStn,elapsed:segEnd-30,total:total,sttime:30,stloop:false,roundtime:elapsed+rsec-(segEnd-30),adv:true,advon:"station",wname:wname}),'board r3board','data-final'));
+         } else if(!nxt){
            S.push(transitionScreen(rlab,rnum,rtot,acc+si+1,totStn,segEnd-30,total,dispG(nextg),pvStart(nextg,nextStart),scroll,wname));
          }
        }
