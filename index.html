@@ -2883,13 +2883,16 @@ function WorkoutDetailsEditor({className,showToast}){
     ),
     ...rows.map((r,idx)=>{
       if(r.hdr!=null){editSec=r.id;const isC=collapsed.has(r.id);
+      var _mem=[];for(var _j=idx+1;_j<rows.length;_j++){if(rows[_j].hdr!=null)break;_mem.push(rows[_j]);}
+      var _exU={};_mem.forEach(function(m){var e=(m.exercise||"").trim().toUpperCase();if(e)_exU[e]=1;});
+      var _isEmom=(r.st!==true)&&_mem.length>1&&Object.keys(_exU).length===1&&!_mem.some(function(m){return (m.exercise||"").trim().toUpperCase()==="RECOVERY";});
       return React.createElement("div",{key:r.id,style:{display:"flex",gap:3,alignItems:"center",marginTop:6,marginBottom:6,outline:dragOverId===r.id?"2px solid #1d9bf0":"none",borderRadius:0},...dropProps(r.id)},
           React.createElement("span",{...dragHandleProps(r.id),style:{cursor:"grab",touchAction:"none",color:"#666",fontSize:14,lineHeight:1,padding:"0 3px",userSelect:"none",flexShrink:0}},"⠿"),
           React.createElement("button",{onClick:()=>setCollapsed(p=>{const n=new Set(p);n.has(r.id)?n.delete(r.id):n.add(r.id);return n;}),style:{background:"none",border:"none",color:"#888",fontSize:13,cursor:"pointer",transition:"transform .2s",transform:isC?"rotate(-90deg)":"rotate(0deg)",padding:0,flexShrink:0}},"▾"),
           React.createElement("input",{value:r.hdr,onChange:e=>setRow(r.id,"hdr",e.target.value.toUpperCase()),placeholder:"ROUND 1",style:{...inS,flex:1,minWidth:0,padding:"5px 5px",fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.06em",fontSize:12,color:"#1d9bf0",background:"#0a1a2a",borderColor:"#1d3a5a"}}),
           React.createElement("input",{value:r.dur||"",onChange:e=>setRow(r.id,"dur",e.target.value),placeholder:"TIME",title:"TV time label for this round — leave blank to auto-total the station times",style:{...inS,width:42,padding:"4px 2px",fontFamily:"'DM Sans',sans-serif",fontSize:10,textAlign:"center",color:"#cfe3f5",background:"#0a1a2a",borderColor:"#1d3a5a",flexShrink:0}}),
           React.createElement("button",{onClick:()=>setRow(r.id,"hideTv",!r.hideTv),title:"Hide this round's title on the TV view",style:{background:"none",border:"1px solid "+(r.hideTv?"#8a2515":"#2a2a2a"),borderRadius:0,color:r.hideTv?"#e06040":"#666",fontSize:8,letterSpacing:"0.02em",fontWeight:600,padding:"4px 4px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},r.hideTv?"TV OFF":"TV"),
-          React.createElement("button",{onClick:()=>setRow(r.id,"st",!(r.st===true)),title:"TV layout: STATIONS = grid; RUN/PUSH = run & push-ups layout",style:{background:"none",border:"1px solid "+((r.st===true)?"#1d5a34":"#4a3f15"),borderRadius:0,color:(r.st===true)?"#3ddc84":"#c9a227",fontSize:8,letterSpacing:"0.02em",fontWeight:600,padding:"4px 4px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},(r.st===true)?"STATIONS":"RUN/PUSH"),
+          React.createElement("button",{onClick:()=>setRow(r.id,"st",!(r.st===true)),title:"TV layout: STATIONS = grid; RUN/PUSH = run & push-ups layout. Shows EMOM automatically when the round is one exercise repeated (e.g. SPRINT x5) — it runs the full round as one continuous board.",style:{background:"none",border:"1px solid "+((r.st===true)?"#1d5a34":(_isEmom?"#1d3a5a":"#4a3f15")),borderRadius:0,color:(r.st===true)?"#3ddc84":(_isEmom?"#1d9bf0":"#c9a227"),fontSize:8,letterSpacing:"0.02em",fontWeight:600,padding:"4px 4px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},(r.st===true)?"STATIONS":(_isEmom?"EMOM":"RUN/PUSH")),
           React.createElement("button",{onClick:()=>setRow(r.id,"split",!(r.split===true)),title:"Split circuit: show ALL stations from the split rounds on every board. Tick this on both station rounds that share the circuit (e.g. Elevate 2 Round 1 + Round 3).",style:{background:"none",border:"1px solid "+((r.split===true)?"#1d5a34":"#2a2a2a"),borderRadius:0,color:(r.split===true)?"#3ddc84":"#666",fontSize:8,letterSpacing:"0.02em",fontWeight:600,padding:"4px 4px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},"SPLIT"),
           React.createElement("button",{onClick:()=>moveRow(r.id,-1),disabled:idx===0,style:{background:"none",border:"none",color:idx===0?"#252525":"#666",cursor:idx===0?"default":"pointer",fontSize:11,lineHeight:1,padding:"3px 1px",flexShrink:0}},"▲"),
           React.createElement("button",{onClick:()=>moveRow(r.id,1),disabled:idx===rows.length-1,style:{background:"none",border:"none",color:idx===rows.length-1?"#252525":"#666",cursor:idx===rows.length-1?"default":"pointer",fontSize:11,lineHeight:1,padding:"3px 1px",flexShrink:0}},"▼"),
@@ -3168,9 +3171,13 @@ function CoachingView({showToast}){
       await sbPost("coaching_notes",{class_name:key,content:JSON.stringify(newExtras),updated_at:Date.now()});
     }
     setExtras(prev=>({...prev,[label]:newExtras}));
+    // Permanently delete the workout definition too, so it also disappears from data.js exports, the offline menu, and the players.
+    await sbDelete("coaching_notes","class_name=eq."+encodeURIComponent("__WORKOUT__"+cn));
+    await sbDelete("coaching_notes","class_name=eq."+encodeURIComponent("__SCROLL__"+cn));
+    await sbDelete("coaching_notes","class_name=eq."+encodeURIComponent(cn));
     if(selectedClass===cn)setSelectedClass(null);
     setRemoving(prev=>({...prev,[cn]:false}));
-    showToast(cn+" removed");
+    showToast(cn+" deleted");
   }
   function selectClass(cn){
     if(selectedClass===cn){setSelectedClass(null);}
@@ -3251,7 +3258,7 @@ function CoachingView({showToast}){
                      opacity:isEditing&&isExtra?0.5:1}
             },i+1),
             isEditing&&isExtra&&React.createElement("button",{
-              onClick:()=>removeClass(label,base,cn),
+              onClick:()=>{if(window.confirm("Delete "+cn+" permanently? This removes the workout everywhere — the app, the offline menu, and the players."))removeClass(label,base,cn);},
               disabled:removing[cn],
               style:{position:"absolute",top:-6,right:-6,width:18,height:18,borderRadius:"50%",
                      background:"#e06040",border:"2px solid #080808",color:"#fff",
