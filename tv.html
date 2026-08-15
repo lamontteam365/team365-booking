@@ -222,8 +222,8 @@ function mmss(s){var m=Math.floor(s/60),ss=s%60;return m+":"+(ss<10?"0":"")+ss;}
 function slug(x){return String(x).toLowerCase().replace(/&ndash;/g,"-").replace(/&amp;/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");}
 function durSecs(d){var p=String(d||"").split(":");return p.length===2?((parseInt(p[0])||0)*60+(parseInt(p[1])||0)):0;}
 function fmtMinLabel(d){var p=String(d||"").split(":");if(p.length!==2)return E(d||"");var m=parseInt(p[0])||0,s=parseInt(p[1])||0;if(s===0)return m+(m===1?" MINUTE":" MINUTES");return m+":"+String(s<10?"0"+s:s)+" MINUTES";}
-function lvcell(n,v){return '<div class="lvc"><div class="lvn">'+n+'</div><div class="lvb">'+E(v)+'</div></div>';}
-function pillbox(c,o,d){return '<div class="lv">'+lvcell("COMMITMENT",c)+lvcell("CONSISTENCY",o)+lvcell("DETERMINATION",d)+'</div>';}
+function lvcell(n,v,sfx){return '<div class="lvc"><div class="lvn">'+n+'</div><div class="lvb">'+E(v)+((sfx&&String(v).trim())?' <span style="opacity:0.72;font-size:0.82em">'+E(sfx)+'</span>':'')+'</div></div>';}
+function pillbox(c,o,d,sfx){return '<div class="lv">'+lvcell("COMMITMENT",c,sfx)+lvcell("CONSISTENCY",o,sfx)+lvcell("DETERMINATION",d,sfx)+'</div>';}
 function media(nm,folder){var url=VBASE+(folder||"exercises")+"/"+slug(nm)+".webm";return '<div class="media"><video data-src="'+url+'" autoplay muted loop playsinline preload="none" onerror="if(this.getAttribute(\'src\')){var p=this.parentNode;p.className=\'media ph\';p.textContent=\'VIDEO COMING SOON\';}"></video></div>';}
 function motbar(text){var parts=String(text).split(/&bull;|[\u2022\u00b7]/).map(function(p){return p.trim();}).filter(Boolean);var one=parts.map(function(p){return p+'<span class="dot">&bull;</span>';}).join("");var seg="";for(var i=0;i<6;i++)seg+=one;return '<div class="motivate"><div class="mtrack"><span class="mtext">'+seg+'</span><span class="mtext">'+seg+'</span></div></div>';}
 function firstBlocks(t,n){return String(t||"").replace(/\r/g,"").split(/\n{2,}/).map(function(p){return p.trim();}).filter(Boolean).slice(0,n).join("\n");}
@@ -268,13 +268,13 @@ function reccard(label,name,mao,dur,faded,secs){
  var tmr=(secs>0)?'<span class="timer bigtimer mid" data-secs="'+secs+'" data-dir="down">'+mmss(secs)+'</span>':'';
  return '<div class="r3col"><div class="'+cls+'">'+hdr+'<div class="recmid"><div class="rectitle">'+E(name)+'</div><div class="recmao">'+(mao?E(mao):"")+'</div>'+tmr+'</div></div></div>';
 }
-function excard(label,ex,mao,dur,c,o,dd,tgt,media_on,faded,secs){
+function excard(label,ex,mao,dur,c,o,dd,tgt,media_on,faded,secs,repsfx){
  if(isRec(ex))return reccard(label,ex,mao,dur,faded,secs);
  var cls="st r3card"+(faded?" faded":"");
  var hdr='<div class="cardhdr"><span class="chl">'+label+'</span><span class="exn">'+E(ex)+'</span><span class="rdur">'+(dur||"")+'</span></div>';
  var maoh='<div class="mao">'+(mao?E(mao):"&nbsp;")+'</div>';
  var med=media_on?media(ex,"exercises"):'';
- var pil=tgt?pillbox(c,o,dd):'';
+ var pil=tgt?pillbox(c,o,dd,repsfx):'';
  return '<div class="r3col"><div class="'+cls+'">'+hdr+maoh+med+pil+'</div></div>';
 }
 function kwcard(label,sub,timerattr){return '<div class="r3col"><div class="st r3card kwcard"><div class="kwmid"><div class="kwlabel">'+label+'</div><span class="timer bigtimer mid" '+timerattr+'>0:30</span><div class="startwith"><span class="swtext">'+sub+'</span> <span class="inarrow">&#10142;</span></div></div></div></div>';}
@@ -294,7 +294,8 @@ function runpushSess(g){var order=[],mp={};g.sts.forEach(function(s){if(!mp[s.ex
   return '<div class="scol">'+h+t+b+'</div>';}).join("");
  return '<div class="scols r3" style="grid-template-columns:repeat('+order.length+',minmax(0,17cqw))">'+cols+'</div>';}
 function listOrBlock(g,startNum){ if(isStationG(g)){var items=g.sts.map(function(s,i){return {n:startNum+i,name:s.exercise};});return two_col(items);} return runpushSess(g); }
-function previewBody(g,startNum){ return '<div class="rsub">'+roundSub(g)+'</div>'+listOrBlock(g,startNum)+(isStationG(g)?TAG:''); }
+function isEmomG(g){ return !isStationG(g)&&distinctEx(g).length===1&&g.sts.length>1&&!g.sts.some(function(s){return isRec(s.exercise);}); }
+function previewBody(g,startNum){ return '<div class="rsub">'+roundSub(g)+'</div>'+listOrBlock(g,startNum)+(isStationG(g)?TAG:(isEmomG(g)?'<div class="tag2c">EVERY MINUTE ON THE MINUTE</div>':'')); }
 var WUV=VBASE+"warmups/";
 function warmFile(nm){return nm.replace(/&ndash;/g,"-").replace(/&amp;/g,"&");}
 var WARMNAMES=WU.map(function(w){return slug(w[0]);});
@@ -355,9 +356,9 @@ function buildFlow(name,rows,opts){
    } else if(distinctEx(g).length===1 && g.sts.length>1 && !g.sts.some(function(s){return isRec(s.exercise);})){
      // Single-exercise repeated finisher (e.g. Burpees) -> one continuous board, whole-round countdown on the right
      var fseg=g.sts[0];
-     var fleft=excard(rlab,fseg.exercise,fseg.maori,fmtMinShort(fseg.duration),fseg.c,fseg.o,fseg.d,true,true,false,rsec);
+     var fleft=excard(rlab,fseg.exercise,fseg.maori,fmtMinShort(fseg.duration),fseg.c,fseg.o,fseg.d,true,true,false,rsec,"every min");
      var flabel=isLast?"CLASS COMPLETE IN":(rlab+" TIME REMAINING");
-     var fsub=fseg.exercise+" EMOM"; var fright='<div class="r3col"><div class="st r3card kwcard"><div class="kwmid"><div class="kwlabel">'+flabel+'</div><span class="timer bigtimer mid" data-secs="'+rsec+'" data-dir="down" data-adv="1">'+mmss(rsec)+'</span><div style="font-family:\'Bebas Neue\',sans-serif;font-style:italic;font-size:2.2cqw;letter-spacing:0.08em;color:#8cd0ff;margin-top:1cqw">'+fsub+'</div></div></div></div>';
+     var fsub="EVERY MINUTE ON THE MINUTE"; var fright='<div class="r3col"><div class="st r3card kwcard"><div class="kwmid"><div class="kwlabel">'+flabel+'</div><span class="timer bigtimer mid" data-secs="'+rsec+'" data-dir="down" data-adv="1">'+mmss(rsec)+'</span><div style="font-family:\'Bebas Neue\',sans-serif;font-style:italic;font-size:2.2cqw;letter-spacing:0.08em;color:#8cd0ff;margin-top:1cqw">'+fsub+'</div></div></div></div>';
      var fsttime=durSecs(fseg.duration)||60;
      S.push(screenWrap(motbar(scroll)+'<div class="cols">'+fleft+fright+'</div>'+clockbar({rlabel:rlab,rnum:rnum,rtot:rtot,ss:acc+1,sm:acc+g.sts.length,tot:totStn,elapsed:elapsed,total:total,sttime:fsttime,stloop:true,roundtime:rsec,adv:false,wname:wname}),'board r3board','data-final'));
      if(!isLast) S.push(transitionScreen(rlab,rnum,rtot,acc+g.sts.length,totStn,elapsed+rsec-30,total,dispG(nextg),pvStart(nextg,nextStart),scroll,wname));
