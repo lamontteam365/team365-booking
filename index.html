@@ -5154,9 +5154,9 @@ function RoutinesAdmin({member,selfEmail}){
     ),
     !rtCol&&!showTimes&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:10}},"Build timed routines for this member. Turn the Routines add-on on above to show them the tab. Members log their own time each attempt — the history and best time build up for them."),
     !rtCol&&showTimes&&React.createElement("div",{style:{marginBottom:12}},
-      routines.length===0
+      routines.filter(r=>!r.hidden).length===0
       ?React.createElement("div",{style:{fontSize:11,color:"#555",padding:"4px 0"}},"No routines yet.")
-      :routines.map(r=>{
+      :routines.filter(r=>!r.hidden).map(r=>{
         const times=(rtLogs[r.id]||[]).slice().sort((a,b)=>(a.date<b.date?1:-1));
         const bt=bestT(r.id);
         return React.createElement("div",{key:"t_"+r.id,style:{border:"1px solid #222",borderRadius:0,marginBottom:8}},
@@ -5183,7 +5183,7 @@ function RoutinesAdmin({member,selfEmail}){
           React.createElement("button",{onClick:()=>toggle(r.id),style:{background:"none",border:"none",color:"#000",fontSize:12,cursor:"pointer",transform:isOpen?"none":"rotate(-90deg)",transition:"transform .15s",padding:"0 2px",flexShrink:0}},"▾"),
           React.createElement("input",{value:r.title,onChange:e=>updR(r.id,"title",e.target.value),placeholder:"Routine title e.g. AMRAP 1",style:{flex:"1 1 auto",minWidth:40,background:"transparent",border:"none",color:"#000",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",outline:"none"}}),
           React.createElement("button",{onClick:()=>toggleVV(r),title:isSelf?"YOUR profile — toggles the VIDEO VIEW button for EVERYONE on this routine.":"Toggles the VIDEO VIEW button for THIS member on this routine.",style:{background:r.vvoff?"none":"#1d9bf0",border:"1px solid "+(r.vvoff?"#ccc":"#1d9bf0"),borderRadius:0,color:r.vvoff?"#888":"#fff",fontSize:8,fontWeight:600,letterSpacing:"0.02em",padding:"3px 5px",cursor:"pointer",flexShrink:0,fontFamily:"'DM Sans',sans-serif"}},r.vvoff?"VIDEO OFF":"VIDEO ON"),
-          React.createElement("button",{onClick:()=>updR(r.id,"hidden",!r.hidden),title:"Show or hide this routine for THIS member. Hiding keeps their logged times.",style:{background:"none",border:"1px solid "+(r.hidden?"#c9a227":"#ccc"),borderRadius:0,color:r.hidden?"#c9a227":"#4aaa66",fontSize:8,fontWeight:600,letterSpacing:"0.02em",padding:"3px 5px",cursor:"pointer",flexShrink:0,fontFamily:"'DM Sans',sans-serif"}},r.hidden?"HIDDEN":"VISIBLE"),
+          React.createElement("button",{onClick:()=>updR(r.id,"hidden",!r.hidden),title:"Show or hide this routine for THIS member. Hiding keeps their logged times.",style:{background:r.hidden?"none":"#4aaa66",border:"1px solid "+(r.hidden?"#c9a227":"#4aaa66"),borderRadius:0,color:r.hidden?"#c9a227":"#fff",fontSize:8,fontWeight:600,letterSpacing:"0.02em",padding:"3px 5px",cursor:"pointer",flexShrink:0,fontFamily:"'DM Sans',sans-serif"}},r.hidden?"HIDDEN":"VISIBLE"),
           React.createElement("button",{onClick:()=>updR(r.id,"mode",r.mode==="pillar"?"":"pillar"),title:"3-pillar targets (Commitment / Consistency / Determination). On = member picks a pillar; off = simple time only.",style:{background:r.mode==="pillar"?"#1d5a34":"none",border:"1px solid "+(r.mode==="pillar"?"#1d5a34":"#ccc"),borderRadius:0,color:r.mode==="pillar"?"#fff":"#666",fontSize:8,fontWeight:600,letterSpacing:"0.02em",padding:"3px 5px",cursor:"pointer",flexShrink:0,fontFamily:"'DM Sans',sans-serif"}},"3 PILLAR"),
           React.createElement("button",{onClick:()=>dupRoutine(r.id),title:"Duplicate routine",style:{background:"none",border:"1px solid #ccc",borderRadius:0,color:"#333",fontSize:11,padding:"2px 6px",cursor:"pointer",flexShrink:0}},"⧉"),
           React.createElement("button",{onClick:()=>removeRoutine(r.id),style:{background:"none",border:"1px solid #ccc",borderRadius:0,color:"#8a2515",fontSize:10,padding:"2px 6px",cursor:"pointer",flexShrink:0}},"✕")
