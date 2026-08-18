@@ -1645,7 +1645,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
     return()=>window.removeEventListener("popstate",handlePop);
   },[selectedMember]);
   useEffect(()=>{
-    if((admSeg==="members"||(admSeg==="sections"&&isMaster))&&!membersLoaded){
+    if((admSeg==="members"||admSeg==="functions"||(admSeg==="sections"&&isMaster))&&!membersLoaded){
       sbGet("members","select=*&order=name.asc").then(data=>{setMembers(data||[]);setMembersLoaded(true);});
       sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__MASTER_HIDDEN__")+"&select=content").then(r=>{setMasterHidden(!!(r&&r.length&&r[0].content==="1"));});
     }
@@ -1693,64 +1693,12 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
       React.createElement("button",{"data-adm":"classes",className:`adm-seg-btn${admSeg==="classes"?" aas":""}`,onClick:()=>setAdmSeg("classes")},"CLASSES"),
       (isMaster||mFlags.welladm)&&React.createElement("button",{"data-adm":"wellness",className:`adm-seg-btn${admSeg==="wellness"?" aas":""}`,onClick:()=>setAdmSeg("wellness")},"WELLNESS"),
       React.createElement("button",{"data-adm":"sections",className:`adm-seg-btn${admSeg==="sections"?" aas":""}`,onClick:()=>setAdmSeg("sections")},"SECTIONS"),
+      isMaster&&React.createElement("button",{"data-adm":"functions",className:`adm-seg-btn${admSeg==="functions"?" aas":""}`,onClick:()=>setAdmSeg("functions")},"FUNCTIONS"),
       React.createElement("button",{"data-adm":"onboarding",className:`adm-seg-btn${admSeg==="onboarding"?" aas":""}`,onClick:()=>setAdmSeg("onboarding")},"ONBOARDING"),
       (isMaster||!mFlags.dt)&&React.createElement("button",{"data-adm":"coaching",className:`adm-seg-btn${admSeg==="coaching"?" aas":""}`,onClick:()=>setAdmSeg("coaching")},"DETAILS")
     ),
     admSeg==="members"&&(!membersLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
     :React.createElement(React.Fragment,null,
-      isMaster&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(masterHidden?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
-        React.createElement("div",null,
-          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"HIDE ME FROM MEMBERS"),
-          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"Hides your account from all members & admins")
-        ),
-        React.createElement("button",{onClick:toggleMasterHidden,disabled:mhSaving,style:{background:masterHidden?"#fff":"#222",color:masterHidden?"#000":"#555",border:"1px solid "+(masterHidden?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},masterHidden?"HIDE":"VISIBLE")
-      ),
-      isMaster&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(!mFlags.wk?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
-        React.createElement("div",null,
-          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"WORKOUT PROGRAM"),
-          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides it from admins (master keeps access)")
-        ),
-        React.createElement("button",{onClick:()=>saveMFlag("wk",!mFlags.wk),style:{background:!mFlags.wk?"#fff":"#222",color:!mFlags.wk?"#000":"#555",border:"1px solid "+(!mFlags.wk?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},!mFlags.wk?"HIDE":"VISIBLE")
-      ),
-      isMaster&&React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #222",padding:"11px 14px",marginBottom:10}},
-        React.createElement("div",{onClick:()=>setShowWkAdmins(v=>!v),style:{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",userSelect:"none"}},
-          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"WHO CAN CREATE WORKOUTS"),
-          React.createElement("span",{style:{fontSize:11,color:"#1d9bf0",transform:showWkAdmins?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
-        ),
-        showWkAdmins&&React.createElement(React.Fragment,null,
-          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:6,marginBottom:8,letterSpacing:"0.04em"}},"Untick an admin to stop them building workout programs. You (master) always have access."),
-          (members.filter(m=>m.is_admin&&m.email!==ADMIN_EMAIL).length===0)
-            ?React.createElement("div",{style:{fontSize:10,color:"#555"}},"No other admins yet.")
-            :members.filter(m=>m.is_admin&&m.email!==ADMIN_EMAIL).map(a=>{
-                const wkHidden=(mFlags.wkAdminHide||[]).includes(a.email);
-                return React.createElement("div",{key:a.email,style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderTop:"1px solid #181818"}},
-                  React.createElement("div",{style:{fontSize:12,color:"#ccc"}},a.name||a.email),
-                  React.createElement("button",{onClick:()=>{const list=(mFlags.wkAdminHide||[]).slice();const i=list.indexOf(a.email);if(i>=0)list.splice(i,1);else list.push(a.email);saveMFlag("wkAdminHide",list);},style:{width:26,height:26,borderRadius:0,border:"1px solid "+(wkHidden?"#333":"#1d3a5a"),background:wkHidden?"transparent":"#0a1a2a",color:"#1d9bf0",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},wkHidden?"":"✓")
-                );
-              })
-        )
-      ),
-      isMaster&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(mFlags.dt?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},React.createElement("div",null,React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"DETAILS SECTION"),React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides it from admins (master keeps access)")),React.createElement("button",{onClick:()=>saveMFlag("dt",!mFlags.dt),style:{background:mFlags.dt?"#fff":"#222",color:mFlags.dt?"#000":"#555",border:"1px solid "+(mFlags.dt?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},mFlags.dt?"HIDE":"VISIBLE")),isMaster&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(!mFlags.pasteAI?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
-        React.createElement("div",null,
-          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"PASTE FROM AI"),
-          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides it from admins (master keeps access)")
-        ),
-        React.createElement("button",{onClick:()=>saveMFlag("pasteAI",!mFlags.pasteAI),style:{background:!mFlags.pasteAI?"#fff":"#222",color:!mFlags.pasteAI?"#000":"#555",border:"1px solid "+(!mFlags.pasteAI?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},!mFlags.pasteAI?"HIDE":"VISIBLE")
-      ),
-      isMaster&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(!mFlags.welladm?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
-        React.createElement("div",null,
-          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"WELLNESS"),
-          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides it from admins")
-        ),
-        React.createElement("button",{onClick:()=>saveMFlag("welladm",!mFlags.welladm),style:{background:!mFlags.welladm?"#fff":"#222",color:!mFlags.welladm?"#000":"#555",border:"1px solid "+(!mFlags.welladm?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},!mFlags.welladm?"HIDE":"VISIBLE")
-      ),
-      isMaster&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(mFlags.maint?"#c98a1e":"#222"),padding:"11px 14px",marginBottom:10}},
-        React.createElement("div",null,
-          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"MAINTENANCE MODE"),
-          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"ON = members & admins see only the Notice Board")
-        ),
-        React.createElement("button",{onClick:()=>saveMFlag("maint",!mFlags.maint),style:{background:mFlags.maint?"#c98a1e":"#222",color:mFlags.maint?"#000":"#555",border:"1px solid "+(mFlags.maint?"#c98a1e":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},mFlags.maint?"ON":"OFF")
-      ),
       React.createElement("div",{className:"adm-stats-row"},
         React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},visMembers.length),React.createElement("div",{className:"adm-stat-lbl"},"MEMBERS")),
         React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},bookings.filter(b=>b.date_key>=toDS(new Date())).length),React.createElement("div",{className:"adm-stat-lbl"},"UPCOMING BKS"))
@@ -2145,6 +2093,62 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
             onClick:async()=>{await saveCalendarSetting(!calendarEnabled);}
           },calendarEnabled?"ON":"OFF")
         )
+      )
+    ),
+    admSeg==="functions"&&isMaster&&React.createElement(React.Fragment,null,
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(masterHidden?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10,marginTop:16}},
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"HIDE ME FROM MEMBERS"),
+          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"Hides your account from all members & admins")
+        ),
+        React.createElement("button",{onClick:toggleMasterHidden,disabled:mhSaving,style:{background:masterHidden?"#fff":"#222",color:masterHidden?"#000":"#555",border:"1px solid "+(masterHidden?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},masterHidden?"HIDE":"VISIBLE")
+      ),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(!mFlags.wk?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"WORKOUT PROGRAM"),
+          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides it from admins (master keeps access)")
+        ),
+        React.createElement("button",{onClick:()=>saveMFlag("wk",!mFlags.wk),style:{background:!mFlags.wk?"#fff":"#222",color:!mFlags.wk?"#000":"#555",border:"1px solid "+(!mFlags.wk?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},!mFlags.wk?"HIDE":"VISIBLE")
+      ),
+      React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #222",padding:"11px 14px",marginBottom:10}},
+        React.createElement("div",{onClick:()=>setShowWkAdmins(v=>!v),style:{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",userSelect:"none"}},
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"WHO CAN CREATE WORKOUTS"),
+          React.createElement("span",{style:{fontSize:11,color:"#1d9bf0",transform:showWkAdmins?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
+        ),
+        showWkAdmins&&React.createElement(React.Fragment,null,
+          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:6,marginBottom:8,letterSpacing:"0.04em"}},"Untick an admin to stop them building workout programs. You (master) always have access."),
+          (members.filter(m=>m.is_admin&&m.email!==ADMIN_EMAIL).length===0)
+            ?React.createElement("div",{style:{fontSize:10,color:"#555"}},"No other admins yet.")
+            :members.filter(m=>m.is_admin&&m.email!==ADMIN_EMAIL).map(a=>{
+                const wkHidden=(mFlags.wkAdminHide||[]).includes(a.email);
+                return React.createElement("div",{key:a.email,style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderTop:"1px solid #181818"}},
+                  React.createElement("div",{style:{fontSize:12,color:"#ccc"}},a.name||a.email),
+                  React.createElement("button",{onClick:()=>{const list=(mFlags.wkAdminHide||[]).slice();const i=list.indexOf(a.email);if(i>=0)list.splice(i,1);else list.push(a.email);saveMFlag("wkAdminHide",list);},style:{width:26,height:26,borderRadius:0,border:"1px solid "+(wkHidden?"#333":"#1d3a5a"),background:wkHidden?"transparent":"#0a1a2a",color:"#1d9bf0",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},wkHidden?"":"✓")
+                );
+              })
+        )
+      ),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(mFlags.dt?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},React.createElement("div",null,React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"DETAILS SECTION"),React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides it from admins (master keeps access)")),React.createElement("button",{onClick:()=>saveMFlag("dt",!mFlags.dt),style:{background:mFlags.dt?"#fff":"#222",color:mFlags.dt?"#000":"#555",border:"1px solid "+(mFlags.dt?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},mFlags.dt?"HIDE":"VISIBLE")),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(!mFlags.pasteAI?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"PASTE FROM AI"),
+          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides it from admins (master keeps access)")
+        ),
+        React.createElement("button",{onClick:()=>saveMFlag("pasteAI",!mFlags.pasteAI),style:{background:!mFlags.pasteAI?"#fff":"#222",color:!mFlags.pasteAI?"#000":"#555",border:"1px solid "+(!mFlags.pasteAI?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},!mFlags.pasteAI?"HIDE":"VISIBLE")
+      ),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(!mFlags.welladm?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"WELLNESS"),
+          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides it from admins")
+        ),
+        React.createElement("button",{onClick:()=>saveMFlag("welladm",!mFlags.welladm),style:{background:!mFlags.welladm?"#fff":"#222",color:!mFlags.welladm?"#000":"#555",border:"1px solid "+(!mFlags.welladm?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},!mFlags.welladm?"HIDE":"VISIBLE")
+      ),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(mFlags.maint?"#c98a1e":"#222"),padding:"11px 14px",marginBottom:10}},
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"MAINTENANCE MODE"),
+          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"ON = members & admins see only the Notice Board")
+        ),
+        React.createElement("button",{onClick:()=>saveMFlag("maint",!mFlags.maint),style:{background:mFlags.maint?"#c98a1e":"#222",color:mFlags.maint?"#000":"#555",border:"1px solid "+(mFlags.maint?"#c98a1e":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},mFlags.maint?"ON":"OFF")
       )
     ),
   admSeg==="onboarding"&&React.createElement(OnboardingView,{showToast}),
@@ -5411,7 +5415,7 @@ function App(){
       });
     }catch(e){}
   },[tab]);
-  const ADMIN_SEG_ORDER=["members","classes","wellness","sections","onboarding","coaching"];
+  const ADMIN_SEG_ORDER=["members","classes","wellness","sections","functions","onboarding","coaching"];
   const [admSeg,setAdmSeg]=useState(()=>lsGet("t365-admseg","members"));
   useEffect(()=>{lsSet("t365-admseg",admSeg);},[admSeg]);
   // Keep the active admin sub-section scrolled into view when it changes
