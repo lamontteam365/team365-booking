@@ -609,6 +609,41 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
   const [rtEnabled,setRtEnabled]=useState(member.routines_enabled===true); // Routines add-on
   const [showDet,setShowDet]=useState(false);
   const [showAcc,setShowAcc]=useState(false);
+  const [showNotes,setShowNotes]=useState(false);
+  const [notesList,setNotesList]=useState([]);
+  const [notesLoaded,setNotesLoaded]=useState(false);
+  const [noteDraft,setNoteDraft]=useState("");
+  const [savingNote,setSavingNote]=useState(false);
+  async function loadNotes(){
+    const r=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__MEMBER_NOTES__"+member.email)}&select=content`);
+    let arr=[];
+    if(r&&r.length&&r[0].content){try{arr=JSON.parse(r[0].content)||[];}catch{arr=[];}}
+    setNotesList(arr);setNotesLoaded(true);
+  }
+  async function saveNotesArr(arr){
+    const q=`class_name=eq.${encodeURIComponent("__MEMBER_NOTES__"+member.email)}`;
+    const body={content:JSON.stringify(arr),updated_at:Date.now()};
+    const existing=await sbGet("coaching_notes",q+"&select=class_name");
+    if(existing&&existing.length)await sbPatch("coaching_notes",q,body);
+    else await sbPost("coaching_notes",{class_name:"__MEMBER_NOTES__"+member.email,...body});
+  }
+  async function addNote(){
+    if(!noteDraft.trim())return;
+    setSavingNote(true);
+    const entry={id:Date.now()+"_"+Math.random().toString(36).slice(2,7),text:noteDraft.trim(),ts:Date.now()};
+    const next=[entry,...notesList];
+    await saveNotesArr(next);
+    setNotesList(next);setNoteDraft("");setSavingNote(false);
+  }
+  async function deleteNote(id){
+    const next=notesList.filter(n=>n.id!==id);
+    setNotesList(next);
+    await saveNotesArr(next);
+  }
+  function fmtNoteTs(ts){
+    const d=new Date(ts);const h=d.getHours();const hh=(h%12)||12;const mm=String(d.getMinutes()).padStart(2,"0");const ap=h<12?"AM":"PM";
+    return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${hh}:${mm}${ap}`;
+  }
   const [wkMemberView,setWkMemberView]=useState(false); // admin: view program as the member sees it (read-only, with completions)
   const [savingAcc,setSavingAcc]=useState(false);
   const [accMsg,setAccMsg]=useState("");
@@ -1127,6 +1162,31 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
         ),
         accMsg&&React.createElement("div",{style:{fontSize:10,color:"#4aaa88",letterSpacing:"0.04em",marginBottom:4}},accMsg)
       )
+      ),
+      currentUserIsAdmin&&React.createElement(React.Fragment,null,
+        React.createElement("div",{onClick:()=>{const nv=!showNotes;setShowNotes(nv);if(nv&&!notesLoaded)loadNotes();},style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginTop:16,marginBottom:showNotes?10:0}},
+          React.createElement("span",null,"NOTES"+(notesLoaded&&notesList.length?` (${notesList.length})`:"")),
+          React.createElement("span",{style:{fontSize:11,transform:showNotes?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
+        ),
+        showNotes&&React.createElement(React.Fragment,null,
+          React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}},
+            React.createElement("textarea",{value:noteDraft,onChange:e=>setNoteDraft(e.target.value),placeholder:"Add a note about this member...",rows:3,style:{flex:1,background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:0,color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:13,padding:"10px 12px",resize:"vertical"}})
+          ),
+          React.createElement("button",{onClick:addNote,disabled:savingNote||!noteDraft.trim(),style:{width:"100%",background:noteDraft.trim()?"#fff":"#222",color:noteDraft.trim()?"#000":"#555",border:"1px solid "+(noteDraft.trim()?"#fff":"#333"),borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",padding:"10px",cursor:noteDraft.trim()?"pointer":"default",marginBottom:14}},savingNote?"SAVING...":"ADD NOTE"),
+          !notesLoaded
+            ?React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.04em"}},"LOADING...")
+            :notesList.length===0
+              ?React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.04em"}},"No notes yet.")
+              :notesList.slice().sort((a,b)=>b.ts-a.ts).map(n=>
+                React.createElement("div",{key:n.id,style:{background:"#0e0e0e",border:"1px solid #1a1a1a",borderRadius:0,padding:"10px 12px",marginBottom:8}},
+                  React.createElement("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8}},
+                    React.createElement("div",{style:{fontSize:13,color:"#eee",lineHeight:1.5,whiteSpace:"pre-wrap",flex:1}},n.text),
+                    React.createElement("button",{onClick:()=>deleteNote(n.id),style:{background:"none",border:"1px solid #333",color:"#666",borderRadius:0,fontSize:11,padding:"3px 8px",cursor:"pointer",flexShrink:0}},"✕")
+                  ),
+                  React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.06em",marginTop:6}},fmtNoteTs(n.ts))
+                )
+              )
+        )
       ),
       currentUserIsAdmin&&canManageWk&&React.createElement(MemberWorkoutAdmin,{member,memberView:wkMemberView,setMemberView:setWkMemberView,isMaster,mfPasteAI}),
       currentUserIsAdmin&&React.createElement(RoutinesAdmin,{member,selfEmail}),
