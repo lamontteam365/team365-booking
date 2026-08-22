@@ -4179,10 +4179,25 @@ function SCDownloadRenderer({cycle,onDone}){
 function SCAdminPosterView({cycle,weekNum,setWeekNum,exercises,onClose}){
   const frameRef=useRef(null);
   const[isFullscreen,setIsFullscreen]=useState(false);
+  const[rot,setRot]=useState(false);
+  const[dim,setDim]=useState({w:0,h:0});
   useEffect(()=>{
     const onChange=()=>setIsFullscreen(document.fullscreenElement===frameRef.current);
     document.addEventListener("fullscreenchange",onChange);
     return()=>document.removeEventListener("fullscreenchange",onChange);
+  },[]);
+  useEffect(()=>{
+    const chk=()=>{
+      try{
+        const w=window.innerWidth,h=window.innerHeight;
+        setDim({w,h});
+        setRot(window.matchMedia("(orientation: portrait)").matches&&w<=820);
+      }catch(e){setRot(false);}
+    };
+    chk();
+    window.addEventListener("resize",chk);
+    window.addEventListener("orientationchange",chk);
+    return()=>{window.removeEventListener("resize",chk);window.removeEventListener("orientationchange",chk);};
   },[]);
   function toggleFullscreen(){
     if(document.fullscreenElement)document.exitFullscreen();
@@ -4195,9 +4210,11 @@ function SCAdminPosterView({cycle,weekNum,setWeekNum,exercises,onClose}){
   const weekBgNum=cycle.week_bg&&cycle.week_bg[weekNum];
   const bgUrl=weekBgNum?scBgUrl(weekBgNum):null;
   const frameStyle=bgUrl?{backgroundImage:`linear-gradient(rgba(0,0,0,0.72),rgba(0,0,0,0.82)),url(${bgUrl})`,backgroundSize:"cover",backgroundPosition:"center"}:{};
-  return React.createElement("div",{className:"scb-poster-overlay",onClick:onClose},
-    React.createElement("div",{className:"scb-poster-outerframe"},
-    React.createElement("div",{ref:frameRef,className:`scb-poster-frame${isFullscreen?" fs":""}`,style:frameStyle,onClick:e=>e.stopPropagation()},
+  const posStyle=(rot&&dim.w)?{position:"absolute",top:"50%",left:"50%",width:Math.min(dim.h-16,966)+"px",height:(dim.w-16)+"px",transformOrigin:"center center",transform:"translate(-50%,-50%) rotate(90deg)"}:{position:"absolute",top:"50%",left:"50%",width:"calc(100% - 16px)",maxWidth:966,transformOrigin:"center center",transform:"translate(-50%,-50%)"};
+  return React.createElement("div",{className:"scb-poster-overlay",onClick:onClose,style:{padding:0}},
+    React.createElement("div",{style:posStyle,onClick:e=>e.stopPropagation()},
+    React.createElement("div",{className:"scb-poster-outerframe",style:{width:"100%",height:"100%",maxWidth:"none",maxHeight:"none"}},
+    React.createElement("div",{ref:frameRef,className:`scb-poster-frame${isFullscreen?" fs":""}`,style:{...frameStyle,height:"100%",maxHeight:"none"},onClick:e=>e.stopPropagation()},
       React.createElement("button",{className:"scb-poster-close",onClick:onClose},"✕"),
       React.createElement("button",{className:"scb-poster-fs-btn",onClick:toggleFullscreen},isFullscreen?"⤢":"⛶"),
       React.createElement("div",{className:"scb-poster-title"},title),
@@ -4237,6 +4254,7 @@ function SCAdminPosterView({cycle,weekNum,setWeekNum,exercises,onClose}){
         React.createElement("span",null,"PURSUIT TO BECOME MORE")
       ),
       React.createElement("div",{className:"scb-poster-weeklbl"},`${cycle.session_type.toUpperCase()} · ${MONTHS_FULL[new Date(cycle.queued_at+(weekNum-1)*SC_WEEK_MS).getMonth()]} · WEEK ${weekNum}`)
+    )
     )
     )
   );
