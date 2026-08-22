@@ -4178,10 +4178,9 @@ function SCDownloadRenderer({cycle,onDone}){
 }
 function SCAdminPosterView({cycle,weekNum,setWeekNum,exercises,onClose}){
   const frameRef=useRef(null);
-  const outerRef=useRef(null);
   const[isFullscreen,setIsFullscreen]=useState(false);
   useEffect(()=>{
-    const onChange=()=>setIsFullscreen(!!document.fullscreenElement);
+    const onChange=()=>setIsFullscreen(document.fullscreenElement===frameRef.current);
     document.addEventListener("fullscreenchange",onChange);
     return()=>document.removeEventListener("fullscreenchange",onChange);
   },[]);
@@ -4189,33 +4188,6 @@ function SCAdminPosterView({cycle,weekNum,setWeekNum,exercises,onClose}){
     if(document.fullscreenElement)document.exitFullscreen();
     else if(frameRef.current&&frameRef.current.requestFullscreen)frameRef.current.requestFullscreen();
   }
-  useEffect(()=>{
-    function fit(){
-      const el=outerRef.current;
-      if(!el)return;
-      const vw=window.innerWidth,vh=window.innerHeight;
-      const portrait=vh>vw;
-      if(!portrait){
-        el.style.transform="none";
-        el.style.width="";
-        el.style.flexShrink="";
-        return;
-      }
-      const pad=16;
-      const targetWidth=Math.min(vh-pad,966);
-      el.style.transform="none";
-      el.style.flexShrink="0";
-      el.style.width=targetWidth+"px";
-      const h=el.offsetHeight;
-      const availW=vw-pad;
-      const scale=Math.min(1,availW/h);
-      el.style.transform=`rotate(90deg) scale(${scale})`;
-    }
-    fit();
-    window.addEventListener("resize",fit);
-    window.addEventListener("orientationchange",fit);
-    return()=>{window.removeEventListener("resize",fit);window.removeEventListener("orientationchange",fit);};
-  },[weekNum,cycle.id]);
   const sections={};
   exercises.forEach(e=>{if(!sections[e.section])sections[e.section]=[];sections[e.section].push(e);});
   const populatedSections=SC_SECTIONS.filter(s=>sections[s]&&sections[s].length>0);
@@ -4224,7 +4196,7 @@ function SCAdminPosterView({cycle,weekNum,setWeekNum,exercises,onClose}){
   const bgUrl=weekBgNum?scBgUrl(weekBgNum):null;
   const frameStyle=bgUrl?{backgroundImage:`linear-gradient(rgba(0,0,0,0.72),rgba(0,0,0,0.82)),url(${bgUrl})`,backgroundSize:"cover",backgroundPosition:"center"}:{};
   return React.createElement("div",{className:"scb-poster-overlay",onClick:onClose},
-    React.createElement("div",{ref:outerRef,className:"scb-poster-outerframe",style:{transformOrigin:"center center"}},
+    React.createElement("div",{className:"scb-poster-outerframe"},
     React.createElement("div",{ref:frameRef,className:`scb-poster-frame${isFullscreen?" fs":""}`,style:frameStyle,onClick:e=>e.stopPropagation()},
       React.createElement("button",{className:"scb-poster-close",onClick:onClose},"✕"),
       React.createElement("button",{className:"scb-poster-fs-btn",onClick:toggleFullscreen},isFullscreen?"⤢":"⛶"),
