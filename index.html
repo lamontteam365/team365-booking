@@ -345,7 +345,7 @@ html,body{background:#080808;min-height:100vh}
 .sp-toggle-btn.spta{background:#fff;color:#000;border-color:#fff}
 .sp-weeks{display:flex;gap:6px;margin-bottom:20px}
 .sp-wk{flex:1;padding:8px 4px;background:#141414;border:1px solid #888;border-radius:0;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:0.1em;color:#555;cursor:pointer;transition:all .15s;text-align:center}
-.sp-wk.spwa{background:#1a1a1a;border-color:#555;color:#fff}
+.sp-wk.spwa{background:#141414;border:2px solid #1d9bf0;color:#fff}
 .sp-wk.spwc{border-color:#4aaa66;color:#4aaa66}
 .sp-section-hdr{font-size:9px;letter-spacing:0.22em;color:#666;font-weight:600;margin:20px 0 10px;padding-top:16px;border-top:1px solid #141414}
 .sp-section-hdr:first-child{border-top:none;padding-top:0;margin-top:0}
@@ -376,6 +376,7 @@ html,body{background:#080808;min-height:100vh}
 .sp-ticks-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 .sp-tick{width:34px;height:34px;border-radius:50%;background:#141414;border:1px solid #252525;color:#444;font-family:'Bebas Neue',sans-serif;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0;line-height:1}
 .sp-tick.sptd{background:#0d2b1a;border-color:#4aaa66;color:#4aaa66}
+.sp-tick.sptd.sptb{background:#0d2333;border-color:#1d9bf0;color:#1d9bf0}
 .sp-sets-col{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid #141414}
 .sp-set-row{display:flex;align-items:center;gap:8px}
 .sp-set-lbl{font-size:10px;letter-spacing:0.1em;color:#444;font-weight:600;width:22px;flex-shrink:0}
@@ -395,6 +396,110 @@ html,body{background:#080808;min-height:100vh}
 .fp-link{background:none;border:none;color:#555;font-family:'DM Sans',sans-serif;font-size:11px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;transition:color .15s;letter-spacing:0.04em;margin-top:6px;display:block;text-align:center}
 .fp-link:hover{color:#aaa}
 .no-sb{scrollbar-width:none;-ms-overflow-style:none}.no-sb::-webkit-scrollbar{display:none}
+/* ── S&C Builder (Admin) & Cycle Roadmap (Member) ── */
+.scb-wrap{padding:4px 0 40px}
+.scb-cycle-card{background:#141414;border:1px solid #888;border-radius:0;padding:14px;margin-bottom:10px}
+.scb-cycle-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.scb-cycle-name{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:0.06em;color:#fff}
+.scb-cycle-meta{font-size:9px;letter-spacing:0.06em;color:#666;margin-top:3px;white-space:nowrap;overflow:hidden}
+.scb-switch{position:relative;width:42px;height:24px;flex-shrink:0;background:#d4d4d4;border:1px solid #b8b8b8;border-radius:14px;cursor:pointer;transition:background .15s}
+.scb-switch.sm{width:26px;height:15px;border-radius:9px}
+.scb-switch.on{background:#fff;border-color:#fff}
+.scb-switch-knob{position:absolute;top:2px;left:2px;width:18px;height:18px;background:#1a1a1a;border-radius:50%;transition:left .15s}
+.scb-switch.sm .scb-switch-knob{width:11px;height:11px;top:1px;left:1px}
+.scb-switch.on .scb-switch-knob{left:20px}
+.scb-switch.sm.on .scb-switch-knob{left:13px}
+.scb-icon-btn{background:#fff;border:none;width:15px;height:15px;border-radius:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:8px;color:#000;padding:0}
+.scb-icon-btn.danger{color:#e53e3e}
+.scb-cycle-actions{display:flex;gap:6px;margin-top:12px}
+.scb-btn{background:none;border:1px solid #333;color:#888;font-size:9px;letter-spacing:0.1em;padding:7px 10px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;transition:all .15s}
+.scb-btn:hover{color:#fff;border-color:#666}
+.scb-btn.primary{background:#fff;color:#000;border-color:#fff}
+.scb-btn.danger{color:#e06040;border-color:#3a1f18}
+.scb-new-form{background:#0e0e0e;border:1px solid #2a2a2a;padding:14px;margin-bottom:14px}
+.scb-back{background:none;border:none;color:#1d9bf0;font-size:11px;letter-spacing:0.1em;cursor:pointer;padding:0 0 14px;font-family:'DM Sans',sans-serif;font-weight:600}
+.scb-week-hdr{display:flex;align-items:center;justify-content:space-between;background:#0e0e0e;border:1px solid #2a2a2a;padding:10px 14px;cursor:pointer;margin-top:8px;user-select:none}
+.scb-week-title{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:0.12em;color:#fff}
+.scb-week-body{padding:10px 2px 4px}
+.scb-section-lbl{font-size:9px;letter-spacing:0.16em;color:#555;font-weight:600;margin:12px 0 6px;padding-left:2px}
+.scb-ex-row{display:flex;align-items:center;gap:8px;background:#141414;border:1px solid #2a2a2a;padding:9px 10px;margin-bottom:5px;cursor:grab}
+.scb-ex-row.dragging{opacity:0.4}
+.scb-ex-drag{color:#444;font-size:14px;flex-shrink:0}
+.scb-ex-body{flex:1;min-width:0}
+.scb-ex-nm{font-size:12px;color:#fff}
+.scb-ex-meta{font-size:9px;color:#555;margin-top:2px}
+.scb-ex-btns{display:flex;gap:5px;flex-shrink:0}
+.scb-add-btn{width:100%;background:none;border:1px dashed #333;color:#666;font-size:10px;letter-spacing:0.1em;padding:9px;cursor:pointer;margin-top:4px;font-family:'DM Sans',sans-serif;font-weight:600}
+.scb-add-btn:hover{color:#fff;border-color:#666}
+.scb-autocomplete{position:relative}
+.scb-ac-list{position:absolute;left:0;right:0;top:100%;background:#1a1a1a;border:1px solid #333;max-height:160px;overflow-y:auto;z-index:5}
+.scb-ac-item{padding:8px 10px;font-size:12px;color:#ccc;cursor:pointer;border-bottom:1px solid #222}
+.scb-ac-item:hover{background:#252525}
+.scb-ac-item small{display:block;color:#555;font-size:9px;margin-top:2px}
+.scb-bulk-bar{position:sticky;bottom:0;background:#1a1a1a;border:1px solid #1d9bf0;padding:10px;display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.scb-bulk-bar input{width:70px;background:#0e0e0e;border:1px solid #2a2a2a;color:#fff;padding:7px;font-size:12px;font-family:'DM Sans',sans-serif}
+.scb-check{width:16px;height:16px;flex-shrink:0;accent-color:#1d9bf0}
+.scb-empty{text-align:center;padding:32px 0;font-size:10px;letter-spacing:0.16em;color:#444}
+.scb-live-badge{font-size:8px;letter-spacing:0.12em;font-weight:700;padding:2px 6px;border:1px solid #4aaa66;color:#4aaa66;margin-left:8px}
+.scb-edit-badge{font-size:7px;letter-spacing:0.08em;font-weight:700;padding:2px 5px;border:1px solid #1d9bf0;color:#1d9bf0;margin-left:0;background:none;cursor:pointer;font-family:'DM Sans',sans-serif}
+.scb-play-btn{background:#1d9bf0;border:none;color:#fff;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:8px}
+.scb-play-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}
+.scb-play-frame{width:100%;max-width:420px;max-height:94dvh;height:auto;background:#0a0a0a;border:1px solid #1d9bf0;overflow-y:auto;padding:38px 16px 16px;box-sizing:border-box;position:relative}
+.scb-play-close{position:absolute;top:8px;right:8px;background:#fff;color:#000;border:none;width:26px;height:26px;font-size:13px;cursor:pointer;font-weight:700}
+.scb-play-title{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:0.1em;color:#1d9bf0;margin-bottom:2px}
+.scb-play-sub{font-size:8px;letter-spacing:0.12em;color:#666;margin-bottom:10px}
+.scb-play-sec{font-size:8px;letter-spacing:0.14em;color:#555;font-weight:700;margin:14px 0 8px}
+.scb-play-ex{display:flex;align-items:baseline;gap:4px;padding:3px 0;border-bottom:1px solid #1a1a1a;font-size:10px;color:#eee}
+.scb-edit-hdr{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#fff;font-weight:600;cursor:pointer;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #222}
+.scb-play-sq{background:#1d9bf0;border:none;color:#fff;width:15px;height:15px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:7px;padding:0}
+.scb-poster-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.97);z-index:9999;display:flex;align-items:center;justify-content:center;padding:8px;box-sizing:border-box}
+.scb-poster-outerframe{width:100%;max-width:966px;max-height:96dvh;background:#000;padding:10px;box-sizing:border-box}
+.scb-poster-frame{width:100%;height:auto;background:#000;border:1px solid rgba(255,255,255,0.35);overflow-y:auto;position:relative;padding:32px 16px 36px;box-sizing:border-box;display:flex;flex-direction:column}
+.scb-poster-frame.fs{width:100dvw;height:100dvh;justify-content:center;padding:48px 40px 60px}
+.scb-poster-close{position:absolute;top:8px;right:8px;background:#fff;color:#000;border:none;width:22px;height:22px;font-size:11px;cursor:pointer;font-weight:700;z-index:2}
+.scb-poster-fs-btn{position:absolute;top:8px;left:8px;background:#fff;color:#000;border:none;width:22px;height:22px;font-size:11px;cursor:pointer;font-weight:700;z-index:2}
+.scb-poster-brand{position:absolute;bottom:10px;left:14px;display:flex;flex-direction:column;gap:1px}
+.scb-poster-brand b{font-size:9px;letter-spacing:0.16em;color:#fff;font-weight:700}
+.scb-poster-brand span{font-size:7px;letter-spacing:0.13em;color:#888;font-weight:600}
+.scb-poster-frame.fs .scb-poster-brand b{font-size:16px}
+.scb-poster-frame.fs .scb-poster-brand span{font-size:12px}
+.scb-poster-weeklbl{position:absolute;top:12px;left:50%;transform:translateX(-50%);font-size:9px;letter-spacing:0.13em;color:#888;font-weight:600;white-space:nowrap}
+.scb-poster-frame.fs .scb-poster-weeklbl{font-size:16px;top:16px}
+.scb-poster-brand-right{position:absolute;bottom:10px;right:14px;display:flex;flex-direction:column;gap:1px;text-align:right}
+.scb-poster-brand-right b{font-size:9px;letter-spacing:0.16em;color:#fff;font-weight:700}
+.scb-poster-brand-right span{font-size:7px;letter-spacing:0.13em;color:#888;font-weight:600}
+.scb-poster-frame.fs .scb-poster-brand-right b{font-size:16px}
+.scb-poster-frame.fs .scb-poster-brand-right span{font-size:12px}
+.scb-poster-centertag{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px}
+.scb-poster-centertag b{font-size:7px;letter-spacing:0.13em;color:#888;font-weight:600;white-space:nowrap}
+.scb-poster-centertag span{font-size:6px;letter-spacing:0.1em;color:#888;font-weight:500;white-space:nowrap}
+.scb-poster-frame.fs .scb-poster-centertag b{font-size:12px}
+.scb-poster-frame.fs .scb-poster-centertag span{font-size:10px}
+.scb-poster-title{text-align:center;font-family:'DM Sans',sans-serif;font-size:clamp(9px,1.9vw,13px);letter-spacing:0.09em;color:#fff;margin:6px 0 4px;font-weight:700}
+.scb-poster-frame.fs .scb-poster-title{font-size:clamp(16px,2.8vw,36px);margin-bottom:24px}
+.scb-poster-grid{display:grid;gap:0;flex:1;margin-top:20px}
+.scb-poster-col{display:flex;flex-direction:column;text-align:center;padding:44px 14px 0;border-left:1px solid rgba(255,255,255,0.06);position:relative}
+.scb-poster-frame.fs .scb-poster-col{padding-top:90px}
+.scb-poster-col:first-child{border-left:none;padding-left:0}
+.scb-poster-col:last-child{padding-right:0}
+.scb-poster-col-title{position:absolute;top:22px;left:14px;right:14px;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.05em;font-weight:700;background:linear-gradient(100deg,#1d9bf0 30%,#ffffff 50%,#1d9bf0 70%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.scb-poster-col:first-child .scb-poster-col-title{left:0}
+.scb-poster-col:last-child .scb-poster-col-title{right:0}
+.scb-poster-frame.fs .scb-poster-col-title{top:42px;font-size:30px;letter-spacing:0.08em}
+.scb-poster-col-content{flex:1;display:flex;flex-direction:column;justify-content:center}
+.scb-poster-ex{margin-bottom:12px;text-align:center}
+.scb-poster-ex:last-child{margin-bottom:0}
+.scb-poster-frame.fs .scb-poster-ex{margin-bottom:24px}
+.scb-poster-ex-name{font-size:14px;font-weight:700;letter-spacing:0.02em;color:#fff;line-height:1.4}
+.scb-poster-frame.fs .scb-poster-ex-name{font-size:26px}
+.scb-poster-ex-detail{font-size:12px;color:#999;font-weight:400;line-height:1.5}
+.scb-poster-frame.fs .scb-poster-ex-detail{font-size:19px}
+.scb-poster-arrows{position:absolute;left:0;right:0;bottom:30px;display:flex;justify-content:center;align-items:center;gap:46px}
+.scb-poster-arrow{background:none;border:none;color:#555;font-size:20px;line-height:1;cursor:pointer;padding:4px 10px}
+.scb-poster-arrow:disabled{cursor:default}
+.scb-poster-frame.fs .scb-poster-arrow{font-size:34px}
+.scb-poster-frame.fs .scb-poster-arrows{bottom:64px}
+.scb-cycle-body{margin-top:10px;padding-top:10px;border-top:1px solid #222}
 </style>
 </head>
 <body>
@@ -486,6 +591,7 @@ const DAY_SHORT=["Mon","Tue","Wed","Thu","Fri","Sat"];
 const DAY_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const DAY_SESS=["Rise Up","Strength Lower","Ascend","Strength Upper","Elevate","Summit"];
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS_FULL=["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
 const mondayOf=d=>{const x=new Date(d);x.setHours(0,0,0,0);const day=x.getDay();x.setDate(x.getDate()-(day===0?6:day-1));return x;};
 const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
 const toDS=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -523,6 +629,7 @@ function openAddToCalendar(opts){
   ov.appendChild(card);document.body.appendChild(ov);
 }
 const hashPw=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)^s.charCodeAt(i);return(h>>>0).toString(36);};
+const genId=p=>`${p}_${Date.now().toString(36)}${Math.random().toString(36).slice(2,8)}`;
 const initials=n=>n.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
 const lsGet=(k,fb=null)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
@@ -1191,6 +1298,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
       currentUserIsAdmin&&canManageWk&&React.createElement(MemberWorkoutAdmin,{member,memberView:wkMemberView,setMemberView:setWkMemberView,isMaster,mfPasteAI}),
       currentUserIsAdmin&&React.createElement(RoutinesAdmin,{member,selfEmail}),
       currentUserIsAdmin&&React.createElement(MemberPBAdmin,{member}),
+      currentUserIsAdmin&&React.createElement(MemberSCHistoryAdmin,{member}),
       currentUserIsAdmin&&React.createElement(React.Fragment,null,
         React.createElement("div",{className:"mp-section"},"ADMIN CONTROLS"),
         React.createElement("button",{
@@ -1752,6 +1860,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
       React.createElement("button",{"data-adm":"members",className:`adm-seg-btn${admSeg==="members"?" aas":""}`,onClick:()=>setAdmSeg("members")},"MEMBERS"),
       React.createElement("button",{"data-adm":"classes",className:`adm-seg-btn${admSeg==="classes"?" aas":""}`,onClick:()=>setAdmSeg("classes")},"CLASSES"),
       (isMaster||mFlags.welladm)&&React.createElement("button",{"data-adm":"wellness",className:`adm-seg-btn${admSeg==="wellness"?" aas":""}`,onClick:()=>setAdmSeg("wellness")},"WELLNESS"),
+      React.createElement("button",{"data-adm":"scbuilder",className:`adm-seg-btn${admSeg==="scbuilder"?" aas":""}`,onClick:()=>setAdmSeg("scbuilder")},"S&C BUILDER"),
       React.createElement("button",{"data-adm":"sections",className:`adm-seg-btn${admSeg==="sections"?" aas":""}`,onClick:()=>setAdmSeg("sections")},"SECTIONS"),
       isMaster&&React.createElement("button",{"data-adm":"functions",className:`adm-seg-btn${admSeg==="functions"?" aas":""}`,onClick:()=>setAdmSeg("functions")},"FUNCTIONS"),
       React.createElement("button",{"data-adm":"onboarding",className:`adm-seg-btn${admSeg==="onboarding"?" aas":""}`,onClick:()=>setAdmSeg("onboarding")},"ONBOARDING"),
@@ -2122,6 +2231,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
         );
       })()
     ),
+    admSeg==="scbuilder"&&React.createElement(SCBuilderAdmin,{isAdmin,isMaster,showToast,selfEmail}),
     admSeg==="sections"&&React.createElement(React.Fragment,null,
       React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,margin:"16px 0 10px"}},"SECTION VISIBILITY"),
       React.createElement("div",{style:{fontSize:11,color:"#666",letterSpacing:"0.04em",lineHeight:1.7,marginBottom:16}},"Turn a section on or off. When a section is off, its tab is hidden from members throughout the app. Admin management for each section stays available here."),
@@ -3891,6 +4001,767 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
     })(),
   );
 }
+// ── S&C Builder (Admin) — isolated 4-Week Cycle system, additive only ─────────
+// Reads/writes sc_cycles / sc_cycle_exercises only. Never touches strength_program.
+const SC_SECTIONS=["Core","Main","Mobility","Accessories","Cardio"];
+const SC_SESSION_TYPES=["Lower","Upper","Full"];
+const SC_METRICS=[{id:"weight",label:"Weight",unit:"kg"},{id:"time",label:"Time",unit:"sec"},{id:"calories",label:"Calories",unit:"cal"},{id:"meters",label:"Meters",unit:"m"},{id:"reps",label:"Reps Only",unit:""}];
+const scMetricUnit=id=>(SC_METRICS.find(m=>m.id===id)||SC_METRICS[0]).unit;
+// Landscape (16:9) workout preview — same overlay used from the member view and the S&C Builder.
+function SCPlayOverlay({title,subtitle,exercises,onClose}){
+  const sections={};
+  exercises.forEach(e=>{if(!sections[e.section])sections[e.section]=[];sections[e.section].push(e);});
+  return React.createElement("div",{className:"scb-play-overlay",onClick:onClose},
+    React.createElement("div",{className:"scb-play-frame",onClick:e=>e.stopPropagation()},
+      React.createElement("button",{className:"scb-play-close",onClick:onClose},"✕"),
+      React.createElement("div",{className:"scb-play-title"},title),
+      React.createElement("div",{className:"scb-play-sub"},subtitle),
+      exercises.length===0?React.createElement("div",{style:{fontSize:11,color:"#555"}},"No exercises for this week yet."):
+      SC_SECTIONS.filter(s=>sections[s]&&sections[s].length>0).map(s=>React.createElement("div",{key:s},
+        React.createElement("div",{className:"scb-play-sec"},s.toUpperCase()),
+        sections[s].sort((a,b)=>(a.order_num||0)-(b.order_num||0)).map(ex=>{
+          const durationFull=(ex.duration||"").replace(/(\d+)\s*mins\b/i,"$1 minutes").replace(/(\d+)\s*min\b/i,"$1 minute").replace(/(\d+)\s*secs\b/i,"$1 seconds").replace(/(\d+)\s*sec\b/i,"$1 second");
+          const repsOrTime=ex.reps?`${ex.reps} reps`:durationFull;
+          return React.createElement("div",{key:ex.id,className:"scb-play-ex"},
+            React.createElement("span",{style:{flex:1,minWidth:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},ex.exercise),
+            React.createElement("span",{style:{width:36,flexShrink:0,textAlign:"center",color:"#777",fontSize:9}},ex.side||""),
+            React.createElement("span",{style:{width:28,flexShrink:0,textAlign:"right",color:"#999",fontSize:9}},ex.sets?`${ex.sets} sets`:""),
+            React.createElement("span",{style:{width:56,flexShrink:0,textAlign:"right",color:"#999",fontSize:9}},repsOrTime)
+          );
+        })
+      ))
+    )
+  );
+}
+// Admin-only landscape "presentation" view — styled as a TEAM 365 branded poster for showing
+// on a gym screen. Background is plain black for now; a real background image comes later.
+const SC_COL_LABEL={Core:"CORE ACTIVATION",Main:"MAIN EXERCISE",Mobility:"MOBILITY",Accessories:"ACCESSORIES",Cardio:"CARDIO"};
+// TODO: fill in once the GitHub repo/folder is set up, e.g.
+// "https://raw.githubusercontent.com/<username>/<repo>/main/<folder>/"
+const SC_BG_BASE="https://raw.githubusercontent.com/lamontteam365/team365-booking/main/images/";
+const scBgUrl=n=>SC_BG_BASE?`${SC_BG_BASE}Strength-${n}.jpg`:null;
+function loadHtml2Canvas(){
+  if(window.html2canvas)return Promise.resolve();
+  if(window.__h2cLoading)return window.__h2cLoading;
+  window.__h2cLoading=new Promise((resolve,reject)=>{
+    const s=document.createElement("script");
+    s.src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+    s.onload=resolve;s.onerror=reject;
+    document.head.appendChild(s);
+  });
+  return window.__h2cLoading;
+}
+function loadJSZip(){
+  if(window.JSZip)return Promise.resolve();
+  if(window.__jszipLoading)return window.__jszipLoading;
+  window.__jszipLoading=new Promise((resolve,reject)=>{
+    const s=document.createElement("script");
+    s.src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+    s.onload=resolve;s.onerror=reject;
+    document.head.appendChild(s);
+  });
+  return window.__jszipLoading;
+}
+// html2canvas can't render CSS background-clip:text (the gradient trick used for category titles),
+// so those titles are rendered invisible in the captured DOM (data-gradtext + color:transparent,
+// same font/position) and this paints the real gradient text natively onto the resulting canvas.
+async function paintGradientTitles(canvas,containerNode){
+  try{
+    await document.fonts.load("700 20px 'Bebas Neue'");
+  }catch(e){}
+  const ctx=canvas.getContext("2d");
+  const containerRect=containerNode.getBoundingClientRect();
+  const scaleX=canvas.width/containerRect.width;
+  const scaleY=canvas.height/containerRect.height;
+  const titleEls=containerNode.querySelectorAll("[data-gradtext]");
+  titleEls.forEach(el=>{
+    const text=el.getAttribute("data-gradtext");
+    const r=el.getBoundingClientRect();
+    const cs=getComputedStyle(el);
+    const x=(r.left-containerRect.left)*scaleX;
+    const yCenter=(r.top-containerRect.top+r.height/2)*scaleY;
+    const fontSize=parseFloat(cs.fontSize)*scaleY;
+    const w=r.width*scaleX;
+    ctx.save();
+    ctx.font=`700 ${fontSize}px 'Bebas Neue', sans-serif`;
+    ctx.textBaseline="middle";
+    ctx.textAlign="left";
+    try{ctx.letterSpacing=`${0.05*fontSize}px`;}catch(e){}
+    const grad=ctx.createLinearGradient(x,0,x+w,0);
+    grad.addColorStop(0,"#1d9bf0");
+    grad.addColorStop(0.5,"#ffffff");
+    grad.addColorStop(1,"#1d9bf0");
+    ctx.fillStyle=grad;
+    ctx.fillText(text,x,yCenter);
+    ctx.restore();
+  });
+}
+// Renders every week of a cycle off-screen as poster panels, screenshots the whole stack, downloads one PNG.
+function SCDownloadRenderer({cycle,onDone}){
+  const weekRefs=useRef({});
+  const[weeksData,setWeeksData]=useState(null);
+  useEffect(()=>{
+    (async()=>{
+      const weeks=[];
+      for(let w=1;w<=cycle.num_weeks;w++){
+        const ex=await sbGet("sc_cycle_exercises",`cycle_id=eq.${encodeURIComponent(cycle.id)}&week_number=eq.${w}&order=order_num.asc`);
+        weeks.push({week:w,exercises:ex||[]});
+      }
+      setWeeksData(weeks);
+    })();
+  },[cycle.id]);
+  useEffect(()=>{
+    if(!weeksData)return;
+    (async()=>{
+      try{
+        await Promise.all([loadHtml2Canvas(),loadJSZip()]);
+        await new Promise(r=>setTimeout(r,500));
+        const zip=new window.JSZip();
+        for(const{week}of weeksData){
+          const node=weekRefs.current[week];
+          if(!node)continue;
+          const canvas=await window.html2canvas(node,{backgroundColor:"#000",useCORS:true,scale:1});
+          const blob=await new Promise(res=>canvas.toBlob(res,"image/jpeg",0.92));
+          if(blob)zip.file(`Week${week}.jpg`,blob);
+        }
+        const zipBlob=await zip.generateAsync({type:"blob"});
+        const link=document.createElement("a");
+        link.download=`${cycle.name.replace(/[^a-z0-9]+/gi,"_")}.zip`;
+        link.href=URL.createObjectURL(zipBlob);
+        link.click();
+        setTimeout(()=>URL.revokeObjectURL(link.href),10000);
+      }catch(err){console.error("Download failed",err);}
+      onDone();
+    })();
+  },[weeksData]);
+  if(!weeksData)return null;
+  return React.createElement("div",{style:{position:"fixed",left:-99999,top:0}},
+    React.createElement("div",{style:{width:1920}},
+      weeksData.map(({week,exercises})=>{
+        const sections={};
+        exercises.forEach(e=>{if(!sections[e.section])sections[e.section]=[];sections[e.section].push(e);});
+        const populated=SC_SECTIONS.filter(s=>sections[s]&&sections[s].length>0);
+        const bgNum=cycle.week_bg&&cycle.week_bg[week];
+        const bgUrl=bgNum?scBgUrl(bgNum):null;
+        const frameStyle=bgUrl?{backgroundImage:`linear-gradient(rgba(0,0,0,0.72),rgba(0,0,0,0.82)),url(${bgUrl})`,backgroundSize:"cover",backgroundPosition:"center"}:{background:"#000"};
+        return React.createElement("div",{key:week,ref:el=>{weekRefs.current[week]=el;},style:{width:1920,height:1080,background:"#000",padding:10,boxSizing:"border-box",marginBottom:24}},
+        React.createElement("div",{className:"scb-poster-frame fs",style:{...frameStyle,width:"100%",height:"100%",maxWidth:"none",maxHeight:"none",position:"relative",overflow:"hidden"}},
+          React.createElement("div",{className:"scb-poster-title"},cycle.name.toUpperCase()),
+          populated.length>0&&React.createElement("div",{className:"scb-poster-grid",style:{gridTemplateColumns:`repeat(${populated.length},1fr)`}},
+            populated.map(s=>React.createElement("div",{key:s,className:"scb-poster-col"},
+              React.createElement("div",{className:"scb-poster-col-title",style:{background:"none",WebkitTextFillColor:"initial",WebkitBackgroundClip:"initial",backgroundClip:"initial",color:"#bde3fc"}},SC_COL_LABEL[s]||s.toUpperCase()),
+              React.createElement("div",{className:"scb-poster-col-content"},
+                sections[s].sort((a,b)=>(a.order_num||0)-(b.order_num||0)).map(ex=>{
+                  if(s==="Core"||s==="Main")return React.createElement("div",{key:ex.id,className:"scb-poster-ex"},
+                    React.createElement("div",{className:"scb-poster-ex-name"},ex.exercise),
+                    ex.sets&&React.createElement("div",{className:"scb-poster-ex-detail"},`SETS: ${ex.sets}`),
+                    ex.reps&&React.createElement("div",{className:"scb-poster-ex-detail"},`REPS: ${ex.reps}`)
+                  );
+                  const details=[ex.sets&&`${ex.sets} SETS`,ex.reps&&`${ex.reps} REPS`,ex.duration&&ex.duration.toUpperCase()].filter(Boolean).join(" · ");
+                  return React.createElement("div",{key:ex.id,className:"scb-poster-ex"},
+                    React.createElement("span",{className:"scb-poster-ex-name"},ex.exercise),
+                    details&&React.createElement("span",{className:"scb-poster-ex-detail"}," — "+details)
+                  );
+                })
+              )
+            ))
+          ),
+          React.createElement("div",{className:"scb-poster-brand"},React.createElement("b",null,"TEAM 365"),React.createElement("span",null,"EVERY DAY. ALL YEAR ROUND")),
+          React.createElement("div",{className:"scb-poster-centertag"},React.createElement("b",null,"COMMITMENT · CONSISTENCY · DETERMINATION"),React.createElement("span",null,"POWERED BY ",React.createElement("span",{style:{color:"#1d9bf0"}},"WWW.LAMONTCOLLECTIVE.COM"))),
+          React.createElement("div",{className:"scb-poster-brand-right"},React.createElement("b",null,"THE GRACEFUL"),React.createElement("span",null,"PURSUIT TO BECOME MORE")),
+          React.createElement("div",{className:"scb-poster-weeklbl"},`${cycle.session_type.toUpperCase()} · ${MONTHS_FULL[new Date(cycle.queued_at+(week-1)*SC_WEEK_MS).getMonth()]} · WEEK ${week}`)
+        )
+        );
+      })
+    )
+  );
+}
+function SCAdminPosterView({cycle,weekNum,setWeekNum,exercises,onClose}){
+  const frameRef=useRef(null);
+  const[isFullscreen,setIsFullscreen]=useState(false);
+  useEffect(()=>{
+    const onChange=()=>setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange",onChange);
+    return()=>document.removeEventListener("fullscreenchange",onChange);
+  },[]);
+  function toggleFullscreen(){
+    if(document.fullscreenElement)document.exitFullscreen();
+    else if(frameRef.current&&frameRef.current.requestFullscreen)frameRef.current.requestFullscreen();
+  }
+  const sections={};
+  exercises.forEach(e=>{if(!sections[e.section])sections[e.section]=[];sections[e.section].push(e);});
+  const populatedSections=SC_SECTIONS.filter(s=>sections[s]&&sections[s].length>0);
+  const title=cycle.name.toUpperCase().replace(/\s+/g," ").trim();
+  const weekBgNum=cycle.week_bg&&cycle.week_bg[weekNum];
+  const bgUrl=weekBgNum?scBgUrl(weekBgNum):null;
+  const frameStyle=bgUrl?{backgroundImage:`linear-gradient(rgba(0,0,0,0.72),rgba(0,0,0,0.82)),url(${bgUrl})`,backgroundSize:"cover",backgroundPosition:"center"}:{};
+  return React.createElement("div",{className:"scb-poster-overlay",onClick:onClose},
+    React.createElement("div",{className:"scb-poster-outerframe"},
+    React.createElement("div",{ref:frameRef,className:`scb-poster-frame${isFullscreen?" fs":""}`,style:frameStyle,onClick:e=>e.stopPropagation()},
+      React.createElement("button",{className:"scb-poster-close",onClick:onClose},"✕"),
+      React.createElement("button",{className:"scb-poster-fs-btn",onClick:toggleFullscreen},isFullscreen?"⤢":"⛶"),
+      React.createElement("div",{className:"scb-poster-title"},title),
+      exercises.length===0?React.createElement("div",{style:{textAlign:"center",fontSize:12,color:"#555",flex:1}},"No exercises for this week yet."):
+      React.createElement("div",{className:"scb-poster-grid",style:{gridTemplateColumns:`repeat(${populatedSections.length},1fr)`}},
+        populatedSections.map(s=>
+          React.createElement("div",{key:s,className:"scb-poster-col"},
+            React.createElement("div",{className:"scb-poster-col-title"},SC_COL_LABEL[s]||s.toUpperCase()),
+            React.createElement("div",{className:"scb-poster-col-content"},
+              sections[s].sort((a,b)=>(a.order_num||0)-(b.order_num||0)).map(ex=>{
+                if(s==="Core"||s==="Main")return React.createElement("div",{key:ex.id,className:"scb-poster-ex"},
+                  React.createElement("div",{className:"scb-poster-ex-name"},ex.exercise),
+                  ex.sets&&React.createElement("div",{className:"scb-poster-ex-detail"},`SETS: ${ex.sets}`),
+                  ex.reps&&React.createElement("div",{className:"scb-poster-ex-detail"},`REPS: ${ex.reps}`)
+                );
+                const details=[ex.sets&&`${ex.sets} SETS`,ex.reps&&`${ex.reps} REPS`,ex.duration&&ex.duration.toUpperCase()].filter(Boolean).join(" · ");
+                return React.createElement("div",{key:ex.id,className:"scb-poster-ex"},
+                  React.createElement("span",{className:"scb-poster-ex-name"},ex.exercise),
+                  details&&React.createElement("span",{className:"scb-poster-ex-detail"}," — "+details)
+                );
+              })
+            )
+          )
+        )
+      ),
+      cycle.num_weeks>1&&React.createElement("div",{className:"scb-poster-arrows"},
+        React.createElement("button",{className:"scb-poster-arrow",disabled:weekNum<=1,style:{opacity:weekNum<=1?0.25:1},onClick:()=>setWeekNum(weekNum-1)},"‹"),
+        React.createElement("button",{className:"scb-poster-arrow",disabled:weekNum>=cycle.num_weeks,style:{opacity:weekNum>=cycle.num_weeks?0.25:1},onClick:()=>setWeekNum(weekNum+1)},"›")
+      ),
+      React.createElement("div",{className:"scb-poster-brand"},
+        React.createElement("b",null,"TEAM 365"),
+        React.createElement("span",null,"EVERY DAY. ALL YEAR ROUND")
+      ),
+      React.createElement("div",{className:"scb-poster-centertag"},React.createElement("b",null,"COMMITMENT · CONSISTENCY · DETERMINATION"),React.createElement("span",null,"POWERED BY ",React.createElement("span",{style:{color:"#1d9bf0"}},"WWW.LAMONTCOLLECTIVE.COM"))),
+      React.createElement("div",{className:"scb-poster-brand-right"},
+        React.createElement("b",null,"THE GRACEFUL"),
+        React.createElement("span",null,"PURSUIT TO BECOME MORE")
+      ),
+      React.createElement("div",{className:"scb-poster-weeklbl"},`${cycle.session_type.toUpperCase()} · ${MONTHS_FULL[new Date(cycle.queued_at+(weekNum-1)*SC_WEEK_MS).getMonth()]} · WEEK ${weekNum}`)
+    )
+    )
+  );
+}
+const SC_WEEK_MS=7*24*60*60*1000;
+// Pure function: given all is_active cycles for one session_type (any order), figure out
+// which one is currently live and which week of it is showing right now. FIFO queue by
+// queued_at; the cycle that reaches the front loops on itself once nothing is queued behind it.
+function computeSCQueue(activeCycles){
+  const q=[...activeCycles].filter(c=>c.queued_at).sort((a,b)=>a.queued_at-b.queued_at);
+  if(!q.length)return{queue:[],current:null};
+  const start=q[0].queued_at;
+  let remaining=Math.floor((Date.now()-start)/SC_WEEK_MS);
+  if(remaining<0)return{queue:q,current:null};
+  for(let i=0;i<q.length;i++){
+    const c=q[i];const isLast=i===q.length-1;
+    if(remaining<c.num_weeks||isLast){
+      const week=isLast?(((remaining%c.num_weeks)+c.num_weeks)%c.num_weeks)+1:remaining+1;
+      return{queue:q,current:{cycle:c,week,queueIndex:i}};
+    }
+    remaining-=c.num_weeks;
+  }
+  return{queue:q,current:null};
+}
+function SCExRow({ex,onEdit,onDelete,onCopy,bulkMode,checked,onCheckToggle,onDragStart,onDragOver,onDrop,isDragging}){
+  const metaParts=[];
+  if(ex.sets)metaParts.push(`${ex.sets} sets`);
+  if(ex.reps)metaParts.push(`${ex.reps} reps`);
+  if(ex.duration)metaParts.push(ex.duration);
+  if(ex.side)metaParts.push(ex.side);
+  const stop=e=>e.stopPropagation();
+  return React.createElement("div",{className:`scb-ex-row${isDragging?" dragging":""}`,draggable:!bulkMode,onDragStart:()=>onDragStart(ex),onDragOver:e=>{e.preventDefault();onDragOver(ex);},onDrop:e=>{e.preventDefault();onDrop(ex);},onClick:()=>!bulkMode&&onEdit(ex),style:{cursor:bulkMode?"default":"pointer"}},
+    bulkMode?React.createElement("input",{type:"checkbox",className:"scb-check",checked:checked,onChange:e=>{stop(e);onCheckToggle(ex.id);},onClick:stop}):React.createElement("span",{className:"scb-ex-drag"},"⠿"),
+    React.createElement("div",{className:"scb-ex-body"},
+      React.createElement("div",{className:"scb-ex-nm"},ex.exercise),
+      metaParts.length>0&&React.createElement("div",{className:"scb-ex-meta"},metaParts.join(" · "))
+    ),
+    !bulkMode&&React.createElement("div",{className:"scb-ex-btns"},
+      React.createElement("button",{className:"scb-btn",onClick:e=>{stop(e);onCopy(ex);}},"Copy"),
+      React.createElement("button",{className:"scb-btn danger",onClick:e=>{stop(e);onDelete(ex.id);}},"✕"),
+      React.createElement("span",{style:{color:"#444",fontSize:11,marginLeft:2}},"▾")
+    )
+  );
+}
+function SCBuilderAdmin({isAdmin,isMaster,showToast,selfEmail}){
+  const [cycles,setCycles]=useState([]);
+  const [loadingCycles,setLoadingCycles]=useState(true);
+  const [activeCycleId,setActiveCycleId]=useState(null);
+  const [exercises,setExercises]=useState([]);
+  const [loadingEx,setLoadingEx]=useState(false);
+  const [openWeeks,setOpenWeeks]=useState({1:true});
+  const [openSections,setOpenSections]=useState({});
+  const [renamingId,setRenamingId]=useState(null);
+  const [renameVal,setRenameVal]=useState("");
+  const [schedulingId,setSchedulingId]=useState(null);
+  const [scheduleDate,setScheduleDate]=useState("");
+  const [editingId,setEditingId]=useState(null);
+  const [exEdit,setExEdit]=useState({});
+  const [savingEx,setSavingEx]=useState(false);
+  const [addingWeek,setAddingWeek]=useState(null);
+  const [newEx,setNewEx]=useState({exercise:"",section:"Main",sets:"",reps:"",duration:"",side:"",metric:"weight",weeks:[]});
+  const [savingNew,setSavingNew]=useState(false);
+  const [acOpen,setAcOpen]=useState(false);
+  const [historyList,setHistoryList]=useState([]);
+  const [bulkMode,setBulkMode]=useState(false);
+  const [bulkSelected,setBulkSelected]=useState(new Set());
+  const [bulkVals,setBulkVals]=useState({sets:"",reps:""});
+  const [dragEx,setDragEx]=useState(null);
+  const [showNewForm,setShowNewForm]=useState(false);
+  const [newCycleName,setNewCycleName]=useState("");
+  const [newCycleType,setNewCycleType]=useState("Lower");
+  const [newCycleWeeks,setNewCycleWeeks]=useState(4);
+  const [newCycleWeeksCustom,setNewCycleWeeksCustom]=useState("");
+  const [duplicating,setDuplicating]=useState(null);
+  const [dupName,setDupName]=useState("");
+  const [copyingId,setCopyingId]=useState(null);
+  const [copyTargetWeeks,setCopyTargetWeeks]=useState(new Set());
+  const [copyWeekFrom,setCopyWeekFrom]=useState(null);
+  const [copyWeekTo,setCopyWeekTo]=useState("");
+  const [posterCycle,setPosterCycle]=useState(null);
+  const [posterWeek,setPosterWeek]=useState(1);
+  const [posterExercises,setPosterExercises]=useState([]);
+  const [downloadCycle,setDownloadCycle]=useState(null);
+  if(!isAdmin)return React.createElement("div",{className:"scb-empty"},"ADMIN ACCESS REQUIRED");
+  async function loadCycles(){
+    setLoadingCycles(true);
+    const data=await sbGet("sc_cycles","order=created_at.desc");
+    setCycles(data||[]);setLoadingCycles(false);
+  }
+  useEffect(()=>{loadCycles();},[]);
+  useEffect(()=>{
+    if(!posterCycle){setPosterExercises([]);return;}
+    sbGet("sc_cycle_exercises",`cycle_id=eq.${encodeURIComponent(posterCycle.id)}&week_number=eq.${posterWeek}&order=order_num.asc`).then(d=>setPosterExercises(d||[]));
+  },[posterCycle,posterWeek]);
+  function openPoster(c){
+    const{current}=computeSCQueue(cycles.filter(x=>x.session_type===c.session_type&&x.is_active));
+    setPosterWeek((current&&current.cycle.id===c.id)?current.week:1);
+    setPosterCycle(c);
+  }
+  async function setWeekBg(c,week,val){
+    const cur={...(c.week_bg||{})};
+    if(val)cur[week]=parseInt(val);else delete cur[week];
+    await sbPatch("sc_cycles",`id=eq.${encodeURIComponent(c.id)}`,{week_bg:cur});
+    setCycles(prev=>prev.map(x=>x.id===c.id?{...x,week_bg:cur}:x));
+    if(posterCycle&&posterCycle.id===c.id)setPosterCycle(p=>({...p,week_bg:cur}));
+  }
+  useEffect(()=>{
+    if(!activeCycleId){setExercises([]);return;}
+    (async()=>{
+      setLoadingEx(true);
+      const data=await sbGet("sc_cycle_exercises",`cycle_id=eq.${encodeURIComponent(activeCycleId)}&order=week_number.asc,order_num.asc`);
+      setExercises(data||[]);setLoadingEx(false);
+    })();
+  },[activeCycleId]);
+  // Exercise history (for autocomplete + inline history), sourced from all SC cycles.
+  useEffect(()=>{
+    (async()=>{
+      const data=await sbGet("sc_cycle_exercises","select=exercise,sets,reps,duration&order=id.desc&limit=500");
+      const seen={};const list=[];
+      (data||[]).forEach(r=>{
+        const key=r.exercise.toUpperCase();
+        if(!seen[key]){seen[key]=true;list.push(r);}
+      });
+      setHistoryList(list);
+    })();
+  },[activeCycleId,exercises.length]);
+  async function createCycle(){
+    const weeks=newCycleWeeksCustom.trim()?parseInt(newCycleWeeksCustom):newCycleWeeks;
+    if(!newCycleName.trim()||!weeks||weeks<1)return;
+    const id=genId("cyc");
+    const ok=await sbPost("sc_cycles",{id,name:newCycleName.trim(),session_type:newCycleType,num_weeks:weeks,is_active:false,queued_at:null,created_by:selfEmail,created_at:Date.now()});
+    if(ok){showToast("Cycle created ✓");setNewCycleName("");setNewCycleWeeksCustom("");setShowNewForm(false);await loadCycles();setActiveCycleId(id);setOpenWeeks({1:true});}
+    else showToast("Could not create cycle");
+  }
+  function toggleCycleQueue(cycle){
+    if(cycle.is_active){
+      showToast("Once a cycle is live it stays in history — create a new cycle to change what's current");
+      return;
+    }
+    openEditDate(cycle);
+  }
+  function openEditDate(cycle){
+    const d=cycle.is_active?new Date(cycle.queued_at):nextAvailableStart(cycle.session_type);
+    setSchedulingId(cycle.id);
+    setScheduleDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`);
+  }
+  async function confirmSchedule(cycle){
+    if(!scheduleDate)return;
+    const ts=new Date(scheduleDate+"T00:00:00").getTime();
+    await sbPatch("sc_cycles",`id=eq.${encodeURIComponent(cycle.id)}`,{is_active:true,queued_at:ts});
+    showToast(ts>Date.now()?`Scheduled to go live ${scheduleDate} ✓`:"Added to queue ✓");
+    setSchedulingId(null);await loadCycles();
+  }
+  async function deleteCycle(id){
+    if(!window.confirm("Delete this entire cycle and all its weeks/exercises? This cannot be undone."))return;
+    await sbDelete("sc_cycles",`id=eq.${encodeURIComponent(id)}`);
+    if(activeCycleId===id)setActiveCycleId(null);
+    showToast("Cycle deleted");await loadCycles();
+  }
+  async function duplicateCycle(sourceId){
+    if(!dupName.trim())return;
+    const source=cycles.find(c=>c.id===sourceId);
+    if(!source)return;
+    const rows=await sbGet("sc_cycle_exercises",`cycle_id=eq.${encodeURIComponent(sourceId)}&order=week_number.asc,order_num.asc`);
+    const newId=genId("cyc");
+    await sbPost("sc_cycles",{id:newId,name:dupName.trim(),session_type:source.session_type,num_weeks:source.num_weeks,is_active:false,queued_at:null,created_by:selfEmail,created_at:Date.now()});
+    for(const r of(rows||[])){
+      await sbPost("sc_cycle_exercises",{cycle_id:newId,week_number:r.week_number,section:r.section,exercise:r.exercise,sets:r.sets,reps:r.reps,duration:r.duration,side:r.side,metric:r.metric||"weight",order_num:r.order_num});
+    }
+    showToast(`Duplicated as "${dupName.trim()}" ✓`);
+    setDuplicating(null);setDupName("");await loadCycles();setActiveCycleId(newId);setOpenWeeks({1:true});
+  }
+  async function addExercise(week,weeksOverride){
+    if(!newEx.exercise.trim())return;
+    const targetWeeks=(weeksOverride&&weeksOverride.length)?weeksOverride:[week];
+    setSavingNew(true);
+    for(const wk of targetWeeks){
+      const secExes=exercises.filter(e=>e.week_number===wk&&e.section===newEx.section);
+      const maxOrder=secExes.length>0?Math.max(...secExes.map(e=>e.order_num||0)):0;
+      await sbPost("sc_cycle_exercises",{cycle_id:activeCycleId,week_number:wk,section:newEx.section,exercise:newEx.exercise.trim().toUpperCase(),sets:newEx.sets?parseInt(newEx.sets):null,reps:newEx.reps||null,duration:newEx.duration||null,side:newEx.side||null,metric:newEx.metric||"weight",order_num:maxOrder+1});
+    }
+    setSavingNew(false);setAddingWeek(null);setAcOpen(false);
+    setNewEx({exercise:"",section:"Main",sets:"",reps:"",duration:"",side:"",metric:"weight",weeks:[]});
+    const data=await sbGet("sc_cycle_exercises",`cycle_id=eq.${encodeURIComponent(activeCycleId)}&order=week_number.asc,order_num.asc`);
+    setExercises(data||[]);
+    showToast(targetWeeks.length>1?`Added to ${targetWeeks.length} weeks ✓`:"Exercise added ✓");
+  }
+  async function saveExercise(){
+    setSavingEx(true);
+    const{id,cycle_id,...updates}=exEdit;
+    await sbPatch("sc_cycle_exercises",`id=eq.${id}`,updates);
+    setExercises(prev=>prev.map(ex=>ex.id===id?{...ex,...updates}:ex));
+    setEditingId(null);setSavingEx(false);showToast("Exercise updated ✓");
+  }
+  async function deleteExercise(id){
+    if(!window.confirm("Delete this exercise?"))return;
+    await sbDelete("sc_cycle_exercises",`id=eq.${id}`);
+    setExercises(prev=>prev.filter(ex=>ex.id!==id));
+    showToast("Exercise deleted");
+  }
+  function toggleWeek(w){setOpenWeeks(p=>({...p,[w]:!p[w]}));}
+  function toggleSection(key){setOpenSections(p=>({...p,[key]:!p[key]}));}
+  async function renameCycle(id){
+    if(!renameVal.trim())return;
+    await sbPatch("sc_cycles",`id=eq.${encodeURIComponent(id)}`,{name:renameVal.trim()});
+    setRenamingId(null);showToast("Cycle renamed ✓");await loadCycles();
+  }
+  async function changeSessionType(c,val){
+    await sbPatch("sc_cycles",`id=eq.${encodeURIComponent(c.id)}`,{session_type:val});
+    setCycles(prev=>prev.map(x=>x.id===c.id?{...x,session_type:val}:x));
+    if(posterCycle&&posterCycle.id===c.id)setPosterCycle(p=>({...p,session_type:val}));
+  }
+  async function toggleTestingWeek(cycle,week){
+    const cur={...(cycle.week_labels||{})};
+    if(cur[week])delete cur[week];else cur[week]="TESTING";
+    await sbPatch("sc_cycles",`id=eq.${encodeURIComponent(cycle.id)}`,{week_labels:cur});
+    setCycles(prev=>prev.map(c=>c.id===cycle.id?{...c,week_labels:cur}:c));
+  }
+  function toggleBulkSelect(id){
+    setBulkSelected(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});
+  }
+  async function applyBulk(){
+    if(!bulkSelected.size)return;
+    const updates={};
+    if(bulkVals.sets.trim())updates.sets=parseInt(bulkVals.sets);
+    if(bulkVals.reps.trim())updates.reps=bulkVals.reps.trim();
+    if(!Object.keys(updates).length)return;
+    for(const id of bulkSelected)await sbPatch("sc_cycle_exercises",`id=eq.${id}`,updates);
+    setExercises(prev=>prev.map(ex=>bulkSelected.has(ex.id)?{...ex,...updates}:ex));
+    showToast(`Updated ${bulkSelected.size} exercises ✓`);
+    setBulkSelected(new Set());setBulkVals({sets:"",reps:""});
+  }
+  async function handleDrop(target){
+    if(!dragEx||dragEx.id===target.id||dragEx.week_number!==target.week_number||dragEx.section!==target.section){setDragEx(null);return;}
+    const secList=exercises.filter(e=>e.week_number===target.week_number&&e.section===target.section).sort((a,b)=>(a.order_num||0)-(b.order_num||0));
+    const fromIdx=secList.findIndex(e=>e.id===dragEx.id);
+    const toIdx=secList.findIndex(e=>e.id===target.id);
+    if(fromIdx<0||toIdx<0){setDragEx(null);return;}
+    const reordered=[...secList];
+    const[moved]=reordered.splice(fromIdx,1);
+    reordered.splice(toIdx,0,moved);
+    const updates=reordered.map((e,i)=>({id:e.id,order_num:i+1}));
+    setExercises(prev=>prev.map(e=>{const u=updates.find(x=>x.id===e.id);return u?{...e,order_num:u.order_num}:e;}));
+    setDragEx(null);
+    for(const u of updates)await sbPatch("sc_cycle_exercises",`id=eq.${u.id}`,{order_num:u.order_num});
+  }
+  async function confirmCopyExercise(ex){
+    if(!copyTargetWeeks.size)return;
+    const weeksArr=[...copyTargetWeeks];
+    for(const wk of weeksArr){
+      const secExes=exercises.filter(e=>e.week_number===wk&&e.section===ex.section);
+      const maxOrder=secExes.length>0?Math.max(...secExes.map(e=>e.order_num||0)):0;
+      await sbPost("sc_cycle_exercises",{cycle_id:activeCycleId,week_number:wk,section:ex.section,exercise:ex.exercise,sets:ex.sets,reps:ex.reps,duration:ex.duration,side:ex.side,metric:ex.metric||"weight",order_num:maxOrder+1});
+    }
+    const data=await sbGet("sc_cycle_exercises",`cycle_id=eq.${encodeURIComponent(activeCycleId)}&order=week_number.asc,order_num.asc`);
+    setExercises(data||[]);
+    setCopyingId(null);setCopyTargetWeeks(new Set());
+    showToast(`Copied to ${weeksArr.length} week${weeksArr.length>1?"s":""} ✓`);
+  }
+  async function confirmCopyWeek(){
+    const toWeek=parseInt(copyWeekTo);
+    if(!copyWeekFrom||!toWeek||toWeek===copyWeekFrom)return;
+    const targetHas=exercises.some(e=>e.week_number===toWeek);
+    if(targetHas&&!window.confirm(`Week ${toWeek} already has exercises — replace them with a copy of Week ${copyWeekFrom}?`))return;
+    if(targetHas){
+      const toDelete=exercises.filter(e=>e.week_number===toWeek);
+      for(const ex of toDelete)await sbDelete("sc_cycle_exercises",`id=eq.${ex.id}`);
+    }
+    const source=exercises.filter(e=>e.week_number===copyWeekFrom).sort((a,b)=>(a.order_num||0)-(b.order_num||0));
+    for(const r of source){
+      await sbPost("sc_cycle_exercises",{cycle_id:activeCycleId,week_number:toWeek,section:r.section,exercise:r.exercise,sets:r.sets,reps:r.reps,duration:r.duration,side:r.side,metric:r.metric||"weight",order_num:r.order_num});
+    }
+    const data=await sbGet("sc_cycle_exercises",`cycle_id=eq.${encodeURIComponent(activeCycleId)}&order=week_number.asc,order_num.asc`);
+    setExercises(data||[]);
+    showToast(`Week ${copyWeekFrom} copied to Week ${toWeek} ✓`);
+    setCopyWeekFrom(null);setCopyWeekTo("");setOpenWeeks(p=>({...p,[toWeek]:true}));
+  }
+  const activeCycle=cycles.find(c=>c.id===activeCycleId);
+  const acMatches=newEx.exercise.trim().length>0?historyList.filter(h=>h.exercise.toUpperCase().includes(newEx.exercise.trim().toUpperCase())).slice(0,8):[];
+  function fmtScheduleDate(ts){const d=new Date(ts);return`${d.getDate()} ${MONTHS[d.getMonth()]}`;}
+  function cycleEndDate(cycle){return cycle.queued_at+cycle.num_weeks*SC_WEEK_MS;}
+  function nextAvailableStart(sessionType){
+    const typeCycles=cycles.filter(c=>c.session_type===sessionType&&c.is_active);
+    if(!typeCycles.length)return new Date();
+    return new Date(Math.max(...typeCycles.map(cycleEndDate))+24*60*60*1000);
+  }
+  function categorizeCycle(cycle){
+    if(!cycle.is_active)return 3;
+    const{current}=computeSCQueue(cycles.filter(c=>c.session_type===cycle.session_type&&c.is_active));
+    if(current&&current.cycle.id===cycle.id)return 1;
+    if(cycle.queued_at>Date.now())return 0;
+    return 2;
+  }
+  function cycleStatusLabel(cycle){
+    if(!cycle.is_active)return{text:"OFF",cls:""};
+    const{current}=computeSCQueue(cycles.filter(c=>c.session_type===cycle.session_type&&c.is_active));
+    if(!current)return{text:`STARTS ${fmtScheduleDate(cycle.queued_at)} · ENDS ${fmtScheduleDate(cycleEndDate(cycle))}`,cls:"queued"};
+    if(current.cycle.id===cycle.id)return{text:`WEEK ${current.week} OF ${cycle.num_weeks} · ENDS ${fmtScheduleDate(cycleEndDate(cycle))}`,cls:"live"};
+    if(cycle.queued_at<current.cycle.queued_at)return{text:`COMPLETED ${fmtScheduleDate(cycleEndDate(cycle))}`,cls:"past"};
+    return{text:`QUEUED · AFTER "${current.cycle.name.toUpperCase()}"`,cls:"queued"};
+  }
+
+  const weekOptions=[1,2,4,6,8];
+  function toggleCycleOpen(c){
+    if(activeCycleId===c.id){setActiveCycleId(null);setBulkMode(false);setBulkSelected(new Set());setCopyingId(null);setCopyWeekFrom(null);}
+    else{setActiveCycleId(c.id);setOpenWeeks({1:true});setOpenSections({});setBulkMode(false);setBulkSelected(new Set());setCopyingId(null);setCopyWeekFrom(null);}
+  }
+  function renderCycleBody(activeCycle){
+    const status=cycleStatusLabel(activeCycle);
+    const weekList=Array.from({length:activeCycle.num_weeks},(_,i)=>i+1);
+    return React.createElement("div",{className:"scb-cycle-body",onClick:e=>e.stopPropagation()},
+      React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}},
+        React.createElement("button",{className:`scb-btn${bulkMode?" primary":""}`,onClick:()=>{setBulkMode(v=>!v);setBulkSelected(new Set());}},bulkMode?"EXIT BULK EDIT":"BULK EDIT"),
+        React.createElement("button",{className:"scb-btn",disabled:downloadCycle&&downloadCycle.id===activeCycle.id,onClick:()=>setDownloadCycle(activeCycle)},downloadCycle&&downloadCycle.id===activeCycle.id?"PREPARING...":"DOWNLOAD"),
+        weekList.length>1&&(copyWeekFrom?React.createElement(React.Fragment,null,
+          React.createElement("select",{className:"sp-edit-input",style:{marginBottom:0,width:"auto"},value:copyWeekFrom,onChange:e=>setCopyWeekFrom(parseInt(e.target.value))},
+            weekList.map(w=>React.createElement("option",{key:w,value:w},`Copy Week ${w}`))
+          ),
+          React.createElement("span",{style:{color:"#555",fontSize:11}},"→"),
+          React.createElement("select",{className:"sp-edit-input",style:{marginBottom:0,width:"auto"},value:copyWeekTo,onChange:e=>setCopyWeekTo(e.target.value)},
+            React.createElement("option",{value:""},"to..."),
+            weekList.filter(w=>w!==copyWeekFrom).map(w=>React.createElement("option",{key:w,value:w},`Week ${w}`))
+          ),
+          React.createElement("button",{className:"scb-btn primary",onClick:confirmCopyWeek,disabled:!copyWeekTo},"GO"),
+          React.createElement("button",{className:"scb-btn",onClick:()=>{setCopyWeekFrom(null);setCopyWeekTo("");}},"✕")
+        ):React.createElement("button",{className:"scb-btn",onClick:()=>setCopyWeekFrom(weekList[0])},"COPY WEEK →"))
+      ),
+      loadingEx?React.createElement("div",{className:"sp-loading"},"LOADING..."):
+      weekList.map(week=>React.createElement(React.Fragment,{key:week},
+        React.createElement("div",{className:"scb-week-hdr"},
+          React.createElement("span",{onClick:()=>toggleWeek(week),style:{flex:1,cursor:"pointer"}},
+            React.createElement("span",{className:"scb-week-title"},`WEEK ${week}`),
+            activeCycle.week_labels&&activeCycle.week_labels[week]&&React.createElement("span",{style:{fontSize:9,letterSpacing:"0.1em",color:"#e5b800",fontWeight:700,marginLeft:8}},activeCycle.week_labels[week])
+          ),
+          React.createElement("button",{className:"scb-play-sq",style:{marginRight:8},onClick:e=>{e.stopPropagation();setPosterCycle(activeCycle);setPosterWeek(week);}},"▶"),
+          React.createElement("select",{value:(activeCycle.week_bg&&activeCycle.week_bg[week])||"",onClick:e=>e.stopPropagation(),onChange:e=>setWeekBg(activeCycle,week,e.target.value),style:{background:"#141414",color:"#888",border:"1px solid #333",fontSize:8,padding:"1px 2px",width:34,height:15,flexShrink:0,marginRight:8}},
+            React.createElement("option",{value:""},"BG"),
+            Array.from({length:30},(_,i)=>i+1).map(n=>React.createElement("option",{key:n,value:n},n))
+          ),
+          React.createElement("button",{className:`scb-btn${(activeCycle.week_labels&&activeCycle.week_labels[week])?" primary":""}`,style:{marginRight:8},onClick:e=>{e.stopPropagation();toggleTestingWeek(activeCycle,week);}},"TESTING WEEK"),
+          React.createElement("span",{onClick:()=>toggleWeek(week),style:{color:"#555",fontSize:11,cursor:"pointer",transform:openWeeks[week]?"rotate(180deg)":"none"}},"▾")
+        ),
+        openWeeks[week]&&React.createElement("div",{className:"scb-week-body"},
+          SC_SECTIONS.map(section=>{
+            const secExes=exercises.filter(e=>e.week_number===week&&e.section===section).sort((a,b)=>(a.order_num||0)-(b.order_num||0));
+            const secKey=`${week}_${section}`;
+            const secOpen=!!openSections[secKey];
+            return React.createElement("div",{key:section},
+              React.createElement("div",{onClick:()=>toggleSection(secKey),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginTop:8,marginBottom:secOpen?10:0}},
+                React.createElement("span",null,section.toUpperCase()),
+                React.createElement("span",{style:{fontSize:11,transform:secOpen?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
+              ),
+              secOpen&&secExes.map(ex=>{
+                if(editingId===ex.id)return React.createElement("div",{key:ex.id,className:"sp-edit-form"},
+                  React.createElement("div",{className:"scb-edit-hdr",onClick:()=>setEditingId(null)},ex.exercise,React.createElement("span",{style:{color:"#555",fontSize:11}},"▴ close")),
+                  React.createElement("div",{className:"sp-edit-lbl"},"EXERCISE"),
+                  React.createElement("input",{className:"sp-edit-input",value:exEdit.exercise||"",onChange:e=>setExEdit(p=>({...p,exercise:e.target.value}))}),
+                  React.createElement("div",{className:"sp-edit-lbl"},"SECTION"),
+                  React.createElement("select",{className:"sp-edit-input",value:exEdit.section||"Main",onChange:e=>setExEdit(p=>({...p,section:e.target.value}))},
+                    SC_SECTIONS.map(s=>React.createElement("option",{key:s,value:s},s))
+                  ),
+                  React.createElement("div",{className:"sp-edit-row"},
+                    React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-edit-lbl"},"SETS"),React.createElement("input",{className:"sp-edit-input",value:exEdit.sets||"",onChange:e=>setExEdit(p=>({...p,sets:e.target.value}))})),
+                    React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-edit-lbl"},"REPS"),React.createElement("input",{className:"sp-edit-input",value:exEdit.reps||"",onChange:e=>setExEdit(p=>({...p,reps:e.target.value}))}))
+                  ),
+                  React.createElement("div",{className:"sp-edit-lbl"},"DURATION (optional)"),
+                  React.createElement("input",{className:"sp-edit-input",value:exEdit.duration||"",onChange:e=>setExEdit(p=>({...p,duration:e.target.value}))}),
+                  React.createElement("div",{className:"sp-edit-lbl"},"MEMBER LOGS"),
+                  React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}},
+                    SC_METRICS.map(m=>React.createElement("button",{key:m.id,className:`scb-btn${(exEdit.metric||"weight")===m.id?" primary":""}`,onClick:()=>setExEdit(p=>({...p,metric:m.id}))},m.label))
+                  ),
+                  React.createElement("div",{className:"sp-edit-actions"},
+                    React.createElement("button",{className:"sp-edit-cancel",onClick:()=>setEditingId(null)},"Cancel"),
+                    React.createElement("button",{className:"sp-edit-save",onClick:saveExercise,disabled:savingEx},savingEx?"SAVING...":"SAVE")
+                  )
+                );
+                if(copyingId===ex.id)return React.createElement("div",{key:ex.id,className:"sp-edit-form"},
+                  React.createElement("div",{className:"sp-edit-lbl"},`COPY "${ex.exercise}" TO WEEKS`),
+                  React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}},
+                    weekList.filter(w=>w!==week).map(w=>{
+                      const checked=copyTargetWeeks.has(w);
+                      return React.createElement("button",{key:w,className:`scb-btn${checked?" primary":""}`,onClick:()=>setCopyTargetWeeks(prev=>{const n=new Set(prev);n.has(w)?n.delete(w):n.add(w);return n;})},`W${w}`);
+                    })
+                  ),
+                  React.createElement("div",{className:"sp-edit-actions"},
+                    React.createElement("button",{className:"sp-edit-cancel",onClick:()=>{setCopyingId(null);setCopyTargetWeeks(new Set());}},"Cancel"),
+                    React.createElement("button",{className:"sp-edit-save",onClick:()=>confirmCopyExercise(ex),disabled:!copyTargetWeeks.size},"COPY")
+                  )
+                );
+                return React.createElement(SCExRow,{key:ex.id,ex,bulkMode,checked:bulkSelected.has(ex.id),onCheckToggle:toggleBulkSelect,
+                  onEdit:e=>{setEditingId(e.id);setExEdit({id:e.id,cycle_id:e.cycle_id,exercise:e.exercise,section:e.section,sets:e.sets||"",reps:e.reps||"",duration:e.duration||"",metric:e.metric||"weight"});},
+                  onCopy:e=>{setCopyingId(e.id);setCopyTargetWeeks(new Set());},
+                  onDelete:deleteExercise,onDragStart:setDragEx,onDragOver:()=>{},onDrop:handleDrop,isDragging:dragEx&&dragEx.id===ex.id});
+              }),
+              secOpen&&(addingWeek===`${week}_${section}`?React.createElement("div",{className:"sp-edit-form"},
+                React.createElement("div",{className:"scb-autocomplete"},
+                  React.createElement("div",{className:"sp-edit-lbl"},"EXERCISE"),
+                  React.createElement("input",{className:"sp-edit-input",value:newEx.exercise,autoFocus:true,onChange:e=>{setNewEx(p=>({...p,exercise:e.target.value}));setAcOpen(true);},onFocus:()=>setAcOpen(true),placeholder:"Start typing — past exercises will suggest"}),
+                  acOpen&&acMatches.length>0&&React.createElement("div",{className:"scb-ac-list"},
+                    acMatches.map((h,i)=>React.createElement("div",{key:i,className:"scb-ac-item",onClick:()=>{setNewEx(p=>({...p,exercise:h.exercise,sets:h.sets||p.sets,reps:h.reps||p.reps,duration:h.duration||p.duration}));setAcOpen(false);}},
+                      h.exercise,React.createElement("small",null,[h.sets&&`${h.sets} sets`,h.reps&&`${h.reps} reps`,h.duration].filter(Boolean).join(" · ")||"no history")
+                    ))
+                  )
+                ),
+                React.createElement("div",{className:"sp-edit-row"},
+                  React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-edit-lbl"},"SETS"),React.createElement("input",{className:"sp-edit-input",value:newEx.sets,onChange:e=>setNewEx(p=>({...p,sets:e.target.value}))})),
+                  React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-edit-lbl"},"REPS"),React.createElement("input",{className:"sp-edit-input",value:newEx.reps,onChange:e=>setNewEx(p=>({...p,reps:e.target.value}))}))
+                ),
+                React.createElement("div",{className:"sp-edit-lbl"},"DURATION (optional)"),
+                React.createElement("input",{className:"sp-edit-input",value:newEx.duration,onChange:e=>setNewEx(p=>({...p,duration:e.target.value}))}),
+                React.createElement("div",{className:"sp-edit-lbl"},"MEMBER LOGS"),
+                React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}},
+                  SC_METRICS.map(m=>React.createElement("button",{key:m.id,className:`scb-btn${(newEx.metric||"weight")===m.id?" primary":""}`,onClick:()=>setNewEx(p=>({...p,metric:m.id}))},m.label))
+                ),
+                weekList.length>1&&React.createElement(React.Fragment,null,
+                  React.createElement("div",{className:"sp-edit-lbl"},"ALSO ADD TO OTHER WEEKS (optional)"),
+                  React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}},
+                    weekList.filter(w=>w!==week).map(w=>{
+                      const checked=newEx.weeks.includes(w);
+                      return React.createElement("button",{key:w,className:`scb-btn${checked?" primary":""}`,onClick:()=>setNewEx(p=>({...p,weeks:checked?p.weeks.filter(x=>x!==w):[...p.weeks,w]}))},`W${w}`);
+                    })
+                  )
+                ),
+                React.createElement("div",{className:"sp-edit-actions"},
+                  React.createElement("button",{className:"sp-edit-cancel",onClick:()=>{setAddingWeek(null);setAcOpen(false);}},"Cancel"),
+                  React.createElement("button",{className:"sp-edit-save",onClick:()=>addExercise(week,[week,...newEx.weeks]),disabled:savingNew},savingNew?"SAVING...":"SAVE")
+                )
+              ):!bulkMode&&React.createElement("button",{className:"scb-add-btn",onClick:()=>{setAddingWeek(`${week}_${section}`);setNewEx({exercise:"",section,sets:"",reps:"",duration:"",side:"",metric:"weight",weeks:[]});}},`+ ADD ${section.toUpperCase()} EXERCISE`))
+            );
+          })
+        )
+      )),
+      bulkMode&&bulkSelected.size>0&&React.createElement("div",{className:"scb-bulk-bar"},
+        React.createElement("span",{style:{fontSize:10,letterSpacing:"0.08em",color:"#1d9bf0",fontWeight:600}},`${bulkSelected.size} SELECTED`),
+        React.createElement("input",{placeholder:"Sets",value:bulkVals.sets,onChange:e=>setBulkVals(p=>({...p,sets:e.target.value}))}),
+        React.createElement("input",{placeholder:"Reps",value:bulkVals.reps,onChange:e=>setBulkVals(p=>({...p,reps:e.target.value}))}),
+        React.createElement("button",{className:"scb-btn primary",onClick:applyBulk},"APPLY"),
+        React.createElement("button",{className:"scb-btn",onClick:()=>setBulkSelected(new Set())},"CLEAR")
+      )
+    );
+  }
+  return React.createElement("div",{className:"scb-wrap"},
+    React.createElement("div",{className:"scb-add-btn",style:{marginBottom:14,borderStyle:"solid"},onClick:()=>setShowNewForm(v=>!v)},showNewForm?"CANCEL":"+ NEW CYCLE"),
+    showNewForm&&React.createElement("div",{className:"scb-new-form"},
+      React.createElement("div",{className:"sp-edit-lbl"},"CYCLE NAME"),
+      React.createElement("input",{className:"sp-edit-input",value:newCycleName,onChange:e=>setNewCycleName(e.target.value),placeholder:"e.g. Lower 1, or New Strength Block"}),
+      React.createElement("div",{className:"sp-edit-lbl"},"SESSION TYPE"),
+      React.createElement("div",{className:"sp-toggle",style:{marginBottom:10}},
+        SC_SESSION_TYPES.map(t=>React.createElement("button",{key:t,className:`sp-toggle-btn${newCycleType===t?" spta":""}`,onClick:()=>setNewCycleType(t)},t.toUpperCase()))
+      ),
+      React.createElement("div",{className:"sp-edit-lbl"},"NUMBER OF WEEKS"),
+      React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}},
+        weekOptions.map(w=>React.createElement("button",{key:w,className:`scb-btn${(!newCycleWeeksCustom&&newCycleWeeks===w)?" primary":""}`,onClick:()=>{setNewCycleWeeks(w);setNewCycleWeeksCustom("");}},`${w}`)),
+        React.createElement("input",{className:"sp-edit-input",style:{width:70,marginBottom:0},value:newCycleWeeksCustom,onChange:e=>setNewCycleWeeksCustom(e.target.value.replace(/[^0-9]/g,"")),placeholder:"Other"})
+      ),
+      React.createElement("button",{className:"scb-btn primary",onClick:createCycle},"CREATE CYCLE")
+    ),
+    loadingCycles?React.createElement("div",{className:"sp-loading"},"LOADING..."):
+    cycles.length===0?React.createElement("div",{className:"scb-empty"},"NO CYCLES YET — CREATE ONE ABOVE"):
+    (()=>{
+      const grouped={0:[],1:[],2:[],3:[]};
+      cycles.forEach(c=>grouped[categorizeCycle(c)].push(c));
+      grouped[0].sort((a,b)=>a.queued_at-b.queued_at);
+      grouped[1].sort((a,b)=>a.session_type.localeCompare(b.session_type));
+      grouped[2].sort((a,b)=>b.queued_at-a.queued_at);
+      grouped[3].sort((a,b)=>b.created_at-a.created_at);
+      const groupDefs=[[0,"COMING UP"],[1,"CURRENT CYCLE"],[2,"COMPLETED CYCLES"],[3,"NOT STARTED"]];
+      return groupDefs.map(([rank,label])=>{
+        const list=grouped[rank];
+        if(!list.length)return null;
+        return React.createElement(React.Fragment,{key:rank},
+          React.createElement("div",{className:"scb-section-lbl",style:{fontSize:11,marginTop:16}},label),
+          list.map(c=>{
+            const status=cycleStatusLabel(c);
+            const isOpen=activeCycleId===c.id;
+            return React.createElement("div",{key:c.id,className:"scb-cycle-card",style:{cursor:"pointer"},onClick:()=>{if(duplicating!==c.id&&renamingId!==c.id&&schedulingId!==c.id)toggleCycleOpen(c);}},
+              React.createElement("div",{className:"scb-cycle-top"},
+                React.createElement("div",{style:{minWidth:0}},
+                  React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}},
+                    React.createElement("span",{className:"scb-cycle-name",style:{width:150,flexShrink:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},c.name),
+                    React.createElement("button",{className:"scb-icon-btn",onClick:e=>{e.stopPropagation();setRenamingId(c.id);setRenameVal(c.name);}},"✎"),
+                    React.createElement("button",{className:"scb-icon-btn",onClick:e=>{e.stopPropagation();setDuplicating(c.id);setDupName(`${c.name} (copy)`);}},"⧉"),
+                    React.createElement("button",{className:"scb-icon-btn danger",onClick:e=>{e.stopPropagation();deleteCycle(c.id);}},"✕"),
+                    React.createElement("button",{className:"scb-play-sq",onClick:e=>{e.stopPropagation();openPoster(c);}},"▶"),
+                    status.cls==="live"&&React.createElement("span",{className:"scb-live-badge"},"LIVE"),
+                    c.is_active&&status.cls!=="past"&&React.createElement("button",{className:"scb-edit-badge",style:{marginLeft:0},onClick:e=>{e.stopPropagation();openEditDate(c);}},"EDIT DATE")
+                  ),
+                  React.createElement("div",{className:"scb-cycle-meta",style:{display:"flex",alignItems:"center",gap:4}},
+                    React.createElement("select",{value:c.session_type,onClick:e=>e.stopPropagation(),onChange:e=>changeSessionType(c,e.target.value),style:{background:"none",color:"#666",border:"none",fontSize:10,letterSpacing:"0.1em",padding:0,fontFamily:"'DM Sans',sans-serif",fontWeight:600}},
+                      SC_SESSION_TYPES.map(t=>React.createElement("option",{key:t,value:t},t.toUpperCase()))
+                    ),
+                    React.createElement("span",null,`· ${c.num_weeks} WEEK${c.num_weeks>1?"S":""} · ${status.text}`)
+                  )
+                ),
+                React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,flexShrink:0}},
+                  React.createElement("span",{style:{color:"#555",fontSize:11,transform:isOpen?"rotate(180deg)":"none",transition:"transform .15s"}},"▾"),
+                  React.createElement("div",{className:`scb-switch sm${c.is_active?" on":""}`,onClick:e=>{e.stopPropagation();toggleCycleQueue(c);}},React.createElement("div",{className:"scb-switch-knob"}))
+                )
+              ),
+              duplicating===c.id?React.createElement("div",{style:{marginTop:10,display:"flex",gap:6},onClick:e=>e.stopPropagation()},
+                React.createElement("input",{className:"sp-edit-input",style:{marginBottom:0},value:dupName,onChange:e=>setDupName(e.target.value),placeholder:"New cycle name",autoFocus:true}),
+                React.createElement("button",{className:"scb-btn primary",onClick:()=>duplicateCycle(c.id)},"GO"),
+                React.createElement("button",{className:"scb-btn",onClick:()=>setDuplicating(null)},"✕")
+              ):null,
+              renamingId===c.id?React.createElement("div",{style:{marginTop:10,display:"flex",gap:6},onClick:e=>e.stopPropagation()},
+                React.createElement("input",{className:"sp-edit-input",style:{marginBottom:0},value:renameVal,onChange:e=>setRenameVal(e.target.value),autoFocus:true}),
+                React.createElement("button",{className:"scb-btn primary",onClick:()=>renameCycle(c.id)},"GO"),
+                React.createElement("button",{className:"scb-btn",onClick:()=>setRenamingId(null)},"✕")
+              ):null,
+              schedulingId===c.id?React.createElement("div",{style:{marginTop:10,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"},onClick:e=>e.stopPropagation()},
+                React.createElement("span",{style:{fontSize:10,color:"#888",letterSpacing:"0.08em"}},"GO LIVE ON"),
+                React.createElement("input",{type:"date",className:"sp-edit-input",style:{marginBottom:0,width:"auto"},value:scheduleDate,onChange:e=>setScheduleDate(e.target.value)}),
+                React.createElement("button",{className:"scb-btn primary",onClick:()=>confirmSchedule(c)},"CONFIRM"),
+                React.createElement("button",{className:"scb-btn",onClick:()=>setSchedulingId(null)},"✕")
+              ):null,
+              isOpen&&renderCycleBody(c)
+            );
+          })
+        );
+      });
+    })(),
+    posterCycle&&React.createElement(SCAdminPosterView,{cycle:posterCycle,weekNum:posterWeek,setWeekNum:setPosterWeek,exercises:posterExercises,onClose:()=>setPosterCycle(null)}),
+    downloadCycle&&React.createElement(SCDownloadRenderer,{cycle:downloadCycle,onDone:()=>setDownloadCycle(null)})
+  );
+}
 // ── Strength Program Tab ──────────────────────────────────────────────────────
 function getNZDate(){
   try{return new Date(new Date().toLocaleString("en-US",{timeZone:"Pacific/Auckland"}));}
@@ -4199,7 +5070,267 @@ function StrengthTab({session,isAdmin,showToast,bookings,memberData}){
     )
   );
 }
+// ── S&C Member Cycle View — reads sc_cycles/sc_cycle_exercises/sc_member_logs only ──
+function SCCycleExSection({sectionName,exercises,isFirst,session,logs,toggleTick,saveSetWeight}){
+  const [col,setCol]=useState(true);
+  return React.createElement(React.Fragment,null,
+    React.createElement("div",{onClick:()=>setCol(c=>!c),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginTop:isFirst?0:8,marginBottom:10}},React.createElement("span",null,sectionName.toUpperCase()),React.createElement("span",{style:{fontSize:11,transform:col?"rotate(-90deg)":"none",transition:"transform .15s"}},"▾")),
+    !col&&exercises.map(ex=>{
+      const metric=ex.metric||"weight";
+      const isTickOnly=metric==="reps";
+      const unit=scMetricUnit(metric);
+      const setCount=parseInt(ex.sets)||1;
+      const repsList=ex.reps?ex.reps.split(",").map(r=>r.trim()):[];
+      const metaParts=[];
+      if(ex.sets)metaParts.push(`${ex.sets} sets`);
+      if(ex.reps&&repsList.length===1)metaParts.push(`${ex.reps} reps`);
+      if(ex.duration)metaParts.push(ex.duration);
+      const meta=metaParts.join(" · ");
+      if(isTickOnly){
+        return React.createElement("div",{key:ex.id,className:"sp-ex"},
+          React.createElement("div",{className:"sp-ex-top",style:{cursor:"default"}},
+            React.createElement("div",{style:{flex:1}},React.createElement("div",{className:"sp-ex-name"},ex.exercise),meta&&React.createElement("div",{className:"sp-ex-meta"},meta)),
+            session&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+              Array.from({length:setCount}).map((_,idx)=>{
+                const done=!!logs.ticks[`${ex.id}_${idx}`];
+                return React.createElement("button",{key:idx,className:`sp-tick${done?" sptd sptb":""}`,style:{width:30,height:30,fontSize:13},onClick:()=>toggleTick(ex.id,idx,!done)},done?"✓":`${idx+1}`);
+              })
+            )
+          )
+        );
+      }
+      const expanded=logs.expanded.has(ex.id);
+      return React.createElement("div",{key:ex.id,className:"sp-ex"},
+        React.createElement("div",{className:"sp-ex-top",style:{cursor:"pointer"},onClick:()=>logs.toggleExpand(ex.id)},
+          React.createElement("div",null,React.createElement("div",{className:"sp-ex-name"},ex.exercise),meta&&React.createElement("div",{className:"sp-ex-meta"},meta)),
+          React.createElement("div",{style:{color:"#444",fontSize:13,transition:"transform .2s",transform:expanded?"rotate(180deg)":"rotate(0deg)",lineHeight:1}},"▾")
+        ),
+        expanded&&session&&React.createElement("div",{className:"sp-sets-col"},
+          Array.from({length:setCount}).map((_,idx)=>{
+            const setKey=`${ex.id}_s${idx+1}`;
+            const savedVal=logs.weights[setKey]||"";
+            const repTarget=repsList.length>1?(repsList[idx]||repsList[repsList.length-1]):null;
+            const done=!!logs.ticks[`${ex.id}_${idx}`];
+            return React.createElement("div",{key:`${ex.id}_s${idx}`,className:"sp-set-row"},
+              React.createElement("button",{className:`sp-tick${done?" sptd sptb":""}`,style:{width:28,height:28,fontSize:12,flexShrink:0},onClick:()=>toggleTick(ex.id,idx,!done)},"✓"),
+              React.createElement("span",{className:"sp-set-lbl"},`S${idx+1}`),
+              React.createElement("input",{className:"sp-set-input",type:"text",inputMode:"numeric",pattern:"[0-9]*",defaultValue:savedVal,placeholder:"—",onBlur:e=>saveSetWeight(ex.id,idx+1,e.target.value)}),
+              unit&&React.createElement("span",{className:"sp-set-kg"},unit),
+              repTarget&&React.createElement("span",{className:"sp-set-reps"},`· ${repTarget} reps`)
+            );
+          })
+        )
+      );
+    })
+  );
+}
+function SCCycleMemberView({cycle,startWeek,isLive,session,showToast}){
+  const [weekNum,setWeekNum]=useState(startWeek||1);
+  const [exercises,setExercises]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [weights,setWeights]=useState({});
+  const [ticks,setTicks]=useState({});
+  const [expandedEx,setExpandedEx]=useState(new Set());
+  const [playing,setPlaying]=useState(false);
+  useEffect(()=>{setWeekNum(startWeek||1);},[cycle.id,startWeek]);
+  useEffect(()=>{
+    (async()=>{
+      setLoading(true);
+      const prog=await sbGet("sc_cycle_exercises",`cycle_id=eq.${encodeURIComponent(cycle.id)}&week_number=eq.${weekNum}&order=order_num.asc`);
+      const logRows=session?await sbGet("sc_member_logs",`email=eq.${encodeURIComponent(session.email)}&cycle_id=eq.${encodeURIComponent(cycle.id)}&week_number=eq.${weekNum}`):[];
+      setExercises(prog||[]);
+      const wtMap={},tkMap={};
+      (logRows||[]).forEach(w=>{
+        if(w.exercise_key.endsWith("_tick")){
+          const base=w.exercise_key.slice(0,-5);const si=base.lastIndexOf("_s");
+          if(si>-1){const exId=base.slice(0,si);const setIdx=parseInt(base.slice(si+2))-1;if(w.weight==="1")tkMap[`${exId}_${setIdx}`]=true;}
+        }else wtMap[w.exercise_key]=w.weight;
+      });
+      setWeights(wtMap);setTicks(tkMap);setLoading(false);
+    })();
+  },[cycle.id,weekNum,session]);
+  async function upsertLog(exerciseKey,weight){
+    if(!session)return;
+    const existing=await sbGet("sc_member_logs",`email=eq.${encodeURIComponent(session.email)}&cycle_id=eq.${encodeURIComponent(cycle.id)}&week_number=eq.${weekNum}&exercise_key=eq.${encodeURIComponent(exerciseKey)}`);
+    if(existing&&existing.length)await sbPatch("sc_member_logs",`email=eq.${encodeURIComponent(session.email)}&cycle_id=eq.${encodeURIComponent(cycle.id)}&week_number=eq.${weekNum}&exercise_key=eq.${encodeURIComponent(exerciseKey)}`,{weight,logged_at:Date.now()});
+    else await sbPost("sc_member_logs",{email:session.email,cycle_id:cycle.id,week_number:weekNum,exercise_key:exerciseKey,weight,logged_at:Date.now()});
+  }
+  async function saveSetWeight(exId,setNum,val){
+    const key=`${exId}_s${setNum}`;const v=val.trim();
+    if(v===""){
+      setWeights(p=>{const n={...p};delete n[key];return n;});
+      if(session)await sbDelete("sc_member_logs",`email=eq.${encodeURIComponent(session.email)}&cycle_id=eq.${encodeURIComponent(cycle.id)}&week_number=eq.${weekNum}&exercise_key=eq.${encodeURIComponent(key)}`);
+      return;
+    }
+    setWeights(p=>({...p,[key]:v}));await upsertLog(key,v);
+  }
+  async function toggleTick(exId,setIdx,newState){
+    const dbKey=`${exId}_s${setIdx+1}_tick`;
+    setTicks(p=>({...p,[`${exId}_${setIdx}`]:newState}));
+    if(newState)await upsertLog(dbKey,"1");
+    else if(session)await sbDelete("sc_member_logs",`email=eq.${encodeURIComponent(session.email)}&cycle_id=eq.${encodeURIComponent(cycle.id)}&week_number=eq.${weekNum}&exercise_key=eq.${encodeURIComponent(dbKey)}`);
+  }
+  function toggleExpand(id){setExpandedEx(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});}
+  const sections={};
+  exercises.forEach(ex=>{if(!sections[ex.section])sections[ex.section]=[];sections[ex.section].push(ex);});
+  const logsCtx={weights,ticks,expanded:expandedEx,toggleExpand};
+  return React.createElement("div",{className:"sp-wrap"},
+    React.createElement("div",{className:"well-hdr",style:{padding:"0 0 4px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}},
+      React.createElement("div",{className:"well-title"},cycle.name),
+      React.createElement("button",{className:"scb-play-btn",onClick:()=>setPlaying(true)},"▶")
+    ),
+    React.createElement("div",{className:"sp-weeks"},
+      Array.from({length:cycle.num_weeks||4},(_,i)=>i+1).map(w=>React.createElement("button",{key:w,className:`sp-wk${weekNum===w?" spwa":""}`,onClick:()=>setWeekNum(w)},`W${w}`))
+    ),
+    React.createElement("div",{style:{fontSize:9,color:"#1d9bf0",letterSpacing:"0.14em",marginBottom:16,fontWeight:600}},`${cycle.session_type.toUpperCase()} · WEEK ${weekNum}${(cycle.week_labels&&cycle.week_labels[weekNum])?` · ${cycle.week_labels[weekNum]}`:""}${(isLive&&weekNum===startWeek)?" · CURRENT WEEK":""}`),
+    loading?React.createElement("div",{className:"sp-loading"},"LOADING..."):
+    exercises.length===0?React.createElement("div",{className:"sp-loading"},"NO EXERCISES FOR THIS WEEK YET"):
+    SC_SECTIONS.filter(s=>sections[s]&&sections[s].length>0).map((s,i)=>
+      React.createElement(SCCycleExSection,{key:s,sectionName:s,exercises:sections[s],isFirst:i===0,session,logs:logsCtx,toggleTick,saveSetWeight})
+    ),
+    playing&&React.createElement(SCPlayOverlay,{title:cycle.name,subtitle:`${cycle.session_type.toUpperCase()} · WEEK ${weekNum}${(cycle.week_labels&&cycle.week_labels[weekNum])?` · ${cycle.week_labels[weekNum]}`:""}`,exercises,onClose:()=>setPlaying(false)})
+  );
+}
+// Router: shows the live 4-week cycle for the selected session type when one exists,
+// otherwise falls back to the untouched legacy StrengthTab experience.
+function StrengthTabRouter(props){
+  const [activeCycles,setActiveCycles]=useState(null);
+  const [currentOpen,setCurrentOpen]=useState(false);
+  const [previousOpen,setPreviousOpen]=useState(false);
+  const [selectedLiveType,setSelectedLiveType]=useState(null);
+  const [selectedPastId,setSelectedPastId]=useState(null);
+  useEffect(()=>{sbGet("sc_cycles","is_active=eq.true").then(data=>setActiveCycles(data||[]));},[]);
+  if(activeCycles===null)return React.createElement("div",{className:"sp-loading"},"LOADING...");
+
+  const byType={};
+  SC_SESSION_TYPES.forEach(t=>{byType[t]=computeSCQueue(activeCycles.filter(c=>c.session_type===t));});
+  const liveTypes=SC_SESSION_TYPES.filter(t=>byType[t].current);
+  const allPast=[];
+  SC_SESSION_TYPES.forEach(t=>{
+    const{queue,current}=byType[t];
+    if(current)queue.slice(0,current.queueIndex).reverse().forEach(c=>allPast.push(c));
+  });
+
+  const hdr=(label,open,onClick)=>React.createElement("div",{onClick,style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",padding:"11px 16px",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginTop:10}},
+    React.createElement("span",null,label),
+    React.createElement("span",{style:{fontSize:12,transform:open?"rotate(180deg)":"none",transition:"transform .15s"}},"▾")
+  );
+
+  return React.createElement("div",{className:"sp-wrap",style:{paddingBottom:0}},
+    hdr("CURRENT CLASSES",currentOpen,()=>{const next=!currentOpen;setCurrentOpen(next);if(!next)setSelectedLiveType(null);}),
+    currentOpen&&React.createElement("div",{style:{padding:"14px 4px 4px"}},
+      liveTypes.length===0?React.createElement("div",{className:"sp-loading"},"NOTHING LIVE RIGHT NOW"):
+      React.createElement(React.Fragment,null,
+        React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:6,padding:"0 16px 4px"}},
+          liveTypes.map(t=>React.createElement("button",{key:t,className:`scb-btn${selectedLiveType===t?" primary":""}`,style:{width:"100%",textAlign:"left"},onClick:()=>setSelectedLiveType(selectedLiveType===t?null:t)},byType[t].current.cycle.name))
+        ),
+        selectedLiveType&&byType[selectedLiveType].current&&React.createElement(SCCycleMemberView,{key:byType[selectedLiveType].current.cycle.id,cycle:byType[selectedLiveType].current.cycle,startWeek:byType[selectedLiveType].current.week,isLive:true,session:props.session,showToast:props.showToast})
+      )
+    ),
+    hdr("PREVIOUS CLASSES",previousOpen,()=>{const next=!previousOpen;setPreviousOpen(next);if(!next)setSelectedPastId(null);}),
+    previousOpen&&React.createElement("div",{style:{padding:"14px 4px 4px"}},
+      allPast.length===0?React.createElement("div",{className:"sp-loading"},"NO PREVIOUS CYCLES YET"):
+      React.createElement(React.Fragment,null,
+        React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:6,padding:"0 16px 4px"}},
+          allPast.map(c=>React.createElement("button",{key:c.id,className:`scb-btn${selectedPastId===c.id?" primary":""}`,style:{width:"100%",textAlign:"left"},onClick:()=>setSelectedPastId(selectedPastId===c.id?null:c.id)},c.name))
+        ),
+        (()=>{const c=allPast.find(x=>x.id===selectedPastId);return c&&React.createElement(SCCycleMemberView,{key:c.id,cycle:c,startWeek:c.num_weeks,isLive:false,session:props.session,showToast:props.showToast});})()
+      )
+    )
+  );
+}
 // ── Per-Member Personal Bests (Admin view + edit, lives in member profile) ────
+// ── Per-Member S&C Program History (Admin view, read-only, lives in member profile) ──
+function MemberSCHistoryAdmin({member}){
+  const [col,setCol]=useState(true);
+  const [loading,setLoading]=useState(false);
+  const [loadedOnce,setLoadedOnce]=useState(false);
+  const [cycles,setCycles]=useState([]);
+  const [logs,setLogs]=useState([]);
+  const [selectedCycleId,setSelectedCycleId]=useState(null);
+  const [weekNum,setWeekNum]=useState(1);
+  const [exercises,setExercises]=useState([]);
+  useEffect(()=>{
+    if(col||loadedOnce)return;
+    (async()=>{
+      setLoading(true);
+      const[cy,lg]=await Promise.all([
+        sbGet("sc_cycles","order=session_type.asc,queued_at.asc"),
+        sbGet("sc_member_logs",`email=eq.${encodeURIComponent(member.email)}`)
+      ]);
+      setCycles(cy||[]);setLogs(lg||[]);setLoadedOnce(true);setLoading(false);
+    })();
+  },[col]);
+  useEffect(()=>{
+    if(!selectedCycleId){setExercises([]);return;}
+    setWeekNum(1);
+    sbGet("sc_cycle_exercises",`cycle_id=eq.${encodeURIComponent(selectedCycleId)}&order=week_number.asc,order_num.asc`).then(d=>setExercises(d||[]));
+  },[selectedCycleId]);
+  const [openSections,setOpenSections]=useState({});
+  const visibleCycles=cycles.filter(c=>c.is_active&&c.queued_at<=Date.now()).sort((a,b)=>b.queued_at-a.queued_at);
+  const selectedCycle=cycles.find(c=>c.id===selectedCycleId);
+  const logsForWeek=logs.filter(l=>l.cycle_id===selectedCycleId&&l.week_number===weekNum);
+  const tickMap={},valMap={};
+  logsForWeek.forEach(l=>{
+    if(l.exercise_key.endsWith("_tick")){
+      const base=l.exercise_key.slice(0,-5);const si=base.lastIndexOf("_s");
+      if(si>-1){const exId=base.slice(0,si);const setIdx=parseInt(base.slice(si+2))-1;if(l.weight==="1")tickMap[`${exId}_${setIdx}`]=true;}
+    }else valMap[l.exercise_key]=l.weight;
+  });
+  const weekExercises=exercises.filter(e=>e.week_number===weekNum);
+  const sections={};
+  weekExercises.forEach(e=>{if(!sections[e.section])sections[e.section]=[];sections[e.section].push(e);});
+  return React.createElement(React.Fragment,null,
+    React.createElement("div",{onClick:()=>setCol(v=>!v),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginTop:16,marginBottom:col?0:10}},
+      React.createElement("span",null,"S&C PROGRAM HISTORY"),
+      React.createElement("span",{style:{fontSize:11,transform:col?"rotate(-90deg)":"none",transition:"transform .15s"}},"▾")),
+    col?null:loading?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"8px 0"}},"LOADING..."):
+    !selectedCycleId?React.createElement(React.Fragment,null,
+      React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:10}},"View this member's recorded sets, reps, and completion across every S&C cycle."),
+      cycles.length===0?React.createElement("div",{style:{fontSize:11,color:"#555",padding:"6px 0"}},"No S&C cycles created yet."):
+      visibleCycles.length===0?React.createElement("div",{style:{fontSize:11,color:"#555",padding:"6px 0"}},"No cycles have gone live yet."):
+      React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:6}},
+        visibleCycles.map(c=>{
+          const hasLogs=logs.some(l=>l.cycle_id===c.id);
+          return React.createElement("button",{key:c.id,className:"scb-btn",style:{width:"100%",textAlign:"left"},onClick:()=>{setSelectedCycleId(c.id);setOpenSections({});}},`${c.session_type.toUpperCase()} — ${c.name}${hasLogs?"":" (no data yet)"}`);
+        })
+      )
+    ):React.createElement(React.Fragment,null,
+      React.createElement("button",{className:"scb-back",onClick:()=>setSelectedCycleId(null)},"‹ ALL PROGRAMS"),
+      React.createElement("div",{style:{fontSize:12,color:"#fff",fontWeight:600,marginBottom:10}},selectedCycle?.name),
+      React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}},
+        Array.from({length:selectedCycle?.num_weeks||4},(_,i)=>i+1).map(w=>React.createElement("button",{key:w,className:`sp-wk${weekNum===w?" spwa":""}`,onClick:()=>{setWeekNum(w);setOpenSections({});}},`W${w}`))
+      ),
+      weekExercises.length===0?React.createElement("div",{style:{fontSize:11,color:"#555",padding:"6px 0"}},"No exercises defined for this week."):
+      SC_SECTIONS.filter(s=>sections[s]&&sections[s].length>0).map(s=>{
+        const secOpen=!!openSections[s];
+        return React.createElement("div",{key:s},
+          React.createElement("div",{onClick:()=>setOpenSections(p=>({...p,[s]:!p[s]})),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginTop:8,marginBottom:secOpen?8:0}},
+            React.createElement("span",null,s.toUpperCase()),
+            React.createElement("span",{style:{fontSize:11,transform:secOpen?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
+          ),
+          secOpen&&sections[s].map(ex=>{
+            const setCount=parseInt(ex.sets)||1;
+            const isTickOnly=(ex.metric||"weight")==="reps";
+            const unit=scMetricUnit(ex.metric||"weight");
+            return React.createElement("div",{key:ex.id,style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,border:"1px solid #222",borderRadius:0,padding:"8px 11px",marginBottom:6}},
+              React.createElement("div",{style:{width:150,flexShrink:0,fontSize:12,color:"#fff",lineHeight:1.3,whiteSpace:"normal"}},ex.exercise),
+              React.createElement("div",{style:{display:"flex",gap:5,flexWrap:"wrap",justifyContent:"flex-end"}},
+                Array.from({length:setCount}).map((_,idx)=>{
+                  const done=!!tickMap[`${ex.id}_${idx}`];
+                  const val=valMap[`${ex.id}_s${idx+1}`];
+                  if(isTickOnly)return React.createElement("div",{key:idx,className:`sp-tick${done?" sptd sptb":""}`,style:{width:24,height:24,fontSize:11}},done?"✓":"");
+                  const hasVal=!!val;
+                  return React.createElement("div",{key:idx,style:{minWidth:26,height:24,textAlign:"center",lineHeight:"22px",fontSize:10,fontWeight:700,color:hasVal?"#1d9bf0":"#444",background:"transparent",border:`1px solid ${hasVal?"#1d9bf0":"#2a2a2a"}`,padding:"0 6px"}},hasVal?`${val}${unit?unit[0]:""}`:"");
+                })
+              )
+            );
+          })
+        );
+      })
+    )
+  );
+}
 function MemberPBAdmin({member}){
   const [exercises,setExercises]=useState([]);
   const [pbs,setPbs]=useState({});
@@ -5475,7 +6606,7 @@ function App(){
       });
     }catch(e){}
   },[tab]);
-  const ADMIN_SEG_ORDER=["members","classes","wellness","sections","functions","onboarding","coaching"];
+  const ADMIN_SEG_ORDER=["members","classes","wellness","scbuilder","sections","functions","onboarding","coaching"];
   const [admSeg,setAdmSeg]=useState(()=>lsGet("t365-admseg","members"));
   useEffect(()=>{lsSet("t365-admseg",admSeg);},[admSeg]);
   // Keep the active admin sub-section scrolled into view when it changes
@@ -6351,7 +7482,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     effTab==="workouts"&&React.createElement(React.Fragment,null,
       renderSeg(wkOpts,effWkSub,setWkSub),
       effWkSub==="pt"&&showPT&&React.createElement(MemberWorkoutsView,{session,memberData,ttl:wkTitles.pt}),
-      effWkSub==="strength"&&showStrength&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTab,{session,isAdmin,showToast,bookings,memberData})),
+      effWkSub==="strength"&&showStrength&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTabRouter,{session,isAdmin,showToast,bookings,memberData})),
       effWkSub==="routines"&&showRoutines&&React.createElement(RoutinesView,{session,ttl:wkTitles.rt,isAdmin})
     ),
     effTab==="progress"&&acc("progress")&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}),
