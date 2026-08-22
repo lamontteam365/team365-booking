@@ -4195,13 +4195,21 @@ function SCAdminPosterView({cycle,weekNum,setWeekNum,exercises,onClose}){
       if(!el)return;
       const vw=window.innerWidth,vh=window.innerHeight;
       const portrait=vh>vw;
+      if(!portrait){
+        el.style.transform="none";
+        el.style.width="";
+        el.style.flexShrink="";
+        return;
+      }
+      const pad=16;
+      const targetWidth=Math.min(vh-pad,966);
       el.style.transform="none";
-      if(!portrait){el.style.maxWidth="";return;}
-      const lng=Math.max(vw,vh),sht=Math.min(vw,vh);
-      el.style.maxWidth=Math.min(lng-16,966)+"px";
-      const w=el.offsetWidth,h=el.offsetHeight;
-      const s=Math.min((lng-16)/w,(sht-16)/h);
-      el.style.transform=`rotate(90deg) scale(${s})`;
+      el.style.flexShrink="0";
+      el.style.width=targetWidth+"px";
+      const h=el.offsetHeight;
+      const availW=vw-pad;
+      const scale=Math.min(1,availW/h);
+      el.style.transform=`rotate(90deg) scale(${scale})`;
     }
     fit();
     window.addEventListener("resize",fit);
