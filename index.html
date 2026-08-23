@@ -4176,38 +4176,73 @@ function SCDownloadRenderer({cycle,onDone}){
     )
   );
 }
+// Scales a fixed-design-size box down (or up) to fit whatever space its parent gives it,
+// preserving its aspect ratio — no rotation, no dvh/dvw sizing on the content itself.
+// This is the correct pattern: the poster keeps its natural landscape shape and dimensions;
+// only its visual scale changes based on available space.
+function AspectFitBox({designWidth,designHeight,fullscreen,children}){
+  const outerRef=useRef(null);
+  const[scale,setScale]=useState(1);
+  useEffect(()=>{
+    const el=outerRef.current;
+    if(!el||typeof ResizeObserver==="undefined")return;
+    const ro=new ResizeObserver(entries=>{
+      const w=entries[0].contentRect.width;
+      if(w>0)setScale(w/designWidth);
+    });
+    ro.observe(el);
+    return()=>ro.disconnect();
+  },[designWidth]);
+  const outerStyle=fullscreen?{
+    width:`min(100dvw, calc(100dvh * ${designWidth} / ${designHeight}))`,
+    aspectRatio:`${designWidth} / ${designHeight}`,
+    maxWidth:"100%",maxHeight:"100%",
+    position:"relative",overflow:"hidden"
+  }:{
+    width:`min(100%, ${designWidth}px)`,
+    aspectRatio:`${designWidth} / ${designHeight}`,
+    maxWidth:"100%",maxHeight:"calc(100dvh - 40px)",
+    position:"relative",overflow:"hidden"
+  };
+  return React.createElement("div",{ref:outerRef,style:outerStyle},
+    React.createElement("div",{style:{width:designWidth,height:designHeight,transform:`scale(${scale})`,transformOrigin:"top left",position:"absolute",top:0,left:0}},children)
+  );
+}
 function SCAdminPosterView({cycle,weekNum,setWeekNum,exercises,onClose}){
   const frameRef=useRef(null);
+  const mobileOuterRef=useRef(null);
   const[isFullscreen,setIsFullscreen]=useState(false);
-  const[rot,setRot]=useState(false);
   const[dim,setDim]=useState({w:0,h:0});
   useEffect(()=>{
-    const onChange=()=>setIsFullscreen(document.fullscreenElement===frameRef.current);
+    const target=()=>mobileSizeRef.current?mobileOuterRef.current:frameRef.current;
+    const onChange=()=>setIsFullscreen(document.fullscreenElement===target());
     document.addEventListener("fullscreenchange",onChange);
     return()=>document.removeEventListener("fullscreenchange",onChange);
   },[]);
   useEffect(()=>{
     const chk=()=>{
-      try{
-        const w=window.innerWidth,h=window.innerHeight;
-        setDim({w,h});
-        setRot(window.matchMedia("(orientation: portrait)").matches&&w<=820);
-      }catch(e){setRot(false);}
+      try{setDim({w:window.innerWidth,h:window.innerHeight});}catch(e){}
     };
     chk();
     window.addEventListener("resize",chk);
     window.addEventListener("orientationchange",chk);
     return()=>{window.removeEventListener("resize",chk);window.removeEventListener("orientationchange",chk);};
   },[]);
+  // Mobile-sized screen, independent of orientation — the poster is scaled to fit available
+  // space (never rotated), so orientation doesn't matter, only how much room there is.
+  const mobileSize=dim.w>0&&dim.w<=820;
+  const mobileSizeRef=useRef(mobileSize);
+  mobileSizeRef.current=mobileSize;
   async function toggleFullscreen(){
+    const target=mobileSize?mobileOuterRef.current:frameRef.current;
     if(document.fullscreenElement){
       try{if(screen.orientation&&screen.orientation.unlock)screen.orientation.unlock();}catch(e){}
       try{await document.exitFullscreen();}catch(e){}
       return;
     }
-    if(!frameRef.current||!frameRef.current.requestFullscreen)return;
+    if(!target||!target.requestFullscreen)return;
     try{
-      await frameRef.current.requestFullscreen();
+      await target.requestFullscreen();
       if(screen.orientation&&screen.orientation.lock){
         try{await screen.orientation.lock("landscape");}catch(e){/* unsupported/denied — fullscreen still works, just won't force-rotate on this browser */}
       }
@@ -4220,28 +4255,12 @@ function SCAdminPosterView({cycle,weekNum,setWeekNum,exercises,onClose}){
   const weekBgNum=cycle.week_bg&&cycle.week_bg[weekNum];
   const bgUrl=weekBgNum?scBgUrl(weekBgNum):null;
   const bgStyle=bgUrl?{backgroundImage:`linear-gradient(rgba(0,0,0,0.72),rgba(0,0,0,0.82)),url(${bgUrl})`,backgroundSize:"cover",backgroundPosition:"center"}:{};
-  // Only rotate when: on a narrow portrait screen AND not currently fullscreen. The transform
-  // is applied directly to frameRef — the exact element that gets fullscreened — and never to
-  // any ancestor of it, since a transform on an ancestor is what breaks native Fullscreen sizing.
-  const rotateActive=!!(rot&&dim.w&&!isFullscreen);
-  // Mobile-sized screen, independent of current orientation (matters because once truly
-  // orientation-locked to landscape, "portrait" no longer matches even though it's still a phone).
-  const mobileSize=dim.w>0&&dim.w<=820;
-  const frameStyle=rotateActive?{
-    ...bgStyle,
-    width:Math.min(dim.h-16,966)+"px",
-    height:(dim.w-16)+"px",
-    flexShrink:0,
-    transform:"rotate(90deg)",
-    transformOrigin:"center center",
-    border:"1px solid rgba(255,255,255,0.35)"
-  }:(isFullscreen&&mobileSize)?{...bgStyle,border:"none"}:{...bgStyle};
-  const frameContent=React.createElement("div",{ref:frameRef,className:`scb-poster-frame${isFullscreen?" fs":""}`,style:frameStyle,onClick:e=>e.stopPropagation()},
-      React.createElement("button",{className:"scb-poster-close",onClick:onClose},"✕"),
-      React.createElement("button",{className:"scb-poster-fs-btn",onClick:toggleFullscreen},isFullscreen?"⤢":"⛶"),
-      React.createElement("div",{className:"scb-poster-title"},title),
-      exercises.length===0?React.createElement("div",{style:{textAlign:"center",fontSize:12,color:"#555",flex:1}},"No exercises for this week yet."):
-      React.createElement("div",{className:"scb-poster-grid",style:{gridTemplateColumns:`repeat(${populatedSections.length},1fr)`}},
+  const posterBody=(includeButtons)=>[
+      includeButtons&&React.createElement("button",{key:"close",className:"scb-poster-close",onClick:onClose},"✕"),
+      includeButtons&&React.createElement("button",{key:"fs",className:"scb-poster-fs-btn",onClick:toggleFullscreen},isFullscreen?"⤢":"⛶"),
+      React.createElement("div",{key:"title",className:"scb-poster-title"},title),
+      exercises.length===0?React.createElement("div",{key:"empty",style:{textAlign:"center",fontSize:12,color:"#555",flex:1}},"No exercises for this week yet."):
+      React.createElement("div",{key:"grid",className:"scb-poster-grid",style:{gridTemplateColumns:`repeat(${populatedSections.length},1fr)`}},
         populatedSections.map(s=>
           React.createElement("div",{key:s,className:"scb-poster-col"},
             React.createElement("div",{className:"scb-poster-col-title"},SC_COL_LABEL[s]||s.toUpperCase()),
@@ -4262,23 +4281,44 @@ function SCAdminPosterView({cycle,weekNum,setWeekNum,exercises,onClose}){
           )
         )
       ),
-      cycle.num_weeks>1&&React.createElement("div",{className:"scb-poster-arrows"},
+      cycle.num_weeks>1&&React.createElement("div",{key:"arrows",className:"scb-poster-arrows"},
         React.createElement("button",{className:"scb-poster-arrow",disabled:weekNum<=1,style:{opacity:weekNum<=1?0.25:1},onClick:()=>setWeekNum(weekNum-1)},"‹"),
         React.createElement("button",{className:"scb-poster-arrow",disabled:weekNum>=cycle.num_weeks,style:{opacity:weekNum>=cycle.num_weeks?0.25:1},onClick:()=>setWeekNum(weekNum+1)},"›")
       ),
-      React.createElement("div",{className:"scb-poster-brand"},
+      React.createElement("div",{key:"brand",className:"scb-poster-brand"},
         React.createElement("b",null,"TEAM 365"),
         React.createElement("span",null,"EVERY DAY. ALL YEAR ROUND")
       ),
-      React.createElement("div",{className:"scb-poster-centertag"},React.createElement("b",null,"COMMITMENT · CONSISTENCY · DETERMINATION"),React.createElement("span",null,"POWERED BY ",React.createElement("span",{style:{color:"#1d9bf0"}},"WWW.LAMONTCOLLECTIVE.COM"))),
-      React.createElement("div",{className:"scb-poster-brand-right"},
+      React.createElement("div",{key:"centertag",className:"scb-poster-centertag"},React.createElement("b",null,"COMMITMENT · CONSISTENCY · DETERMINATION"),React.createElement("span",null,"POWERED BY ",React.createElement("span",{style:{color:"#1d9bf0"}},"WWW.LAMONTCOLLECTIVE.COM"))),
+      React.createElement("div",{key:"brand-right",className:"scb-poster-brand-right"},
         React.createElement("b",null,"THE GRACEFUL"),
         React.createElement("span",null,"PURSUIT TO BECOME MORE")
       ),
-      React.createElement("div",{className:"scb-poster-weeklbl"},`${cycle.session_type.toUpperCase()} · ${MONTHS_FULL[new Date(cycle.queued_at+(weekNum-1)*SC_WEEK_MS).getMonth()]} · WEEK ${weekNum}`)
+      React.createElement("div",{key:"weeklbl",className:"scb-poster-weeklbl"},`${cycle.session_type.toUpperCase()} · ${MONTHS_FULL[new Date(cycle.queued_at+(weekNum-1)*SC_WEEK_MS).getMonth()]} · WEEK ${weekNum}`)
+  ];
+  if(mobileSize){
+    // Mobile: poster keeps its natural landscape shape at a fixed design size and is scaled
+    // uniformly to fit — never rotated, never sized with dvh/dvw on the poster itself.
+    const DW=960,DH=540;
+    return React.createElement("div",{className:"scb-poster-overlay",onClick:onClose},
+      React.createElement("div",{ref:mobileOuterRef,style:{position:"relative",display:"flex",alignItems:"center",justifyContent:"center"},onClick:e=>e.stopPropagation()},
+        React.createElement("button",{className:"scb-poster-close",onClick:onClose},"✕"),
+        React.createElement("button",{className:"scb-poster-fs-btn",onClick:toggleFullscreen},isFullscreen?"⤢":"⛶"),
+        React.createElement(AspectFitBox,{designWidth:DW,designHeight:DH,fullscreen:isFullscreen},
+          React.createElement("div",{className:"scb-poster-frame",style:{...bgStyle,width:DW,height:DH,maxWidth:"none",maxHeight:"none",overflow:"hidden"}},
+            posterBody(false)
+          )
+        )
+      )
+    );
+  }
+  // Desktop — unchanged from the original design.
+  const frameStyle={...bgStyle};
+  const frameContent=React.createElement("div",{ref:frameRef,className:`scb-poster-frame${isFullscreen?" fs":""}`,style:frameStyle,onClick:e=>e.stopPropagation()},
+    posterBody(true)
   );
   return React.createElement("div",{className:"scb-poster-overlay",onClick:onClose},
-    (rotateActive||(isFullscreen&&mobileSize))?frameContent:React.createElement("div",{className:"scb-poster-outerframe"},frameContent)
+    React.createElement("div",{className:"scb-poster-outerframe"},frameContent)
   );
 }
 const SC_WEEK_MS=7*24*60*60*1000;
