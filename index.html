@@ -4540,18 +4540,18 @@ OUTPUT RULES — follow exactly:
   - "section": MUST be one of exactly: "Core", "Main", "Mobility", "Accessories", "Cardio".
   - "exercise": the exercise name, e.g. "Barbell Back Squat".
   - "sets": a string, e.g. "4". Use "" if not applicable.
-  - "reps": a string, e.g. "8-10" or "12/side". Use "" if not applicable.
+  - "reps": a string giving the target for EVERY set, comma-separated, with one number per set — the list must have exactly as many entries as "sets". If the target is the same across all sets, just repeat it: sets:"4" → reps:"8,8,8,8". If it progresses set to set, give the real per-set numbers, e.g. sets:"4" → reps:"12,10,8,8". Use "" if reps don't apply (e.g. time/distance work).
   - "duration": a string for time/distance work, e.g. "45 sec" or "400m". Use "" if not applicable.
-  - "side": "L/R" if the exercise is done per side, otherwise "".
+  - "side": the exact string "each side" if the exercise is done one side at a time, otherwise "".
   - "metric": how it's logged — MUST be one of: "weight" (kg load), "time" (seconds), "calories", "meters", "reps" (bodyweight reps only, nothing to log).
 - Include 2-4 exercises for Core, 1-3 for Main, and 2-4 for the Third Activity, per week.
 
 EXAMPLE of the exact format (structure only — not a real program):
 {
   "1": [
-    {"section":"Core","exercise":"Dead Bug","sets":"3","reps":"12","duration":"","side":"","metric":"reps"},
-    {"section":"Main","exercise":"Back Squat","sets":"4","reps":"8","duration":"","side":"","metric":"weight"},
-    {"section":"Mobility","exercise":"Hip Flexor Stretch","sets":"","reps":"","duration":"45 sec","side":"L/R","metric":"time"}
+    {"section":"Core","exercise":"Dead Bug","sets":"3","reps":"12,12,12","duration":"","side":"each side","metric":"reps"},
+    {"section":"Main","exercise":"Back Squat","sets":"4","reps":"8,8,8,8","duration":"","side":"","metric":"weight"},
+    {"section":"Mobility","exercise":"Hip Flexor Stretch","sets":"","reps":"","duration":"45 sec","side":"each side","metric":"time"}
   ]${weeks>1?`,\n  "2": [ ... same structure, progressed sensibly ... ]`:""}
 }
 
@@ -4574,18 +4574,39 @@ Now write the ${weeks}-week class. Reply with ONLY the JSON.`;
     try{parsed=JSON.parse(raw);}catch(e){setAiImportErr("Couldn't read that. Make sure you pasted the whole block including the { } brackets.");return;}
     const validSec=s=>SC_SECTIONS.includes(s)?s:"Main";
     const validMetric=m=>SC_METRICS.some(x=>x.id===m)?m:"weight";
+    // Normalizes whatever the AI sent for "side" so it always reads as "each side" (never a raw
+    // "L/R"/"side" abbreviation), matching how this should look wherever it's displayed.
+    const validSide=s=>{
+      const v=((s||"")+"").trim();
+      if(!v)return null;
+      return /^(l\/?r|r\/?l|side|per side|each side)$/i.test(v)?"each side":v;
+    };
+    // Safety net: the prompt asks the AI for a comma-separated reps target per set (matching
+    // "sets" in length), which is what the existing set-by-set display already expects. If the
+    // AI ignores that and sends a single flat number instead, expand it out here so it still
+    // shows a target for every set instead of only appearing once in the summary line.
+    const expandReps=(repsStr,setsNum)=>{
+      if(!repsStr)return repsStr;
+      if(repsStr.includes(","))return repsStr;
+      if(!setsNum||setsNum<2)return repsStr;
+      return Array(setsNum).fill(repsStr).join(",");
+    };
     const weekRows={};let anyRows=false;
     for(let wk=1;wk<=weeks;wk++){
       const arr=Array.isArray(parsed[String(wk)])?parsed[String(wk)]:[];
-      weekRows[wk]=arr.map(it=>({
-        section:validSec(it.section),
-        exercise:((it.exercise||it.name||"")+"").trim().toUpperCase(),
-        sets:it.sets?parseInt(it.sets):null,
-        reps:((it.reps||"")+"").trim()||null,
-        duration:((it.duration||"")+"").trim()||null,
-        side:((it.side||"")+"").trim()||null,
-        metric:validMetric(it.metric)
-      })).filter(r=>r.exercise);
+      weekRows[wk]=arr.map(it=>{
+        const sets=it.sets?parseInt(it.sets):null;
+        const repsRaw=((it.reps||"")+"").trim()||null;
+        return{
+          section:validSec(it.section),
+          exercise:((it.exercise||it.name||"")+"").trim().toUpperCase(),
+          sets,
+          reps:expandReps(repsRaw,sets),
+          duration:((it.duration||"")+"").trim()||null,
+          side:validSide(it.side),
+          metric:validMetric(it.metric)
+        };
+      }).filter(r=>r.exercise);
       if(weekRows[wk].length)anyRows=true;
     }
     if(!anyRows){setAiImportErr("No exercises found in that JSON — check you pasted the full block.");return;}
@@ -4932,7 +4953,7 @@ Now write the ${weeks}-week class. Reply with ONLY the JSON.`;
     // Same interaction pattern as the Personal Workout AI builder: generate prompt → copy →
     // paste into Claude/ChatGPT → copy its JSON reply → paste back → import. Import always
     // creates a brand new cycle (see importScFromAI), so it can never touch an existing one.
-    React.createElement("div",{className:"scb-add-btn",style:{marginBottom:14,borderStyle:"solid",borderColor:"#1d9bf0",color:"#1d9bf0"},onClick:()=>setShowAiForm(v=>!v)},showAiForm?"CANCEL":"⚡ BUILD WITH AI"),
+    React.createElement("div",{className:"scb-add-btn",style:{marginBottom:14,borderStyle:"dotted",borderColor:"#fff",color:"#fff"},onClick:()=>setShowAiForm(v=>!v)},showAiForm?"CANCEL":"AI BUILDER"),
     showAiForm&&React.createElement("div",{className:"scb-new-form"},
       React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:12}},"Fill in the class details, generate a prompt, run it through Claude or ChatGPT, then paste the result back in below to create the class. This never touches an existing cycle — it always creates a new one."),
       React.createElement("div",{className:"sp-edit-lbl"},"CYCLE NAME"),
