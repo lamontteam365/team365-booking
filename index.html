@@ -4209,12 +4209,21 @@ function SCAdminPosterView({cycle,weekNum,setWeekNum,exercises,onClose}){
   const title=cycle.name.toUpperCase().replace(/\s+/g," ").trim();
   const weekBgNum=cycle.week_bg&&cycle.week_bg[weekNum];
   const bgUrl=weekBgNum?scBgUrl(weekBgNum):null;
-  const frameStyle=bgUrl?{backgroundImage:`linear-gradient(rgba(0,0,0,0.72),rgba(0,0,0,0.82)),url(${bgUrl})`,backgroundSize:"cover",backgroundPosition:"center"}:{};
-  const posStyle=(rot&&dim.w)?{position:"absolute",top:"50%",left:"50%",width:Math.min(dim.h-16,966)+"px",height:(dim.w-16)+"px",transformOrigin:"center center",transform:"translate(-50%,-50%) rotate(90deg)"}:{position:"absolute",top:"50%",left:"50%",width:"calc(100% - 16px)",maxWidth:966,transformOrigin:"center center",transform:"translate(-50%,-50%)"};
-  return React.createElement("div",{className:"scb-poster-overlay",onClick:onClose,style:{padding:0}},
-    React.createElement("div",{style:posStyle,onClick:e=>e.stopPropagation()},
-    React.createElement("div",{className:"scb-poster-outerframe",style:{width:"100%",height:"100%",maxWidth:"none",maxHeight:"none"}},
-    React.createElement("div",{ref:frameRef,className:`scb-poster-frame${isFullscreen?" fs":""}`,style:{...frameStyle,height:"100%",maxHeight:"none"},onClick:e=>e.stopPropagation()},
+  const bgStyle=bgUrl?{backgroundImage:`linear-gradient(rgba(0,0,0,0.72),rgba(0,0,0,0.82)),url(${bgUrl})`,backgroundSize:"cover",backgroundPosition:"center"}:{};
+  // Only rotate when: on a narrow portrait screen AND not currently fullscreen. The transform
+  // is applied directly to frameRef — the exact element that gets fullscreened — and never to
+  // any ancestor of it, since a transform on an ancestor is what breaks native Fullscreen sizing.
+  const rotateActive=!!(rot&&dim.w&&!isFullscreen);
+  const frameStyle=rotateActive?{
+    ...bgStyle,
+    width:Math.min(dim.h-16,966)+"px",
+    height:(dim.w-16)+"px",
+    flexShrink:0,
+    transform:"rotate(90deg)",
+    transformOrigin:"center center",
+    border:"1px solid rgba(255,255,255,0.35)"
+  }:{...bgStyle};
+  const frameContent=React.createElement("div",{ref:frameRef,className:`scb-poster-frame${isFullscreen?" fs":""}`,style:frameStyle,onClick:e=>e.stopPropagation()},
       React.createElement("button",{className:"scb-poster-close",onClick:onClose},"✕"),
       React.createElement("button",{className:"scb-poster-fs-btn",onClick:toggleFullscreen},isFullscreen?"⤢":"⛶"),
       React.createElement("div",{className:"scb-poster-title"},title),
@@ -4254,9 +4263,9 @@ function SCAdminPosterView({cycle,weekNum,setWeekNum,exercises,onClose}){
         React.createElement("span",null,"PURSUIT TO BECOME MORE")
       ),
       React.createElement("div",{className:"scb-poster-weeklbl"},`${cycle.session_type.toUpperCase()} · ${MONTHS_FULL[new Date(cycle.queued_at+(weekNum-1)*SC_WEEK_MS).getMonth()]} · WEEK ${weekNum}`)
-    )
-    )
-    )
+  );
+  return React.createElement("div",{className:"scb-poster-overlay",onClick:onClose},
+    rotateActive?frameContent:React.createElement("div",{className:"scb-poster-outerframe"},frameContent)
   );
 }
 const SC_WEEK_MS=7*24*60*60*1000;
