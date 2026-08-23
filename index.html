@@ -1727,6 +1727,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   const [masterHidden,setMasterHidden]=useState(false);
   const [mhSaving,setMhSaving]=useState(false);
   const [showWkAdmins,setShowWkAdmins]=useState(false);
+  const [showScAdmins,setShowScAdmins]=useState(false);
   const [wellAdmBks,setWellAdmBks]=useState([]);
   const [wellAdmLoaded,setWellAdmLoaded]=useState(false);
   const [selectedMember,setSelectedMember]=useState(null);
@@ -1848,6 +1849,10 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
     showToast("Booking removed");
   }
   const admDateLabel=`${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][admDOW]} ${admDate.getDate()} ${MONTHS[admDate.getMonth()]} ${admDate.getFullYear()}`;
+  // S&C Builder access: visible/hidden globally via mFlags.sc, plus an individual per-admin
+  // block list (mFlags.scAdminHide) — same combination pattern already used for Workout
+  // Program access via mFlags.wk / mFlags.wkAdminHide above. Master always has access.
+  const canScBuild=isMaster||(mFlags.sc!==false&&!(mFlags.scAdminHide||[]).includes(selfEmail));
   return React.createElement("div",{className:"adm-wrap"},
     selectedMember&&React.createElement(MemberProfileOverlay,{member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin,mfWk:mFlags.wk,isMaster,mfPasteAI:mFlags.pasteAI,selfEmail,canManageWk:(isMaster||(mFlags.wk!==false&&!(mFlags.wkAdminHide||[]).includes(selfEmail)))}),
     React.createElement("div",{className:"adm-title"},"ADMIN"),
@@ -1860,7 +1865,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
       React.createElement("button",{"data-adm":"members",className:`adm-seg-btn${admSeg==="members"?" aas":""}`,onClick:()=>setAdmSeg("members")},"MEMBERS"),
       React.createElement("button",{"data-adm":"classes",className:`adm-seg-btn${admSeg==="classes"?" aas":""}`,onClick:()=>setAdmSeg("classes")},"CLASSES"),
       (isMaster||mFlags.welladm)&&React.createElement("button",{"data-adm":"wellness",className:`adm-seg-btn${admSeg==="wellness"?" aas":""}`,onClick:()=>setAdmSeg("wellness")},"WELLNESS"),
-      React.createElement("button",{"data-adm":"scbuilder",className:`adm-seg-btn${admSeg==="scbuilder"?" aas":""}`,onClick:()=>setAdmSeg("scbuilder")},"S&C BUILDER"),
+      canScBuild&&React.createElement("button",{"data-adm":"scbuilder",className:`adm-seg-btn${admSeg==="scbuilder"?" aas":""}`,onClick:()=>setAdmSeg("scbuilder")},"S&C BUILDER"),
       React.createElement("button",{"data-adm":"sections",className:`adm-seg-btn${admSeg==="sections"?" aas":""}`,onClick:()=>setAdmSeg("sections")},"SECTIONS"),
       isMaster&&React.createElement("button",{"data-adm":"functions",className:`adm-seg-btn${admSeg==="functions"?" aas":""}`,onClick:()=>setAdmSeg("functions")},"FUNCTIONS"),
       React.createElement("button",{"data-adm":"onboarding",className:`adm-seg-btn${admSeg==="onboarding"?" aas":""}`,onClick:()=>setAdmSeg("onboarding")},"ONBOARDING"),
@@ -2231,7 +2236,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
         );
       })()
     ),
-    admSeg==="scbuilder"&&React.createElement(SCBuilderAdmin,{isAdmin,isMaster,showToast,selfEmail}),
+    admSeg==="scbuilder"&&canScBuild&&React.createElement(SCBuilderAdmin,{isAdmin,isMaster,showToast,selfEmail,mfAiBuild:mFlags.aibuild}),
     admSeg==="sections"&&React.createElement(React.Fragment,null,
       React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,margin:"16px 0 10px"}},"SECTION VISIBILITY"),
       React.createElement("div",{style:{fontSize:11,color:"#666",letterSpacing:"0.04em",lineHeight:1.7,marginBottom:16}},"Turn a section on or off. When a section is off, its tab is hidden from members throughout the app. Admin management for each section stays available here."),
@@ -2294,6 +2299,41 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
                 return React.createElement("div",{key:a.email,style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderTop:"1px solid #181818"}},
                   React.createElement("div",{style:{fontSize:12,color:"#ccc"}},a.name||a.email),
                   React.createElement("button",{onClick:()=>{const list=(mFlags.wkAdminHide||[]).slice();const i=list.indexOf(a.email);if(i>=0)list.splice(i,1);else list.push(a.email);saveMFlag("wkAdminHide",list);},style:{width:26,height:26,borderRadius:0,border:"1px solid "+(wkHidden?"#333":"#1d3a5a"),background:wkHidden?"transparent":"#0a1a2a",color:"#1d9bf0",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},wkHidden?"":"✓")
+                );
+              })
+        )
+      ),
+      // ── S&C Builder visibility + AI Build visibility + per-admin creation access.
+      // Same three controls, same styling, as the WORKOUT PROGRAM set directly above —
+      // just scoped to the separate S&C Builder / AI Builder system instead.
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(!mFlags.sc?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"S & C BUILDER"),
+          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides it from admins (master keeps access)")
+        ),
+        React.createElement("button",{onClick:()=>saveMFlag("sc",!mFlags.sc),style:{background:!mFlags.sc?"#fff":"#222",color:!mFlags.sc?"#000":"#555",border:"1px solid "+(!mFlags.sc?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},!mFlags.sc?"HIDE":"VISIBLE")
+      ),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(!mFlags.aibuild?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"+ AI BUILD"),
+          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides just the AI Build button from admins, inside S&C Builder (master keeps access)")
+        ),
+        React.createElement("button",{onClick:()=>saveMFlag("aibuild",!mFlags.aibuild),style:{background:!mFlags.aibuild?"#fff":"#222",color:!mFlags.aibuild?"#000":"#555",border:"1px solid "+(!mFlags.aibuild?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},!mFlags.aibuild?"HIDE":"VISIBLE")
+      ),
+      React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #222",padding:"11px 14px",marginBottom:10}},
+        React.createElement("div",{onClick:()=>setShowScAdmins(v=>!v),style:{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",userSelect:"none"}},
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"WHO CAN CREATE S & C WORKOUTS"),
+          React.createElement("span",{style:{fontSize:11,color:"#1d9bf0",transform:showScAdmins?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
+        ),
+        showScAdmins&&React.createElement(React.Fragment,null,
+          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:6,marginBottom:8,letterSpacing:"0.04em"}},"Untick an admin to stop them building S&C workout programs. You (master) always have access."),
+          (members.filter(m=>m.is_admin&&m.email!==ADMIN_EMAIL).length===0)
+            ?React.createElement("div",{style:{fontSize:10,color:"#555"}},"No other admins yet.")
+            :members.filter(m=>m.is_admin&&m.email!==ADMIN_EMAIL).map(a=>{
+                const scHidden=(mFlags.scAdminHide||[]).includes(a.email);
+                return React.createElement("div",{key:a.email,style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderTop:"1px solid #181818"}},
+                  React.createElement("div",{style:{fontSize:12,color:"#ccc"}},a.name||a.email),
+                  React.createElement("button",{onClick:()=>{const list=(mFlags.scAdminHide||[]).slice();const i=list.indexOf(a.email);if(i>=0)list.splice(i,1);else list.push(a.email);saveMFlag("scAdminHide",list);},style:{width:26,height:26,borderRadius:0,border:"1px solid "+(scHidden?"#333":"#1d3a5a"),background:scHidden?"transparent":"#0a1a2a",color:"#1d9bf0",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},scHidden?"":"✓")
                 );
               })
         )
@@ -4404,7 +4444,7 @@ function SCExRow({ex,onEdit,onDelete,onCopy,bulkMode,checked,onCheckToggle,onDra
     )
   );
 }
-function SCBuilderAdmin({isAdmin,isMaster,showToast,selfEmail}){
+function SCBuilderAdmin({isAdmin,isMaster,showToast,selfEmail,mfAiBuild}){
   const [cycles,setCycles]=useState([]);
   const [loadingCycles,setLoadingCycles]=useState(true);
   const [activeCycleId,setActiveCycleId]=useState(null);
@@ -4953,8 +4993,8 @@ Now write the ${weeks}-week class. Reply with ONLY the JSON.`;
     // Same interaction pattern as the Personal Workout AI builder: generate prompt → copy →
     // paste into Claude/ChatGPT → copy its JSON reply → paste back → import. Import always
     // creates a brand new cycle (see importScFromAI), so it can never touch an existing one.
-    React.createElement("div",{className:"scb-add-btn",style:{marginBottom:14,borderStyle:"dotted",borderColor:"#fff",color:"#fff"},onClick:()=>setShowAiForm(v=>!v)},showAiForm?"CANCEL":"AI BUILDER"),
-    showAiForm&&React.createElement("div",{className:"scb-new-form"},
+    (isMaster||mfAiBuild)&&React.createElement("button",{style:{width:"100%",marginBottom:14,background:showAiForm?"#0a1a2a":"none",border:"1px dashed "+(showAiForm?"#1d3a5a":"#2a2a2a"),borderRadius:0,color:"#1d9bf0",fontSize:10,letterSpacing:"0.12em",padding:"9px",cursor:"pointer"},onClick:()=>setShowAiForm(v=>!v)},showAiForm?"CANCEL":"+ AI BUILD"),
+    (isMaster||mfAiBuild)&&showAiForm&&React.createElement("div",{className:"scb-new-form"},
       React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:12}},"Fill in the class details, generate a prompt, run it through Claude or ChatGPT, then paste the result back in below to create the class. This never touches an existing cycle — it always creates a new one."),
       React.createElement("div",{className:"sp-edit-lbl"},"CYCLE NAME"),
       React.createElement("input",{className:"sp-edit-input",value:aiCycleName,onChange:e=>setAiCycleName(e.target.value),placeholder:"e.g. Lower 1, or New Strength Block"}),
@@ -4969,7 +5009,8 @@ Now write the ${weeks}-week class. Reply with ONLY the JSON.`;
       ),
       React.createElement("div",{className:"sp-edit-lbl"},"CLASS REQUIREMENTS / GOALS / EQUIPMENT (optional)"),
       React.createElement("textarea",{value:aiRequirements,onChange:e=>setAiRequirements(e.target.value),placeholder:"e.g. focus on posterior chain, full gym available, keep impact low, 45 min class",rows:3,className:"sp-edit-input",style:{width:"100%",resize:"vertical",fontFamily:"'DM Sans',sans-serif",boxSizing:"border-box"}}),
-      React.createElement("button",{className:"scb-btn primary",style:{marginTop:4,marginBottom:10},onClick:()=>setShowAiPrompt(s=>!s),disabled:!aiCycleName.trim()},showAiPrompt?"✕ HIDE PROMPT":"📋 GENERATE PROMPT"),
+      React.createElement("button",{className:"scb-btn primary",style:{marginTop:4,marginBottom:aiCycleName.trim()?10:4,opacity:aiCycleName.trim()?1:0.35,cursor:aiCycleName.trim()?"pointer":"not-allowed"},onClick:()=>setShowAiPrompt(s=>!s),disabled:!aiCycleName.trim()},showAiPrompt?"✕ HIDE PROMPT":"📋 GENERATE PROMPT"),
+      !aiCycleName.trim()&&React.createElement("div",{style:{fontSize:9,color:"#666",marginBottom:10,letterSpacing:"0.04em"}},"Enter a cycle name above first."),
       showAiPrompt&&React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1d3a5a",borderRadius:0,padding:"12px",marginBottom:10}},
         React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#89a",lineHeight:1.7,marginBottom:8}},"Copy this, paste it into Claude or ChatGPT, and send. Then copy what it gives back and paste it into PASTE FROM AI below."),
         React.createElement("textarea",{value:buildScAiPrompt(),readOnly:true,rows:8,onFocus:e=>e.target.select(),style:{background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ddd",fontSize:11,fontFamily:"monospace",lineHeight:1.5,padding:"7px 9px",width:"100%",resize:"vertical",boxSizing:"border-box"}}),
@@ -6957,7 +6998,7 @@ function App(){
   const touchStartY=useRef(null);
   const isAdmin=session?.email===ADMIN_EMAIL||memberData?.is_admin===true;
   const isMaster=session?.email===ADMIN_EMAIL;
-  const [mFlags,setMFlags]=useState({wk:true,welladm:true});
+  const [mFlags,setMFlags]=useState({wk:true,welladm:true,sc:true,aibuild:true});
   const [concCheckins,setConcCheckins]=useState(0);
   const [concBase,setConcBase]=useState(0);
   const workoutsEnabled=memberData?.workouts_enabled===true;
