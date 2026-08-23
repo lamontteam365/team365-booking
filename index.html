@@ -4185,8 +4185,13 @@ function SCDownloadRenderer({cycle,onDone}){
 //  - fullscreen + viewport still portrait-shaped (orientation-lock unsupported/denied —
 //    common on real Android phones with auto-rotate off, and always the case on iOS,
 //    though iOS never reaches here since it can't enter fullscreen at all): the poster is
-//    rotated 90° in place and scaled against the swapped viewport dimensions, computed
-//    numerically in JS from the live viewport size rather than CSS calc/dvh tricks.
+//    rotated 90° in place and scaled against the swapped viewport dimensions.
+// Both fullscreen modes size numerically in JS from the live viewport (not CSS calc/dvh/
+// aspect-ratio tricks) — that's what lets the height budget be trimmed by 10px (see below)
+// reliably in every case, instead of only when one particular side of a CSS min() happens
+// to "win": with the aspect-ratio-locked-box approach, if width was already the limiting
+// side, the height comes along for free from the ratio and any height-only trim gets
+// silently dropped.
 function AspectFitBox({designWidth,designHeight,fullscreen,rotate,viewportW,viewportH,children}){
   const outerRef=useRef(null);
   const[scale,setScale]=useState(1);
@@ -4200,25 +4205,33 @@ function AspectFitBox({designWidth,designHeight,fullscreen,rotate,viewportW,view
     ro.observe(el);
     return()=>ro.disconnect();
   },[designWidth]);
-  if(fullscreen&&rotate&&viewportW>0&&viewportH>0){
-    const availW=viewportH,availH=viewportW; // swapped: poster's "width" axis maps to the screen's height axis
-    const s=Math.min(availW/designWidth,availH/designHeight);
-    const boxW=designWidth*s,boxH=designHeight*s;
+  if(fullscreen&&viewportW>0&&viewportH>0){
+    // Reserve 10px off the screen's height budget only (breathing room from a status bar /
+    // home-indicator); the width budget always stays at the full viewport, never squeezed.
+    const H_INSET=10;
+    let boxW,boxH,transform;
+    if(rotate){
+      const availW=viewportH-H_INSET,availH=viewportW; // swapped: poster's "width" axis maps to the screen's height axis
+      const s=Math.min(availW/designWidth,availH/designHeight);
+      boxW=designWidth*s;boxH=designHeight*s;
+      transform="translate(-50%,-50%) rotate(90deg)";
+    }else{
+      const availW=viewportW,availH=viewportH-H_INSET;
+      const s=Math.min(availW/designWidth,availH/designHeight);
+      boxW=designWidth*s;boxH=designHeight*s;
+      transform="translate(-50%,-50%)";
+    }
+    const s2=boxW/designWidth;
     return React.createElement("div",{style:{position:"absolute",top:0,left:0,width:viewportW,height:viewportH,overflow:"hidden"}},
       React.createElement("div",{style:{
         position:"absolute",top:"50%",left:"50%",width:boxW,height:boxH,
-        transform:"translate(-50%,-50%) rotate(90deg)",transformOrigin:"center center"
+        transform,transformOrigin:"center center"
       }},
-        React.createElement("div",{style:{width:designWidth,height:designHeight,transform:`scale(${s})`,transformOrigin:"top left"}},children)
+        React.createElement("div",{style:{width:designWidth,height:designHeight,transform:`scale(${s2})`,transformOrigin:"top left"}},children)
       )
     );
   }
-  const outerStyle=fullscreen?{
-    width:`min(100dvw, calc(100dvh * ${designWidth} / ${designHeight}))`,
-    aspectRatio:`${designWidth} / ${designHeight}`,
-    maxWidth:"100%",maxHeight:"100%",
-    position:"relative",overflow:"hidden"
-  }:{
+  const outerStyle={
     width:`min(100%, ${designWidth}px)`,
     aspectRatio:`${designWidth} / ${designHeight}`,
     maxWidth:"100%",maxHeight:"calc(100dvh - 40px)",
