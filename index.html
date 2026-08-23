@@ -4177,10 +4177,17 @@ function SCDownloadRenderer({cycle,onDone}){
   );
 }
 // Scales a fixed-design-size box down (or up) to fit whatever space its parent gives it,
-// preserving its aspect ratio — no rotation, no dvh/dvw sizing on the content itself.
-// This is the correct pattern: the poster keeps its natural landscape shape and dimensions;
-// only its visual scale changes based on available space.
-function AspectFitBox({designWidth,designHeight,fullscreen,children}){
+// preserving its aspect ratio. Three modes:
+//  - preview (not fullscreen): scaled to fit the small modal, width driven by the parent's
+//    own (now-definite) width via ResizeObserver.
+//  - fullscreen + viewport already landscape-shaped (orientation-lock succeeded, or the
+//    user physically rotated the phone): scaled to fit the real viewport, no rotation.
+//  - fullscreen + viewport still portrait-shaped (orientation-lock unsupported/denied —
+//    common on real Android phones with auto-rotate off, and always the case on iOS,
+//    though iOS never reaches here since it can't enter fullscreen at all): the poster is
+//    rotated 90° in place and scaled against the swapped viewport dimensions, computed
+//    numerically in JS from the live viewport size rather than CSS calc/dvh tricks.
+function AspectFitBox({designWidth,designHeight,fullscreen,rotate,viewportW,viewportH,children}){
   const outerRef=useRef(null);
   const[scale,setScale]=useState(1);
   useEffect(()=>{
@@ -4193,6 +4200,19 @@ function AspectFitBox({designWidth,designHeight,fullscreen,children}){
     ro.observe(el);
     return()=>ro.disconnect();
   },[designWidth]);
+  if(fullscreen&&rotate&&viewportW>0&&viewportH>0){
+    const availW=viewportH,availH=viewportW; // swapped: poster's "width" axis maps to the screen's height axis
+    const s=Math.min(availW/designWidth,availH/designHeight);
+    const boxW=designWidth*s,boxH=designHeight*s;
+    return React.createElement("div",{style:{position:"absolute",top:0,left:0,width:viewportW,height:viewportH,overflow:"hidden"}},
+      React.createElement("div",{style:{
+        position:"absolute",top:"50%",left:"50%",width:boxW,height:boxH,
+        transform:"translate(-50%,-50%) rotate(90deg)",transformOrigin:"center center"
+      }},
+        React.createElement("div",{style:{width:designWidth,height:designHeight,transform:`scale(${s})`,transformOrigin:"top left"}},children)
+      )
+    );
+  }
   const outerStyle=fullscreen?{
     width:`min(100dvw, calc(100dvh * ${designWidth} / ${designHeight}))`,
     aspectRatio:`${designWidth} / ${designHeight}`,
@@ -4226,11 +4246,16 @@ function SCAdminPosterView({cycle,weekNum,setWeekNum,exercises,onClose}){
     chk();
     window.addEventListener("resize",chk);
     window.addEventListener("orientationchange",chk);
-    return()=>{window.removeEventListener("resize",chk);window.removeEventListener("orientationchange",chk);};
+    document.addEventListener("fullscreenchange",chk);
+    return()=>{window.removeEventListener("resize",chk);window.removeEventListener("orientationchange",chk);document.removeEventListener("fullscreenchange",chk);};
   },[]);
   // Mobile-sized screen, independent of orientation — the poster is scaled to fit available
-  // space (never rotated), so orientation doesn't matter, only how much room there is.
-  const mobileSize=dim.w>0&&dim.w<=820;
+  // space (rotated only as a fullscreen fallback, see AspectFitBox), so orientation doesn't
+  // matter for layout selection, only how much room there is. Classify by the SMALLER of the
+  // two dimensions, not raw width: a phone that successfully rotates to landscape fullscreen
+  // (e.g. 839x412) would otherwise cross the old width-only threshold and fall through to the
+  // desktop branch's fixed-pixel ".fs" CSS, which was never sized for a phone-height screen.
+  const mobileSize=dim.w>0&&dim.h>0&&Math.min(dim.w,dim.h)<=820;
   const mobileSizeRef=useRef(mobileSize);
   mobileSizeRef.current=mobileSize;
   async function toggleFullscreen(){
@@ -4244,7 +4269,7 @@ function SCAdminPosterView({cycle,weekNum,setWeekNum,exercises,onClose}){
     try{
       await target.requestFullscreen();
       if(screen.orientation&&screen.orientation.lock){
-        try{await screen.orientation.lock("landscape");}catch(e){/* unsupported/denied — fullscreen still works, just won't force-rotate on this browser */}
+        try{await screen.orientation.lock("landscape");}catch(e){/* unsupported/denied — fullscreen still works, the rotate fallback in AspectFitBox covers this */}
       }
     }catch(e){/* fullscreen request itself was blocked/denied */}
   }
@@ -4298,13 +4323,16 @@ function SCAdminPosterView({cycle,weekNum,setWeekNum,exercises,onClose}){
   ];
   if(mobileSize){
     // Mobile: poster keeps its natural landscape shape at a fixed design size and is scaled
-    // uniformly to fit — never rotated, never sized with dvh/dvw on the poster itself.
+    // uniformly to fit. In the small preview it's never rotated. In fullscreen it prefers a
+    // real landscape viewport (orientation-lock) and falls back to an in-place 90° rotation
+    // when the screen is still physically portrait — see AspectFitBox.
     const DW=960,DH=540;
+    const needRotate=isFullscreen&&dim.w>0&&dim.h>0&&dim.w<=dim.h;
     return React.createElement("div",{className:"scb-poster-overlay",onClick:onClose},
-      React.createElement("div",{ref:mobileOuterRef,style:{position:"relative",display:"flex",alignItems:"center",justifyContent:"center"},onClick:e=>e.stopPropagation()},
+      React.createElement("div",{ref:mobileOuterRef,style:{position:"relative",width:"100%",height:isFullscreen?"100%":undefined,display:"flex",alignItems:"center",justifyContent:"center"},onClick:e=>e.stopPropagation()},
         React.createElement("button",{className:"scb-poster-close",onClick:onClose},"✕"),
         React.createElement("button",{className:"scb-poster-fs-btn",onClick:toggleFullscreen},isFullscreen?"⤢":"⛶"),
-        React.createElement(AspectFitBox,{designWidth:DW,designHeight:DH,fullscreen:isFullscreen},
+        React.createElement(AspectFitBox,{designWidth:DW,designHeight:DH,fullscreen:isFullscreen,rotate:needRotate,viewportW:dim.w,viewportH:dim.h},
           React.createElement("div",{className:"scb-poster-frame",style:{...bgStyle,width:DW,height:DH,maxWidth:"none",maxHeight:"none",overflow:"hidden"}},
             posterBody(false)
           )
