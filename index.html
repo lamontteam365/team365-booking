@@ -4176,22 +4176,24 @@ function SCDownloadRenderer({cycle,onDone}){
     )
   );
 }
-// Scales a fixed-design-size box down (or up) to fit whatever space its parent gives it,
-// preserving its aspect ratio. Three modes:
-//  - preview (not fullscreen): scaled to fit the small modal, width driven by the parent's
-//    own (now-definite) width via ResizeObserver.
+// Scales a fixed-design-size box down (or up) to fit whatever space its parent gives it.
+// Three modes:
+//  - preview (not fullscreen): scaled to fit (contain) the small modal, width driven by the
+//    parent's own (now-definite) width via ResizeObserver. Nothing is ever cropped here.
 //  - fullscreen + viewport already landscape-shaped (orientation-lock succeeded, or the
-//    user physically rotated the phone): scaled to fit the real viewport, no rotation.
+//    user physically rotated the phone): scaled to COVER the real viewport (fills width and
+//    height, no black bars) — a phone's landscape aspect ratio is usually more elongated
+//    than the poster's own 16:9-ish shape, so filling the screen this way crops a bit off
+//    the top/bottom (or, in the rotated case below, off the left/right) rather than leaving
+//    letterboxing on the sides. The poster's own content is weighted toward the center
+//    (exercise columns), so the crop falls on the outer branding strip first.
 //  - fullscreen + viewport still portrait-shaped (orientation-lock unsupported/denied —
 //    common on real Android phones with auto-rotate off, and always the case on iOS,
 //    though iOS never reaches here since it can't enter fullscreen at all): the poster is
-//    rotated 90° in place and scaled against the swapped viewport dimensions.
+//    rotated 90° in place and scaled (also to cover) against the swapped viewport dimensions.
 // Both fullscreen modes size numerically in JS from the live viewport (not CSS calc/dvh/
-// aspect-ratio tricks) — that's what lets the height budget be trimmed by 10px (see below)
-// reliably in every case, instead of only when one particular side of a CSS min() happens
-// to "win": with the aspect-ratio-locked-box approach, if width was already the limiting
-// side, the height comes along for free from the ratio and any height-only trim gets
-// silently dropped.
+// aspect-ratio tricks) — that's what let the height budget be trimmed by 10px reliably
+// earlier, and is equally needed here for a correct cover-fit in every screen shape.
 function AspectFitBox({designWidth,designHeight,fullscreen,rotate,viewportW,viewportH,children}){
   const outerRef=useRef(null);
   const[scale,setScale]=useState(1);
@@ -4212,12 +4214,12 @@ function AspectFitBox({designWidth,designHeight,fullscreen,rotate,viewportW,view
     let boxW,boxH,transform;
     if(rotate){
       const availW=viewportH-H_INSET,availH=viewportW; // swapped: poster's "width" axis maps to the screen's height axis
-      const s=Math.min(availW/designWidth,availH/designHeight);
+      const s=Math.max(availW/designWidth,availH/designHeight); // cover: fill both axes, crop the overflow
       boxW=designWidth*s;boxH=designHeight*s;
       transform="translate(-50%,-50%) rotate(90deg)";
     }else{
       const availW=viewportW,availH=viewportH-H_INSET;
-      const s=Math.min(availW/designWidth,availH/designHeight);
+      const s=Math.max(availW/designWidth,availH/designHeight); // cover: fill both axes, crop the overflow
       boxW=designWidth*s;boxH=designHeight*s;
       transform="translate(-50%,-50%)";
     }
@@ -4441,6 +4443,23 @@ function SCBuilderAdmin({isAdmin,isMaster,showToast,selfEmail}){
   const [posterWeek,setPosterWeek]=useState(1);
   const [posterExercises,setPosterExercises]=useState([]);
   const [downloadCycle,setDownloadCycle]=useState(null);
+  // ── API / AI Class Builder — fully separate from the manual "+ NEW CYCLE" flow above.
+  // Same prompt→copy→paste→JSON→import pattern as the Personal Workout AI builder (MW_AI_PROMPT
+  // / importFromAI), but produces a normal sc_cycles + sc_cycle_exercises cycle via the exact
+  // same sbPost calls createCycle/duplicateCycle already use — so the result is indistinguishable
+  // from a manually-built class afterward. Does not read or modify any existing state above.
+  const [showAiForm,setShowAiForm]=useState(false);
+  const [aiCycleName,setAiCycleName]=useState("");
+  const [aiCycleType,setAiCycleType]=useState("Lower");
+  const [aiCycleWeeks,setAiCycleWeeks]=useState(4);
+  const [aiCycleWeeksCustom,setAiCycleWeeksCustom]=useState("");
+  const [aiRequirements,setAiRequirements]=useState("");
+  const [showAiPrompt,setShowAiPrompt]=useState(false);
+  const [aiPromptCopied,setAiPromptCopied]=useState(false);
+  const [showAiImport,setShowAiImport]=useState(false);
+  const [aiImportText,setAiImportText]=useState("");
+  const [aiImportErr,setAiImportErr]=useState("");
+  const [savingAiImport,setSavingAiImport]=useState(false);
   if(!isAdmin)return React.createElement("div",{className:"scb-empty"},"ADMIN ACCESS REQUIRED");
   async function loadCycles(){
     setLoadingCycles(true);
@@ -4491,6 +4510,100 @@ function SCBuilderAdmin({isAdmin,isMaster,showToast,selfEmail}){
     const ok=await sbPost("sc_cycles",{id,name:newCycleName.trim(),session_type:newCycleType,num_weeks:weeks,is_active:false,queued_at:null,created_by:selfEmail,created_at:Date.now()});
     if(ok){showToast("Cycle created ✓");setNewCycleName("");setNewCycleWeeksCustom("");setShowNewForm(false);await loadCycles();setActiveCycleId(id);setOpenWeeks({1:true});}
     else showToast("Could not create cycle");
+  }
+  // Builds the AI prompt text from the current AI-form fields. Mirrors MW_AI_PROMPT's structure
+  // (role, details, strict JSON output rules, worked example) but is generated dynamically per
+  // the entered class details, and bakes in the CORE → MAIN → THIRD (Mobility/Accessories/Cardio,
+  // AI's choice) programming structure as a mandatory rule.
+  function buildScAiPrompt(){
+    const weeks=aiCycleWeeksCustom.trim()?(parseInt(aiCycleWeeksCustom)||1):aiCycleWeeks;
+    const typeNote={Lower:"lower-body focus",Upper:"upper-body focus",Full:"full-body"}[aiCycleType]||"";
+    return `You are an experienced strength coach programming a multi-week GROUP CLASS (not a 1-on-1 personal program). Design a sensible, progressive ${weeks}-week block based on the details below.
+
+CLASS DETAILS:
+- Class name: ${aiCycleName.trim()||"(untitled)"}
+- Session type: ${aiCycleType} (${typeNote})
+- Number of weeks: ${weeks}
+- Requirements / goals / equipment / notes: ${aiRequirements.trim()||"(none given — use your judgement)"}
+
+PROGRAMMING STRUCTURE — every week MUST follow this exact structure and order:
+1. CORE ACTIVITY (section "Core") — always first. A short activation/core block. Mandatory.
+2. MAIN LIFT (section "Main") — always second. The primary strength movement(s) of the session, matching the session type above. Mandatory.
+3. THIRD ACTIVITY — always third. Choose WHICHEVER of "Mobility", "Accessories" or "Cardio" best serves this specific week's goals — they are not interchangeable filler; pick the one that makes this a coherent, purposeful session together with the Core and Main.
+These three components must work together as one coherent class, not three random exercises.
+
+OUTPUT RULES — follow exactly:
+- Reply with ONLY a JSON object. No explanation before or after, and no code fences.
+- Top-level keys are the week numbers as strings: "1" through "${weeks}".
+- Each week is an array of exercise objects, ordered Core first, then Main, then the Third Activity.
+- Each exercise object has these fields:
+  - "section": MUST be one of exactly: "Core", "Main", "Mobility", "Accessories", "Cardio".
+  - "exercise": the exercise name, e.g. "Barbell Back Squat".
+  - "sets": a string, e.g. "4". Use "" if not applicable.
+  - "reps": a string, e.g. "8-10" or "12/side". Use "" if not applicable.
+  - "duration": a string for time/distance work, e.g. "45 sec" or "400m". Use "" if not applicable.
+  - "side": "L/R" if the exercise is done per side, otherwise "".
+  - "metric": how it's logged — MUST be one of: "weight" (kg load), "time" (seconds), "calories", "meters", "reps" (bodyweight reps only, nothing to log).
+- Include 2-4 exercises for Core, 1-3 for Main, and 2-4 for the Third Activity, per week.
+
+EXAMPLE of the exact format (structure only — not a real program):
+{
+  "1": [
+    {"section":"Core","exercise":"Dead Bug","sets":"3","reps":"12","duration":"","side":"","metric":"reps"},
+    {"section":"Main","exercise":"Back Squat","sets":"4","reps":"8","duration":"","side":"","metric":"weight"},
+    {"section":"Mobility","exercise":"Hip Flexor Stretch","sets":"","reps":"","duration":"45 sec","side":"L/R","metric":"time"}
+  ]${weeks>1?`,\n  "2": [ ... same structure, progressed sensibly ... ]`:""}
+}
+
+Now write the ${weeks}-week class. Reply with ONLY the JSON.`;
+  }
+  // Parses the AI's JSON, sanitizes every field the same way the manual builder does
+  // (addExercise/duplicateCycle), creates a brand new cycle, then bulk-inserts each week's
+  // exercises into it via the same sc_cycle_exercises sbPost calls used elsewhere in this file.
+  // Never touches an existing cycle — always creates a new one, so nothing manual can be lost.
+  async function importScFromAI(){
+    const weeks=aiCycleWeeksCustom.trim()?(parseInt(aiCycleWeeksCustom)||0):aiCycleWeeks;
+    if(!aiCycleName.trim()){setAiImportErr("Give the class a name first, above.");return;}
+    if(!weeks||weeks<1){setAiImportErr("Choose a number of weeks first, above.");return;}
+    let raw=(aiImportText||"").trim();
+    if(!raw){setAiImportErr("Paste the AI output first.");return;}
+    raw=raw.replace(/^```(?:json)?/i,"").replace(/```$/,"").trim();
+    const first=raw.indexOf("{"),last=raw.lastIndexOf("}");
+    if(first>=0&&last>first)raw=raw.slice(first,last+1);
+    let parsed;
+    try{parsed=JSON.parse(raw);}catch(e){setAiImportErr("Couldn't read that. Make sure you pasted the whole block including the { } brackets.");return;}
+    const validSec=s=>SC_SECTIONS.includes(s)?s:"Main";
+    const validMetric=m=>SC_METRICS.some(x=>x.id===m)?m:"weight";
+    const weekRows={};let anyRows=false;
+    for(let wk=1;wk<=weeks;wk++){
+      const arr=Array.isArray(parsed[String(wk)])?parsed[String(wk)]:[];
+      weekRows[wk]=arr.map(it=>({
+        section:validSec(it.section),
+        exercise:((it.exercise||it.name||"")+"").trim().toUpperCase(),
+        sets:it.sets?parseInt(it.sets):null,
+        reps:((it.reps||"")+"").trim()||null,
+        duration:((it.duration||"")+"").trim()||null,
+        side:((it.side||"")+"").trim()||null,
+        metric:validMetric(it.metric)
+      })).filter(r=>r.exercise);
+      if(weekRows[wk].length)anyRows=true;
+    }
+    if(!anyRows){setAiImportErr("No exercises found in that JSON — check you pasted the full block.");return;}
+    setSavingAiImport(true);
+    const id=genId("cyc");
+    const ok=await sbPost("sc_cycles",{id,name:aiCycleName.trim(),session_type:aiCycleType,num_weeks:weeks,is_active:false,queued_at:null,created_by:selfEmail,created_at:Date.now()});
+    if(!ok){setSavingAiImport(false);setAiImportErr("Could not create the cycle. Try again.");return;}
+    for(let wk=1;wk<=weeks;wk++){
+      let orderNum=1;
+      for(const r of weekRows[wk]){
+        await sbPost("sc_cycle_exercises",{cycle_id:id,week_number:wk,section:r.section,exercise:r.exercise,sets:r.sets,reps:r.reps,duration:r.duration,side:r.side,metric:r.metric,order_num:orderNum++});
+      }
+    }
+    setSavingAiImport(false);
+    showToast("AI class imported ✓");
+    setAiCycleName("");setAiCycleWeeksCustom("");setAiRequirements("");setAiImportText("");setAiImportErr("");
+    setShowAiForm(false);setShowAiPrompt(false);setShowAiImport(false);
+    await loadCycles();setActiveCycleId(id);setOpenWeeks({1:true});
   }
   function toggleCycleQueue(cycle){
     if(cycle.is_active){
@@ -4814,6 +4927,43 @@ function SCBuilderAdmin({isAdmin,isMaster,showToast,selfEmail}){
         React.createElement("input",{className:"sp-edit-input",style:{width:70,marginBottom:0},value:newCycleWeeksCustom,onChange:e=>setNewCycleWeeksCustom(e.target.value.replace(/[^0-9]/g,"")),placeholder:"Other"})
       ),
       React.createElement("button",{className:"scb-btn primary",onClick:createCycle},"CREATE CYCLE")
+    ),
+    // ── API / AI Class Builder — Option 2, entirely separate from "+ NEW CYCLE" above.
+    // Same interaction pattern as the Personal Workout AI builder: generate prompt → copy →
+    // paste into Claude/ChatGPT → copy its JSON reply → paste back → import. Import always
+    // creates a brand new cycle (see importScFromAI), so it can never touch an existing one.
+    React.createElement("div",{className:"scb-add-btn",style:{marginBottom:14,borderStyle:"solid",borderColor:"#1d9bf0",color:"#1d9bf0"},onClick:()=>setShowAiForm(v=>!v)},showAiForm?"CANCEL":"⚡ BUILD WITH AI"),
+    showAiForm&&React.createElement("div",{className:"scb-new-form"},
+      React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:12}},"Fill in the class details, generate a prompt, run it through Claude or ChatGPT, then paste the result back in below to create the class. This never touches an existing cycle — it always creates a new one."),
+      React.createElement("div",{className:"sp-edit-lbl"},"CYCLE NAME"),
+      React.createElement("input",{className:"sp-edit-input",value:aiCycleName,onChange:e=>setAiCycleName(e.target.value),placeholder:"e.g. Lower 1, or New Strength Block"}),
+      React.createElement("div",{className:"sp-edit-lbl"},"SESSION TYPE"),
+      React.createElement("div",{className:"sp-toggle",style:{marginBottom:10}},
+        SC_SESSION_TYPES.map(t=>React.createElement("button",{key:t,className:`sp-toggle-btn${aiCycleType===t?" spta":""}`,onClick:()=>setAiCycleType(t)},t.toUpperCase()))
+      ),
+      React.createElement("div",{className:"sp-edit-lbl"},"NUMBER OF WEEKS"),
+      React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}},
+        weekOptions.map(w=>React.createElement("button",{key:w,className:`scb-btn${(!aiCycleWeeksCustom&&aiCycleWeeks===w)?" primary":""}`,onClick:()=>{setAiCycleWeeks(w);setAiCycleWeeksCustom("");}},`${w}`)),
+        React.createElement("input",{className:"sp-edit-input",style:{width:70,marginBottom:0},value:aiCycleWeeksCustom,onChange:e=>setAiCycleWeeksCustom(e.target.value.replace(/[^0-9]/g,"")),placeholder:"Other"})
+      ),
+      React.createElement("div",{className:"sp-edit-lbl"},"CLASS REQUIREMENTS / GOALS / EQUIPMENT (optional)"),
+      React.createElement("textarea",{value:aiRequirements,onChange:e=>setAiRequirements(e.target.value),placeholder:"e.g. focus on posterior chain, full gym available, keep impact low, 45 min class",rows:3,className:"sp-edit-input",style:{width:"100%",resize:"vertical",fontFamily:"'DM Sans',sans-serif",boxSizing:"border-box"}}),
+      React.createElement("button",{className:"scb-btn primary",style:{marginTop:4,marginBottom:10},onClick:()=>setShowAiPrompt(s=>!s),disabled:!aiCycleName.trim()},showAiPrompt?"✕ HIDE PROMPT":"📋 GENERATE PROMPT"),
+      showAiPrompt&&React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1d3a5a",borderRadius:0,padding:"12px",marginBottom:10}},
+        React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#89a",lineHeight:1.7,marginBottom:8}},"Copy this, paste it into Claude or ChatGPT, and send. Then copy what it gives back and paste it into PASTE FROM AI below."),
+        React.createElement("textarea",{value:buildScAiPrompt(),readOnly:true,rows:8,onFocus:e=>e.target.select(),style:{background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ddd",fontSize:11,fontFamily:"monospace",lineHeight:1.5,padding:"7px 9px",width:"100%",resize:"vertical",boxSizing:"border-box"}}),
+        React.createElement("button",{onClick:()=>{try{navigator.clipboard.writeText(buildScAiPrompt());}catch(e){}setAiPromptCopied(true);setTimeout(()=>setAiPromptCopied(false),1500);},style:{width:"100%",marginTop:8,background:aiPromptCopied?"#1d5a34":"#1d9bf0",color:"#fff",border:"none",borderRadius:0,padding:"9px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},aiPromptCopied?"COPIED ✓":"COPY PROMPT")
+      ),
+      React.createElement("button",{className:"scb-btn",style:{width:"100%",background:showAiImport?"#0a1a2a":"none",border:"1px dashed "+(showAiImport?"#1d3a5a":"#2a2a2a"),color:"#1d9bf0"},onClick:()=>{setShowAiImport(s=>!s);setAiImportErr("");}},showAiImport?"✕ CLOSE IMPORT":"⤵ PASTE FROM AI"),
+      showAiImport&&React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1d3a5a",borderRadius:0,padding:"12px",marginTop:8}},
+        React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#89a",lineHeight:1.7,marginBottom:8}},"Paste the AI's class JSON below and press Import. This creates a brand new cycle from it — nothing existing is touched."),
+        React.createElement("textarea",{value:aiImportText,onChange:e=>{setAiImportText(e.target.value);setAiImportErr("");},placeholder:"Paste the { ... } block from Claude here",rows:5,style:{background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ddd",fontSize:11,fontFamily:"monospace",lineHeight:1.5,padding:"7px 9px",width:"100%",resize:"vertical",boxSizing:"border-box"}}),
+        aiImportErr&&React.createElement("div",{style:{color:"#e06040",fontSize:11,marginTop:6,lineHeight:1.4}},aiImportErr),
+        React.createElement("div",{style:{display:"flex",gap:8,marginTop:8}},
+          React.createElement("button",{onClick:()=>{setShowAiImport(false);setAiImportText("");setAiImportErr("");},style:{flex:1,background:"none",border:"1px solid #333",borderRadius:0,padding:"9px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
+          React.createElement("button",{onClick:importScFromAI,disabled:!aiImportText.trim()||savingAiImport,style:{flex:2,background:aiImportText.trim()?"#1d9bf0":"#1a1a1a",color:aiImportText.trim()?"#fff":"#444",border:"none",borderRadius:0,padding:"9px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:aiImportText.trim()?"pointer":"default"}},savingAiImport?"IMPORTING...":"IMPORT & CREATE CLASS")
+        )
+      )
     ),
     loadingCycles?React.createElement("div",{className:"sp-loading"},"LOADING..."):
     cycles.length===0?React.createElement("div",{className:"scb-empty"},"NO CYCLES YET — CREATE ONE ABOVE"):
