@@ -3026,7 +3026,19 @@ async function stImgFetchAffirmation(className){
   }catch(e){}
   return "";
 }
-async function stImgRenderCanvas(canvas,className,rows,lib,bgNum){
+// Looks up an exercise's translation for whichever language is active. "maori" is the
+// built-in always-on language (falls back to the row's own saved maori field); any other
+// key is a bank language stored as its own top-level map on the library object (same shape
+// the offline kit's data.js embeds, e.g. lib.samoan = {"EXERCISE NAME": "..."}).
+function stImgTranslationFor(lib,langKey,row){
+  const EX=(row.exercise||"").trim().toUpperCase();
+  if(!langKey||langKey==="maori")return (lib&&lib.maori&&lib.maori[EX])||row.maori||"";
+  const t=lib&&lib[langKey];
+  return (t&&t[EX])||"";
+}
+async function stImgRenderCanvas(canvas,className,rows,lib,bgNum,langKey,langName){
+  langKey=langKey||"maori";
+  langName=langName||"Māori";
   const ctx=canvas.getContext("2d");
   ctx.clearRect(0,0,1920,1080);
   const affirmationPromise=stImgFetchAffirmation(className);
@@ -3055,19 +3067,15 @@ async function stImgRenderCanvas(canvas,className,rows,lib,bgNum){
   const nameDisplay=className.toUpperCase().replace(/(\d+)\s*$/,"($1)");
   const affirmation=await affirmationPromise;
   const titleFont="700 26px DM Sans, Arial, sans-serif";
+  // Affirmation (top-left) and the translation-language label (top-right) match the
+  // footer's "TEAM 365" text exactly — same size/weight/color — per the client's request.
+  const cornerFont="700 16px DM Sans, Arial, sans-serif";
   const titleY=areaY-1;
+  stImgFillTextSpaced(ctx,nameDisplay,areaX+areaW/2,titleY,1.5,titleFont,"#fff","center");
   if(affirmation){
-    const affDisplay=affirmation.toUpperCase();
-    const titleW=stImgMeasureSpaced(ctx,nameDisplay,titleFont,1.5);
-    const gapPx=20;
-    const affW=stImgMeasureSpaced(ctx,affDisplay,titleFont,1.5);
-    const totalW=titleW+gapPx+affW;
-    const startX=areaX+areaW/2-totalW/2;
-    stImgFillTextSpaced(ctx,nameDisplay,startX,titleY,1.5,titleFont,"#fff","left");
-    stImgFillTextSpaced(ctx,affDisplay,startX+titleW+gapPx,titleY,1.5,titleFont,"rgba(159,179,196,0.45)","left");
-  }else{
-    stImgFillTextSpaced(ctx,nameDisplay,areaX+areaW/2,titleY,1.5,titleFont,"#fff","center");
+    stImgFillTextSpaced(ctx,affirmation.toUpperCase(),areaX,titleY,1.5,cornerFont,"#fff","left");
   }
+  stImgFillTextSpaced(ctx,langName.toUpperCase()+" TRANSLATION",areaX+areaW,titleY,1.5,cornerFont,"#fff","right");
 
   if(!group||!group.sts.length){
     stImgFillTextSpaced(ctx,"NO STATION ROUND FOUND IN THIS WORKOUT",960,540,1,"600 20px DM Sans, Arial, sans-serif","#c9603f","center");
@@ -3086,11 +3094,7 @@ async function stImgRenderCanvas(canvas,className,rows,lib,bgNum){
 
   const names=sts.map(r=>(r.exercise||"").toUpperCase());
   const exSize=stImgFitFontSpaced(ctx,names,cardW-24,30,12,"","Bebas Neue, Arial Narrow, sans-serif",2);
-  const maori=lib&&lib.maori?lib.maori:{};
-  const translations=sts.map(r=>{
-    const EX=(r.exercise||"").trim().toUpperCase();
-    return maori[EX]||r.maori||"";
-  });
+  const translations=sts.map(r=>stImgTranslationFor(lib,langKey,r));
 
   sts.forEach((r,i)=>{
     const col=i%cols,row=Math.floor(i/cols);
@@ -3100,12 +3104,15 @@ async function stImgRenderCanvas(canvas,className,rows,lib,bgNum){
 
   stImgDrawFooter(ctx);
 }
-function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose}){
+function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose,langOptions}){
   const frameRef=useRef(null);
   const mobileOuterRef=useRef(null);
   const canvasRef=useRef(null);
   const [isFullscreen,setIsFullscreen]=useState(false);
   const [dim,setDim]=useState({w:0,h:0});
+  const opts=(langOptions&&langOptions.length)?langOptions:[{key:"maori",name:"Māori"}];
+  const [langKey,setLangKey]=useState("maori");
+  const langName=(opts.find(o=>o.key===langKey)||opts[0]).name;
   // Below this viewport size, requesting fullscreen on the desktop-sized ".fs" frame either
   // silently fails or just reflows the page instead of actually filling the screen — same
   // threshold SCAdminPosterView uses. Below it we fullscreen a plain wrapper div instead.
@@ -3127,10 +3134,10 @@ function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose}){
     return()=>{window.removeEventListener("resize",chk);window.removeEventListener("orientationchange",chk);document.removeEventListener("fullscreenchange",chk);};
   },[]);
   useEffect(()=>{
-    if(canvasRef.current)stImgRenderCanvas(canvasRef.current,className,rows,lib,bg);
+    if(canvasRef.current)stImgRenderCanvas(canvasRef.current,className,rows,lib,bg,langKey,langName);
     // mobileSize is included because switching between the mobile/desktop branches below
     // mounts a brand-new <canvas> node — this effect must re-fire to draw onto it.
-  },[className,rows,lib,bg,mobileSize]);
+  },[className,rows,lib,bg,mobileSize,langKey,langName]);
   async function toggleFullscreen(){
     const target=mobileSize?mobileOuterRef.current:frameRef.current;
     if(document.fullscreenElement){
@@ -3165,6 +3172,12 @@ function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose}){
     React.createElement("option",{value:""},"BG"),
     Array.from({length:30},(_,i)=>i+1).map(n=>React.createElement("option",{key:n,value:n},n))
   );
+  // Language picker — controls which translation shows on the cards and in the top-right
+  // "<LANGUAGE> TRANSLATION" label. Māori is always available; anything else only shows up
+  // once it's switched on + named in the exercise library's language settings.
+  const langSelect=React.createElement("select",{key:"lang",value:langKey,onChange:e=>setLangKey(e.target.value),onClick:e=>e.stopPropagation(),style:{position:"absolute",top:8,left:76,background:"#fff",color:"#000",border:"none",borderRadius:0,fontSize:10,height:22,padding:"0 3px",zIndex:2,maxWidth:84}},
+    opts.map(o=>React.createElement("option",{key:o.key,value:o.key},o.name))
+  );
   // Same 22x22 square treatment as the close (✕) button, sitting immediately to its left —
   // download is now a same-sized icon button next to X, not a separate pill at the bottom.
   const downloadBtn=React.createElement("button",{key:"dl",className:"scb-poster-close",onClick:download,title:"Download",style:{right:38}},"⬇");
@@ -3188,6 +3201,7 @@ function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose}){
         downloadBtn,
         React.createElement("button",{className:"scb-poster-fs-btn",onClick:toggleFullscreen},isFullscreen?"⤢":"⛶"),
         bgSelect,
+        langSelect,
         React.createElement("canvas",{ref:canvasRef,width:1920,height:1080,style:canvasStyle})
       )
     );
@@ -3199,6 +3213,7 @@ function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose}){
         downloadBtn,
         React.createElement("button",{className:"scb-poster-fs-btn",onClick:toggleFullscreen},isFullscreen?"⤢":"⛶"),
         bgSelect,
+        langSelect,
         React.createElement("canvas",{ref:canvasRef,width:1920,height:1080,style:{width:"100%",height:"auto",display:"block"}})
       )
     )
@@ -3214,6 +3229,7 @@ function WorkoutDetailsEditor({className,showToast}){
   const [rows,setRows]=useState([]);
   const [scroll,setScroll]=useState("");
   const [lib,setLib]=useState({maori:{},presc:{}});
+  const [langCfg,setLangCfg]=useState({morioriOn:false,bank:[]});
   const [legacy,setLegacy]=useState("");
   const [loaded,setLoaded]=useState(false);
   const [saving,setSaving]=useState(false);
@@ -3249,7 +3265,16 @@ function WorkoutDetailsEditor({className,showToast}){
       L=(typeof window!=="undefined"&&window.T365_HIIT_SEED)?window.T365_HIIT_SEED:{maori:{},presc:{}};
       await sbPost("coaching_notes",{class_name:LIB_KEY,content:JSON.stringify(L),updated_at:Date.now()});
     }
-    setLib({maori:L.maori||{},presc:L.presc||{}});
+    setLib(Object.assign({maori:{},presc:{}},L||{}));
+    // Language settings (which extra languages are on, plus their display names) — same
+    // "__LANGS__" row the exercise library editor's language picker manages. Needed here so
+    // the Station Image overlay's language dropdown can offer the same options.
+    try{
+      const lcr=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__LANGS__")+"&select=content");
+      let LC={morioriOn:false,bank:[]};
+      if(lcr&&lcr.length&&lcr[0].content){try{LC=Object.assign(LC,JSON.parse(lcr[0].content));}catch(e){}}
+      setLangCfg(LC);
+    }catch(e){}
     if(typeof window!=="undefined"&&window.T365_WORKOUT_READY){try{await window.T365_WORKOUT_READY;}catch{}}
     const seed=(typeof window!=="undefined"&&window.T365_WORKOUT_SEED&&window.T365_WORKOUT_SEED[className])||null;
     const wr=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(storageKey)+"&select=content");
@@ -3344,7 +3369,7 @@ function WorkoutDetailsEditor({className,showToast}){
       if(r.exercise&&(cc||oo||dd)&&!np[key]){np[key]={c:cc,o:oo,d:dd};changed=true;}
     });
     if(changed){
-      const nl={maori:nm,presc:np};setLib(nl);
+      const nl=Object.assign({},lib,{maori:nm,presc:np});setLib(nl);
       const l0=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(LIB_KEY)+"&select=class_name");
       const lb={content:JSON.stringify(nl),updated_at:Date.now()};
       if(l0&&l0.length)await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent(LIB_KEY),lb);
@@ -3406,7 +3431,7 @@ function WorkoutDetailsEditor({className,showToast}){
       rows.length>0&&React.createElement("div",{style:{display:"flex",gap:8,marginTop:12}},
         React.createElement("button",{onClick:()=>setEditing(true),style:{flex:1,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"✎ EDIT WORKOUT")
       ),
-      imgOpen&&React.createElement(StationImageOverlay,{className,rows,lib,bg:imgBg,onBgChange:saveImgBg,onClose:()=>setImgOpen(false)})
+      imgOpen&&React.createElement(StationImageOverlay,{className,rows,lib,bg:imgBg,onBgChange:saveImgBg,onClose:()=>setImgOpen(false),langOptions:[{key:"maori",name:"Māori"}].concat(langCfg.morioriOn?[{key:"moriori",name:"Moriori"}]:[]).concat((langCfg.bank||[]).map(b=>({key:b.key,name:b.name||b.key})))})
     );
   }
   const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",padding:"7px 9px",outline:"none",boxSizing:"border-box"};
