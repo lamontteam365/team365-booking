@@ -2957,9 +2957,7 @@ function stImgDrawCard(ctx,x,y,w,h,r,stnum,exSize,translation){
   if(reps&&reps.indexOf("REP")<0)reps+=" REPS";
   const lv_y0=boxY+boxH-66;
   if(reps){
-    ctx.shadowColor="#4fb8ff";ctx.shadowBlur=14;
-    stImgFillTextSpaced(ctx,reps,x+w/2,lv_y0-27,1,"bold 24px DM Sans, Arial, sans-serif","#1d9bf0");
-    ctx.shadowBlur=0;ctx.shadowColor="transparent";
+    stImgFillTextSpaced(ctx,reps,x+w/2,lv_y0-30,1,"bold 24px DM Sans, Arial, sans-serif","#1d9bf0");
   }
   const exY=boxY+boxH*0.5-22;
   stImgFillTextSpaced(ctx,(r.exercise||"").toUpperCase(),x+w/2,exY,2,exSize+'px "Bebas Neue", Arial Narrow, sans-serif',"#fff");
@@ -3008,9 +3006,26 @@ function stImgLoadImage(url){
 // `canvas`, optionally with a cover-fit background image + the same dark gradient overlay the
 // S&C poster uses so the image reads the same either way. bgNum is a Strength-<n>.jpg number
 // or "" for no background.
+// Pulls the AFFIRMATION line from the same "FINAL PAGE — CLASS ENDING" settings the app
+// already saves per class style (coaching_notes row "__FINAL__"+STYLE, {title,sub,bot} JSON —
+// "bot" is the AFFIRMATION field). Set once per style, not per individual numbered workout.
+// Already public-readable (same RLS allowance as __WORKOUT__/__SCROLL__), so this works offline too.
+async function stImgFetchAffirmation(className){
+  const m=(className||"").match(/^(.*?)\s*(\d+)\s*$/);
+  const style=((m?m[1]:className)||"").trim().toUpperCase();
+  try{
+    const d=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__FINAL__"+style)+"&select=content");
+    if(d&&d.length&&d[0].content){
+      const v=JSON.parse(d[0].content);
+      return (v&&v.bot)?String(v.bot).trim():"";
+    }
+  }catch(e){}
+  return "";
+}
 async function stImgRenderCanvas(canvas,className,rows,lib,bgNum){
   const ctx=canvas.getContext("2d");
   ctx.clearRect(0,0,1920,1080);
+  const affirmationPromise=stImgFetchAffirmation(className);
   if(bgNum){
     try{
       const img=await stImgLoadImage(scBgUrl(bgNum));
@@ -3027,10 +3042,14 @@ async function stImgRenderCanvas(canvas,className,rows,lib,bgNum){
 
   const group=stImgFirstStationRound(rows);
   const SAFE=96,areaX=SAFE,areaW=1920-2*SAFE,areaY=SAFE,areaH=1080-2*SAFE;
-  const nameStripH=40;
+  const nameStripH=64;
   ctx.textBaseline="alphabetic";
   const nameDisplay=className.toUpperCase().replace(/(\d+)\s*$/,"($1)");
-  stImgFillTextSpaced(ctx,nameDisplay,areaX+areaW/2,areaY+14,1.5,"700 26px DM Sans, Arial, sans-serif","#fff","center");
+  stImgFillTextSpaced(ctx,nameDisplay,areaX+areaW/2,areaY-1,1.5,"700 26px DM Sans, Arial, sans-serif","#fff","center");
+  const affirmation=await affirmationPromise;
+  if(affirmation){
+    stImgFillTextSpaced(ctx,affirmation.toUpperCase(),areaX+areaW/2,areaY+30,1,"500 14px DM Sans, Arial, sans-serif","#9fb3c4","center");
+  }
 
   if(!group||!group.sts.length){
     stImgFillTextSpaced(ctx,"NO STATION ROUND FOUND IN THIS WORKOUT",960,540,1,"600 20px DM Sans, Arial, sans-serif","#c9603f","center");
