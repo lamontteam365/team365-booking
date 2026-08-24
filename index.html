@@ -500,15 +500,6 @@ html,body{background:#080808;min-height:100vh}
 .scb-poster-frame.fs .scb-poster-arrow{font-size:34px}
 .scb-poster-frame.fs .scb-poster-arrows{bottom:64px}
 .scb-cycle-body{margin-top:10px;padding-top:10px;border-top:1px solid #222}
-/* Station Image overlay's own frame/border — deliberately separate from .scb-poster-frame
-   (used by the S&C Builder poster) so this can't affect that component. Here the white
-   border wraps directly around the canvas image with no black gap first; the black area
-   (where the close/download/fullscreen buttons and background dropdown live) sits entirely
-   outside that white border. */
-.stimg-outerframe{width:100%;max-width:966px;max-height:96dvh;box-sizing:border-box}
-.stimg-frame{width:100%;height:auto;background:#000;position:relative;overflow-y:auto;padding:32px 16px 36px;box-sizing:border-box;display:block}
-.stimg-frame.fs{width:100dvw;height:100dvh;padding:48px 40px 60px}
-.stimg-imgbox{border:1px solid rgba(255,255,255,0.35);box-sizing:border-box}
 </style>
 </head>
 <body>
@@ -3198,15 +3189,13 @@ function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose}){
     );
   }
   return React.createElement("div",{className:"scb-poster-overlay",onClick:closeOverlay},
-    React.createElement("div",{className:"stimg-outerframe",onClick:e=>e.stopPropagation()},
-      React.createElement("div",{ref:frameRef,className:"stimg-frame"+(isFullscreen?" fs":"")},
+    React.createElement("div",{className:"scb-poster-outerframe",onClick:e=>e.stopPropagation()},
+      React.createElement("div",{ref:frameRef,className:"scb-poster-frame"+(isFullscreen?" fs":""),style:{padding:10,display:"block"}},
         React.createElement("button",{className:"scb-poster-close",onClick:closeOverlay},"✕"),
         downloadBtn,
         React.createElement("button",{className:"scb-poster-fs-btn",onClick:toggleFullscreen},isFullscreen?"⤢":"⛶"),
         bgSelect,
-        React.createElement("div",{className:"stimg-imgbox"},
-          React.createElement("canvas",{ref:canvasRef,width:1920,height:1080,style:{width:"100%",height:"auto",display:"block"}})
-        )
+        React.createElement("canvas",{ref:canvasRef,width:1920,height:1080,style:{width:"100%",height:"auto",display:"block"}})
       )
     )
   );
