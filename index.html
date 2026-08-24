@@ -2934,13 +2934,17 @@ function stImgFitFontSpaced(ctx,texts,maxWidth,maxSize,minSize,weight,family,spa
   }
   return minSize;
 }
-function stImgFillTextSpaced(ctx,text,x,y,spacing,font,color,align){
+function stImgFillTextSpaced(ctx,text,x,y,spacing,font,color,align,strokeColor,strokeWidth){
   align=align||"center";
   ctx.font=font;ctx.fillStyle=color;ctx.textAlign="left";
   const widths=[];for(let i=0;i<text.length;i++)widths.push(ctx.measureText(text[i]).width);
   const total=widths.reduce((a,b)=>a+b,0)+spacing*Math.max(0,text.length-1);
   let startX=align==="left"?x:(align==="right"?x-total:x-total/2);
-  for(let i=0;i<text.length;i++){ctx.fillText(text[i],startX,y);startX+=widths[i]+spacing;}
+  for(let i=0;i<text.length;i++){
+    if(strokeColor){ctx.strokeStyle=strokeColor;ctx.lineWidth=strokeWidth||1;ctx.strokeText(text[i],startX,y);}
+    ctx.fillText(text[i],startX,y);
+    startX+=widths[i]+spacing;
+  }
   ctx.textAlign="center";
   return total;
 }
@@ -2957,7 +2961,7 @@ function stImgDrawCard(ctx,x,y,w,h,r,stnum,exSize,translation){
   if(reps&&reps.indexOf("REP")<0)reps+=" REPS";
   const lv_y0=boxY+boxH-66;
   if(reps){
-    stImgFillTextSpaced(ctx,reps,x+w/2,lv_y0-30,1,"bold 24px DM Sans, Arial, sans-serif","#1d9bf0");
+    stImgFillTextSpaced(ctx,reps,x+w/2,lv_y0-30,1,"bold 24px DM Sans, Arial, sans-serif","#1d9bf0","center","#888",0.75);
   }
   const exY=boxY+boxH*0.5-22;
   stImgFillTextSpaced(ctx,(r.exercise||"").toUpperCase(),x+w/2,exY,2,exSize+'px "Bebas Neue", Arial Narrow, sans-serif',"#fff");
@@ -3042,13 +3046,13 @@ async function stImgRenderCanvas(canvas,className,rows,lib,bgNum){
 
   const group=stImgFirstStationRound(rows);
   const SAFE=96,areaX=SAFE,areaW=1920-2*SAFE,areaY=SAFE,areaH=1080-2*SAFE;
-  const nameStripH=64;
+  const nameStripH=80;
   ctx.textBaseline="alphabetic";
   const nameDisplay=className.toUpperCase().replace(/(\d+)\s*$/,"($1)");
   stImgFillTextSpaced(ctx,nameDisplay,areaX+areaW/2,areaY-1,1.5,"700 26px DM Sans, Arial, sans-serif","#fff","center");
   const affirmation=await affirmationPromise;
   if(affirmation){
-    stImgFillTextSpaced(ctx,affirmation.toUpperCase(),areaX+areaW/2,areaY+30,1,"500 14px DM Sans, Arial, sans-serif","#9fb3c4","center");
+    stImgFillTextSpaced(ctx,affirmation.toUpperCase(),areaX+areaW/2,areaY+45,1.5,"700 26px DM Sans, Arial, sans-serif","#9fb3c4","center");
   }
 
   if(!group||!group.sts.length){
