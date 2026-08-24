@@ -2884,10 +2884,236 @@ function renderBoldText(str){
     ?React.createElement("strong",{key:i,style:{color:"#fff",fontWeight:700}},p.slice(2,-2))
     :p);
 }
+// ---- Station Image (admin "IMAGE" button on a workout) — draws the same station-board
+// image the offline kit's build-data.html/stationimages.html tools produce, straight onto a
+// <canvas> here in the live app, with a background picked from the same Strength-<n>.jpg set
+// the S&C Builder poster already uses (SC_BG_BASE/scBgUrl, defined above). Prefixed "stImg"
+// throughout so nothing here can collide with any other identifier in this file.
+function stImgGroupsOf(rows){
+  const groups=[];let cur=null,inR=false;
+  rows.forEach(r=>{
+    if(r.hdr!=null){inR=/round/i.test(r.hdr);if(inR){cur={hdr:r.hdr,dur:r.dur,st:r.st,split:(r.split===true),sts:[]};groups.push(cur);}else cur=null;}
+    else if(inR&&cur)cur.sts.push(r);
+  });
+  return groups;
+}
+function stImgIsStationRound(g){
+  if(g.st===true)return true;
+  if(g.st===false)return false;
+  const u={};g.sts.forEach(s=>{u[s.duration||""]=1;});
+  return Object.keys(u).length<=1&&g.sts.length>2;
+}
+// Merges "split circuit" rounds (two+ station rounds flagged split:true) into one combined
+// round, same as tv.html's splitOn logic and the offline kit's stationimages.html.
+function stImgFirstStationRound(rows){
+  const groups=stImgGroupsOf(rows);
+  const splitG=groups.filter(g=>stImgIsStationRound(g)&&g.split);
+  if(splitG.length>=2){
+    const allSts=[];splitG.forEach(g=>g.sts.forEach(r=>allSts.push(r)));
+    return {hdr:splitG[0].hdr,dur:splitG[0].dur,sts:allSts};
+  }
+  for(let i=0;i<groups.length;i++)if(stImgIsStationRound(groups[i]))return groups[i];
+  return null;
+}
+function stImgFmtDurClock(d){
+  const p=String(d||"").split(":");if(p.length!==2)return String(d||"");
+  const m=parseInt(p[0])||0,s=parseInt(p[1])||0;const word=(m===1&&s===0)?" MINUTE":" MINUTES";
+  return m+":"+(s<10?"0"+s:s)+word;
+}
+function stImgMeasureSpaced(ctx,text,font,spacing){
+  ctx.font=font;let w=0;
+  for(let i=0;i<text.length;i++)w+=ctx.measureText(text[i]).width;
+  return w+spacing*Math.max(0,text.length-1);
+}
+function stImgFitFontSpaced(ctx,texts,maxWidth,maxSize,minSize,weight,family,spacing){
+  for(let size=maxSize;size>=minSize;size--){
+    const font=weight+" "+size+"px "+family;
+    let ok=true;
+    for(let i=0;i<texts.length;i++){if(texts[i]&&stImgMeasureSpaced(ctx,texts[i],font,spacing)>maxWidth){ok=false;break;}}
+    if(ok)return size;
+  }
+  return minSize;
+}
+function stImgFillTextSpaced(ctx,text,x,y,spacing,font,color,align){
+  align=align||"center";
+  ctx.font=font;ctx.fillStyle=color;ctx.textAlign="left";
+  const widths=[];for(let i=0;i<text.length;i++)widths.push(ctx.measureText(text[i]).width);
+  const total=widths.reduce((a,b)=>a+b,0)+spacing*Math.max(0,text.length-1);
+  let startX=align==="left"?x:(align==="right"?x-total:x-total/2);
+  for(let i=0;i<text.length;i++){ctx.fillText(text[i],startX,y);startX+=widths[i]+spacing;}
+  ctx.textAlign="center";
+  return total;
+}
+function stImgDrawCard(ctx,x,y,w,h,r,stnum,exSize,translation){
+  const pad=12,topH=26,boxY=y+topH,boxH=h-topH;
+  ctx.textBaseline="alphabetic";
+  const labelFont="500 13px DM Sans, Arial, sans-serif";
+  stImgFillTextSpaced(ctx,"STATION "+stnum,x+pad,y+16,1.2,labelFont,"#fff","left");
+  const dur=r.duration?stImgFmtDurClock(r.duration):"";
+  stImgFillTextSpaced(ctx,dur,x+w-pad,y+16,1.2,labelFont,"#c5c9cc","right");
+  ctx.fillStyle="#2b2b2b";ctx.fillRect(x,boxY,w,boxH);
+  ctx.strokeStyle="#767676";ctx.lineWidth=1;ctx.strokeRect(x+0.5,boxY+0.5,w-1,boxH-1);
+  let reps=String(r.reps||"").toUpperCase();
+  if(reps&&reps.indexOf("REP")<0)reps+=" REPS";
+  const lv_y0=boxY+boxH-66;
+  if(reps){
+    ctx.shadowColor="#4fb8ff";ctx.shadowBlur=14;
+    stImgFillTextSpaced(ctx,reps,x+w/2,lv_y0-20,1,"bold 18px DM Sans, Arial, sans-serif","#1d9bf0");
+    ctx.shadowBlur=0;ctx.shadowColor="transparent";
+  }
+  const exY=boxY+boxH*0.5-22;
+  stImgFillTextSpaced(ctx,(r.exercise||"").toUpperCase(),x+w/2,exY,2,exSize+'px "Bebas Neue", Arial Narrow, sans-serif',"#fff");
+  if(translation){
+    stImgFillTextSpaced(ctx,translation,x+w/2,exY+30,2,"600 15px DM Sans, Arial, sans-serif","#1d9bf0");
+  }
+  const cols=[["COMMITMENT",r.c],["CONSISTENCY",r.o],["DETERMINATION",r.d]];
+  const gap=6,cw=(w-2*pad-2*gap)/3;
+  cols.forEach((c,i)=>{
+    const cx=x+pad+i*(cw+gap);
+    const lblFont="600 11px DM Sans, Arial, sans-serif";
+    const lblSpacing=stImgMeasureSpaced(ctx,c[0],lblFont,1.2)<=cw?1.2:0.4;
+    stImgFillTextSpaced(ctx,c[0],cx+cw/2,lv_y0+8,lblSpacing,lblFont,"#fff");
+    ctx.fillStyle="#0a1a2a";ctx.fillRect(cx,lv_y0+16,cw,40);
+    ctx.strokeStyle="#565656";ctx.strokeRect(cx+0.5,lv_y0+16.5,cw-1,39);
+    ctx.fillStyle="#fff";ctx.font="14px DM Sans, Arial, sans-serif";ctx.textAlign="center";
+    ctx.fillText(String(c[1]||""),cx+cw/2,lv_y0+39);
+  });
+}
+// Footer sizes/positions measured directly against the S&C Builder poster's own 1920x1080
+// export (bottom:10px, 1-2px flex gaps) so the two match — see the offline kit's identical fix.
+function stImgDrawFooter(ctx){
+  const fy1=1080-29,fy2=1080-12;
+  const fontBold='700 16px DM Sans, Arial, sans-serif';
+  const fontTagline='600 12px DM Sans, Arial, sans-serif';
+  const fontCenterBold='700 12px DM Sans, Arial, sans-serif';
+  const fontPowered='600 10px DM Sans, Arial, sans-serif';
+  stImgFillTextSpaced(ctx,"TEAM 365",96,fy1,1.5,fontBold,"#fff","left");
+  stImgFillTextSpaced(ctx,"EVERY DAY. ALL YEAR ROUND",96,fy2,1,fontTagline,"#9fb3c4","left");
+  stImgFillTextSpaced(ctx,"THE GRACEFUL",1920-96,fy1,1.5,fontBold,"#fff","right");
+  stImgFillTextSpaced(ctx,"PURSUIT TO BECOME MORE",1920-96,fy2,1,fontTagline,"#9fb3c4","right");
+  stImgFillTextSpaced(ctx,"COMMITMENT · CONSISTENCY · DETERMINATION",960,fy1,1,fontCenterBold,"#9fb3c4","center");
+  const lbl="POWERED BY ",url="WWW.LAMONTCOLLECTIVE.COM";
+  const lblW=stImgMeasureSpaced(ctx,lbl,fontPowered,1),urlW=stImgMeasureSpaced(ctx,url,fontPowered,1);
+  const startX=960-(lblW+urlW)/2;
+  stImgFillTextSpaced(ctx,lbl,startX,fy2,1,fontPowered,"#9fb3c4","left");
+  stImgFillTextSpaced(ctx,url,startX+lblW,fy2,1,fontPowered,"#1d9bf0","left");
+}
+function stImgLoadImage(url){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();img.crossOrigin="anonymous";
+    img.onload=()=>resolve(img);img.onerror=reject;img.src=url;
+  });
+}
+// Renders the full 1920x1080 station board (name, first station round's cards, footer) onto
+// `canvas`, optionally with a cover-fit background image + the same dark gradient overlay the
+// S&C poster uses so the image reads the same either way. bgNum is a Strength-<n>.jpg number
+// or "" for no background.
+async function stImgRenderCanvas(canvas,className,rows,lib,bgNum){
+  const ctx=canvas.getContext("2d");
+  ctx.clearRect(0,0,1920,1080);
+  if(bgNum){
+    try{
+      const img=await stImgLoadImage(scBgUrl(bgNum));
+      const s=Math.max(1920/img.width,1080/img.height);
+      const dw=img.width*s,dh=img.height*s;
+      ctx.drawImage(img,(1920-dw)/2,(1080-dh)/2,dw,dh);
+      const grad=ctx.createLinearGradient(0,0,0,1080);
+      grad.addColorStop(0,"rgba(0,0,0,0.72)");grad.addColorStop(1,"rgba(0,0,0,0.82)");
+      ctx.fillStyle=grad;ctx.fillRect(0,0,1920,1080);
+    }catch(e){ctx.fillStyle="#080808";ctx.fillRect(0,0,1920,1080);}
+  }else{
+    ctx.fillStyle="#080808";ctx.fillRect(0,0,1920,1080);
+  }
+
+  const group=stImgFirstStationRound(rows);
+  const SAFE=96,areaX=SAFE,areaW=1920-2*SAFE,areaY=SAFE,areaH=1080-2*SAFE;
+  const nameStripH=40;
+  ctx.textBaseline="alphabetic";
+  const nameDisplay=className.toUpperCase().replace(/(\d+)\s*$/,"($1)");
+  stImgFillTextSpaced(ctx,nameDisplay,areaX+areaW,areaY+24,1.5,"600 18px DM Sans, Arial, sans-serif","#fff","right");
+
+  if(!group||!group.sts.length){
+    stImgFillTextSpaced(ctx,"NO STATION ROUND FOUND IN THIS WORKOUT",960,540,1,"600 20px DM Sans, Arial, sans-serif","#c9603f","center");
+    stImgDrawFooter(ctx);
+    return;
+  }
+
+  const sts=group.sts;
+  const cols=5,rowsN=Math.ceil(sts.length/cols);
+  const padX=areaX,gap=12,rowGap=28;
+  const cardW=(areaW-(cols-1)*gap)/cols;
+  const cardsAreaY=areaY+nameStripH,cardsAreaH=areaH-nameStripH;
+  const cardH=Math.min(430,(cardsAreaH-(rowsN-1)*rowGap)/rowsN);
+  const blockH=rowsN*cardH+(rowsN-1)*rowGap;
+  const top=cardsAreaY+(cardsAreaH-blockH)/2-10;
+
+  const names=sts.map(r=>(r.exercise||"").toUpperCase());
+  const exSize=stImgFitFontSpaced(ctx,names,cardW-24,30,12,"","Bebas Neue, Arial Narrow, sans-serif",2);
+  const maori=lib&&lib.maori?lib.maori:{};
+  const translations=sts.map(r=>{
+    const EX=(r.exercise||"").trim().toUpperCase();
+    return maori[EX]||r.maori||"";
+  });
+
+  sts.forEach((r,i)=>{
+    const col=i%cols,row=Math.floor(i/cols);
+    const x=padX+col*(cardW+gap),y=top+row*(cardH+rowGap);
+    stImgDrawCard(ctx,x,y,cardW,cardH,r,i+1,exSize,translations[i]);
+  });
+
+  stImgDrawFooter(ctx);
+}
+function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose}){
+  const frameRef=useRef(null);
+  const canvasRef=useRef(null);
+  const [isFullscreen,setIsFullscreen]=useState(false);
+  useEffect(()=>{
+    const onChange=()=>setIsFullscreen(document.fullscreenElement===frameRef.current);
+    document.addEventListener("fullscreenchange",onChange);
+    return()=>document.removeEventListener("fullscreenchange",onChange);
+  },[]);
+  useEffect(()=>{
+    if(canvasRef.current)stImgRenderCanvas(canvasRef.current,className,rows,lib,bg);
+  },[className,rows,lib,bg]);
+  function toggleFullscreen(){
+    if(document.fullscreenElement){try{document.exitFullscreen();}catch(e){}return;}
+    if(frameRef.current&&frameRef.current.requestFullscreen)try{frameRef.current.requestFullscreen();}catch(e){}
+  }
+  function closeOverlay(){
+    if(document.fullscreenElement)try{document.exitFullscreen();}catch(e){}
+    onClose();
+  }
+  function download(){
+    const cv=canvasRef.current;if(!cv)return;
+    cv.toBlob(blob=>{
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      const slug=s=>(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+      a.href=url;a.download=slug(className)+"-station-page.jpg";
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),3000);
+    },"image/jpeg",0.92);
+  }
+  return React.createElement("div",{className:"scb-poster-overlay",onClick:closeOverlay},
+    React.createElement("div",{className:"scb-poster-outerframe",onClick:e=>e.stopPropagation()},
+      React.createElement("div",{ref:frameRef,className:"scb-poster-frame"+(isFullscreen?" fs":""),style:{padding:10,display:"block"}},
+        React.createElement("button",{className:"scb-poster-close",onClick:closeOverlay},"✕"),
+        React.createElement("button",{className:"scb-poster-fs-btn",onClick:toggleFullscreen},isFullscreen?"⤢":"⛶"),
+        React.createElement("select",{value:bg,onChange:e=>onBgChange(e.target.value),onClick:e=>e.stopPropagation(),style:{position:"absolute",top:8,left:38,background:"#fff",color:"#000",border:"none",borderRadius:0,fontSize:10,height:22,padding:"0 3px",zIndex:2}},
+          React.createElement("option",{value:""},"BG"),
+          Array.from({length:30},(_,i)=>i+1).map(n=>React.createElement("option",{key:n,value:n},n))
+        ),
+        React.createElement("button",{onClick:download,style:{position:"absolute",bottom:8,right:8,background:"#1d9bf0",color:"#fff",border:"none",borderRadius:0,padding:"6px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",cursor:"pointer",zIndex:2}},"⬇ DOWNLOAD"),
+        React.createElement("canvas",{ref:canvasRef,width:1920,height:1080,style:{width:"100%",height:"auto",display:"block"}})
+      )
+    )
+  );
+}
 function WorkoutDetailsEditor({className,showToast}){
   const storageKey="__WORKOUT__"+className;
   const LIB_KEY="__HIIT_LIB__";
   const SCROLL_KEY="__SCROLL__"+className;
+  const BG_KEY="__BG__"+className;
   const DUR_CHOICES=["0:30","1:00","1:30","2:00","2:30","3:00","4:00","5:00","6:00","8:00","10:00"];
   const [rows,setRows]=useState([]);
   const [scroll,setScroll]=useState("");
@@ -2899,6 +3125,8 @@ function WorkoutDetailsEditor({className,showToast}){
   const [collapsed,setCollapsed]=useState(new Set());
   const [dragId,setDragId]=useState(null);
   const [dragOverId,setDragOverId]=useState(null);
+  const [imgOpen,setImgOpen]=useState(false);
+  const [imgBg,setImgBg]=useState("");
   const wdGenId=()=>Math.random().toString(36).slice(2,9);
   function mapRow(r){
     if(r.t==="h"||r.hdr!=null)return {id:wdGenId(),hdr:((r.label!=null?r.label:r.hdr)||""),hideTv:!!r.hideTv,dur:(r.dur!=null?r.dur:""),st:(r.st===true?true:(r.st===false?false:null)),split:(r.split===true)};
@@ -2939,6 +3167,8 @@ function WorkoutDetailsEditor({className,showToast}){
     (function(){let hd=null,segs=[];const flush=()=>{if(hd&&hd.st==null){const u={};segs.forEach(s=>{u[s.duration||""]=1;});hd.st=(/round/i.test(hd.hdr||"")&&Object.keys(u).length<=1&&segs.length>2);}hd=null;segs=[];};rws.forEach(r=>{if(r.hdr!=null){flush();hd=r;}else segs.push(r);});flush();})();
     const scr=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(SCROLL_KEY)+"&select=content");
     setScroll(scr&&scr.length&&scr[0].content?scr[0].content:"");
+    const bgr=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(BG_KEY)+"&select=content");
+    setImgBg(bgr&&bgr.length&&bgr[0].content?bgr[0].content:"");
     setRows(rws);setCollapsed(new Set(rws.filter(r=>r.hdr!=null).map(r=>r.id)));setLegacy(leg);setEditing(rws.length===0);setLoaded(true);
   })();},[className]);
   function autofill(row){
@@ -3026,13 +3256,24 @@ function WorkoutDetailsEditor({className,showToast}){
     }
     setLegacy("");setSaving(false);setEditing(false);showToast("Workout saved ✓");
   }
+  // Saves the IMAGE overlay's background pick immediately (same as S&C Builder's week_bg
+  // picker) — separate from the main workout content, so it's remembered without needing
+  // "SAVE WORKOUT" to be pressed.
+  async function saveImgBg(val){
+    setImgBg(val);
+    const ex=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(BG_KEY)+"&select=class_name");
+    const body={content:val||"",updated_at:Date.now()};
+    if(ex&&ex.length)await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent(BG_KEY),body);
+    else await sbPost("coaching_notes",{class_name:BG_KEY,...body});
+  }
   if(!loaded)return React.createElement("div",{style:{color:"#444",fontSize:11,padding:"12px 0"}},"Loading...");
   if(!editing){
     let curSec=null;
     return React.createElement("div",null,
       React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}},
         React.createElement("button",{onClick:()=>setEditing(true),style:{flex:1,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"✎ EDIT WORKOUT"),
-        rows.length>0&&React.createElement("button",{onClick:()=>{const u="tv.html?w="+encodeURIComponent(className);const w=window.open(u,"_blank");if(!w)window.location.href=u;},title:"Opens the full-screen TV page with a Cast button (uses the last SAVED version)",style:{flex:1,background:"#12331a",color:"#3ddc84",border:"1px solid #1d5a34",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"▸ PLAY")
+        rows.length>0&&React.createElement("button",{onClick:()=>{const u="tv.html?w="+encodeURIComponent(className);const w=window.open(u,"_blank");if(!w)window.location.href=u;},title:"Opens the full-screen TV page with a Cast button (uses the last SAVED version)",style:{flex:1,background:"#12331a",color:"#3ddc84",border:"1px solid #1d5a34",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"▸ PLAY"),
+        rows.length>0&&stImgFirstStationRound(rows)&&React.createElement("button",{onClick:()=>setImgOpen(true),title:"Station-board image for this workout, same as the offline kit's Station Images tool",style:{flex:1,background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"▦ IMAGE")
       ),
       legacy&&React.createElement("div",{style:{whiteSpace:"pre-wrap",fontSize:12,color:"#aaa",lineHeight:1.6,marginBottom:12}},legacy),
       rows.length===0&&!legacy&&React.createElement("div",{style:{fontSize:11,color:"#444",letterSpacing:"0.1em",padding:"16px 0",textAlign:"center"}},"NO WORKOUT YET · TAP EDIT TO BUILD IT"),
@@ -3068,7 +3309,8 @@ function WorkoutDetailsEditor({className,showToast}){
       }),
       rows.length>0&&React.createElement("div",{style:{display:"flex",gap:8,marginTop:12}},
         React.createElement("button",{onClick:()=>setEditing(true),style:{flex:1,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"✎ EDIT WORKOUT")
-      )
+      ),
+      imgOpen&&React.createElement(StationImageOverlay,{className,rows,lib,bg:imgBg,onBgChange:saveImgBg,onClose:()=>setImgOpen(false)})
     );
   }
   const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",padding:"7px 9px",outline:"none",boxSizing:"border-box"};
