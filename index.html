@@ -2958,7 +2958,7 @@ function stImgDrawCard(ctx,x,y,w,h,r,stnum,exSize,translation){
   const lv_y0=boxY+boxH-66;
   if(reps){
     ctx.shadowColor="#4fb8ff";ctx.shadowBlur=14;
-    stImgFillTextSpaced(ctx,reps,x+w/2,lv_y0-20,1,"bold 18px DM Sans, Arial, sans-serif","#1d9bf0");
+    stImgFillTextSpaced(ctx,reps,x+w/2,lv_y0-27,1,"bold 24px DM Sans, Arial, sans-serif","#1d9bf0");
     ctx.shadowBlur=0;ctx.shadowColor="transparent";
   }
   const exY=boxY+boxH*0.5-22;
@@ -3030,7 +3030,7 @@ async function stImgRenderCanvas(canvas,className,rows,lib,bgNum){
   const nameStripH=40;
   ctx.textBaseline="alphabetic";
   const nameDisplay=className.toUpperCase().replace(/(\d+)\s*$/,"($1)");
-  stImgFillTextSpaced(ctx,nameDisplay,areaX+areaW,areaY+24,1.5,"600 18px DM Sans, Arial, sans-serif","#fff","right");
+  stImgFillTextSpaced(ctx,nameDisplay,areaX+areaW/2,areaY+14,1.5,"700 26px DM Sans, Arial, sans-serif","#fff","center");
 
   if(!group||!group.sts.length){
     stImgFillTextSpaced(ctx,"NO STATION ROUND FOUND IN THIS WORKOUT",960,540,1,"600 20px DM Sans, Arial, sans-serif","#c9603f","center");
