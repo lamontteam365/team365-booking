@@ -2770,6 +2770,7 @@ function FinalPageEditor({className,showToast}){
   const [t,setT]=useState("");
   const [su,setSu]=useState("");
   const [b,setB]=useState("");
+  const [img,setImg]=useState("");
   const [loaded,setLoaded]=useState(false);
   const [saving,setSaving]=useState(false);
   const [msg,setMsg]=useState("");
@@ -2781,11 +2782,12 @@ function FinalPageEditor({className,showToast}){
     setT(v&&v.title!=null?v.title:"WELL DONE!");
     setSu(v&&v.sub!=null?v.sub:(style+" WITH TEAM 365"));
     setB(v&&v.bot!=null?v.bot:"I'M GRATEFUL");
+    setImg(v&&v.img!=null?v.img:"");
     setLoaded(true);
   })();},[key,isFirst]);
   async function save(){
     setSaving(true);
-    const json=JSON.stringify({title:(t||"").trim(),sub:(su||"").trim(),bot:(b||"").trim()});
+    const json=JSON.stringify({title:(t||"").trim(),sub:(su||"").trim(),bot:(b||"").trim(),img:(img||"").trim()});
     const ex=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(key)}&select=class_name`);
     if(ex&&ex.length)await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(key)}`,{content:json,updated_at:Date.now()});
     else await sbPost("coaching_notes",{class_name:key,content:json,updated_at:Date.now()});
@@ -2806,6 +2808,12 @@ function FinalPageEditor({className,showToast}){
       React.createElement("div",{style:lbl},"AFFIRMATION"),
       React.createElement("input",{value:b,onChange:e=>setB(e.target.value),placeholder:"e.g. I'M GRATEFUL",style:inp}),
       React.createElement("div",{style:{fontSize:9,color:"#444",marginTop:-4,marginBottom:12,lineHeight:1.5}},"The EVERYDAY. ALL YEAR ROUND. line is added automatically under the affirmation."),
+      React.createElement("div",{style:lbl},"ENDING IMAGE"),
+      React.createElement("select",{value:img,onChange:e=>setImg(e.target.value),style:inp},
+        React.createElement("option",{value:""},"— none —"),
+        Array.from({length:10},(_,i)=>i+1).map(n=>React.createElement("option",{key:n,value:n},"Ending "+n))
+      ),
+      React.createElement("div",{style:{fontSize:9,color:"#444",marginTop:-4,marginBottom:12,lineHeight:1.5}},"Shows as a background photo behind the text on this final page. Leave as none for the plain background."),
       React.createElement("button",{onClick:save,disabled:saving,style:{background:"#1d9bf0",border:"none",borderRadius:0,padding:"7px 16px",color:"#fff",fontSize:10,letterSpacing:"0.1em",cursor:"pointer",fontWeight:600}},saving?"SAVING...":"SAVE FINAL PAGE"),
       msg&&React.createElement("span",{style:{fontSize:10,color:"#4aaa88",marginLeft:10}},msg)
     )
