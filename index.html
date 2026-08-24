@@ -3069,12 +3069,9 @@ function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose}){
   const canvasRef=useRef(null);
   const [isFullscreen,setIsFullscreen]=useState(false);
   const [dim,setDim]=useState({w:0,h:0});
-  // Mirrors SCAdminPosterView's own mobile-fullscreen handling exactly (see AspectFitBox and
-  // the toggleFullscreen there): on a phone/small-tablet-sized viewport, requesting fullscreen
-  // on the desktop-sized ".fs" frame either silently fails or just reflows the page instead of
-  // actually filling the screen. Below that size threshold we fullscreen a plain wrapper div
-  // and let AspectFitBox scale+cover (rotating in place if landscape orientation-lock isn't
-  // available), exactly like the S&C Builder poster does.
+  // Below this viewport size, requesting fullscreen on the desktop-sized ".fs" frame either
+  // silently fails or just reflows the page instead of actually filling the screen — same
+  // threshold SCAdminPosterView uses. Below it we fullscreen a plain wrapper div instead.
   const mobileSize=dim.w>0&&dim.h>0&&Math.min(dim.w,dim.h)<=820;
   const mobileSizeRef=useRef(mobileSize);
   mobileSizeRef.current=mobileSize;
@@ -3108,7 +3105,7 @@ function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose}){
     try{
       await target.requestFullscreen();
       if(screen.orientation&&screen.orientation.lock){
-        try{await screen.orientation.lock("landscape");}catch(e){/* unsupported/denied — fullscreen still works, the rotate fallback in AspectFitBox covers this */}
+        try{await screen.orientation.lock("landscape");}catch(e){/* unsupported/denied — fullscreen still works, the rotate fallback below covers this */}
       }
     }catch(e){/* fullscreen request itself was blocked/denied */}
   }
@@ -3131,19 +3128,30 @@ function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose}){
     React.createElement("option",{value:""},"BG"),
     Array.from({length:30},(_,i)=>i+1).map(n=>React.createElement("option",{key:n,value:n},n))
   );
-  const downloadBtn=React.createElement("button",{key:"dl",onClick:download,style:{position:"absolute",bottom:8,right:8,background:"#1d9bf0",color:"#fff",border:"none",borderRadius:0,padding:"6px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",cursor:"pointer",zIndex:2}},"⬇ DOWNLOAD");
+  // Same 22x22 square treatment as the close (✕) button, sitting immediately to its left —
+  // download is now a same-sized icon button next to X, not a separate pill at the bottom.
+  const downloadBtn=React.createElement("button",{key:"dl",className:"scb-poster-close",onClick:download,title:"Download",style:{right:38}},"⬇");
   if(mobileSize){
-    const DW=1920,DH=1080;
     const needRotate=isFullscreen&&dim.w>0&&dim.h>0&&dim.w<=dim.h;
+    // The S&C Builder poster's own mobile-fullscreen trick (AspectFitBox: a JS-computed
+    // scale/ResizeObserver) is built for arbitrary DOM poster content. This overlay is just a
+    // fixed 1920x1080 bitmap canvas, so instead of reusing that machinery (which turned out not
+    // to repaint reliably inside a real phone's Fullscreen API transition — the reported "goes
+    // blank" bug) it's sized with plain, battle-tested CSS: object-fit:cover fills/crops the
+    // canvas to the viewport natively, with a rotate transform as the same in-place-rotate
+    // fallback the poster uses when a portrait phone can't orientation-lock to landscape.
+    const canvasStyle=isFullscreen
+      ? (needRotate
+          ? {position:"absolute",top:"50%",left:"50%",width:dim.h,height:dim.w,transform:"translate(-50%,-50%) rotate(90deg)",objectFit:"cover",display:"block"}
+          : {position:"absolute",top:0,left:0,width:"100%",height:"100%",objectFit:"cover",display:"block"})
+      : {width:"100%",height:"auto",display:"block"};
     return React.createElement("div",{className:"scb-poster-overlay",onClick:closeOverlay},
-      React.createElement("div",{ref:mobileOuterRef,style:{position:"relative",width:"100%",height:isFullscreen?"100%":undefined,display:"flex",alignItems:"center",justifyContent:"center"},onClick:e=>e.stopPropagation()},
+      React.createElement("div",{ref:mobileOuterRef,style:{position:"relative",width:"100%",height:isFullscreen?"100%":undefined,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",background:"#000"},onClick:e=>e.stopPropagation()},
         React.createElement("button",{className:"scb-poster-close",onClick:closeOverlay},"✕"),
+        downloadBtn,
         React.createElement("button",{className:"scb-poster-fs-btn",onClick:toggleFullscreen},isFullscreen?"⤢":"⛶"),
         bgSelect,
-        React.createElement(AspectFitBox,{designWidth:DW,designHeight:DH,fullscreen:isFullscreen,rotate:needRotate,viewportW:dim.w,viewportH:dim.h},
-          React.createElement("canvas",{ref:canvasRef,width:1920,height:1080,style:{width:DW,height:DH,display:"block"}})
-        ),
-        downloadBtn
+        React.createElement("canvas",{ref:canvasRef,width:1920,height:1080,style:canvasStyle})
       )
     );
   }
@@ -3151,9 +3159,9 @@ function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose}){
     React.createElement("div",{className:"scb-poster-outerframe",onClick:e=>e.stopPropagation()},
       React.createElement("div",{ref:frameRef,className:"scb-poster-frame"+(isFullscreen?" fs":""),style:{padding:10,display:"block"}},
         React.createElement("button",{className:"scb-poster-close",onClick:closeOverlay},"✕"),
+        downloadBtn,
         React.createElement("button",{className:"scb-poster-fs-btn",onClick:toggleFullscreen},isFullscreen?"⤢":"⛶"),
         bgSelect,
-        downloadBtn,
         React.createElement("canvas",{ref:canvasRef,width:1920,height:1080,style:{width:"100%",height:"auto",display:"block"}})
       )
     )
