@@ -3043,6 +3043,10 @@ async function stImgRenderCanvas(canvas,className,rows,lib,bgNum){
   }else{
     ctx.fillStyle="#080808";ctx.fillRect(0,0,1920,1080);
   }
+  // Thin white line drawn directly into the image itself (not a CSS border on any wrapper),
+  // so it shows up the same whether viewed normally, fullscreen, or downloaded — and can't
+  // affect the overlay's layout/buttons/fullscreen behavior at all.
+  ctx.strokeStyle="rgba(255,255,255,0.35)";ctx.lineWidth=2;ctx.strokeRect(1,1,1918,1078);
 
   const group=stImgFirstStationRound(rows);
   const SAFE=96,areaX=SAFE,areaW=1920-2*SAFE,areaY=SAFE,areaH=1080-2*SAFE;
