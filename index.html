@@ -3046,13 +3046,23 @@ async function stImgRenderCanvas(canvas,className,rows,lib,bgNum){
 
   const group=stImgFirstStationRound(rows);
   const SAFE=96,areaX=SAFE,areaW=1920-2*SAFE,areaY=SAFE,areaH=1080-2*SAFE;
-  const nameStripH=80;
+  const nameStripH=40;
   ctx.textBaseline="alphabetic";
   const nameDisplay=className.toUpperCase().replace(/(\d+)\s*$/,"($1)");
-  stImgFillTextSpaced(ctx,nameDisplay,areaX+areaW/2,areaY-1,1.5,"700 26px DM Sans, Arial, sans-serif","#fff","center");
   const affirmation=await affirmationPromise;
+  const titleFont="700 26px DM Sans, Arial, sans-serif";
+  const titleY=areaY-1;
   if(affirmation){
-    stImgFillTextSpaced(ctx,affirmation.toUpperCase(),areaX+areaW/2,areaY+45,1.5,"700 26px DM Sans, Arial, sans-serif","#9fb3c4","center");
+    const affDisplay=affirmation.toUpperCase();
+    const titleW=stImgMeasureSpaced(ctx,nameDisplay,titleFont,1.5);
+    const gapPx=20;
+    const affW=stImgMeasureSpaced(ctx,affDisplay,titleFont,1.5);
+    const totalW=titleW+gapPx+affW;
+    const startX=areaX+areaW/2-totalW/2;
+    stImgFillTextSpaced(ctx,nameDisplay,startX,titleY,1.5,titleFont,"#fff","left");
+    stImgFillTextSpaced(ctx,affDisplay,startX+titleW+gapPx,titleY,1.5,titleFont,"#9fb3c4","left");
+  }else{
+    stImgFillTextSpaced(ctx,nameDisplay,areaX+areaW/2,titleY,1.5,titleFont,"#fff","center");
   }
 
   if(!group||!group.sts.length){
