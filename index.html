@@ -2951,7 +2951,7 @@ function stImgDrawCard(ctx,x,y,w,h,r,stnum,exSize,translation){
   stImgFillTextSpaced(ctx,"STATION "+stnum,x+pad,y+16,1.2,labelFont,"#fff","left");
   const dur=r.duration?stImgFmtDurClock(r.duration):"";
   stImgFillTextSpaced(ctx,dur,x+w-pad,y+16,1.2,labelFont,"#c5c9cc","right");
-  ctx.fillStyle="#2b2b2b";ctx.fillRect(x,boxY,w,boxH);
+  ctx.fillStyle="rgba(43,43,43,0.62)";ctx.fillRect(x,boxY,w,boxH);
   ctx.strokeStyle="#767676";ctx.lineWidth=1;ctx.strokeRect(x+0.5,boxY+0.5,w-1,boxH-1);
   let reps=String(r.reps||"").toUpperCase();
   if(reps&&reps.indexOf("REP")<0)reps+=" REPS";
@@ -2973,7 +2973,7 @@ function stImgDrawCard(ctx,x,y,w,h,r,stnum,exSize,translation){
     const lblFont="600 11px DM Sans, Arial, sans-serif";
     const lblSpacing=stImgMeasureSpaced(ctx,c[0],lblFont,1.2)<=cw?1.2:0.4;
     stImgFillTextSpaced(ctx,c[0],cx+cw/2,lv_y0+8,lblSpacing,lblFont,"#fff");
-    ctx.fillStyle="#0a1a2a";ctx.fillRect(cx,lv_y0+16,cw,40);
+    ctx.fillStyle="rgba(10,26,42,0.62)";ctx.fillRect(cx,lv_y0+16,cw,40);
     ctx.strokeStyle="#565656";ctx.strokeRect(cx+0.5,lv_y0+16.5,cw-1,39);
     ctx.fillStyle="#fff";ctx.font="14px DM Sans, Arial, sans-serif";ctx.textAlign="center";
     ctx.fillText(String(c[1]||""),cx+cw/2,lv_y0+39);
@@ -3065,19 +3065,52 @@ async function stImgRenderCanvas(canvas,className,rows,lib,bgNum){
 }
 function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose}){
   const frameRef=useRef(null);
+  const mobileOuterRef=useRef(null);
   const canvasRef=useRef(null);
   const [isFullscreen,setIsFullscreen]=useState(false);
+  const [dim,setDim]=useState({w:0,h:0});
+  // Mirrors SCAdminPosterView's own mobile-fullscreen handling exactly (see AspectFitBox and
+  // the toggleFullscreen there): on a phone/small-tablet-sized viewport, requesting fullscreen
+  // on the desktop-sized ".fs" frame either silently fails or just reflows the page instead of
+  // actually filling the screen. Below that size threshold we fullscreen a plain wrapper div
+  // and let AspectFitBox scale+cover (rotating in place if landscape orientation-lock isn't
+  // available), exactly like the S&C Builder poster does.
+  const mobileSize=dim.w>0&&dim.h>0&&Math.min(dim.w,dim.h)<=820;
+  const mobileSizeRef=useRef(mobileSize);
+  mobileSizeRef.current=mobileSize;
   useEffect(()=>{
-    const onChange=()=>setIsFullscreen(document.fullscreenElement===frameRef.current);
+    const target=()=>mobileSizeRef.current?mobileOuterRef.current:frameRef.current;
+    const onChange=()=>setIsFullscreen(document.fullscreenElement===target());
     document.addEventListener("fullscreenchange",onChange);
     return()=>document.removeEventListener("fullscreenchange",onChange);
   },[]);
   useEffect(()=>{
+    const chk=()=>{try{setDim({w:window.innerWidth,h:window.innerHeight});}catch(e){}};
+    chk();
+    window.addEventListener("resize",chk);
+    window.addEventListener("orientationchange",chk);
+    document.addEventListener("fullscreenchange",chk);
+    return()=>{window.removeEventListener("resize",chk);window.removeEventListener("orientationchange",chk);document.removeEventListener("fullscreenchange",chk);};
+  },[]);
+  useEffect(()=>{
     if(canvasRef.current)stImgRenderCanvas(canvasRef.current,className,rows,lib,bg);
-  },[className,rows,lib,bg]);
-  function toggleFullscreen(){
-    if(document.fullscreenElement){try{document.exitFullscreen();}catch(e){}return;}
-    if(frameRef.current&&frameRef.current.requestFullscreen)try{frameRef.current.requestFullscreen();}catch(e){}
+    // mobileSize is included because switching between the mobile/desktop branches below
+    // mounts a brand-new <canvas> node — this effect must re-fire to draw onto it.
+  },[className,rows,lib,bg,mobileSize]);
+  async function toggleFullscreen(){
+    const target=mobileSize?mobileOuterRef.current:frameRef.current;
+    if(document.fullscreenElement){
+      try{if(screen.orientation&&screen.orientation.unlock)screen.orientation.unlock();}catch(e){}
+      try{await document.exitFullscreen();}catch(e){}
+      return;
+    }
+    if(!target||!target.requestFullscreen)return;
+    try{
+      await target.requestFullscreen();
+      if(screen.orientation&&screen.orientation.lock){
+        try{await screen.orientation.lock("landscape");}catch(e){/* unsupported/denied — fullscreen still works, the rotate fallback in AspectFitBox covers this */}
+      }
+    }catch(e){/* fullscreen request itself was blocked/denied */}
   }
   function closeOverlay(){
     if(document.fullscreenElement)try{document.exitFullscreen();}catch(e){}
@@ -3094,21 +3127,39 @@ function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose}){
       setTimeout(()=>URL.revokeObjectURL(url),3000);
     },"image/jpeg",0.92);
   }
+  const bgSelect=React.createElement("select",{key:"bg",value:bg,onChange:e=>onBgChange(e.target.value),onClick:e=>e.stopPropagation(),style:{position:"absolute",top:8,left:38,background:"#fff",color:"#000",border:"none",borderRadius:0,fontSize:10,height:22,padding:"0 3px",zIndex:2}},
+    React.createElement("option",{value:""},"BG"),
+    Array.from({length:30},(_,i)=>i+1).map(n=>React.createElement("option",{key:n,value:n},n))
+  );
+  const downloadBtn=React.createElement("button",{key:"dl",onClick:download,style:{position:"absolute",bottom:8,right:8,background:"#1d9bf0",color:"#fff",border:"none",borderRadius:0,padding:"6px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",cursor:"pointer",zIndex:2}},"⬇ DOWNLOAD");
+  if(mobileSize){
+    const DW=1920,DH=1080;
+    const needRotate=isFullscreen&&dim.w>0&&dim.h>0&&dim.w<=dim.h;
+    return React.createElement("div",{className:"scb-poster-overlay",onClick:closeOverlay},
+      React.createElement("div",{ref:mobileOuterRef,style:{position:"relative",width:"100%",height:isFullscreen?"100%":undefined,display:"flex",alignItems:"center",justifyContent:"center"},onClick:e=>e.stopPropagation()},
+        React.createElement("button",{className:"scb-poster-close",onClick:closeOverlay},"✕"),
+        React.createElement("button",{className:"scb-poster-fs-btn",onClick:toggleFullscreen},isFullscreen?"⤢":"⛶"),
+        bgSelect,
+        React.createElement(AspectFitBox,{designWidth:DW,designHeight:DH,fullscreen:isFullscreen,rotate:needRotate,viewportW:dim.w,viewportH:dim.h},
+          React.createElement("canvas",{ref:canvasRef,width:1920,height:1080,style:{width:DW,height:DH,display:"block"}})
+        ),
+        downloadBtn
+      )
+    );
+  }
   return React.createElement("div",{className:"scb-poster-overlay",onClick:closeOverlay},
     React.createElement("div",{className:"scb-poster-outerframe",onClick:e=>e.stopPropagation()},
       React.createElement("div",{ref:frameRef,className:"scb-poster-frame"+(isFullscreen?" fs":""),style:{padding:10,display:"block"}},
         React.createElement("button",{className:"scb-poster-close",onClick:closeOverlay},"✕"),
         React.createElement("button",{className:"scb-poster-fs-btn",onClick:toggleFullscreen},isFullscreen?"⤢":"⛶"),
-        React.createElement("select",{value:bg,onChange:e=>onBgChange(e.target.value),onClick:e=>e.stopPropagation(),style:{position:"absolute",top:8,left:38,background:"#fff",color:"#000",border:"none",borderRadius:0,fontSize:10,height:22,padding:"0 3px",zIndex:2}},
-          React.createElement("option",{value:""},"BG"),
-          Array.from({length:30},(_,i)=>i+1).map(n=>React.createElement("option",{key:n,value:n},n))
-        ),
-        React.createElement("button",{onClick:download,style:{position:"absolute",bottom:8,right:8,background:"#1d9bf0",color:"#fff",border:"none",borderRadius:0,padding:"6px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",cursor:"pointer",zIndex:2}},"⬇ DOWNLOAD"),
+        bgSelect,
+        downloadBtn,
         React.createElement("canvas",{ref:canvasRef,width:1920,height:1080,style:{width:"100%",height:"auto",display:"block"}})
       )
     )
   );
 }
+
 function WorkoutDetailsEditor({className,showToast}){
   const storageKey="__WORKOUT__"+className;
   const LIB_KEY="__HIIT_LIB__";
