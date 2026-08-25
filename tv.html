@@ -162,6 +162,15 @@ body.paused .mtrack,body.paused .inarrow{animation-play-state:paused}
 .finalbot{position:absolute;bottom:5%;left:0;right:0;text-align:center;z-index:1}
 .fbot1{font-family:'Bebas Neue',sans-serif;font-style:normal;font-size:1.7cqw;letter-spacing:0.32em;color:#e8eef4}
 .fbot2{font-family:'Bebas Neue',sans-serif;font-style:normal;font-size:0.85cqw;letter-spacing:0.18em;color:#9aa6b1;margin-top:4px}
+.finalaffirm{font-family:'Bebas Neue',sans-serif;font-style:italic;font-size:1.4cqw;letter-spacing:0.1em;color:#e8eef4;opacity:0.5;margin-top:6px}
+.ffoot-l,.ffoot-r{position:absolute;bottom:0;display:flex;flex-direction:column;gap:2px}
+.ffoot-l{left:3%;text-align:left}
+.ffoot-r{right:3%;text-align:right}
+.ffoot-l b,.ffoot-r b{font-size:0.85cqw;letter-spacing:0.16em;color:#fff;font-weight:700}
+.ffoot-l span,.ffoot-r span{font-size:0.65cqw;letter-spacing:0.13em;color:#888;font-weight:600}
+.ffoot-c{position:absolute;left:50%;bottom:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:3px}
+.ffoot-c b{font-size:0.65cqw;letter-spacing:0.13em;color:#888;font-weight:600;white-space:nowrap}
+.ffoot-c span{font-size:0.55cqw;letter-spacing:0.1em;color:#888;font-weight:500;white-space:nowrap}
 /* round board */
 .board{padding:14px 2cqw}
 .sec{flex-shrink:0;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;background:#0a1a2a;border:1px solid #565656;padding:4px 20px;margin-top:12px;user-select:none}.secL{display:flex;align-items:center;justify-content:space-around;gap:1.5cqw}.secR{display:flex;align-items:center;justify-content:space-around;gap:1.5cqw}
@@ -299,7 +308,7 @@ function runpushSess(g){var order=[],mp={};g.sts.forEach(function(s){if(!mp[s.ex
   var rowA=g.sts.slice(0,half), rowB=g.sts.slice(half);
   var colsA=rowA.map(function(s){
    var h='<div class="r3h">A: '+E(s.exercise)+' <span class="lt">'+fmtMinShort(s.duration)+'</span></div>';
-   var t=isRec(s.exercise)?'':('<div class="r3t"><span>COMMITMENT</span><b>'+E(s.c)+'</b></div><div class="r3t"><span>CONSISTENCY</span><b>'+E(s.o)+'</b></div><div class="r3t"><span>DETERMINATION</span><b>'+E(s.d)+'</b></div>');
+   var t=isRec(s.exercise)?'':('<div class="r3t"><span>COMMITMENT:</span><b>'+E(s.c)+'</b></div><div class="r3t"><span>CONSISTENCY:</span><b>'+E(s.o)+'</b></div><div class="r3t"><span>DETERMINATION:</span><b>'+E(s.d)+'</b></div>');
    return '<div class="scol">'+h+t+'</div>';
   }).join("");
   var colsB=rowB.map(function(s){
@@ -311,7 +320,7 @@ function runpushSess(g){var order=[],mp={};g.sts.forEach(function(s){if(!mp[s.ex
  }
  var single=(order.length===1); var cols=order.map(function(ex){var m=mp[ex],s=m.row;
   var h=single?'':('<div class="r3h">A: '+E(ex)+' <span class="lt">'+fmtMinShort(s.duration)+'</span></div>');
-  var t=isRec(ex)?'':('<div class="r3t"><span>COMMITMENT</span><b>'+E(s.c)+'</b></div><div class="r3t"><span>CONSISTENCY</span><b>'+E(s.o)+'</b></div><div class="r3t"><span>DETERMINATION</span><b>'+E(s.d)+'</b></div>');
+  var t=isRec(ex)?'':('<div class="r3t"><span>COMMITMENT:</span><b>'+E(s.c)+'</b></div><div class="r3t"><span>CONSISTENCY:</span><b>'+E(s.o)+'</b></div><div class="r3t"><span>DETERMINATION:</span><b>'+E(s.d)+'</b></div>');
   var b=(!single&&m.c>1)?'<div class="r3h b">B: '+E(ex)+' '+fmtMinShort(s.duration)+' <span class="lt">&middot; AS ABOVE</span></div>':'';
   return '<div class="scol">'+h+t+b+'</div>';}).join("");
  return '<div class="scols r3" style="grid-template-columns:repeat('+order.length+',minmax(0,17cqw))">'+cols+'</div>';}
@@ -410,7 +419,7 @@ function buildFlow(name,rows,opts){
    elapsed+=rsec; acc+=g.sts.length;
  });
  var _endingBg=cm.img?'<div class="finalbg" style="background-image:url(\''+endingBgUrl(cm.img)+'\')"></div>':'';
- S.push('<div class="screen finalpg" data-final2><div class="finalbox">'+_endingBg+'<div class="finalmid"><div class="finaltitle">'+cm.title+'</div><div class="finalsub">'+cm.sub+'</div></div><div class="finalbot"><div class="fbot1">'+cm.bot+'</div><div class="fbot2">EVERY DAY. ALL YEAR ROUND.</div></div></div></div>');
+ S.push('<div class="screen finalpg" data-final2><div class="finalbox">'+_endingBg+'<div class="finalmid"><div class="finaltitle">'+cm.title+'</div><div class="finalsub">'+cm.sub+'</div><div class="finalaffirm">'+cm.bot+'</div></div><div class="finalbot"><div class="ffoot-l"><b>TEAM 365</b><span>EVERY DAY. ALL YEAR ROUND</span></div><div class="ffoot-c"><b>COMMITMENT &middot; CONSISTENCY &middot; DETERMINATION</b><span>POWERED BY <span style="color:#1d9bf0">WWW.LAMONTCOLLECTIVE.COM</span></span></div><div class="ffoot-r"><b>THE GRACEFUL</b><span>PURSUIT TO BECOME MORE</span></div></div></div></div>');
  return S.join("");
 }
 
