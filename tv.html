@@ -157,12 +157,13 @@ body.paused .mtrack,body.paused .inarrow{animation-play-state:paused}
 .finalbg{position:absolute;inset:0;background-size:cover;background-position:center;z-index:0}
 .finalbg::after{content:'';position:absolute;inset:0;background:linear-gradient(160deg,rgba(35,42,30,0.74) 0%,rgba(18,20,15,0.82) 60%,rgba(12,13,10,0.88) 100%)}
 .finalmid{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:4px}
+.finaltitlewrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px}
 .finaltitle{font-family:'Syncopate',sans-serif;font-weight:700;font-size:5cqw;letter-spacing:0.08em;color:transparent;background:linear-gradient(90deg,#fff 0%,#fff 38%,#8cd0ff 50%,#fff 62%,#fff 100%);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;animation:lvnshine 3.5s linear infinite}
 .finalsub{font-family:'Bebas Neue',sans-serif;font-style:normal;font-size:1.8cqw;letter-spacing:0.16em;color:#e8eef4}
 .finalbot{position:absolute;bottom:5%;left:0;right:0;text-align:center;z-index:1}
 .fbot1{font-family:'Bebas Neue',sans-serif;font-style:normal;font-size:1.7cqw;letter-spacing:0.32em;color:#e8eef4}
 .fbot2{font-family:'Bebas Neue',sans-serif;font-style:normal;font-size:0.85cqw;letter-spacing:0.18em;color:#9aa6b1;margin-top:4px}
-.finalaffirm{font-family:'DM Sans',sans-serif;font-style:normal;font-size:1.4cqw;letter-spacing:0.1em;color:#e8eef4;opacity:0.15;margin-top:216px}
+.finalaffirm{position:absolute;top:100%;left:50%;transform:translateX(-50%);white-space:nowrap;font-family:'DM Sans',sans-serif;font-style:normal;font-size:1.4cqw;letter-spacing:0.1em;color:#e8eef4;opacity:0.15;margin-top:220px}
 .ffoot-l,.ffoot-r{position:absolute;bottom:0;display:flex;flex-direction:column;gap:2px}
 .ffoot-l{left:3%;text-align:left}
 .ffoot-r{right:3%;text-align:right}
@@ -419,7 +420,7 @@ function buildFlow(name,rows,opts){
    elapsed+=rsec; acc+=g.sts.length;
  });
  var _endingBg=cm.img?'<div class="finalbg" style="background-image:url(\''+endingBgUrl(cm.img)+'\')"></div>':'';
- S.push('<div class="screen finalpg" data-final2><div class="finalbox">'+_endingBg+'<div class="finalmid"><div class="finaltitle">'+cm.title+'</div><div class="finalsub">'+cm.sub+'</div><div class="finalaffirm">'+cm.bot+'</div></div><div class="finalbot"><div class="ffoot-l"><b>TEAM 365</b><span>EVERY DAY. ALL YEAR ROUND</span></div><div class="ffoot-c"><b>COMMITMENT &middot; CONSISTENCY &middot; DETERMINATION</b><span>POWERED BY <span style="color:#1d9bf0">WWW.LAMONTCOLLECTIVE.COM</span></span></div><div class="ffoot-r"><b>THE GRACEFUL</b><span>PURSUIT TO BECOME MORE</span></div></div></div></div>');
+ S.push('<div class="screen finalpg" data-final2><div class="finalbox">'+_endingBg+'<div class="finalmid"><div class="finaltitlewrap"><div class="finaltitle">'+cm.title+'</div><div class="finalsub">'+cm.sub+'</div><div class="finalaffirm">'+cm.bot+'</div></div></div><div class="finalbot"><div class="ffoot-l"><b>TEAM 365</b><span>EVERY DAY. ALL YEAR ROUND</span></div><div class="ffoot-c"><b>COMMITMENT &middot; CONSISTENCY &middot; DETERMINATION</b><span>POWERED BY <span style="color:#1d9bf0">WWW.LAMONTCOLLECTIVE.COM</span></span></div><div class="ffoot-r"><b>THE GRACEFUL</b><span>PURSUIT TO BECOME MORE</span></div></div></div></div>');
  return S.join("");
 }
 
