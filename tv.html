@@ -292,7 +292,7 @@ function screenWrap(inner,cls,extra){return '<div class="screen '+(cls||"")+'" '
 function fmtMinShort(d){var p=String(d||"").split(":");var m=parseInt(p[0])||0,s=parseInt(p[1])||0;return s===0?(m+"MIN"):(m+":"+(s<10?"0"+s:s)+"MIN");}
 function isStationG(g){ if(g.st===true)return true; if(g.st===false)return false; var u={};g.sts.forEach(function(s){u[s.duration||""]=1;});return Object.keys(u).length<=1 && g.sts.length>2; }
 function distinctEx(g){var seen={},o=[];g.sts.forEach(function(s){if(!seen[s.exercise]){seen[s.exercise]=1;o.push(s.exercise);}});return o;}
-function roundSub(g){ var SEP='<span class="rsep">&middot;</span>'; if(isStationG(g)) return g.sts.length+" STATIONS"+SEP+fmtDur1(g.sts[0].duration)+" EACH"+SEP+fmtMinLabel(g.dur||mmss(roundSum(g))); var d=distinctEx(g); var s=(d.length>1?("A: "+d.join(", ")+SEP+"B: "+d.join(", ")):d[0]); return s+SEP+fmtMinLabel(g.dur||mmss(roundSum(g))); }
+function roundSub(g){ var SEP='<span class="rsep">&middot;</span>'; if(isStationG(g)) return g.sts.length+" STATIONS"+SEP+fmtDur1(g.sts[0].duration)+" EACH"+SEP+fmtMinLabel(g.dur||mmss(roundSum(g))); var names=g.sts.map(function(s){return s.exercise;}); var half=Math.ceil(names.length/2); var s=(distinctEx(g).length>1?("A: "+names.slice(0,half).join(", ")+SEP+"B: "+names.slice(half).join(", ")):names[0]); return s+SEP+fmtMinLabel(g.dur||mmss(roundSum(g))); }
 function runpushSess(g){var order=[],mp={};g.sts.forEach(function(s){if(!mp[s.exercise]){mp[s.exercise]={row:s,c:0};order.push(s.exercise);}mp[s.exercise].c++;});
  var single=(order.length===1); var cols=order.map(function(ex){var m=mp[ex],s=m.row;
   var h=single?'':('<div class="r3h">A: '+E(ex)+' <span class="lt">'+fmtMinShort(s.duration)+'</span></div>');
