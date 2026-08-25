@@ -267,15 +267,15 @@ function roundSum(g){var t=0;g.sts.forEach(function(s){t+=durSecs(s.duration);})
 // run/push cards
 function isRec(ex){return String(ex||"").trim().toUpperCase()==="RECOVERY";}
 // Recovery segment: no video, no pillars — centered RECOVERY / WHAKAMĀTŪTŪ (+ timer when active)
-function reccard(label,name,mao,dur,faded,secs){
+function reccard(label,name,mao,dur,faded,secs,flowRole){
  var cls="st r3card reccard"+(faded?" faded":"");
  var hdr='<div class="cardhdr"><span class="chl">'+label+'</span><span class="exn">&nbsp;</span><span class="rdur">'+(dur||"")+'</span></div>';
  var tmr=(secs>0)?'<span class="timer bigtimer mid" data-secs="'+secs+'" data-dir="down">'+mmss(secs)+'</span>':'';
- var _mseq=langSeq(name,mao);var recmao=_mseq.length>1?('<div class="recmao mao maocyc" data-mid="'+(window.__MAOSEQ__.push(_mseq)-1)+'" data-timed="1" data-tickcount="0" data-tickinit="0" style="color:'+_mseq[0].shade+';-webkit-text-fill-color:'+_mseq[0].shade+'"><span class="mw">'+E(_mseq[0].t)+'</span></div>'):(_mseq.length===1?('<div class="recmao">'+E(_mseq[0].t)+'</div>'):'<div class="recmao">&nbsp;</div>');
+ var _mseq=langSeq(name,mao);var _tcInit=(flowRole==="right")?-5:0;var recmao=_mseq.length>1?('<div class="recmao mao maocyc" data-mid="'+(window.__MAOSEQ__.push(_mseq)-1)+'" data-timed="1" data-tickcount="'+_tcInit+'" data-tickinit="'+_tcInit+'" style="color:'+_mseq[0].shade+';-webkit-text-fill-color:'+_mseq[0].shade+'"><span class="mw">'+E(_mseq[0].t)+'</span></div>'):(_mseq.length===1?('<div class="recmao">'+E(_mseq[0].t)+'</div>'):'<div class="recmao">&nbsp;</div>');
  return '<div class="r3col"><div class="'+cls+'">'+hdr+'<div class="recmid"><div class="rectitle">'+E(name)+'</div>'+recmao+tmr+'</div></div></div>';
 }
 function excard(label,ex,mao,dur,c,o,dd,tgt,media_on,faded,secs,repsfx,flowRole){
- if(isRec(ex))return reccard(label,ex,mao,dur,faded,secs);
+ if(isRec(ex))return reccard(label,ex,mao,dur,faded,secs,flowRole);
  var cls="st r3card"+(faded?" faded":"");
  var hdr='<div class="cardhdr"><span class="chl">'+label+'</span><span class="exn">'+E(ex)+'</span><span class="rdur">'+(dur||"")+'</span></div>';
  var _mseq=langSeq(ex,mao);var _tcInit=(flowRole==="right")?-5:0;var maoh=_mseq.length>1?('<div class="mao maocyc" data-mid="'+(window.__MAOSEQ__.push(_mseq)-1)+'" data-timed="1" data-tickcount="'+_tcInit+'" data-tickinit="'+_tcInit+'" style="color:'+_mseq[0].shade+';-webkit-text-fill-color:'+_mseq[0].shade+'"><span class="mw">'+E(_mseq[0].t)+'</span></div>'):(_mseq.length===1?('<div class="mao">'+E(_mseq[0].t)+'</div>'):'<div class="mao">&nbsp;</div>');
