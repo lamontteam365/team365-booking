@@ -294,6 +294,21 @@ function isStationG(g){ if(g.st===true)return true; if(g.st===false)return false
 function distinctEx(g){var seen={},o=[];g.sts.forEach(function(s){if(!seen[s.exercise]){seen[s.exercise]=1;o.push(s.exercise);}});return o;}
 function roundSub(g){ var SEP='<span class="rsep">&middot;</span>'; if(isStationG(g)) return g.sts.length+" STATIONS"+SEP+fmtDur1(g.sts[0].duration)+" EACH"+SEP+fmtMinLabel(g.dur||mmss(roundSum(g))); var names=g.sts.map(function(s){return s.exercise;}); var half=Math.ceil(names.length/2); var s=(distinctEx(g).length>1?("A: "+names.slice(0,half).join(", ")+SEP+"B: "+names.slice(half).join(", ")):names[0]); return s+SEP+fmtMinLabel(g.dur||mmss(roundSum(g))); }
 function runpushSess(g){var order=[],mp={};g.sts.forEach(function(s){if(!mp[s.exercise]){mp[s.exercise]={row:s,c:0};order.push(s.exercise);}mp[s.exercise].c++;});
+ if(order.length>=3){
+  var n=g.sts.length, half=Math.ceil(n/2);
+  var rowA=g.sts.slice(0,half), rowB=g.sts.slice(half);
+  var colsA=rowA.map(function(s){
+   var h='<div class="r3h">A: '+E(s.exercise)+' <span class="lt">'+fmtMinShort(s.duration)+'</span></div>';
+   var t=isRec(s.exercise)?'':('<div class="r3t"><span>COMMITMENT</span><b>'+E(s.c)+'</b></div><div class="r3t"><span>CONSISTENCY</span><b>'+E(s.o)+'</b></div><div class="r3t"><span>DETERMINATION</span><b>'+E(s.d)+'</b></div>');
+   return '<div class="scol">'+h+t+'</div>';
+  }).join("");
+  var colsB=rowB.map(function(s){
+   var h='<div class="r3h">B: '+E(s.exercise)+' <span class="lt">'+fmtMinShort(s.duration)+'</span></div>';
+   return '<div class="scol">'+h+'</div>';
+  }).join("");
+  return '<div class="scols r3" style="grid-template-columns:repeat('+rowA.length+',minmax(0,17cqw))">'+colsA+'</div>'
+       + '<div class="scols r3" style="grid-template-columns:repeat('+rowB.length+',minmax(0,17cqw))">'+colsB+'</div>';
+ }
  var single=(order.length===1); var cols=order.map(function(ex){var m=mp[ex],s=m.row;
   var h=single?'':('<div class="r3h">A: '+E(ex)+' <span class="lt">'+fmtMinShort(s.duration)+'</span></div>');
   var t=isRec(ex)?'':('<div class="r3t"><span>COMMITMENT</span><b>'+E(s.c)+'</b></div><div class="r3t"><span>CONSISTENCY</span><b>'+E(s.o)+'</b></div><div class="r3t"><span>DETERMINATION</span><b>'+E(s.d)+'</b></div>');
