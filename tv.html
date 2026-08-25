@@ -296,7 +296,7 @@ function roundSub(g){ var SEP='<span class="rsep">&middot;</span>'; if(isStation
 function runpushSess(g){var order=[],mp={};g.sts.forEach(function(s){if(!mp[s.exercise]){mp[s.exercise]={row:s,c:0};order.push(s.exercise);}mp[s.exercise].c++;});
  var single=(order.length===1); var cols=order.map(function(ex){var m=mp[ex],s=m.row;
   var h=single?'':('<div class="r3h">A: '+E(ex)+' <span class="lt">'+fmtMinShort(s.duration)+'</span></div>');
-  var t='<div class="r3t"><span>COMMITMENT</span><b>'+E(s.c)+'</b></div><div class="r3t"><span>CONSISTENCY</span><b>'+E(s.o)+'</b></div><div class="r3t"><span>DETERMINATION</span><b>'+E(s.d)+'</b></div>';
+  var t=isRec(ex)?'':('<div class="r3t"><span>COMMITMENT</span><b>'+E(s.c)+'</b></div><div class="r3t"><span>CONSISTENCY</span><b>'+E(s.o)+'</b></div><div class="r3t"><span>DETERMINATION</span><b>'+E(s.d)+'</b></div>');
   var b=(!single&&m.c>1)?'<div class="r3h b">B: '+E(ex)+' '+fmtMinShort(s.duration)+' <span class="lt">&middot; AS ABOVE</span></div>':'';
   return '<div class="scol">'+h+t+b+'</div>';}).join("");
  return '<div class="scols r3" style="grid-template-columns:repeat('+order.length+',minmax(0,17cqw))">'+cols+'</div>';}
