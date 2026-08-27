@@ -77,7 +77,9 @@ body{font-family:'DM Sans',sans-serif;color:#fff}
 .slot-row:hover:not(.off):not(.past){border-color:#333}
 .slot-row.sel{border-color:#fff;background:#111}
 .slot-row.off{cursor:default}
-.slot-row.past{opacity:0.2;cursor:default;pointer-events:none}
+/* Unavailable: fade the time and name, leave the status and button readable */
+.slot-row.off .slot-time,.slot-row.off .slot-name,.slot-row.off .slot-sess{opacity:0.4}
+.slot-row.past{opacity:0.3;cursor:default;pointer-events:none}
 .slot-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;min-width:72px}
 .slot-mid{flex:1}
 .slot-bars{display:flex;gap:2px;margin-bottom:5px}
@@ -207,11 +209,14 @@ function wellTimesFor(dk,wellSlots,wellDow){
     .filter(t=>!dHide.includes(t))
     .sort();
 }
-// Sauna slots must be booked at least 24h ahead
-function within24h(dateKey,time){
+// Sauna slots need BOOKING_NOTICE_HOURS of notice
+const BOOKING_NOTICE_HOURS=12;
+const PAST_GRACE_MIN=30;
+const NOTICE_TEXT="Bookings are required at least "+BOOKING_NOTICE_HOURS+" hours in advance.";
+function needsMoreNotice(dateKey,time){
   const p=(time||"0:0").split(":").map(Number);
   const start=new Date(dateKey+"T00:00:00");start.setHours(p[0]||0,p[1]||0,0,0);
-  return (start.getTime()-Date.now())<86400000;
+  return (start.getTime()-Date.now())<BOOKING_NOTICE_HOURS*3600000;
 }
 const DAY_SHORT=["Mon","Tue","Wed","Thu","Fri","Sat"];
 const DAY_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
@@ -230,7 +235,7 @@ function isPastSlot(date,time){
   if(isPastD(date))return true;
   if(!isToday(date))return false;
   const now=new Date();const[h,m]=time.split(":").map(Number);
-  return(h*60+m+30)<(now.getHours()*60+now.getMinutes());
+  return(h*60+m+PAST_GRACE_MIN)<(now.getHours()*60+now.getMinutes());
 }
 // ── Supabase ───────────────────────────────────────────────────────────────────
 async function sbGet(t,q=""){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
@@ -418,14 +423,15 @@ function BookingWidget(){
       loading
         ?React.createElement("div",{className:"loading"},"CHECKING AVAILABILITY…",React.createElement("div",{className:"load-bar"},React.createElement("div",{className:"load-fill"})))
         :React.createElement("div",{className:"slot-list"},
-          curTimes.filter(time=>!isPastSlot(selDate,time)).map(time=>{
+          curTimes.map(time=>{
+            const past=isPastSlot(selDate,time);
             if(bookType==="class"){
               const{taken,left,maxSp}=classSlots(time);
               const full=left===0;
               const low=left<=3&&left>0;
               return React.createElement("div",{key:time,
-                className:`slot-row${selTime===time?" sel":""}${full?" off":""}`,
-                onClick:()=>{if(!full)setSelTime(time);}},
+                className:`slot-row${selTime===time?" sel":""}${past?" past":full?" off":""}`,
+                onClick:()=>{if(!past&&!full)setSelTime(time);}},
                 React.createElement("div",{style:{display:"flex",flexDirection:"column",minWidth:72}},
                   React.createElement("div",{className:"slot-time",style:{minWidth:"unset"}},fmt12(time)),
                   React.createElement("div",{className:"slot-sess"},(getSlotName(time,selDK)||sessName).toUpperCase())
@@ -434,30 +440,32 @@ function BookingWidget(){
                   React.createElement("div",{className:"slot-bars"},
                     Array.from({length:Math.min(maxSp,20)}).map((_,i)=>React.createElement("div",{key:i,className:`slot-bar${i<taken?" t":""}`}))
                   ),
-                  React.createElement("div",{className:`slot-info ${full?"fl":low?"lo":"av"}`},
-                    full?"Full":`${left} ${left===1?"Spot":"Spots"} Available`
+                  React.createElement("div",{className:`slot-info ${past?"fl":full?"fl":low?"lo":"av"}`},
+                    past?"Closed":full?"Full":`${left} ${left===1?"Spot":"Spots"} Available`
                   )
                 ),
-                full
-                  ?React.createElement("button",{className:"slot-btn sb-off",disabled:true},"Full")
+                past
+                  ?null
+                  :full?React.createElement("button",{className:"slot-btn sb-off",disabled:true},"Full")
                   :React.createElement("button",{className:"slot-btn sb-book",onClick:e=>{e.stopPropagation();setSelTime(time);}},"Book")
               );
             }else{
               const taken=wellSlotTaken(time);
-              const tooSoon=within24h(selDK,time);
-              const blk=taken||tooSoon;
+              const tooSoon=!past&&needsMoreNotice(selDK,time);
+              const blk=past||taken||tooSoon;
               return React.createElement("div",{key:time,
-                className:`slot-row${selTime===time?" sel":""}${blk?" off":""}`,
+                className:`slot-row${selTime===time?" sel":""}${past?" past":blk?" off":""}`,
                 onClick:()=>{if(!blk)setSelTime(time);}},
                 React.createElement("div",{className:"slot-time"},fmt12(time)),
                 React.createElement("div",{className:"slot-mid"},
                   React.createElement("div",{className:"slot-name"},"SAUNA & COLD PLUNGE"),
-                  React.createElement("div",{className:`slot-info ${taken?"bk":tooSoon?"soon":"ok"}`},
-                    taken?"Booked":tooSoon?"Bookings are required at least 24 hours in advance.":"Available"
+                  React.createElement("div",{className:`slot-info ${past?"fl":taken?"bk":tooSoon?"soon":"ok"}`},
+                    past?"Closed":taken?"Booked":tooSoon?NOTICE_TEXT:"Available"
                   )
                 ),
-                taken
-                  ?React.createElement("button",{className:"slot-btn sb-off",disabled:true},"Booked")
+                past
+                  ?null
+                  :taken?React.createElement("button",{className:"slot-btn sb-off",disabled:true},"Booked")
                   :tooSoon?null
                   :React.createElement("button",{className:"slot-btn sb-book",onClick:e=>{e.stopPropagation();setSelTime(time);}},"Book")
               );

@@ -9,7 +9,8 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{background:#080808;color:#fff;font-family:'DM Sans',sans-serif}
-.widget{max-width:520px;margin:0 auto;padding:24px 16px 48px;min-height:680px}
+/* Bottom padding keeps CONTINUE clear of the Shopify section edge. */
+.widget{max-width:520px;margin:0 auto;padding:24px 16px 130px;min-height:680px}
 /* Header (centered, static) */
 .wl-head{text-align:center;margin-bottom:22px}
 .mode-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:0.12em;color:#fff;margin-bottom:5px}
@@ -50,7 +51,9 @@ html,body{background:#080808;color:#fff;font-family:'DM Sans',sans-serif}
 .slot-row:hover:not(.off):not(.past){border-color:#333}
 .slot-row.sel{border-color:#fff;background:#111}
 .slot-row.off{cursor:default}
-.slot-row.past{opacity:0.2;cursor:default;pointer-events:none}
+/* Unavailable: fade the time and name, leave the status and button readable */
+.slot-row.off .slot-time,.slot-row.off .slot-name{opacity:0.4}
+.slot-row.past{opacity:0.3;cursor:default;pointer-events:none}
 .slot-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;min-width:80px}
 .slot-mid{flex:1}
 .slot-name{font-size:11px;letter-spacing:0.08em;color:#aaa;font-weight:500}
@@ -142,11 +145,15 @@ function wellTimesFor(dk,wellSlots,wellDow){
     .filter(t=>!dHide.includes(t))
     .sort();
 }
-// Slots must be booked at least 24h ahead
-function within24h(dateKey,time){
+// Notice required before a slot, and how long after its start time a slot is
+// treated as gone. Same numbers in index.html and WIDGET.HTML.
+const BOOKING_NOTICE_HOURS=12;
+const PAST_GRACE_MIN=30;
+const NOTICE_TEXT="Bookings are required at least "+BOOKING_NOTICE_HOURS+" hours in advance.";
+function needsMoreNotice(dateKey,time){
   const p=(time||"0:0").split(":").map(Number);
   const start=new Date(dateKey+"T00:00:00");start.setHours(p[0]||0,p[1]||0,0,0);
-  return (start.getTime()-Date.now())<86400000;
+  return (start.getTime()-Date.now())<BOOKING_NOTICE_HOURS*3600000;
 }
 const DAY_SHORT=["Mon","Tue","Wed","Thu","Fri","Sat"];
 const DAY_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
@@ -164,7 +171,7 @@ function isPastSlot(date,time){
   if(isPastD(date))return true;
   if(!isToday(date))return false;
   const now=new Date();const[h,m]=time.split(":").map(Number);
-  return(h*60+m+90)<(now.getHours()*60+now.getMinutes());
+  return(h*60+m+PAST_GRACE_MIN)<(now.getHours()*60+now.getMinutes());
 }
 // ── Supabase ──────────────────────────────────────────────────────────────────
 async function sbGet(t,q=""){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
@@ -309,18 +316,19 @@ function WellnessWidget(){
           wellTimes.map(time=>{
             const taken=!!getSlotBooking(selDK,time);
             const past=isPastSlot(selDate,time);
-            const tooSoon=!past&&within24h(selDK,time);
+            const tooSoon=!past&&needsMoreNotice(selDK,time);
             const blocked=taken||past||tooSoon;
             return React.createElement("div",{key:time,className:`slot-row${selTime===time?" sel":""}${(taken||tooSoon)?" off":""}${past?" past":""}`,onClick:()=>{if(!blocked)setSelTime(time);}},
               React.createElement("div",{className:"slot-time"},fmt12(time)),
               React.createElement("div",{className:"slot-mid"},
                 React.createElement("div",{className:"slot-name"},"SAUNA & COLD PLUNGE"),
-                React.createElement("div",{className:`slot-avail ${taken?"bk":tooSoon?"soon":"av"}`},
-                  taken?"Booked":tooSoon?"Bookings are required at least 24 hours in advance.":"Available")
+                React.createElement("div",{className:`slot-avail ${past?"un":taken?"bk":tooSoon?"soon":"av"}`},
+                  past?"Closed":taken?"Booked":tooSoon?NOTICE_TEXT:"Available")
               ),
-              taken
-                ?React.createElement("button",{className:"slot-btn sb-off",disabled:true},"Booked")
-                :(past||tooSoon)?null
+              past
+                ?null
+                :taken?React.createElement("button",{className:"slot-btn sb-off",disabled:true},"Booked")
+                :tooSoon?null
                 :React.createElement("button",{className:"slot-btn sb-book",onClick:e=>{e.stopPropagation();setSelTime(time);}},"Book")
             );
           })

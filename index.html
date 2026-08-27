@@ -103,6 +103,8 @@ html,body{background:#080808;min-height:100vh}
 .well-slot{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#141414;border:1px solid #888;border-radius:0}
 .well-slot.ws-mine{border-color:#2a3a2a}
 .well-slot.ws-past{opacity:0.3;pointer-events:none}
+/* Unavailable: fade the time and name, leave the status and button readable */
+.well-slot.ws-off .well-slot-time,.well-slot.ws-off .well-slot-name{opacity:0.4}
 .well-slot-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;min-width:72px}
 .well-slot-mid{flex:1}
 .well-slot-name{font-size:11px;letter-spacing:0.08em;color:#aaa;font-weight:500}
@@ -621,11 +623,16 @@ function wellRuleLabel(r){
   const d=new Date(r.until+"T00:00:00");
   return "UNTIL "+d.getDate()+" "+MONTHS[d.getMonth()].toUpperCase();
 }
-// True when a slot (date_key + time) starts less than 24h from now.
-function within24h(dateKey,time){
+// How much notice a wellness slot needs, and how many minutes after its start
+// time a slot counts as gone. Same numbers in WIDGET.HTML and wellness-widget.html.
+const BOOKING_NOTICE_HOURS=12;
+const PAST_GRACE_MIN=30;
+const NOTICE_TEXT="Bookings are required at least "+BOOKING_NOTICE_HOURS+" hours in advance.";
+// True when a slot starts sooner than BOOKING_NOTICE_HOURS from now.
+function needsMoreNotice(dateKey,time){
   const p=(time||"0:0").split(":").map(Number);
   const start=new Date(dateKey+"T00:00:00");start.setHours(p[0]||0,p[1]||0,0,0);
-  return (start.getTime()-Date.now())<86400000;
+  return (start.getTime()-Date.now())<BOOKING_NOTICE_HOURS*3600000;
 }
 const DAY_SHORT=["Mon","Tue","Wed","Thu","Fri","Sat"];
 const DAY_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
@@ -1405,11 +1412,11 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,w
   function isPastSlot(time){
     if(isPastD(selDate))return true;if(!isToday(selDate))return false;
     const now=new Date();const[h,m]=time.split(":").map(Number);
-    return(h*60+m+45)<(now.getHours()*60+now.getMinutes());
+    return(h*60+m+PAST_GRACE_MIN)<(now.getHours()*60+now.getMinutes());
   }
   async function handleBook(time){
     if(!session)return;
-    if(!isAdmin&&within24h(selDK,time)){showToast("Sauna must be booked 24h ahead");return;}
+    if(!isAdmin&&needsMoreNotice(selDK,time)){showToast("Sauna must be booked "+BOOKING_NOTICE_HOURS+"h ahead");return;}
     const lk=`${selDK}-${time}`;setBusy(p=>({...p,[lk]:true}));
     const existing=dayBks.find(b=>b.time===time);
     if(existing){showToast("Slot already booked");setBusy(p=>({...p,[lk]:false}));return;}
@@ -1463,7 +1470,7 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,w
         const ismine=bk&&bk.email===session?.email;
         const taken=!!bk&&!ismine;
         const past=isPastSlot(time);
-        const tooSoon=!isAdmin&&!past&&within24h(selDK,time);
+        const tooSoon=!isAdmin&&!past&&needsMoreNotice(selDK,time);
         const lk=`${selDK}-${time}`;const isBusy=!!busy[lk];
         const wellLimit=isAdmin?null:getTierLimits(memberData?.membership_type).wellness;
         // Concession members can book wellness freely (separate from their 10-class card).
@@ -1475,11 +1482,11 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,w
         const isExpanded=expandedWell===time;
         const slotBks=wellBks.filter(b=>b.date_key===selDK&&b.time===time);
         return React.createElement("div",{key:time,style:{borderRadius:0,overflow:"hidden"}},
-          React.createElement("div",{className:`well-slot${ismine?" ws-mine":""}${past?" ws-past":""}`,style:{cursor:isAdmin?"pointer":"default"},onClick:isAdmin?()=>setExpandedWell(isExpanded?null:time):undefined},
+          React.createElement("div",{className:`well-slot${ismine?" ws-mine":""}${past?" ws-past":""}${!past&&!ismine&&(taken||tooSoon)?" ws-off":""}`,style:{cursor:isAdmin?"pointer":"default"},onClick:isAdmin?()=>setExpandedWell(isExpanded?null:time):undefined},
             React.createElement("div",{className:"well-slot-time"},fmt12(time)),
             React.createElement("div",{className:"well-slot-mid"},
               React.createElement("div",{className:"well-slot-name"},"SAUNA & COLD PLUNGE"),
-              React.createElement("div",{className:`well-slot-status${ismine?" wss-mine":taken?" wss-taken":(!tooSoon?" wss-avail":"")}`,style:tooSoon?{whiteSpace:"nowrap",fontSize:9,letterSpacing:"0.02em"}:undefined},ismine?"Your booking ✓":taken?"Booked":tooSoon?"Bookings are required at least 24 hours in advance.":"Available")
+              React.createElement("div",{className:`well-slot-status${ismine?" wss-mine":taken?" wss-taken":(past||tooSoon)?"":" wss-avail"}`,style:tooSoon?{whiteSpace:"nowrap",fontSize:9,letterSpacing:"0.02em"}:undefined},ismine?"Your booking ✓":past?"Closed":taken?"Booked":tooSoon?NOTICE_TEXT:"Available")
             ),
             isAdmin&&React.createElement("div",{style:{fontSize:10,color:"#555",marginRight:4,flexShrink:0}},isExpanded?"▴":"▾"),
             !past&&(ismine
@@ -8080,7 +8087,7 @@ function App(){
   function isPastClass(time){
     if(isPastD(selDate))return true;if(!isToday(selDate))return false;
     const now=new Date();const[h,m]=time.split(":").map(Number);
-    return(h*60+m+45)<(now.getHours()*60+now.getMinutes());
+    return(h*60+m+PAST_GRACE_MIN)<(now.getHours()*60+now.getMinutes());
   }
   function openProf(){
     setProfForm({name:session.name,email:session.email,phone:memberData?.phone||"",photo:memberData?.photo||"",newPw:"",confirmPw:"",emergencyName:memberData?.emergency_name||"",emergencyPhone:memberData?.emergency_phone||"",gender:memberData?.gender||""});
