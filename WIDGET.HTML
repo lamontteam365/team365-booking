@@ -141,7 +141,11 @@ body{font-family:'DM Sans',sans-serif;color:#fff}
 .guest-notice a{color:#888;text-decoration:underline;text-underline-offset:3px}
 .guest-notice a:hover{color:#fff}
 /* Footer */
-.w-foot{text-align:center;font-size:7px;letter-spacing:0.18em;color:#2a2a2a;margin-top:auto;padding-top:28px}
+.w-foot{text-align:center;margin-top:auto;padding-top:28px}
+/* Same footer as the base of the app */
+.foot{text-align:center;font-size:9px;letter-spacing:0.22em;color:#fff;padding:9px 0 4px}
+.foot-by{margin-top:2px;padding-bottom:20px;font-size:7px;letter-spacing:0.06em;color:#999}
+.foot-by a{color:#1d9bf0;text-decoration:none}
 </style>
 </head>
 <body>
@@ -540,7 +544,13 @@ function BookingWidget(){
       conf.payment==="online"&&React.createElement("button",{className:"btn-p",style:{marginTop:4},onClick:()=>window.open(shopifyPayUrl(conf.type),"_blank")},"COMPLETE PAYMENT →"),
       React.createElement("button",{className:conf.payment==="online"?"btn-g":"btn-p",onClick:reset},"BOOK ANOTHER SESSION")
     ),
-    React.createElement("div",{className:"w-foot"},"COMMITMENT. CONSISTENCY. DETERMINATION.")
+    React.createElement("div",{className:"w-foot"},
+      React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"LAMONT FITNESS APPLICATIONS"),
+      React.createElement("div",{className:"foot-by"},
+        React.createElement("span",null,"POWERED BY "),
+        React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener"},"WWW.LAMONTCOLLECTIVE.COM")
+      )
+    )
   );
 }
 ReactDOM.render(React.createElement(BookingWidget),document.getElementById("root"));
