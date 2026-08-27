@@ -87,7 +87,7 @@ body{font-family:'DM Sans',sans-serif;color:#fff}
 .slot-info.av{color:#aaa}
 .slot-info.lo{color:#e06040}
 .slot-info.fl{color:#444}
-.slot-info.ok{color:#4aaa66}
+.slot-info.ok{color:#1d9bf0}
 .slot-radio{width:18px;height:18px;border-radius:50%;border:1.5px solid #2a2a2a;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
 .slot-row.sel .slot-radio{border-color:#fff;background:#fff}
 .slot-radio-dot{width:8px;height:8px;border-radius:50%;background:#000}
@@ -166,11 +166,30 @@ const MAX_SPOTS=16;
 const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
 const SAT_TIMES=["06:30","07:30","08:30","09:30"];
 const WELL_TIMES=["06:00","08:00","10:00","12:00","14:00","16:00","18:00"];
-// Per-date wellness overrides from coaching_notes __WELL_SLOTS__ (set by admin)
-function wellTimesFor(dk,wellSlots){
+// How far ahead guests may book. Must match the app.
+const BOOKING_WEEKS=12;
+const BOOKING_DAYS=BOOKING_WEEKS*7;
+function bookingHorizonDS(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+BOOKING_DAYS);return toDS(d);}
+// Recurring weekday rules from coaching_notes __WELL_DOW__
+// { "<0-6>": { add:[{time,from,until}], hide:[{time,from,until}] } }  until null = ongoing
+function wellRuleActive(r,dk){
+  if(!r||!r.time)return false;
+  if(r.from&&dk<r.from)return false;
+  if(r.until&&dk>r.until)return false;
+  return true;
+}
+// base WELL_TIMES -> recurring adds -> recurring hides -> this date's add -> this date's hide
+function wellTimesFor(dk,wellSlots,wellDow){
   const o=(wellSlots&&wellSlots[dk])||{};
-  const hide=o.hide||[];const add=o.add||[];
-  return [...new Set([...WELL_TIMES,...add])].filter(t=>!hide.includes(t)).sort();
+  const dHide=o.hide||[];const dAdd=o.add||[];
+  const dow=new Date(dk+"T00:00:00").getDay();
+  const rules=(wellDow&&wellDow[dow])||{};
+  const rAdd=(rules.add||[]).filter(r=>wellRuleActive(r,dk)).map(r=>r.time);
+  const rHide=(rules.hide||[]).filter(r=>wellRuleActive(r,dk)).map(r=>r.time);
+  return [...new Set([...WELL_TIMES,...rAdd,...dAdd])]
+    .filter(t=>dAdd.includes(t)||!rHide.includes(t))
+    .filter(t=>!dHide.includes(t))
+    .sort();
 }
 // Sauna slots must be booked at least 24h ahead
 function within24h(dateKey,time){
@@ -234,8 +253,11 @@ function BookingWidget(){
   const[wellnessEnabled,setWellnessEnabled]=useState(true);
   const[classesEnabled,setClassesEnabled]=useState(true);
   const[wellSlots,setWellSlots]=useState({});
+  const[wellDow,setWellDow]=useState({});
   const weekDates=Array.from({length:6},(_,i)=>addDays(weekStart,i));
   const isThisWeek=toDS(weekStart)===toDS(mondayOf(new Date()));
+  // Stop paging once the next week would run past the booking horizon.
+  const atHorizon=toDS(addDays(weekStart,7))>bookingHorizonDS();
   const selDate=weekDates[selDay];
   const selDK=toDS(selDate);
   // Load availability when type or week changes
@@ -260,6 +282,9 @@ function BookingWidget(){
     sbGet("coaching_notes","class_name=eq.__WELL_SLOTS__&select=content").then(d=>{
       if(d&&d.length&&d[0].content){try{const ws=JSON.parse(d[0].content);if(ws&&typeof ws==="object")setWellSlots(ws);}catch{}}
     });
+    sbGet("coaching_notes","class_name=eq.__WELL_DOW__&select=content").then(d=>{
+      if(d&&d.length&&d[0].content){try{const wd=JSON.parse(d[0].content);if(wd&&typeof wd==="object")setWellDow(wd);}catch{}}
+    });
   },[]);
   // Fetch dynamic class limits when week changes
   useEffect(()=>{
@@ -279,6 +304,15 @@ function BookingWidget(){
     if(!em||!em.includes("@")||!em.includes(".")){setErr("Please enter a valid email address.");return;}
     setErr("");setBusy(true);
     const ref=genRef();
+    // Wellness slots hold one person — re-check right before writing.
+    if(bookType==="wellness"){
+      const fresh=await sbGet("wellness_slots",`date_key=eq.${selDK}&time=eq.${encodeURIComponent(selTime)}&select=date_key`);
+      if(fresh&&fresh.length){
+        setWellBks(prev=>[...prev,{date_key:selDK,time:selTime}]);
+        setErr("Sorry — that slot was just taken. Please pick another time.");
+        setSelTime(null);setStep(1);setBusy(false);return;
+      }
+    }
     const row={email:em,name:nm,date_key:selDK,time:selTime,is_guest:true,booking_ref:ref,phone:ph,created_at:Date.now()};
     const ok=await sbPost(bookType==="class"?"bookings":"wellness_bookings",row);
     if(!ok){setErr("Booking failed — please try again.");setBusy(false);return;}
@@ -305,7 +339,7 @@ function BookingWidget(){
   const baseTimes=selDate.getDay()===6?SAT_TIMES:WD_TIMES;
   const extraTimes=bookType==="class"?classLimits.filter(l=>l.date_key===selDK&&!baseTimes.includes(l.time_slot)&&l.max_spots>0).map(l=>l.time_slot):[];
   const hiddenTimes=bookType==="class"?classLimits.filter(l=>l.date_key===selDK&&l.max_spots===0).map(l=>l.time_slot):[];
-  const curTimes=bookType==="class"?[...baseTimes,...extraTimes].sort().filter(t=>!hiddenTimes.includes(t)):wellTimesFor(selDK,wellSlots);
+  const curTimes=bookType==="class"?[...baseTimes,...extraTimes].sort().filter(t=>!hiddenTimes.includes(t)):wellTimesFor(selDK,wellSlots,wellDow);
   const anyEnabled=classesEnabled||wellnessEnabled;
   return React.createElement("div",{className:"widget"},
     // ── Progress dots (steps 1–2) ───────────────────────────────────────────────
@@ -346,8 +380,9 @@ function BookingWidget(){
         React.createElement("div",{className:"wk-label"},
           `${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} – ${MONTHS[weekDates[5].getMonth()]} ${weekDates[5].getDate()} ${weekDates[0].getFullYear()}`
         ),
-        React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,7))},"›")
+        React.createElement("button",{className:"wk-arrow",disabled:atHorizon,onClick:()=>setWeekStart(w=>addDays(w,7))},"›")
       ),
+      atHorizon&&React.createElement("div",{style:{textAlign:"center",fontSize:9,letterSpacing:"0.12em",color:"#555",fontWeight:600,marginBottom:10}},`BOOKINGS OPEN ${BOOKING_WEEKS} WEEKS AHEAD`),
       // Day strip
       React.createElement("div",{className:"day-strip"},
         weekDates.map((d,i)=>React.createElement("button",{key:i,className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}`,onClick:()=>setSelDay(i)},

@@ -107,6 +107,7 @@ html,body{background:#080808;min-height:100vh}
 .well-slot-mid{flex:1}
 .well-slot-name{font-size:11px;letter-spacing:0.08em;color:#aaa;font-weight:500}
 .well-slot-status{font-size:10px;letter-spacing:0.1em;color:#999;font-weight:500;margin-top:2px}
+.well-slot-status.wss-avail{color:#1d9bf0}
 .well-slot-status.wss-mine{color:#1d9bf0}
 .well-slot-status.wss-taken{color:#e06040}
 .well-btn{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:0.12em;padding:8px 12px;border-radius:0;border:none;cursor:pointer;white-space:nowrap;transition:all .15s}
@@ -574,12 +575,51 @@ const MAX_SPOTS=16;
 const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
 const SAT_TIMES=["06:30","07:30","08:30","09:30"];
 const WELL_TIMES=["06:00","08:00","10:00","12:00","14:00","16:00","18:00"];
+// How far ahead members/guests may book. One number, used everywhere.
+const BOOKING_WEEKS=12;
+const BOOKING_DAYS=BOOKING_WEEKS*7;
+// Last bookable date key (inclusive).
+function bookingHorizonDS(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+BOOKING_DAYS);return toDS(d);}
 // Per-date wellness slot overrides live in coaching_notes row __WELL_SLOTS__
 // content = { "<date_key>": { hide:["06:00",...], add:["19:30",...] } }
-function wellTimesFor(dk,wellSlots){
+//
+// Recurring weekday rules live in coaching_notes row __WELL_DOW__
+// content = { "<0-6>": { add:[{time,from,until}], hide:[{time,from,until}] } }
+// `from` is the date the rule starts (stops it painting onto past dates).
+// `until` is the last date it applies to, or null for ongoing.
+function wellRuleActive(r,dk){
+  if(!r||!r.time)return false;
+  if(r.from&&dk<r.from)return false;
+  if(r.until&&dk>r.until)return false;
+  return true;
+}
+// Times visible on a given date. Precedence, lowest to highest:
+//   base WELL_TIMES -> recurring adds -> recurring hides -> this date's add -> this date's hide
+// A per-date add therefore un-hides a slot a recurring rule hides, and a
+// per-date hide always wins.
+function wellTimesFor(dk,wellSlots,wellDow){
   const o=(wellSlots&&wellSlots[dk])||{};
-  const hide=o.hide||[];const add=o.add||[];
-  return [...new Set([...WELL_TIMES,...add])].filter(t=>!hide.includes(t)).sort();
+  const dHide=o.hide||[];const dAdd=o.add||[];
+  const dow=new Date(dk+"T00:00:00").getDay();
+  const rules=(wellDow&&wellDow[dow])||{};
+  const rAdd=(rules.add||[]).filter(r=>wellRuleActive(r,dk)).map(r=>r.time);
+  const rHide=(rules.hide||[]).filter(r=>wellRuleActive(r,dk)).map(r=>r.time);
+  return [...new Set([...WELL_TIMES,...rAdd,...dAdd])]
+    .filter(t=>dAdd.includes(t)||!rHide.includes(t))
+    .filter(t=>!dHide.includes(t))
+    .sort();
+}
+// The recurring rule (if any) covering a weekday+time — used to show state in admin.
+function wellRuleFor(wellDow,dow,time,kind){
+  const rules=(wellDow&&wellDow[dow])||{};
+  return (rules[kind]||[]).find(r=>r.time===time)||null;
+}
+// Human label for a rule's span, e.g. "ONGOING" or "UNTIL 12 NOV".
+function wellRuleLabel(r){
+  if(!r)return "";
+  if(!r.until)return "ONGOING";
+  const d=new Date(r.until+"T00:00:00");
+  return "UNTIL "+d.getDate()+" "+MONTHS[d.getMonth()].toUpperCase();
 }
 // True when a slot (date_key + time) starts less than 24h from now.
 function within24h(dateKey,time){
@@ -1339,24 +1379,26 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
   );
 }
 // ── Wellness View ─────────────────────────────────────────────────────────────
-function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,calendarEnabled}){
+function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,wellDow,calendarEnabled}){
   const [wellBks,setWellBks]=useState([]);
   const [weekStart,setWeekStart]=useState(getWeekStart);
   const [selDay,setSelDay]=useState(getInitDay);
   const [busy,setBusy]=useState({});
   useEffect(()=>{loadWellBks();},[]);
   async function loadWellBks(){
-    const keys=[];const now=new Date();now.setHours(0,0,0,0);
-    for(let i=0;i<28;i++){const d=addDays(now,i);if(d.getDay()!==0)keys.push(toDS(d));}
-    if(!keys.length)return;
-    const data=await sbGet("wellness_bookings",`date_key=in.(${keys.join(",")})&select=email,name,date_key,time`);
+    // Range query out to the booking horizon — the loaded window must cover
+    // everything a member can page to, or slots look free when they aren't.
+    const from=toDS(new Date());const to=bookingHorizonDS();
+    const data=await sbGet("wellness_bookings",`date_key=gte.${from}&date_key=lte.${to}&select=email,name,date_key,time`);
     setWellBks(data||[]);
   }
   const selDate=addDays(weekStart,selDay);
   const selDK=toDS(selDate);
-  const wellTimes=wellTimesFor(selDK,wellSlots);
+  const wellTimes=wellTimesFor(selDK,wellSlots,wellDow);
   const weekDates=Array.from({length:6},(_,i)=>addDays(weekStart,i));
   const isThisWeek=toDS(weekStart)===toDS(mondayOf(new Date()));
+  // Stop paging once the next week would run past the booking horizon.
+  const atHorizon=toDS(addDays(weekStart,7))>bookingHorizonDS();
   const dayBks=wellBks.filter(b=>b.date_key===selDK);
   const weekDots=weekDates.map(d=>isAdmin?wellBks.some(b=>b.date_key===toDS(d)):session&&wellBks.some(b=>b.date_key===toDS(d)&&b.email===session.email));
   const [expandedWell,setExpandedWell]=useState(null);
@@ -1371,6 +1413,13 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,c
     const lk=`${selDK}-${time}`;setBusy(p=>({...p,[lk]:true}));
     const existing=dayBks.find(b=>b.time===time);
     if(existing){showToast("Slot already booked");setBusy(p=>({...p,[lk]:false}));return;}
+    // Re-check against the database, not just what this browser has loaded —
+    // two people tapping at the same moment must not both get the slot.
+    const fresh=await sbGet("wellness_bookings",`date_key=eq.${selDK}&time=eq.${encodeURIComponent(time)}&select=email`);
+    if(fresh&&fresh.length){
+      setWellBks(prev=>[...prev.filter(b=>!(b.date_key===selDK&&b.time===time)),{email:fresh[0].email,name:"",date_key:selDK,time}]);
+      showToast("Just taken — pick another time");setBusy(p=>({...p,[lk]:false}));return;
+    }
     const newBk={email:session.email,name:session.name,date_key:selDK,time};
     setWellBks(prev=>[...prev,newBk]);
     const ok=await sbPost("wellness_bookings",newBk);
@@ -1391,7 +1440,7 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,c
     React.createElement("div",{className:"week-nav",style:{paddingTop:0}},
       React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"‹"),
       React.createElement("div",{className:"wk-label"},`${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} – ${MONTHS[weekDates[5].getMonth()]} ${weekDates[5].getDate()}  ${weekDates[0].getFullYear()}`),
-      React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,7))},"›")
+      React.createElement("button",{className:"wk-arrow",disabled:atHorizon,onClick:()=>{if(atHorizon){showToast("Bookings open "+BOOKING_WEEKS+" weeks ahead");return;}setWeekStart(w=>addDays(w,7));}},"›")
     ),
     React.createElement("div",{className:"day-strip"},
       weekDates.map((d,i)=>React.createElement("button",{key:i,onClick:()=>setSelDay(i),className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}${weekDots[i]?" dhb":""}`},
@@ -1430,7 +1479,7 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,c
             React.createElement("div",{className:"well-slot-time"},fmt12(time)),
             React.createElement("div",{className:"well-slot-mid"},
               React.createElement("div",{className:"well-slot-name"},"SAUNA & COLD PLUNGE"),
-              React.createElement("div",{className:`well-slot-status${ismine?" wss-mine":taken?" wss-taken":""}`,style:tooSoon?{whiteSpace:"nowrap",fontSize:9,letterSpacing:"0.02em"}:undefined},ismine?"Your booking ✓":taken?"Booked":tooSoon?"Bookings are required at least 24 hours in advance.":"Available")
+              React.createElement("div",{className:`well-slot-status${ismine?" wss-mine":taken?" wss-taken":(!tooSoon?" wss-avail":"")}`,style:tooSoon?{whiteSpace:"nowrap",fontSize:9,letterSpacing:"0.02em"}:undefined},ismine?"Your booking ✓":taken?"Booked":tooSoon?"Bookings are required at least 24 hours in advance.":"Available")
             ),
             isAdmin&&React.createElement("div",{style:{fontSize:10,color:"#555",marginRight:4,flexShrink:0}},isExpanded?"▴":"▾"),
             !past&&(ismine
@@ -1718,7 +1767,7 @@ function MilestoneAdminPanel({milestoneConfig,saveMilestoneConfig,showToast}){
     )
   );
 }
-function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail}){
+function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,wellDow,saveWellDow,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail}){
   const [expandedTier,setExpandedTier]=useState(null);
   const [admDate,setAdmDate]=useState(new Date());
   const [expanded,setExpanded]=useState({});
@@ -1748,33 +1797,118 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   const [dayLimitInput,setDayLimitInput]=useState("");
   const [addingWell,setAddingWell]=useState(false);
   const [wellNewTime,setWellNewTime]=useState("");
-  const [wellScope,setWellScope]=useState(1);
-  function wsTargetDates(){const a=[];for(let i=0;i<wellScope;i++)a.push(toDS(addDays(admDate,i*7)));return a;}
-  function wsSetHide(time,hide){
-    const cur={...(wellSlots||{})};
-    wsTargetDates().forEach(dk=>{
-      const o={...(cur[dk]||{})};const h=new Set(o.hide||[]);
-      hide?h.add(time):h.delete(time);
-      cur[dk]={...o,hide:[...h],add:o.add||[]};
-    });
-    if(saveWellSlots)saveWellSlots(cur);
+  // Add panel: how long the new time runs for.
+  const [wellAddWeeks,setWellAddWeeks]=useState("1");
+  const [wellAddOngoing,setWellAddOngoing]=useState(false);
+  // Hide panel: which time is being hidden, and for how long.
+  const [wellHideTime,setWellHideTime]=useState(null);
+  const [wellHideWeeks,setWellHideWeeks]=useState("1");
+  const [wellHideOngoing,setWellHideOngoing]=useState(false);
+  const [wellHideBusy,setWellHideBusy]=useState(false);
+  // Show panel: only needed when a recurring rule is what's hiding the slot.
+  const [wellShowTime,setWellShowTime]=useState(null);
+
+  // Last date a run of N weekly occurrences lands on, starting from the day on screen.
+  function wdUntilFor(weeks,ongoing){
+    if(ongoing)return null;
+    const n=Math.max(1,parseInt(weeks)||1);
+    return toDS(addDays(admDate,(n-1)*7));
   }
-  function wsAddCustom(time){
+  // A run of 1 is just this date — keep it as a per-date override, no rule needed.
+  function wdIsSingle(weeks,ongoing){return !ongoing&&(parseInt(weeks)||1)<=1;}
+
+  // Strip a per-date entry for this weekday only, so a new rule isn't fighting old overrides.
+  function wsStripDates(cur,time,keys){
+    Object.keys(cur).forEach(dk=>{
+      if(new Date(dk+"T00:00:00").getDay()!==admDOW)return;
+      const o=cur[dk]||{};
+      cur[dk]={
+        hide:keys.includes("hide")?(o.hide||[]).filter(t=>t!==time):(o.hide||[]),
+        add:keys.includes("add")?(o.add||[]).filter(t=>t!==time):(o.add||[])
+      };
+    });
+    return cur;
+  }
+
+  // ── Add a session time ──────────────────────────────────────────────────────
+  function wsAddTime(time,weeks,ongoing){
     if(!time)return;
-    const cur={...(wellSlots||{})};
-    wsTargetDates().forEach(dk=>{
-      const o={...(cur[dk]||{})};const add=new Set(o.add||[]);add.add(time);
-      cur[dk]={...o,add:[...add],hide:(o.hide||[]).filter(t=>t!==time)};
-    });
-    if(saveWellSlots)saveWellSlots(cur);
+    if(wdIsSingle(weeks,ongoing)){
+      const cur={...(wellSlots||{})};
+      const o={...(cur[admDK]||{})};const add=new Set(o.add||[]);add.add(time);
+      cur[admDK]={...o,add:[...add],hide:(o.hide||[]).filter(t=>t!==time)};
+      if(saveWellSlots)saveWellSlots(cur);
+      return;
+    }
+    const cur=JSON.parse(JSON.stringify(wellDow||{}));
+    const k=String(admDOW);
+    const o=cur[k]||{add:[],hide:[]};
+    o.add=(o.add||[]).filter(r=>r.time!==time);
+    o.add.push({time,from:admDK,until:wdUntilFor(weeks,ongoing)});
+    o.hide=(o.hide||[]).filter(r=>r.time!==time);
+    cur[k]=o;
+    if(saveWellDow)saveWellDow(cur);
+    // Clear stale per-date hides on this weekday so the new rule actually shows.
+    if(saveWellSlots)saveWellSlots(wsStripDates({...(wellSlots||{})},time,["hide"]));
   }
+
+  // ── Hide a session time ─────────────────────────────────────────────────────
+  function wsHideTime(time,weeks,ongoing){
+    if(wdIsSingle(weeks,ongoing)){
+      const cur={...(wellSlots||{})};
+      const o={...(cur[admDK]||{})};const h=new Set(o.hide||[]);h.add(time);
+      cur[admDK]={...o,hide:[...h],add:(o.add||[]).filter(t=>t!==time)};
+      if(saveWellSlots)saveWellSlots(cur);
+      return;
+    }
+    const cur=JSON.parse(JSON.stringify(wellDow||{}));
+    const k=String(admDOW);
+    const o=cur[k]||{add:[],hide:[]};
+    o.hide=(o.hide||[]).filter(r=>r.time!==time);
+    o.hide.push({time,from:admDK,until:wdUntilFor(weeks,ongoing)});
+    cur[k]=o;
+    if(saveWellDow)saveWellDow(cur);
+    // A per-date add would out-rank the rule — clear those on this weekday.
+    if(saveWellSlots)saveWellSlots(wsStripDates({...(wellSlots||{})},time,["add"]));
+  }
+
+  // ── Turn a hidden time back on ──────────────────────────────────────────────
+  // scope "date" brings back this one date and leaves any rule running.
+  // scope "all" ends the recurring hide entirely.
+  function wsShowTime(time,scope){
+    const ruleHidden=!!wellRuleFor(wellDow,admDOW,time,"hide");
+    if(scope==="date"){
+      const cur={...(wellSlots||{})};
+      const o={...(cur[admDK]||{})};
+      const nextAdd=new Set(o.add||[]);
+      if(ruleHidden)nextAdd.add(time); // per-date add out-ranks the rule hide
+      cur[admDK]={...o,hide:(o.hide||[]).filter(t=>t!==time),add:[...nextAdd]};
+      if(saveWellSlots)saveWellSlots(cur);
+      return;
+    }
+    const cur=JSON.parse(JSON.stringify(wellDow||{}));
+    const k=String(admDOW);
+    if(cur[k])cur[k].hide=(cur[k].hide||[]).filter(r=>r.time!==time);
+    if(saveWellDow)saveWellDow(cur);
+    if(saveWellSlots)saveWellSlots(wsStripDates({...(wellSlots||{})},time,["hide"]));
+  }
+
+  // ── Remove a custom time altogether ─────────────────────────────────────────
   function wsRemoveCustom(time){
-    const cur={...(wellSlots||{})};
-    wsTargetDates().forEach(dk=>{
-      const o={...(cur[dk]||{})};
-      cur[dk]={...o,add:(o.add||[]).filter(t=>t!==time),hide:(o.hide||[]).filter(t=>t!==time)};
-    });
-    if(saveWellSlots)saveWellSlots(cur);
+    const cur=JSON.parse(JSON.stringify(wellDow||{}));
+    const k=String(admDOW);
+    if(cur[k])cur[k].add=(cur[k].add||[]).filter(r=>r.time!==time);
+    if(saveWellDow)saveWellDow(cur);
+    if(saveWellSlots)saveWellSlots(wsStripDates({...(wellSlots||{})},time,["add","hide"]));
+  }
+
+  // Bookings that already sit inside a hide range, so we can warn before hiding.
+  async function wsBookingsInRange(time,weeks,ongoing){
+    const from=admDK;
+    const to=ongoing?bookingHorizonDS():wdUntilFor(weeks,false);
+    const rows=await sbGet("wellness_bookings",
+      `time=eq.${encodeURIComponent(time)}&date_key=gte.${from}&date_key=lte.${to}&select=date_key,name,email`);
+    return (rows||[]).filter(r=>new Date(r.date_key+"T00:00:00").getDay()===admDOW);
   }
   function scheduleUndoClear(){
     if(undoTimerRef.current)clearTimeout(undoTimerRef.current);
@@ -1819,9 +1953,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
       sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__MASTER_HIDDEN__")+"&select=content").then(r=>{setMasterHidden(!!(r&&r.length&&r[0].content==="1"));});
     }
     if(admSeg==="wellness"&&!wellAdmLoaded){
-      const keys=[];const now=new Date();now.setHours(0,0,0,0);
-      for(let i=0;i<28;i++){const d=addDays(now,i);if(d.getDay()!==0)keys.push(toDS(d));}
-      sbGet("wellness_bookings",`date_key=in.(${keys.join(",")})&select=email,name,date_key,time`).then(data=>{setWellAdmBks(data||[]);setWellAdmLoaded(true);});
+      const from=toDS(new Date());const to=bookingHorizonDS();
+      sbGet("wellness_bookings",`date_key=gte.${from}&date_key=lte.${to}&select=email,name,date_key,time`).then(data=>{setWellAdmBks(data||[]);setWellAdmLoaded(true);});
     }
   },[admSeg]);
   async function toggleMasterHidden(){
@@ -2181,39 +2314,109 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
       :(()=>{
         const wsO=(wellSlots&&wellSlots[admDK])||{};
         const wsHide=wsO.hide||[];const wsAdd=wsO.add||[];
-        const allWellTimes=[...new Set([...WELL_TIMES,...wsAdd])].sort();
+        const dowRules=(wellDow&&wellDow[admDOW])||{};
+        const ruleAddTimes=(dowRules.add||[]).map(r=>r.time);
+        const ruleHideTimes=(dowRules.hide||[]).map(r=>r.time);
+        const allWellTimes=[...new Set([...WELL_TIMES,...wsAdd,...wsHide,...ruleAddTimes,...ruleHideTimes])].sort();
         const dayWellBks=wellAdmBks.filter(b=>b.date_key===admDK).slice().sort((a,b)=>a.time<b.time?-1:a.time>b.time?1:0);
+        const DAYS_FULL=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+        // Plain-English summary of what the chosen span means.
+        const spanLabel=(weeks,ongoing)=>{
+          if(ongoing)return "Every "+DAYS_FULL[admDOW]+" from now on";
+          const n=Math.max(1,parseInt(weeks)||1);
+          if(n<=1)return "This date only";
+          const u=wdUntilFor(weeks,false);const d=new Date(u+"T00:00:00");
+          return "Every "+DAYS_FULL[admDOW]+" for "+n+" weeks · until "+d.getDate()+" "+MONTHS[d.getMonth()];
+        };
+        // Shared "for N weeks / ongoing" control.
+        const wkCtl=(weeks,setWeeks,ongoing,setOngoing)=>React.createElement("div",null,
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+            React.createElement("span",{style:{fontSize:9,letterSpacing:"0.12em",color:"#555",fontWeight:600,flexShrink:0}},"FOR"),
+            React.createElement("input",{type:"number",min:1,max:520,value:ongoing?"":weeks,disabled:ongoing,
+              onChange:e=>setWeeks(e.target.value),
+              style:{width:62,background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:ongoing?"#333":"#ccc",fontSize:14,padding:"8px",fontFamily:"'DM Sans',sans-serif",textAlign:"center",outline:"none",boxSizing:"border-box"}}),
+            React.createElement("span",{style:{fontSize:9,letterSpacing:"0.12em",color:"#555",fontWeight:600,flexShrink:0}},"WEEKS"),
+            React.createElement("button",{onClick:()=>setOngoing(!ongoing),
+              style:{marginLeft:"auto",background:ongoing?"#0a1a2a":"transparent",color:ongoing?"#1d9bf0":"#666",border:"1px solid "+(ongoing?"#1d3a5a":"#333"),borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",padding:"8px 14px",cursor:"pointer",flexShrink:0}},"ONGOING")
+          ),
+          React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#1d9bf0",marginTop:7,lineHeight:1.5}},spanLabel(weeks,ongoing))
+        );
         return React.createElement(React.Fragment,null,
           React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,margin:"4px 0 8px"}},"SESSION TIMES"),
-          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:12}},
-            React.createElement("span",{style:{fontSize:9,letterSpacing:"0.12em",color:"#555",fontWeight:600,flexShrink:0}},"APPLIES TO"),
-            React.createElement("select",{value:wellScope,onChange:e=>setWellScope(parseInt(e.target.value)),style:{flex:1,background:"#141414",border:"1px solid "+(wellScope>1?"#1d3a5a":"#2a2a2a"),borderRadius:0,color:wellScope>1?"#1d9bf0":"#ccc",fontSize:12,padding:"7px 8px",fontFamily:"'DM Sans',sans-serif",outline:"none",cursor:"pointer"}},
-              React.createElement("option",{value:1},"This date only"),
-              React.createElement("option",{value:2},"This + next week (2 total)"),
-              React.createElement("option",{value:4},"This + next 3 weeks (4 total)"),
-              React.createElement("option",{value:8},"This + next 7 weeks (8 total)"),
-              React.createElement("option",{value:12},"This + next 11 weeks (12 total)")
-            )
-          ),
           ...allWellTimes.map(time=>{
-            const hidden=wsHide.includes(time);
+            const dateHidden=wsHide.includes(time);
+            const dateAdded=wsAdd.includes(time);
+            const hideRule=wellRuleFor(wellDow,admDOW,time,"hide");
+            const ruleHiddenNow=!!hideRule&&wellRuleActive(hideRule,admDK);
+            const hidden=dateHidden||(ruleHiddenNow&&!dateAdded);
+            const addRule=wellRuleFor(wellDow,admDOW,time,"add");
             const custom=!WELL_TIMES.includes(time);
             const booked=dayWellBks.some(b=>b.time===time);
-            return React.createElement("div",{key:time,style:{display:"flex",alignItems:"center",gap:10,background:"#141414",border:"1px solid "+(hidden?"#222":"#2e2e2e"),borderRadius:0,padding:"11px 14px",marginBottom:7,opacity:hidden?0.55:1}},
-              React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:19,color:hidden?"#666":"#fff",minWidth:76}},fmt12(time)),
-              React.createElement("div",{style:{flex:1,fontSize:9,letterSpacing:"0.12em",fontWeight:600,color:hidden?"#555":booked?"#1d9bf0":"#4aaa66"}},(hidden?"HIDDEN":booked?"BOOKED":"AVAILABLE")+(custom?" · CUSTOM":"")),
-              React.createElement("button",{onClick:()=>wsSetHide(time,!hidden),style:{background:hidden?"#fff":"transparent",color:hidden?"#000":"#888",border:"1px solid "+(hidden?"#fff":"#333"),borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",padding:"7px 14px",cursor:"pointer",flexShrink:0}},hidden?"SHOW":"HIDE"),
-              custom&&React.createElement("button",{onClick:()=>wsRemoveCustom(time),title:"Remove custom time",style:{background:"none",border:"1px solid #2a2a2a",borderRadius:0,color:"#8a2515",fontSize:12,padding:"6px 10px",cursor:"pointer",flexShrink:0}},"✕")
+            const hidingThis=wellHideTime===time;
+            const showingThis=wellShowTime===time;
+            let status;
+            if(hidden)status="HIDDEN · "+(dateHidden?"THIS DATE":wellRuleLabel(hideRule));
+            else if(booked)status="BOOKED";
+            else status="AVAILABLE";
+            if(custom)status+=" · CUSTOM"+(addRule&&addRule.until===null?" · ONGOING":"");
+            return React.createElement("div",{key:time},
+              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,background:"#141414",border:"1px solid "+(hidden?"#222":"#2e2e2e"),borderRadius:0,padding:"11px 14px",marginBottom:(hidingThis||showingThis)?0:7,opacity:hidden?0.55:1}},
+                React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:19,color:hidden?"#666":"#fff",minWidth:76}},fmt12(time)),
+                React.createElement("div",{style:{flex:1,fontSize:9,letterSpacing:"0.12em",fontWeight:600,color:hidden?"#555":"#1d9bf0"}},status),
+                React.createElement("button",{onClick:()=>{
+                    setWellShowTime(null);setWellHideTime(null);
+                    if(hidden){
+                      if(ruleHiddenNow&&!dateHidden)setWellShowTime(time);   // rule is hiding it — ask
+                      else wsShowTime(time,"date");                          // just this date's hide
+                    }else{
+                      setWellHideWeeks("1");setWellHideOngoing(false);setWellHideTime(time);
+                    }
+                  },
+                  style:{background:hidden?"#fff":"transparent",color:hidden?"#000":"#888",border:"1px solid "+(hidden?"#fff":"#333"),borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",padding:"7px 14px",cursor:"pointer",flexShrink:0}},hidden?"SHOW":"HIDE"),
+                custom&&React.createElement("button",{onClick:()=>{if(window.confirm("Remove "+fmt12(time)+" from every "+DAYS_FULL[admDOW]+"?"))wsRemoveCustom(time);},title:"Remove custom time",style:{background:"none",border:"1px solid #2a2a2a",borderRadius:0,color:"#8a2515",fontSize:12,padding:"6px 10px",cursor:"pointer",flexShrink:0}},"✕")
+              ),
+              hidingThis&&React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #2a2a2a",borderTop:"none",borderRadius:0,padding:"14px",marginBottom:7}},
+                React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,marginBottom:10}},"HIDE "+fmt12(time).toUpperCase()),
+                wkCtl(wellHideWeeks,setWellHideWeeks,wellHideOngoing,setWellHideOngoing),
+                React.createElement("div",{style:{display:"flex",gap:8,marginTop:12}},
+                  React.createElement("button",{onClick:()=>setWellHideTime(null),style:{flex:1,background:"none",border:"1px solid #333",borderRadius:0,padding:"9px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
+                  React.createElement("button",{disabled:wellHideBusy,onClick:async()=>{
+                      if(wellHideBusy)return;
+                      setWellHideBusy(true);
+                      const hits=await wsBookingsInRange(time,wellHideWeeks,wellHideOngoing);
+                      setWellHideBusy(false);
+                      if(hits.length){
+                        const lines=hits.slice(0,6).map(h=>"  • "+h.name+" — "+h.date_key).join("\n");
+                        const more=hits.length>6?"\n  …and "+(hits.length-6)+" more":"";
+                        const head=hits.length===1?"1 booking already sits inside that range:":hits.length+" bookings already sit inside that range:";
+                        const tail=hits.length===1?"Hide anyway? The booking stays in the system — you'll need to contact them.":"Hide anyway? The bookings stay in the system — you'll need to contact them.";
+                        if(!window.confirm(head+"\n\n"+lines+more+"\n\n"+tail))return;
+                      }
+                      wsHideTime(time,wellHideWeeks,wellHideOngoing);
+                      setWellHideTime(null);
+                      showToast("Session hidden ✓");
+                    },
+                    style:{flex:2,background:wellHideBusy?"#1a1a1a":"#fff",color:wellHideBusy?"#444":"#000",border:"none",borderRadius:0,padding:"9px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:wellHideBusy?"default":"pointer"}},wellHideBusy?"CHECKING…":"HIDE SESSION")
+                )
+              ),
+              showingThis&&React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #2a2a2a",borderTop:"none",borderRadius:0,padding:"14px",marginBottom:7}},
+                React.createElement("div",{style:{fontSize:8,color:"#555",letterSpacing:"0.08em",lineHeight:1.6,marginBottom:10}},fmt12(time)+" is hidden "+wellRuleLabel(hideRule).toLowerCase()+" on every "+DAYS_FULL[admDOW]+". Bring back just this date, or turn it back on for good?"),
+                React.createElement("div",{style:{display:"flex",gap:8}},
+                  React.createElement("button",{onClick:()=>{wsShowTime(time,"date");setWellShowTime(null);showToast("Back on for this date ✓");},style:{flex:1,background:"none",border:"1px solid #333",borderRadius:0,padding:"9px",color:"#aaa",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",cursor:"pointer"}},"JUST THIS DATE"),
+                  React.createElement("button",{onClick:()=>{wsShowTime(time,"all");setWellShowTime(null);showToast("Turned back on ✓");},style:{flex:1,background:"#fff",color:"#000",border:"none",borderRadius:0,padding:"9px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",cursor:"pointer"}},"TURN BACK ON")
+                )
+              )
             );
           }),
           !addingWell
-            ?React.createElement("button",{onClick:()=>{setAddingWell(true);setWellNewTime("");},style:{width:"100%",background:"none",border:"1px dashed #2a2a2a",borderRadius:0,padding:"11px",color:"#555",fontSize:10,letterSpacing:"0.14em",cursor:"pointer",marginTop:2}},"+ ADD CUSTOM TIME")
+            ?React.createElement("button",{onClick:()=>{setAddingWell(true);setWellNewTime("");setWellAddWeeks("1");setWellAddOngoing(false);},style:{width:"100%",background:"none",border:"1px dashed #2a2a2a",borderRadius:0,padding:"11px",color:"#555",fontSize:10,letterSpacing:"0.14em",cursor:"pointer",marginTop:2}},"+ ADD CUSTOM TIME")
             :React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:0,padding:"14px",marginTop:2}},
                 React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,marginBottom:10}},"NEW TIME · "+admDateLabel.toUpperCase()),
-                React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center"}},
-                  React.createElement("input",{type:"time",value:wellNewTime,onChange:e=>setWellNewTime(e.target.value),style:{flex:1,background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ccc",fontSize:14,padding:"8px 10px",fontFamily:"'DM Sans',sans-serif",outline:"none",boxSizing:"border-box"}}),
-                  React.createElement("button",{onClick:()=>setAddingWell(false),style:{background:"none",border:"1px solid #333",borderRadius:0,padding:"9px 12px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
-                  React.createElement("button",{disabled:!wellNewTime,onClick:()=>{if(!wellNewTime)return;wsAddCustom(wellNewTime);setAddingWell(false);showToast("Time added ✓");},style:{background:wellNewTime?"#fff":"#1a1a1a",color:wellNewTime?"#000":"#444",border:"none",borderRadius:0,padding:"9px 16px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:wellNewTime?"pointer":"default"}},"ADD")
+                React.createElement("input",{type:"time",value:wellNewTime,onChange:e=>setWellNewTime(e.target.value),style:{width:"100%",background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ccc",fontSize:14,padding:"8px 10px",fontFamily:"'DM Sans',sans-serif",outline:"none",boxSizing:"border-box"}}),
+                React.createElement("div",{style:{marginTop:10}},wkCtl(wellAddWeeks,setWellAddWeeks,wellAddOngoing,setWellAddOngoing)),
+                React.createElement("div",{style:{display:"flex",gap:8,marginTop:12}},
+                  React.createElement("button",{onClick:()=>setAddingWell(false),style:{flex:1,background:"none",border:"1px solid #333",borderRadius:0,padding:"9px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
+                  React.createElement("button",{disabled:!wellNewTime,onClick:()=>{if(!wellNewTime)return;wsAddTime(wellNewTime,wellAddWeeks,wellAddOngoing);setAddingWell(false);showToast("Time added ✓");},style:{flex:2,background:wellNewTime?"#fff":"#1a1a1a",color:wellNewTime?"#000":"#444",border:"none",borderRadius:0,padding:"9px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:wellNewTime?"pointer":"default"}},"ADD TIME")
                 )
             ),
           React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,margin:"20px 0 10px"}},"BOOKINGS"),
@@ -7362,6 +7565,7 @@ function App(){
   // Whole-weekday default capacity: keyed by dow (0-6), applies to every class that weekday.
   const [dowLimits,setDowLimits]=useState({});
   const [wellSlots,setWellSlots]=useState({});
+  const [wellDow,setWellDow]=useState({});
   const [repeatWeeks,setRepeatWeeks]=useState(1);
   const [milestoneConfig,setMilestoneConfig]=useState({interval:25,label:"classes completed — keep it up!"});
   const photoRef=useRef(null);
@@ -7458,6 +7662,8 @@ function App(){
       if(dlData&&dlData.length){try{const dl=JSON.parse(dlData[0].content);if(dl&&typeof dl==="object")setDowLimits(dl);}catch{}}
       const wsData=await sbGet("coaching_notes","class_name=eq.__WELL_SLOTS__&select=content");
       if(wsData&&wsData.length){try{const ws=JSON.parse(wsData[0].content);if(ws&&typeof ws==="object")setWellSlots(ws);}catch{}}
+      const wdData=await sbGet("coaching_notes","class_name=eq.__WELL_DOW__&select=content");
+      if(wdData&&wdData.length){try{const wd=JSON.parse(wdData[0].content);if(wd&&typeof wd==="object")setWellDow(wd);}catch{}}
       const mcData=await sbGet("coaching_notes","class_name=eq.__MILESTONE_CONFIG__&select=content");
       if(mcData&&mcData.length){try{const mc=JSON.parse(mcData[0].content);setMilestoneConfig(p=>({...p,...mc}));}catch{}}
       const mfData=await sbGet("coaching_notes","class_name=eq.__MFLAGS__&select=content");
@@ -7492,15 +7698,12 @@ function App(){
   useEffect(()=>{if(session&&tab==="my")loadStatCounts(statMonth);},[statMonth,session,tab]);
   useEffect(()=>{
     if(!session)return;
-    const keys=[];const now=new Date();now.setHours(0,0,0,0);
-    for(let i=0;i<28;i++){const d=addDays(now,i);if(d.getDay()!==0)keys.push(toDS(d));}
-    sbGet("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=in.(${keys.join(",")})&select=email,name,date_key,time`).then(data=>setMyWellness(data||[]));
+    const from=toDS(new Date());const to=bookingHorizonDS();
+    sbGet("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=gte.${from}&date_key=lte.${to}&select=email,name,date_key,time`).then(data=>setMyWellness(data||[]));
   },[session]);
   async function refreshBookings(){
-    const keys=[];const now=new Date();now.setHours(0,0,0,0);
-    for(let i=0;i<28;i++){const d=addDays(now,i);if(d.getDay()!==0)keys.push(toDS(d));}
-    if(!keys.length)return;
-    const data=await sbGet("bookings",`date_key=in.(${keys.join(",")})&select=email,name,date_key,time,session_type,checked_in`);
+    const from=toDS(new Date());const to=bookingHorizonDS();
+    const data=await sbGet("bookings",`date_key=gte.${from}&date_key=lte.${to}&select=email,name,date_key,time,session_type,checked_in`);
     setBookings(data||[]);
   }
   // Concession card: load this member's all-time class check-ins + their card baseline.
@@ -7576,6 +7779,8 @@ function App(){
   const times=[...baseTimes,...extraTimesBook].sort().filter(t=>(classLimits[selDK+':'+t]??MAX_SPOTS)>0);
   const weekDates=Array.from({length:6},(_,i)=>addDays(weekStart,i));
   const isThisWeek=toDS(weekStart)===toDS(mondayOf(new Date()));
+  // Stop paging once the next week would run past the booking horizon.
+  const atHorizon=toDS(addDays(weekStart,7))>bookingHorizonDS();
   const getBksFor=(dk,t)=>bookings.filter(b=>b.date_key===dk&&b.time===t);
   const userBooked=(dk,t)=>session&&getBksFor(dk,t).some(b=>b.email===session.email);
   const weekDots=weekDates.map(d=>isAdmin?bookings.some(b=>b.date_key===toDS(d)):session&&bookings.some(b=>b.date_key===toDS(d)&&b.email===session.email));
@@ -7839,6 +8044,21 @@ function App(){
     if(existing&&existing.length){await sbPatch("coaching_notes","class_name=eq.__WELL_SLOTS__",{content:JSON.stringify(clean),updated_at:Date.now()});}
     else{await sbPost("coaching_notes",{class_name:"__WELL_SLOTS__",content:JSON.stringify(clean),updated_at:Date.now()});}
   }
+  async function saveWellDow(next){
+    // next: { "<0-6>": { add:[{time,from,until}], hide:[{time,from,until}] } }
+    // Prune empty weekdays so the record stays small.
+    const clean={};
+    Object.keys(next||{}).forEach(dow=>{
+      const o=next[dow]||{};
+      const add=(o.add||[]).filter(r=>r&&r.time);
+      const hide=(o.hide||[]).filter(r=>r&&r.time);
+      if(add.length||hide.length)clean[dow]={add,hide};
+    });
+    setWellDow(clean);
+    const existing=await sbGet("coaching_notes","class_name=eq.__WELL_DOW__&select=class_name");
+    if(existing&&existing.length){await sbPatch("coaching_notes","class_name=eq.__WELL_DOW__",{content:JSON.stringify(clean),updated_at:Date.now()});}
+    else{await sbPost("coaching_notes",{class_name:"__WELL_DOW__",content:JSON.stringify(clean),updated_at:Date.now()});}
+  }
   async function saveMilestoneConfig(cfg){
     setMilestoneConfig(cfg);
     const existing=await sbGet("coaching_notes","class_name=eq.__MILESTONE_CONFIG__&select=class_name");
@@ -8017,7 +8237,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       React.createElement("div",{className:"week-nav",style:{paddingTop:0}},
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"‹"),
         React.createElement("div",{className:"wk-label"},`${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} – ${MONTHS[weekDates[5].getMonth()]} ${weekDates[5].getDate()}  ${weekDates[0].getFullYear()}`),
-        React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,7))},"›")
+        React.createElement("button",{className:"wk-arrow",disabled:atHorizon,onClick:()=>{if(atHorizon){showToast("Bookings open "+BOOKING_WEEKS+" weeks ahead");return;}setWeekStart(w=>addDays(w,7));}},"›")
       ),
       React.createElement("div",{className:"day-strip"},
         weekDates.map((d,i)=>React.createElement("button",{key:i,onClick:()=>setSelDay(i),className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}${weekDots[i]?" dhb":""}`},
@@ -8092,7 +8312,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         })
       )
       ),
-      effBookSub==="wellness"&&showWellness&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin,memberData,wellSlots,calendarEnabled})
+      effBookSub==="wellness"&&showWellness&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin,memberData,wellSlots,wellDow,calendarEnabled})
     ),
     effTab==="my"&&canBook&&React.createElement("div",{className:"my-wrap"},
       React.createElement("div",{className:"my-hdr"},"MY BOOKINGS"),
@@ -8190,7 +8410,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       effWkSub==="routines"&&showRoutines&&React.createElement(RoutinesView,{session,ttl:wkTitles.rt,isAdmin})
     ),
     effTab==="progress"&&acc("progress")&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}),
-    effTab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:""}),
+    effTab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,wellDow,saveWellDow,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:""}),
     ),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
