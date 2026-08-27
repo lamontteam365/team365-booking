@@ -135,9 +135,6 @@ html,body{background:#080808;color:#fff;font-family:'DM Sans',sans-serif}
 .load-bar{width:80px;height:1px;background:#1a1a1a;border-radius:0;overflow:hidden;margin:12px auto 0}
 .load-fill{height:100%;background:#fff;animation:ld 1.5s ease-in-out infinite}
 @keyframes ld{0%{width:0}50%{width:100%}100%{width:0}}
-.guest-notice{background:#0a0a0a;border:1px solid #1a1a1a;border-radius:0;padding:12px 14px;margin-bottom:16px;font-size:10px;letter-spacing:0.06em;color:#555;line-height:1.7}
-.guest-notice a{color:#888;text-decoration:underline;text-underline-offset:3px}
-.guest-notice a:hover{color:#fff}
 </style>
 </head>
 <body>
@@ -500,11 +497,7 @@ function ClassWidget(){
               );
             })
           ),
-        React.createElement("button",{className:"btn-p",onClick:()=>setStep(2),disabled:!selTime},"CONTINUE"),
-        React.createElement("div",{className:"guest-notice"},
-          "Already a member? ",React.createElement("a",{href:"https://team365-booking.vercel.app",style:{color:"#888",textDecoration:"underline",textUnderlineOffset:"3px"}},"Log in"),
-          " for full access to your bookings and history."
-        )
+        React.createElement("button",{className:"btn-p",onClick:()=>setStep(2),disabled:!selTime},"CONTINUE")
       ),
       // STEP 2: Details
       step===2&&React.createElement("div",null,
