@@ -57,35 +57,40 @@ html,body{background:#080808;color:#fff;font-family:'DM Sans',sans-serif}
 .slot-list{display:flex;flex-direction:column;gap:7px;margin-bottom:20px}
 /* Guest slots */
 .slot-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#141414;border:1px solid #666;border-radius:0;cursor:pointer;transition:all .15s}
-.slot-row:hover:not(.full):not(.past){border-color:#333}
+.slot-row:hover:not(.off):not(.past){border-color:#333}
 .slot-row.sel{border-color:#fff;background:#111}
-.slot-row.full{opacity:0.3;cursor:default}
-.slot-row.past{opacity:0.2;cursor:default;pointer-events:none}
+.slot-row.off{cursor:default}
+/* Unavailable: fade the time and name, leave the status and button readable */
+.slot-row.off .slot-time,.slot-row.off .slot-class{opacity:0.4}
+.slot-row.past{opacity:0.3;cursor:default;pointer-events:none}
 .slot-time-wrap{display:flex;flex-direction:column;min-width:72px}
 .slot-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;line-height:1}
-.slot-class{font-size:8px;letter-spacing:0.14em;color:#555;font-weight:600;margin-top:3px}
+.slot-class{font-size:7px;letter-spacing:0.12em;color:#1d9bf0;font-weight:600;margin-top:1px}
 .slot-mid{flex:1}
 .slot-bars{display:flex;gap:2px;margin-bottom:5px}
 .slot-bar{flex:1;height:2px;border-radius:0;background:#222;transition:background .3s}
 .slot-bar.t{background:#fff}
 .slot-info{font-size:10px;letter-spacing:0.1em;font-weight:500}
-.slot-info.av{color:#aaa}.slot-info.lo{color:#e06040}.slot-info.fl{color:#444}.slot-info.ok{color:#4aaa66}
-.slot-radio{width:18px;height:18px;border-radius:50%;border:1.5px solid #2a2a2a;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
-.slot-row.sel .slot-radio{border-color:#fff;background:#fff}
-.slot-radio-dot{width:8px;height:8px;border-radius:50%;background:#000}
+.slot-info.av{color:#aaa}.slot-info.lo{color:#e06040}.slot-info.fl{color:#555}.slot-info.ok{color:#1d9bf0}
+/* Book button — same as the app */
+.slot-btn{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:0.12em;padding:8px 12px;border-radius:0;border:none;cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.slot-btn.sb-book{background:#fff;color:#000}
+.slot-btn.sb-book:hover:not(:disabled){background:#ddd}
+.slot-btn.sb-off{background:transparent;color:#555;border:1px solid #2a2a2a;cursor:default;font-size:10px}
+.slot-btn:disabled{opacity:.4;cursor:not-allowed}
 /* Member slots */
 .c-row{display:flex;align-items:center;gap:10px;padding:10px 13px;background:#141414;border:1px solid #666;border-radius:0;transition:border-color .15s}
 .c-row.cb{border-color:#333}
 .c-row.cp{opacity:0.3;pointer-events:none}
 .c-time-wrap{display:flex;flex-direction:column;min-width:72px}
 .c-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;line-height:1}
-.c-class{font-size:8px;letter-spacing:0.14em;color:#555;font-weight:600;margin-top:3px}
+.c-class{font-size:7px;letter-spacing:0.12em;color:#1d9bf0;font-weight:600;margin-top:1px}
 .c-mid{flex:1}
 .c-bars{display:flex;gap:2px;margin-bottom:5px}
 .c-bar{flex:1;height:2px;border-radius:0;background:#222;transition:background .3s}
 .c-bar.ct{background:#fff}
 .c-sub{font-size:10px;letter-spacing:0.1em;font-weight:500}
-.co{color:#999}.cl{color:#e06040}.cf{color:#444}.cg{color:#4aaa66}
+.co{color:#aaa}.cl{color:#e06040}.cf{color:#555}.cg{color:#1d9bf0}
 .c-btn{border:none;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:0.1em;padding:8px 14px;border-radius:0;cursor:pointer;transition:all .15s;white-space:nowrap}
 .bb{background:#fff;color:#000}
 .bb:hover:not(:disabled){background:#ddd}
@@ -149,6 +154,10 @@ const SB_HDR={"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":
 const APPS_URL="https://script.google.com/macros/s/AKfycbz5cruljVDUVScwm14Sj1z5_6cRrNK9cgOaq7Tx8P9LfPAEI7p_kx8ZJnaghF_SmU46Fw/exec";
 const SHOPIFY_PAY_URL="https://www.lamontcollective.com/products/casual-gym-session";
 const MAX_SPOTS=16;
+// How far ahead guests may book. Must match the app and the other widgets.
+const BOOKING_WEEKS=12;
+const BOOKING_DAYS=BOOKING_WEEKS*7;
+function bookingHorizonDS(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+BOOKING_DAYS);return toDS(d);}
 const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
 const SAT_TIMES=["06:30","07:30","08:30","09:30"];
 // ── Recurring class rules · __CLASS_DOW__ ────────────────────────────────────
@@ -199,6 +208,12 @@ const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
 // ── Supabase ──────────────────────────────────────────────────────────────────
 async function sbGet(t,q=""){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
 async function sbPost(t,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
+// Same POST, but reports WHY it failed. 409 = this email already holds that slot.
+async function sbPostStatus(t,d){
+  try{const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(d)});
+    return r.ok?{ok:true}:{ok:false,duplicate:r.status===409,status:r.status};
+  }catch{return {ok:false,duplicate:false,status:0};}
+}
 async function sbDelete(t,q){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{method:"DELETE",headers:SB_HDR});return r.ok;}catch{return false;}}
 // ── Notify ────────────────────────────────────────────────────────────────────
 async function notifyAdmin(data){
@@ -237,6 +252,8 @@ function ClassWidget(){
 
   const weekDates=Array.from({length:6},(_,i)=>addDays(weekStart,i));
   const isThisWeek=toDS(weekStart)===toDS(mondayOf(new Date()));
+  // Stop paging once the next week would run past the booking horizon.
+  const atHorizon=toDS(addDays(weekStart,7))>bookingHorizonDS();
   const selDate=weekDates[selDay];
   const selDK=toDS(selDate);
 
@@ -343,8 +360,13 @@ function ClassWidget(){
     const timeLabel=fmt12(selTime);
     const sessName=getSlotName(selTime,selDK);
     const row={email:em,name:nm,date_key:selDK,time:selTime,is_guest:true,booking_ref:ref,phone:ph,created_at:Date.now()};
-    const ok=await sbPost("bookings",row);
-    if(!ok){setErr("Booking failed — please try again.");setBusy(false);return;}
+    const res=await sbPostStatus("bookings",row);
+    if(!res.ok){
+      setErr(res.duplicate
+        ?"You already have a booking for that class. Check your email for the confirmation, or pick another time."
+        :"Booking failed — please try again.");
+      setBusy(false);return;
+    }
     const bookData={guestName:nm,guestEmail:em,guestPhone:ph||"N/A",bookingType:`Class – ${sessName}`,dateLabel,timeLabel,bookingRef:ref,payment:payMethod==="gym"?"Pay at gym":"Online"};
     notifyAdmin(bookData);notifyGuest(bookData);
     if(payMethod==="online")window.open(SHOPIFY_PAY_URL,"_blank");
@@ -398,7 +420,7 @@ function ClassWidget(){
       React.createElement("div",{className:"week-nav"},
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"‹"),
         React.createElement("div",{className:"wk-label"},`${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} – ${MONTHS[weekDates[5].getMonth()]} ${weekDates[5].getDate()} ${weekDates[0].getFullYear()}`),
-        React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,7))},"›")
+        React.createElement("button",{className:"wk-arrow",disabled:atHorizon,onClick:()=>setWeekStart(w=>addDays(w,7))},"›")
       ),
       React.createElement("div",{className:"day-strip"},
         weekDates.map((d,i)=>React.createElement("button",{key:i,className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}`,onClick:()=>setSelDay(i)},
@@ -414,12 +436,12 @@ function ClassWidget(){
             const list=getBksFor(selDK,time);const taken=list.length;const maxSp=getMaxSpots(time,selDK);const left=maxSp-taken;
             const booked=userBooked(selDK,time);const full=left===0&&!booked;
             const past=isPastSlot(selDate,time);const lk=`${selDK}-${time}`;const isBusy=!!bkBusy[lk];
-            const subText=booked?"Booked ✓":full?"Full":`${left} ${left===1?"Spot":"Spots"} Available`;
+            const subText=past?"Closed":booked?"Booked ✓":full?"Full":`${left} ${left===1?"Spot":"Spots"} Available`;
             const subCls=booked?"cg":full?"cf":left<=3?"cl":"co";
             return React.createElement("div",{key:time,className:`c-row${booked?" cb":""}${past?" cp":""}`},
               React.createElement("div",{className:"c-time-wrap"},
                 React.createElement("div",{className:"c-time"},fmt12(time)),
-                React.createElement("div",{className:"c-class"},getSlotName(time,selDK))
+                React.createElement("div",{className:"c-class"},(getSlotName(time,selDK)||"").toUpperCase())
               ),
               React.createElement("div",{className:"c-mid"},
                 React.createElement("div",{className:"c-bars"},Array.from({length:Math.min(maxSp,20)}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}`}))),
@@ -444,7 +466,7 @@ function ClassWidget(){
         React.createElement("div",{className:"week-nav"},
           React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"‹"),
           React.createElement("div",{className:"wk-label"},`${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} – ${MONTHS[weekDates[5].getMonth()]} ${weekDates[5].getDate()} ${weekDates[0].getFullYear()}`),
-          React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,7))},"›")
+          React.createElement("button",{className:"wk-arrow",disabled:atHorizon,onClick:()=>setWeekStart(w=>addDays(w,7))},"›")
         ),
         React.createElement("div",{className:"day-strip"},
           weekDates.map((d,i)=>React.createElement("button",{key:i,className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}`,onClick:()=>setSelDay(i)},
@@ -453,6 +475,7 @@ function ClassWidget(){
           ))
         ),
         React.createElement("div",{className:"sess-lbl"},`${DAY_LONG[selDay].toUpperCase()} · ${visibleTimes.length} CLASSES`),
+        atHorizon&&React.createElement("div",{style:{fontSize:8,letterSpacing:"0.14em",color:"#444",fontWeight:600,textAlign:"center",marginBottom:10}},`BOOKINGS OPEN ${BOOKING_WEEKS} WEEKS AHEAD`),
         loading
           ?React.createElement("div",{className:"loading"},"CHECKING AVAILABILITY…",React.createElement("div",{className:"load-bar"},React.createElement("div",{className:"load-fill"})))
           :React.createElement("div",{className:"slot-list"},
@@ -460,17 +483,21 @@ function ClassWidget(){
               const taken=bookings.filter(b=>b.date_key===selDK&&b.time===time).length;const maxSp=getMaxSpots(time,selDK);const left=maxSp-taken;
               const full=left===0;const low=left<=3&&left>0;const past=isPastSlot(selDate,time);
               return React.createElement("div",{key:time,
-                className:`slot-row${selTime===time?" sel":""}${full?" full":""}${past?" past":""}`,
+                className:`slot-row${selTime===time?" sel":""}${past?" past":full?" off":""}`,
                 onClick:()=>{if(!full&&!past)setSelTime(time);}},
                 React.createElement("div",{className:"slot-time-wrap"},
                   React.createElement("div",{className:"slot-time"},fmt12(time)),
-                  React.createElement("div",{className:"slot-class"},getSlotName(time,selDK))
+                  React.createElement("div",{className:"slot-class"},(getSlotName(time,selDK)||"").toUpperCase())
                 ),
                 React.createElement("div",{className:"slot-mid"},
                   React.createElement("div",{className:"slot-bars"},Array.from({length:Math.min(maxSp,20)}).map((_,i)=>React.createElement("div",{key:i,className:`slot-bar${i<taken?" t":""}`}))),
-                  React.createElement("div",{className:`slot-info ${full?"fl":low?"lo":"av"}`},full?"Full":`${left} spot${left===1?"":"s"} available`)
+                  React.createElement("div",{className:`slot-info ${past?"fl":full?"fl":low?"lo":"av"}`},
+                    past?"Closed":full?"Full":`${left} ${left===1?"Spot":"Spots"} Available`)
                 ),
-                !full&&!past&&React.createElement("div",{className:"slot-radio"},selTime===time&&React.createElement("div",{className:"slot-radio-dot"}))
+                past
+                  ?null
+                  :full?React.createElement("button",{className:"slot-btn sb-off",disabled:true},"Full")
+                  :React.createElement("button",{className:"slot-btn sb-book",onClick:e=>{e.stopPropagation();setSelTime(time);}},"Book")
               );
             })
           ),

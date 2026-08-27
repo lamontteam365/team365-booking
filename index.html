@@ -1831,6 +1831,9 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   const [addingClass,setAddingClass]=useState(false);
   const [newClassTime,setNewClassTime]=useState("");
   const [newClassSpots,setNewClassSpots]=useState("16");
+  const [newClassName,setNewClassName]=useState("");
+  // "For N weeks" scope on the Name / Spots edits.
+  const [scopeWeeks,setScopeWeeks]=useState("4");
   const [newClassWeeks,setNewClassWeeks]=useState("1");
   const [newClassOngoing,setNewClassOngoing]=useState(false);
   // Hide panel for a class: which time, how long, and any bookings in the way.
@@ -1981,19 +1984,22 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
     for(const r of hits){if(deleteClass)await deleteClass(time,r.date_key);}
   }
 
-  async function csAddClass(time,spots,weeks,ongoing){
+  async function csAddClass(time,spots,weeks,ongoing,name){
     if(!time)return false;
     const n=Math.max(1,parseInt(spots)||MAX_SPOTS);
+    const nm=(name||"").trim().toUpperCase();
     if(wdIsSingle(weeks,ongoing)){
       if(!saveClassLimit)return false;
       await saveClassLimit(time,admDK,String(n));
+      if(nm&&saveSlotName)await saveSlotName(time,admDK,nm);
       return true;
     }
     const cur=JSON.parse(JSON.stringify(classDow||{}));
     const k=String(admDOW);
     const o=cur[k]||{add:[],hide:[]};
     o.add=(o.add||[]).filter(r=>r.time!==time);
-    o.add.push({time,spots:n,from:admDK,until:wdUntilFor(weeks,ongoing)});
+    o.add.push(nm?{time,spots:n,name:nm,from:admDK,until:wdUntilFor(weeks,ongoing)}
+                 :{time,spots:n,from:admDK,until:wdUntilFor(weeks,ongoing)});
     o.hide=(o.hide||[]).filter(r=>r.time!==time);
     cur[k]=o;
     const ok=saveClassDow?await saveClassDow(cur):false;
@@ -2082,6 +2088,28 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
     ||(classAddRule(classDow,admDK,time)||{}).name
     ||dowNames?.[admDOW]
     ||"";
+
+  // The next N dates falling on the weekday on screen, starting with it.
+  function runDates(weeks){
+    const n=Math.max(1,parseInt(weeks)||1);
+    return Array.from({length:n},(_,i)=>toDS(addDays(admDate,i*7)));
+  }
+  // Apply a per-date change across a run of weeks. Per-date rows out-rank
+  // everything, so this works whether the class is a base one or a recurring one.
+  async function applyRun(weeks,fn){
+    const dates=runDates(weeks);
+    for(const dk of dates)await fn(dk);
+    return dates.length;
+  }
+  // Small "FOR n WEEKS" number box (no ONGOING here — EVERY <DAY> is that).
+  const runCtl=()=>React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:8}},
+    React.createElement("span",{style:{fontSize:9,letterSpacing:"0.12em",color:"#555",fontWeight:600}},"FOR"),
+    React.createElement("input",{type:"number",min:1,max:52,value:scopeWeeks,onChange:e=>setScopeWeeks(e.target.value),
+      style:{width:54,background:"#0e0e0e",border:"1px solid #333",borderRadius:0,padding:"6px 8px",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:14,textAlign:"center",outline:"none"}}),
+    React.createElement("span",{style:{fontSize:9,letterSpacing:"0.12em",color:"#555",fontWeight:600}},"WEEKS"),
+    React.createElement("span",{style:{fontSize:8,letterSpacing:"0.06em",color:"#1d9bf0",marginLeft:"auto"}},
+      "to "+(()=>{const d=new Date(runDates(scopeWeeks).slice(-1)[0]+"T00:00:00");return d.getDate()+" "+MONTHS[d.getMonth()];})())
+  );
 
   function scheduleUndoClear(){
     if(undoTimerRef.current)clearTimeout(undoTimerRef.current);
@@ -2440,15 +2468,24 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
               placeholder:slotNames?.[admDK+":"+time]||dowSlotNames?.[admDOW+":"+time]||dowNames?.[admDOW]||"e.g. POWER HOUR",
               style:{width:"100%",boxSizing:"border-box",background:"#0e0e0e",border:"1px solid #333",borderRadius:0,padding:"9px 10px",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:14,outline:"none",marginBottom:10}
             }),
-            React.createElement("div",{style:{fontSize:8,color:"#555",letterSpacing:"0.08em",lineHeight:1.5,marginBottom:8}},"Apply to just this date, or to every "+["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][admDOW]+" at "+fmt12(time)+"."),
+            React.createElement("div",{style:{fontSize:8,color:"#555",letterSpacing:"0.08em",lineHeight:1.5,marginBottom:8}},"Apply to just this date, to a run of weeks, or to every "+["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][admDOW]+" at "+fmt12(time)+"."),
+            runCtl(),
             React.createElement("div",{style:{display:"flex",gap:6}},
               React.createElement("button",{
                 onClick:async()=>{const n=nameInput.trim()||null;if(saveSlotName)await saveSlotName(time,admDK,n);setEditingName(null);showToast("This date updated ✓");},
-                style:{flex:1,background:"#222",color:"#fff",border:"1px solid #333",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.08em",padding:"10px 6px",cursor:"pointer"}
-              },"THIS DATE ONLY"),
+                style:{flex:1,background:"#222",color:"#fff",border:"1px solid #333",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.06em",padding:"10px 4px",cursor:"pointer"}
+              },"THIS DATE"),
+              React.createElement("button",{
+                onClick:async()=>{
+                  const n=nameInput.trim()||null;
+                  const c=await applyRun(scopeWeeks,dk=>saveSlotName?saveSlotName(time,dk,n):null);
+                  setEditingName(null);showToast(c+" week"+(c===1?"":"s")+" updated ✓");
+                },
+                style:{flex:1,background:"#222",color:"#fff",border:"1px solid #333",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.06em",padding:"10px 4px",cursor:"pointer"}
+              },(Math.max(1,parseInt(scopeWeeks)||1))+" WEEKS"),
               React.createElement("button",{
                 onClick:async()=>{if(saveDowSlotName)await saveDowSlotName(admDOW,time,nameInput.trim());if(saveSlotName&&slotNames?.[admDK+":"+time])await saveSlotName(time,admDK,null);setEditingName(null);showToast("Every "+["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][admDOW]+" "+fmt12(time)+" updated ✓");},
-                style:{flex:1,background:"#1d9bf0",color:"#fff",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.08em",padding:"10px 6px",cursor:"pointer"}
+                style:{flex:1,background:"#1d9bf0",color:"#fff",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.06em",padding:"10px 4px",cursor:"pointer"}
               },"EVERY "+["SUN","MON","TUE","WED","THU","FRI","SAT"][admDOW]),
               React.createElement("button",{onClick:()=>setEditingName(null),
                 style:{background:"none",border:"1px solid #333",color:"#666",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.1em",padding:"10px 10px",cursor:"pointer",flexShrink:0}
@@ -2464,15 +2501,23 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
                 style:{width:60,background:"#0e0e0e",border:"1px solid #333",borderRadius:0,padding:"7px 8px",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:16,textAlign:"center",outline:"none"}
               })
             ),
-            React.createElement("div",{style:{fontSize:8,color:"#555",letterSpacing:"0.08em",lineHeight:1.5,marginBottom:8}},"Apply to just this date, or to every "+["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][admDOW]+" at "+fmt12(time)+"."),
+            React.createElement("div",{style:{fontSize:8,color:"#555",letterSpacing:"0.08em",lineHeight:1.5,marginBottom:8}},"Apply to just this date, to a run of weeks, or to every "+["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][admDOW]+" at "+fmt12(time)+"."),
+            runCtl(),
             React.createElement("div",{style:{display:"flex",gap:6}},
               React.createElement("button",{
                 onClick:async()=>{if(saveClassLimit){await saveClassLimit(time,admDK,limitInput);}setEditingLimit(null);showToast("This date updated ✓");},
-                style:{flex:1,background:"#222",color:"#fff",border:"1px solid #333",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.08em",padding:"10px 6px",cursor:"pointer"}
-              },"THIS DATE ONLY"),
+                style:{flex:1,background:"#222",color:"#fff",border:"1px solid #333",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.06em",padding:"10px 4px",cursor:"pointer"}
+              },"THIS DATE"),
+              React.createElement("button",{
+                onClick:async()=>{
+                  const c=await applyRun(scopeWeeks,dk=>saveClassLimit?saveClassLimit(time,dk,limitInput):null);
+                  setEditingLimit(null);showToast(c+" week"+(c===1?"":"s")+" updated ✓");
+                },
+                style:{flex:1,background:"#222",color:"#fff",border:"1px solid #333",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.06em",padding:"10px 4px",cursor:"pointer"}
+              },(Math.max(1,parseInt(scopeWeeks)||1))+" WEEKS"),
               React.createElement("button",{
                 onClick:async()=>{if(saveDowSlotLimit)await saveDowSlotLimit(admDOW,time,limitInput);setEditingLimit(null);showToast("Every "+["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][admDOW]+" "+fmt12(time)+" updated ✓");},
-                style:{flex:1,background:"#1d9bf0",color:"#fff",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.08em",padding:"10px 6px",cursor:"pointer"}
+                style:{flex:1,background:"#1d9bf0",color:"#fff",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.06em",padding:"10px 4px",cursor:"pointer"}
               },"EVERY "+["SUN","MON","TUE","WED","THU","FRI","SAT"][admDOW]),
               React.createElement("button",{
                 onClick:()=>setEditingLimit(null),
@@ -2513,7 +2558,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
       }),
       admDOW!==0&&React.createElement("div",{style:{marginTop:12}},
         !addingClass
-          ?React.createElement("button",{onClick:()=>{setAddingClass(true);setNewClassTime("");setNewClassSpots("16");},style:{width:"100%",background:"none",border:"1px dashed #2a2a2a",borderRadius:0,padding:"11px",color:"#555",fontSize:10,letterSpacing:"0.14em",cursor:"pointer"}},"+ ADD CLASS")
+          ?React.createElement("button",{onClick:()=>{setAddingClass(true);setNewClassTime("");setNewClassSpots("16");setNewClassName("");},style:{width:"100%",background:"none",border:"1px dashed #2a2a2a",borderRadius:0,padding:"11px",color:"#555",fontSize:10,letterSpacing:"0.14em",cursor:"pointer"}},"+ ADD CLASS")
           :React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:0,padding:"14px"}},
               React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,marginBottom:10}},"NEW CLASS · "+admDateLabel.toUpperCase()),
               React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center",marginBottom:10}},
@@ -2528,16 +2573,23 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
                     style:{width:"100%",background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ccc",fontSize:14,padding:"8px",fontFamily:"'DM Sans',sans-serif",textAlign:"center",outline:"none",boxSizing:"border-box"}})
                 )
               ),
+              React.createElement("div",{style:{marginBottom:10}},
+                React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.1em",fontWeight:600,marginBottom:4}},"CLASS NAME · OPTIONAL"),
+                React.createElement("input",{type:"text",value:newClassName,onChange:e=>setNewClassName(e.target.value),
+                  placeholder:dowNames?.[admDOW]||"e.g. POWER HOUR",
+                  style:{width:"100%",boxSizing:"border-box",background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ccc",fontSize:14,padding:"8px 10px",fontFamily:"'DM Sans',sans-serif",outline:"none"}}),
+                React.createElement("div",{style:{fontSize:8,color:"#444",letterSpacing:"0.06em",marginTop:5}},"Leave blank to use the day's name \u2014 "+(dowNames?.[admDOW]||"none set"))
+              ),
               React.createElement("div",{style:{marginBottom:12}},wkCtl(newClassWeeks,setNewClassWeeks,newClassOngoing,setNewClassOngoing)),
               React.createElement("div",{style:{display:"flex",gap:8}},
-                React.createElement("button",{onClick:()=>{setAddingClass(false);setNewClassWeeks("1");setNewClassOngoing(false);},style:{flex:1,background:"none",border:"1px solid #333",borderRadius:0,padding:"9px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
+                React.createElement("button",{onClick:()=>{setAddingClass(false);setNewClassWeeks("1");setNewClassOngoing(false);setNewClassName("");},style:{flex:1,background:"none",border:"1px solid #333",borderRadius:0,padding:"9px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
                 React.createElement("button",{
                   disabled:!newClassTime,
                   onClick:async()=>{
                     if(!newClassTime)return;
-                    const ok=await csAddClass(newClassTime,newClassSpots||"16",newClassWeeks,newClassOngoing);
+                    const ok=await csAddClass(newClassTime,newClassSpots||"16",newClassWeeks,newClassOngoing,newClassName.trim());
                     if(!ok)return;
-                    setAddingClass(false);setNewClassWeeks("1");setNewClassOngoing(false);
+                    setAddingClass(false);setNewClassWeeks("1");setNewClassOngoing(false);setNewClassName("");
                     showToast("Class added ✓");
                   },
                   style:{flex:2,background:newClassTime?"#fff":"#1a1a1a",color:newClassTime?"#000":"#444",border:"none",borderRadius:0,padding:"9px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:newClassTime?"pointer":"default"}

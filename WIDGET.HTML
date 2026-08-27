@@ -264,6 +264,12 @@ function isPastSlot(date,time){
 // ── Supabase ───────────────────────────────────────────────────────────────────
 async function sbGet(t,q=""){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
 async function sbPost(t,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
+// Same POST, but reports WHY it failed. 409 = this email already holds that slot.
+async function sbPostStatus(t,d){
+  try{const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(d)});
+    return r.ok?{ok:true}:{ok:false,duplicate:r.status===409,status:r.status};
+  }catch{return {ok:false,duplicate:false,status:0};}
+}
 // ── Notify admin ───────────────────────────────────────────────────────────────
 async function notifyAdmin(data){
   try{
@@ -366,8 +372,13 @@ function BookingWidget(){
       }
     }
     const row={email:em,name:nm,date_key:selDK,time:selTime,is_guest:true,booking_ref:ref,phone:ph,created_at:Date.now()};
-    const ok=await sbPost(bookType==="class"?"bookings":"wellness_bookings",row);
-    if(!ok){setErr("Booking failed — please try again.");setBusy(false);return;}
+    const res=await sbPostStatus(bookType==="class"?"bookings":"wellness_bookings",row);
+    if(!res.ok){
+      setErr(res.duplicate
+        ?"You already have a booking for that class. Check your email for the confirmation, or pick another time."
+        :"Booking failed — please try again.");
+      setBusy(false);return;
+    }
     const dateLabel=`${DAY_LONG[selDay]} ${selDate.getDate()} ${MONTHS[selDate.getMonth()]}`;
     const timeLabel=fmt12(selTime);
     // Notify admin + send guest confirmation

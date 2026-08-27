@@ -105,10 +105,10 @@ html,body{background:#080808;min-height:100vh;font-family:'DM Sans',sans-serif;c
   border-bottom:1px solid #0f0f0f;
 }
 .member-row:last-child{border-bottom:none}
-.member-row.checked{background:#0a1a0e}
+.member-row.checked{background:#0a1620}
 .member-info{display:flex;flex-direction:column;gap:3px}
 .member-name{font-size:16px;color:#fff;font-weight:500;letter-spacing:0.02em}
-.member-checkin-time{font-size:10px;color:#4aaa66;letter-spacing:0.08em;margin-top:1px}
+.member-checkin-time{font-size:10px;color:#1d9bf0;letter-spacing:0.08em;margin-top:1px}
 .checkin-btn{
   font-size:10px;letter-spacing:0.1em;font-weight:600;
   font-family:'DM Sans',sans-serif;border:none;border-radius:0;
@@ -118,7 +118,7 @@ html,body{background:#080808;min-height:100vh;font-family:'DM Sans',sans-serif;c
 .checkin-btn.do:hover{background:#1a8ad6}
 .checkin-btn.undo{background:#1a1a1a;color:#666;border:1px solid #2a2a2a}
 .checkin-btn.undo:hover{color:#e06040;border-color:#e06040}
-.checkin-tick{color:#4aaa66;font-size:18px;margin-right:8px;flex-shrink:0}
+.checkin-tick{color:#1d9bf0;font-size:18px;margin-right:8px;flex-shrink:0}
 
 /* ── Footer ── */
 .kiosk-footer{padding:18px 28px;border-top:1px solid #111;text-align:center}
@@ -190,6 +190,11 @@ function toDS(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"
 function fmt12(t){if(!t)return"";const[h,m]=t.split(":").map(Number);const ampm=h<12?"AM":"PM";const h12=h===0?12:h>12?h-12:h;return`${h12}:${String(m).padStart(2,"0")} ${ampm}`;}
 function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r;}
 function isToday(d){const n=new Date();return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate();}
+// 12-hour clock with am/pm, e.g. "9:39am".
+function clockTime(ms){
+  const d=new Date(ms);const h=d.getHours();
+  return `${h%12||12}:${String(d.getMinutes()).padStart(2,"0")}${h<12?"am":"pm"}`;
+}
 function getToday(){const d=new Date();if(d.getDay()===0){d.setDate(d.getDate()+1);}return d;}
 function App(){
   const today=getToday();
@@ -267,7 +272,7 @@ function App(){
   }
   const DAY_NAMES=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   const FULL_MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
-  const refreshStr=`${lastRefresh.getHours()}:${String(lastRefresh.getMinutes()).padStart(2,"0")}`;
+  const refreshStr=clockTime(lastRefresh.getTime());
   return React.createElement("div",{className:"app"},
     React.createElement("div",{className:"hero"},
       React.createElement("div",{className:"hero-circle"},
@@ -335,7 +340,7 @@ function App(){
                             React.createElement("div",{className:"member-info"},
                               React.createElement("div",{className:"member-name"},bk.name),
                               bk.checked_in&&bk.checked_in_at&&React.createElement("div",{className:"member-checkin-time"},
-                                `Checked in ${new Date(bk.checked_in_at).getHours()}:${String(new Date(bk.checked_in_at).getMinutes()).padStart(2,"0")}`
+                                "Checked in "+clockTime(bk.checked_in_at)
                               )
                             )
                           ),
@@ -343,7 +348,7 @@ function App(){
                             className:`checkin-btn ${bk.checked_in?"undo":"do"}`,
                             onClick:()=>toggleCheckIn(bk),
                             disabled:!!busy[bk.id]
-                          },busy[bk.id]?"...":bk.checked_in?"Undo":"Check In")
+                          },busy[bk.id]?"...":bk.checked_in?"UNDO":"CHECK IN")
                         ))
                   )
                 );
