@@ -74,9 +74,9 @@ body{font-family:'DM Sans',sans-serif;color:#fff}
 /* Slots */
 .slot-list{display:flex;flex-direction:column;gap:7px;margin-bottom:20px}
 .slot-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#141414;border:1px solid #666;border-radius:0;cursor:pointer;transition:all .15s}
-.slot-row:hover:not(.full):not(.past){border-color:#333}
+.slot-row:hover:not(.off):not(.past){border-color:#333}
 .slot-row.sel{border-color:#fff;background:#111}
-.slot-row.full{opacity:0.3;cursor:default}
+.slot-row.off{cursor:default}
 .slot-row.past{opacity:0.2;cursor:default;pointer-events:none}
 .slot-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;min-width:72px}
 .slot-mid{flex:1}
@@ -86,11 +86,18 @@ body{font-family:'DM Sans',sans-serif;color:#fff}
 .slot-info{font-size:10px;letter-spacing:0.1em;font-weight:500}
 .slot-info.av{color:#aaa}
 .slot-info.lo{color:#e06040}
-.slot-info.fl{color:#444}
+.slot-info.fl{color:#555}
 .slot-info.ok{color:#1d9bf0}
-.slot-radio{width:18px;height:18px;border-radius:50%;border:1.5px solid #2a2a2a;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
-.slot-row.sel .slot-radio{border-color:#fff;background:#fff}
-.slot-radio-dot{width:8px;height:8px;border-radius:50%;background:#000}
+.slot-info.bk{color:#e06040}
+.slot-info.soon{font-size:9px;letter-spacing:0.02em;color:#555}
+/* Session name line + Book button — same as the app */
+.slot-name{font-size:11px;letter-spacing:0.08em;color:#aaa;font-weight:500}
+.slot-sess{font-size:7px;letter-spacing:0.12em;color:#1d9bf0;font-weight:600;margin-top:1px}
+.slot-btn{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:0.12em;padding:8px 12px;border-radius:0;border:none;cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.slot-btn.sb-book{background:#fff;color:#000}
+.slot-btn.sb-book:hover:not(:disabled){background:#ddd}
+.slot-btn.sb-off{background:transparent;color:#555;border:1px solid #2a2a2a;cursor:default;font-size:10px}
+.slot-btn:disabled{opacity:.4;cursor:not-allowed}
 /* Form */
 .form-group{margin-bottom:14px}
 .fl{display:block;font-size:10px;letter-spacing:0.18em;color:#bbb;font-weight:600;margin-bottom:7px}
@@ -417,40 +424,42 @@ function BookingWidget(){
               const full=left===0;
               const low=left<=3&&left>0;
               return React.createElement("div",{key:time,
-                className:`slot-row${selTime===time?" sel":""}${full?" full":""}`,
+                className:`slot-row${selTime===time?" sel":""}${full?" off":""}`,
                 onClick:()=>{if(!full)setSelTime(time);}},
                 React.createElement("div",{style:{display:"flex",flexDirection:"column",minWidth:72}},
                   React.createElement("div",{className:"slot-time",style:{minWidth:"unset"}},fmt12(time)),
-                  React.createElement("div",{style:{fontSize:7,letterSpacing:"0.12em",color:"#555",fontWeight:600,marginTop:1}},(getSlotName(time,selDK)||sessName).toUpperCase())
+                  React.createElement("div",{className:"slot-sess"},(getSlotName(time,selDK)||sessName).toUpperCase())
                 ),
                 React.createElement("div",{className:"slot-mid"},
                   React.createElement("div",{className:"slot-bars"},
                     Array.from({length:Math.min(maxSp,20)}).map((_,i)=>React.createElement("div",{key:i,className:`slot-bar${i<taken?" t":""}`}))
                   ),
                   React.createElement("div",{className:`slot-info ${full?"fl":low?"lo":"av"}`},
-                    full?"Full":`${left} spot${left===1?"":"s"} available`
+                    full?"Full":`${left} ${left===1?"Spot":"Spots"} Available`
                   )
                 ),
-                !full&&React.createElement("div",{className:"slot-radio"},
-                  selTime===time&&React.createElement("div",{className:"slot-radio-dot"})
-                )
+                full
+                  ?React.createElement("button",{className:"slot-btn sb-off",disabled:true},"Full")
+                  :React.createElement("button",{className:"slot-btn sb-book",onClick:e=>{e.stopPropagation();setSelTime(time);}},"Book")
               );
             }else{
               const taken=wellSlotTaken(time);
               const tooSoon=within24h(selDK,time);
               const blk=taken||tooSoon;
               return React.createElement("div",{key:time,
-                className:`slot-row${selTime===time?" sel":""}${blk?" full":""}`,
+                className:`slot-row${selTime===time?" sel":""}${blk?" off":""}`,
                 onClick:()=>{if(!blk)setSelTime(time);}},
                 React.createElement("div",{className:"slot-time"},fmt12(time)),
                 React.createElement("div",{className:"slot-mid"},
-                  React.createElement("div",{className:`slot-info ${blk?"fl":"ok"}`},
-                    taken?"Unavailable":tooSoon?"Closed · book 24h ahead":"Available"
+                  React.createElement("div",{className:"slot-name"},"SAUNA & COLD PLUNGE"),
+                  React.createElement("div",{className:`slot-info ${taken?"bk":tooSoon?"soon":"ok"}`},
+                    taken?"Booked":tooSoon?"Bookings are required at least 24 hours in advance.":"Available"
                   )
                 ),
-                !blk&&React.createElement("div",{className:"slot-radio"},
-                  selTime===time&&React.createElement("div",{className:"slot-radio-dot"})
-                )
+                taken
+                  ?React.createElement("button",{className:"slot-btn sb-off",disabled:true},"Booked")
+                  :tooSoon?null
+                  :React.createElement("button",{className:"slot-btn sb-book",onClick:e=>{e.stopPropagation();setSelTime(time);}},"Book")
               );
             }
           })

@@ -47,17 +47,24 @@ html,body{background:#080808;color:#fff;font-family:'DM Sans',sans-serif}
 /* Slot list */
 .slot-list{display:flex;flex-direction:column;gap:7px;margin-bottom:20px}
 .slot-row{display:flex;align-items:center;gap:10px;padding:14px 16px;background:#141414;border:1px solid #666;border-radius:0;cursor:pointer;transition:all .15s}
-.slot-row:hover:not(.unavail):not(.past){border-color:#333}
+.slot-row:hover:not(.off):not(.past){border-color:#333}
 .slot-row.sel{border-color:#fff;background:#111}
-.slot-row.unavail{opacity:0.3;cursor:default}
+.slot-row.off{cursor:default}
 .slot-row.past{opacity:0.2;cursor:default;pointer-events:none}
 .slot-time{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;min-width:80px}
-.slot-avail{flex:1;font-size:10px;letter-spacing:0.12em;font-weight:600}
+.slot-mid{flex:1}
+.slot-name{font-size:11px;letter-spacing:0.08em;color:#aaa;font-weight:500}
+.slot-avail{font-size:10px;letter-spacing:0.12em;font-weight:600;margin-top:2px}
 .slot-avail.av{color:#1d9bf0}
+.slot-avail.bk{color:#e06040}
 .slot-avail.un{color:#444}
-.slot-radio{width:18px;height:18px;border-radius:50%;border:1.5px solid #2a2a2a;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
-.slot-row.sel .slot-radio{border-color:#fff;background:#fff}
-.slot-radio-dot{width:8px;height:8px;border-radius:50%;background:#000}
+.slot-avail.soon{font-size:9px;letter-spacing:0.02em;font-weight:500;color:#555}
+/* Book button — same as the app */
+.slot-btn{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:0.12em;padding:8px 12px;border-radius:0;border:none;cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.slot-btn.sb-book{background:#fff;color:#000}
+.slot-btn.sb-book:hover:not(:disabled){background:#ddd}
+.slot-btn.sb-off{background:transparent;color:#555;border:1px solid #2a2a2a;cursor:default;font-size:10px}
+.slot-btn:disabled{opacity:.4;cursor:not-allowed}
 /* Summary */
 .summ{background:#141414;border:1px solid #666;border-radius:0;padding:16px;margin-bottom:20px}
 .summ-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #111}
@@ -95,7 +102,6 @@ html,body{background:#080808;color:#fff;font-family:'DM Sans',sans-serif}
 .load-bar{width:80px;height:1px;background:#1a1a1a;border-radius:0;overflow:hidden;margin:12px auto 0}
 .load-fill{height:100%;background:#fff;animation:ld 1.5s ease-in-out infinite}
 @keyframes ld{0%{width:0}50%{width:100%}100%{width:0}}
-.w-foot{text-align:center;font-size:7px;letter-spacing:0.18em;color:#2a2a2a;margin-top:32px}
 </style>
 </head>
 <body>
@@ -305,10 +311,17 @@ function WellnessWidget(){
             const past=isPastSlot(selDate,time);
             const tooSoon=!past&&within24h(selDK,time);
             const blocked=taken||past||tooSoon;
-            return React.createElement("div",{key:time,className:`slot-row${selTime===time?" sel":""}${(taken||tooSoon)?" unavail":""}${past?" past":""}`,onClick:()=>{if(!blocked)setSelTime(time);}},
+            return React.createElement("div",{key:time,className:`slot-row${selTime===time?" sel":""}${(taken||tooSoon)?" off":""}${past?" past":""}`,onClick:()=>{if(!blocked)setSelTime(time);}},
               React.createElement("div",{className:"slot-time"},fmt12(time)),
-              React.createElement("div",{className:`slot-avail ${blocked?"un":"av"}`},taken?"Unavailable":tooSoon?"Closed · book 24h ahead":"Available"),
-              !blocked&&React.createElement("div",{className:"slot-radio"},selTime===time&&React.createElement("div",{className:"slot-radio-dot"}))
+              React.createElement("div",{className:"slot-mid"},
+                React.createElement("div",{className:"slot-name"},"SAUNA & COLD PLUNGE"),
+                React.createElement("div",{className:`slot-avail ${taken?"bk":tooSoon?"soon":"av"}`},
+                  taken?"Booked":tooSoon?"Bookings are required at least 24 hours in advance.":"Available")
+              ),
+              taken
+                ?React.createElement("button",{className:"slot-btn sb-off",disabled:true},"Booked")
+                :(past||tooSoon)?null
+                :React.createElement("button",{className:"slot-btn sb-book",onClick:e=>{e.stopPropagation();setSelTime(time);}},"Book")
             );
           })
         ),
@@ -375,8 +388,7 @@ function WellnessWidget(){
       ),
       conf.payment==="online"&&React.createElement("button",{className:"btn-p",style:{marginTop:4},onClick:()=>window.open(SHOPIFY_PAY_URL,"_blank")},"COMPLETE PAYMENT →"),
       React.createElement("button",{className:"btn-g",style:{marginTop:conf.payment==="online"?0:4},onClick:resetGuest},"BOOK ANOTHER SESSION")
-    ),
-    React.createElement("div",{className:"w-foot"},"COMMITMENT. CONSISTENCY. DETERMINATION.")
+    )
   );
 }
 ReactDOM.render(React.createElement(WellnessWidget),document.getElementById("root"));
