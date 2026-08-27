@@ -162,6 +162,30 @@ const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"]
 const SAT_TIMES=["06:30","07:30","08:30","09:30"];
 const MAX_SPOTS=16;
 const DEFAULT_DOW_NAMES={1:"RISE UP",2:"STRENGTH LOWER",3:"ASCEND",4:"STRENGTH UPPER",5:"ELEVATE",6:"SUMMIT"};
+// ── Recurring class rules · __CLASS_DOW__ ────────────────────────────────────
+// Same engine as the app, so a recurring class shows at the desk too.
+function classRuleActive(r,dk){
+  if(!r||!r.time)return false;
+  if(r.from&&dk<r.from)return false;
+  if(r.until&&dk>r.until)return false;
+  return true;
+}
+function classRulesOn(classDow,dk,kind){
+  const dow=new Date(dk+"T00:00:00").getDay();
+  return ((((classDow||{})[dow])||{})[kind]||[]).filter(r=>classRuleActive(r,dk));
+}
+function classAddRule(classDow,dk,time){
+  return classRulesOn(classDow,dk,"add").find(r=>r.time===time)||null;
+}
+function classTimesFor(dk,baseTimes,dateAdds,dateHides,classDow){
+  const rAdd=classRulesOn(classDow,dk,"add").map(r=>r.time);
+  const rHide=classRulesOn(classDow,dk,"hide").map(r=>r.time);
+  return [...new Set([...baseTimes,...rAdd,...(dateAdds||[])])]
+    .filter(t=>(dateAdds||[]).includes(t)||!rHide.includes(t))
+    .filter(t=>!(dateHides||[]).includes(t))
+    .sort();
+}
+
 function toDS(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
 function fmt12(t){if(!t)return"";const[h,m]=t.split(":").map(Number);const ampm=h<12?"AM":"PM";const h12=h===0?12:h>12?h-12:h;return`${h12}:${String(m).padStart(2,"0")} ${ampm}`;}
 function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r;}
@@ -174,6 +198,7 @@ function App(){
   const [classLimits,setClassLimits]=useState({});
   const [slotNames,setSlotNames]=useState({});
   const [dowNames,setDowNames]=useState(DEFAULT_DOW_NAMES);
+  const [classDow,setClassDow]=useState({});
   const [loading,setLoading]=useState(true);
   const [expandedSlot,setExpandedSlot]=useState(null);
   const [busy,setBusy]=useState({});
@@ -182,6 +207,9 @@ function App(){
   useEffect(()=>{
     sbGet("coaching_notes","class_name=eq.__DOW_NAMES__&select=content&limit=1").then(rows=>{
       if(rows&&rows[0]){try{const dn=JSON.parse(rows[0].content);setDowNames(p=>({...p,...dn}));}catch{}}
+    });
+    sbGet("coaching_notes","class_name=eq.__CLASS_DOW__&select=content&limit=1").then(rows=>{
+      if(rows&&rows[0]){try{const cd=JSON.parse(rows[0].content);if(cd&&typeof cd==="object")setClassDow(cd);}catch{}}
     });
   },[]);
   const selDK=toDS(selDate);
@@ -209,10 +237,16 @@ function App(){
   useEffect(()=>{loadData();},[loadData]);
   useEffect(()=>{const id=setInterval(()=>loadData(),180000);return()=>clearInterval(id);},[loadData]);
   const baseTimes=isSat?SAT_TIMES:WD_TIMES;
-  const extraTimes=Object.keys(classLimits).filter(t=>!baseTimes.includes(t));
-  const allTimes=[...baseTimes,...extraTimes].sort().filter(t=>(classLimits[t]??MAX_SPOTS)>0);
+  const rowTimes=Object.keys(classLimits);
+  const allTimes=classTimesFor(selDK,baseTimes,
+    rowTimes.filter(t=>classLimits[t]>0),
+    rowTimes.filter(t=>classLimits[t]===0),
+    classDow);
   function getClassName(time){
-    return slotNames[time]||dowNames[dayOfWeek]||"";
+    if(slotNames[time])return slotNames[time];
+    const rule=classAddRule(classDow,selDK,time);
+    if(rule&&rule.name)return rule.name;
+    return dowNames[dayOfWeek]||"";
   }
   async function toggleCheckIn(bk){
     if(busy[bk.id])return;
@@ -265,7 +299,8 @@ function App(){
             :allTimes.map(time=>{
                 const list=bookings.filter(b=>b.time===time);
                 const taken=list.length;
-                const maxSp=classLimits[time]||MAX_SPOTS;
+                const ruleCls=classAddRule(classDow,selDK,time);
+                const maxSp=classLimits[time]||(ruleCls&&ruleCls.spots)||MAX_SPOTS;
                 const checkedCount=list.filter(b=>b.checked_in).length;
                 const isExpanded=expandedSlot===time;
                 const className=getClassName(time);

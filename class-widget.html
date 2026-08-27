@@ -151,6 +151,30 @@ const SHOPIFY_PAY_URL="https://www.lamontcollective.com/products/casual-gym-sess
 const MAX_SPOTS=16;
 const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
 const SAT_TIMES=["06:30","07:30","08:30","09:30"];
+// ── Recurring class rules · __CLASS_DOW__ ────────────────────────────────────
+// Same engine as the app. Rules sit alongside class_limits; a class_limits row
+// for an exact date always wins (max_spots 0 = hidden for that date).
+function classRuleActive(r,dk){
+  if(!r||!r.time)return false;
+  if(r.from&&dk<r.from)return false;
+  if(r.until&&dk>r.until)return false;
+  return true;
+}
+function classRulesOn(classDow,dk,kind){
+  const dow=new Date(dk+"T00:00:00").getDay();
+  return ((((classDow||{})[dow])||{})[kind]||[]).filter(r=>classRuleActive(r,dk));
+}
+function classAddRule(classDow,dk,time){
+  return classRulesOn(classDow,dk,"add").find(r=>r.time===time)||null;
+}
+function classTimesFor(dk,baseTimes,dateAdds,dateHides,classDow){
+  const rAdd=classRulesOn(classDow,dk,"add").map(r=>r.time);
+  const rHide=classRulesOn(classDow,dk,"hide").map(r=>r.time);
+  return [...new Set([...baseTimes,...rAdd,...(dateAdds||[])])]
+    .filter(t=>(dateAdds||[]).includes(t)||!rHide.includes(t))
+    .filter(t=>!(dateHides||[]).includes(t))
+    .sort();
+}
 const DAY_SHORT=["Mon","Tue","Wed","Thu","Fri","Sat"];
 const DAY_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -209,6 +233,7 @@ function ClassWidget(){
   const[classLimits,setClassLimits]=useState([]);
   // Dynamic class names from DB
   const[dowNames,setDowNames]=useState({1:"RISE UP",2:"STRENGTH LOWER",3:"ASCEND",4:"STRENGTH UPPER",5:"ELEVATE",6:"SUMMIT"});
+  const[classDow,setClassDow]=useState({});
 
   const weekDates=Array.from({length:6},(_,i)=>addDays(weekStart,i));
   const isThisWeek=toDS(weekStart)===toDS(mondayOf(new Date()));
@@ -237,30 +262,39 @@ function ClassWidget(){
         try{const dn=JSON.parse(data[0].content);setDowNames(p=>({...p,...dn}));}catch{}
       }
     });
+    sbGet("coaching_notes","class_name=eq.__CLASS_DOW__&select=content").then(data=>{
+      if(data&&data.length&&data[0].content){
+        try{const cd=JSON.parse(data[0].content);if(cd&&typeof cd==="object")setClassDow(cd);}catch{}
+      }
+    });
   },[]);
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
   function getMaxSpots(time,dateKey){
     const cl=classLimits.find(l=>l.time_slot===time&&l.date_key===dateKey);
-    return cl!==undefined?cl.max_spots:MAX_SPOTS;
+    if(cl!==undefined)return cl.max_spots;
+    const rule=classAddRule(classDow,dateKey,time); // recurring class carries its own capacity
+    if(rule&&rule.spots)return rule.spots;
+    return MAX_SPOTS;
   }
 
   // Returns per-slot name override if set, otherwise falls back to day-of-week class name
   function getSlotName(time,dateKey){
     const cl=classLimits.find(l=>l.time_slot===time&&l.date_key===dateKey);
     if(cl&&cl.name)return cl.name;
+    const rule=classAddRule(classDow,dateKey,time);
+    if(rule&&rule.name)return rule.name;
     const dow=new Date(dateKey+"T00:00:00").getDay();
     return dowNames[dow]||"";
   }
 
   // Visible times for selected day: base times + any extras added in class_limits, filtered to exclude hidden (max_spots=0)
   const baseTimes=selDate.getDay()===6?SAT_TIMES:WD_TIMES;
-  const extraTimesForDay=classLimits
-    .filter(l=>l.date_key===selDK&&!baseTimes.includes(l.time_slot)&&l.max_spots>0)
-    .map(l=>l.time_slot);
-  const visibleTimes=[...baseTimes,...extraTimesForDay]
-    .sort()
-    .filter(t=>getMaxSpots(t,selDK)!==0);
+  const dayRows=classLimits.filter(l=>l.date_key===selDK);
+  const visibleTimes=classTimesFor(selDK,baseTimes,
+    dayRows.filter(l=>l.max_spots>0).map(l=>l.time_slot),
+    dayRows.filter(l=>l.max_spots===0).map(l=>l.time_slot),
+    classDow);
 
   const getBksFor=(dk,t)=>bookings.filter(b=>b.date_key===dk&&b.time===t);
   const userBooked=(dk,t)=>session&&getBksFor(dk,t).some(b=>b.email===session.email);
