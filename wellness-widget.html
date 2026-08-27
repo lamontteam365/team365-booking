@@ -375,7 +375,8 @@ function WellnessWidget(){
       ),
       conf.payment==="online"&&React.createElement("button",{className:"btn-p",style:{marginTop:4},onClick:()=>window.open(SHOPIFY_PAY_URL,"_blank")},"COMPLETE PAYMENT →"),
       React.createElement("button",{className:"btn-g",style:{marginTop:conf.payment==="online"?0:4},onClick:resetGuest},"BOOK ANOTHER SESSION")
-    )
+    ),
+    React.createElement("div",{className:"w-foot"},"COMMITMENT. CONSISTENCY. DETERMINATION.")
   );
 }
 ReactDOM.render(React.createElement(WellnessWidget),document.getElementById("root"));

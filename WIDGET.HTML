@@ -114,6 +114,7 @@ body{font-family:'DM Sans',sans-serif;color:#fff}
 .pay-icon{font-size:20px;margin-bottom:7px}
 .pay-name{font-size:11px;letter-spacing:0.1em;color:#ccc;font-weight:600}
 .pay-hint{font-size:9px;letter-spacing:0.06em;color:#444;margin-top:3px}
+.pay-hint.online-hint{color:#888}
 /* Buttons */
 .btn-p{width:100%;background:#fff;color:#000;border:none;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:0.18em;padding:17px;cursor:pointer;border-radius:0;transition:background .15s;margin-bottom:10px}
 .btn-p:hover:not(:disabled){background:#ddd}
@@ -166,6 +167,10 @@ const MAX_SPOTS=16;
 const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
 const SAT_TIMES=["06:30","07:30","08:30","09:30"];
 const WELL_TIMES=["06:00","08:00","10:00","12:00","14:00","16:00","18:00"];
+// Shopify checkout pages for guests paying online.
+const SHOPIFY_PAY_WELLNESS="https://www.lamontcollective.com/products/sauna-cold-plunge";
+const SHOPIFY_PAY_CLASS="https://www.lamontcollective.com/products/casual-gym-session";
+const shopifyPayUrl=type=>type==="class"?SHOPIFY_PAY_CLASS:SHOPIFY_PAY_WELLNESS;
 // How far ahead guests may book. Must match the app.
 const BOOKING_WEEKS=12;
 const BOOKING_DAYS=BOOKING_WEEKS*7;
@@ -322,7 +327,8 @@ function BookingWidget(){
     const bookingData={guestName:nm,guestEmail:em,guestPhone:ph||"N/A",bookingType:bookType==="class"?`Class – ${sessName}`:"Sauna + Cold Plunge",dateLabel,timeLabel,bookingRef:ref,payment:payment==="gym"?"Pay at gym":"Online"};
     notifyAdmin(bookingData);
     notifyGuest(bookingData);
-    setConf({ref,nm,em,type:bookType,dateLabel,timeLabel,sessName:bookType==="class"?sessName:null});
+    if(payment==="online")window.open(shopifyPayUrl(bookType),"_blank");
+    setConf({ref,nm,em,type:bookType,dateLabel,timeLabel,sessName:bookType==="class"?sessName:null,payment});
     setStep(3);setBusy(false);
   }
   function reset(){
@@ -488,22 +494,25 @@ function BookingWidget(){
           React.createElement("div",{className:"pay-name"},"PAY AT GYM"),
           React.createElement("div",{className:"pay-hint"},"Pay when you arrive")
         ),
-        React.createElement("div",{className:"pay-opt dim"},
+        React.createElement("div",{className:`pay-opt clickable${payment==="online"?" sel":""}`,onClick:()=>setPayment("online")},
           React.createElement("div",{className:"pay-icon"},"💳"),
           React.createElement("div",{className:"pay-name"},"PAY ONLINE"),
-          React.createElement("div",{className:"pay-hint"},"Coming soon")
+          React.createElement("div",{className:"pay-hint online-hint"},"Pay now via Shopify")
         )
       ),
       err&&React.createElement("div",{className:"err-msg"},err),
-      React.createElement("button",{className:"btn-p",onClick:handleBook,disabled:busy||!form.name.trim()||!form.email.trim()},busy?"CONFIRMING…":"CONFIRM BOOKING"),
+      React.createElement("button",{className:"btn-p",onClick:handleBook,disabled:busy||!form.name.trim()||!form.email.trim()},
+        busy?(payment==="online"?"RESERVING SLOT…":"CONFIRMING…"):(payment==="online"?"RESERVE & PAY ONLINE":"CONFIRM BOOKING")),
       React.createElement("button",{className:"btn-g",onClick:goBack},"BACK")
     ),
     // ── STEP 3: Confirmation ────────────────────────────────────────────────────
     step===3&&conf&&React.createElement("div",{className:"conf"},
-      React.createElement("div",{className:"conf-icon"},"✅"),
-      React.createElement("div",{className:"conf-title"},"BOOKING CONFIRMED"),
+      React.createElement("div",{className:"conf-icon"},conf.payment==="online"?"💳":"✅"),
+      React.createElement("div",{className:"conf-title"},conf.payment==="online"?"SLOT RESERVED":"BOOKING CONFIRMED"),
       React.createElement("div",{className:"conf-msg"},
-        `You're booked in for ${conf.timeLabel} on ${conf.dateLabel}${conf.sessName?` — ${conf.sessName}`:""}.\nWe've sent a confirmation to ${conf.em}.`
+        conf.payment==="online"
+          ?"Your slot is reserved. Complete payment in the Shopify tab that just opened — your booking is confirmed once payment is done."
+          :`You're booked in for ${conf.timeLabel} on ${conf.dateLabel}${conf.sessName?` — ${conf.sessName}`:""}.\nWe've sent a confirmation to ${conf.em}.`
       ),
       React.createElement("div",{className:"ref-box"},
         React.createElement("div",{className:"ref-lbl"},"YOUR BOOKING REFERENCE"),
@@ -524,10 +533,12 @@ function BookingWidget(){
           React.createElement("div",{className:"summ-lbl"},"TIME"),React.createElement("div",{className:"summ-val"},conf.timeLabel)
         ),
         React.createElement("div",{className:"summ-row"},
-          React.createElement("div",{className:"summ-lbl"},"PAYMENT"),React.createElement("div",{className:"summ-val"},"PAY AT THE GYM")
+          React.createElement("div",{className:"summ-lbl"},"PAYMENT"),
+          React.createElement("div",{className:"summ-val"},conf.payment==="online"?"PAY ONLINE (SHOPIFY)":"PAY AT THE GYM")
         )
       ),
-      React.createElement("button",{className:"btn-p",onClick:reset},"BOOK ANOTHER SESSION")
+      conf.payment==="online"&&React.createElement("button",{className:"btn-p",style:{marginTop:4},onClick:()=>window.open(shopifyPayUrl(conf.type),"_blank")},"COMPLETE PAYMENT →"),
+      React.createElement("button",{className:conf.payment==="online"?"btn-g":"btn-p",onClick:reset},"BOOK ANOTHER SESSION")
     ),
     React.createElement("div",{className:"w-foot"},"COMMITMENT. CONSISTENCY. DETERMINATION.")
   );
