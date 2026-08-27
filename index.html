@@ -780,8 +780,6 @@ function ImageCropper({imageSrc,onSave,onCancel}){
 }
 // ── Member Profile Overlay (Admin) ────────────────────────────────────────────
 function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,isMaster,mfPasteAI,selfEmail,canManageWk}){
-  const upcomingBks=bookings.filter(b=>b.email===member.email&&b.date_key>=toDS(new Date())).length;
-  const attendedBks=bookings.filter(b=>b.email===member.email&&b.date_key<toDS(new Date())).length;
   const joinDate=fmtJoinDate(member.joined_at);
   const PARQ_LABELS=["Heart condition","Chest pain during activity","Chest pain at rest","Dizziness/loss of consciousness","Bone or joint problem","Blood pressure medication","Other reason to avoid activity"];
   const PARQ_KEYS=["parq_heart","parq_chest_activity","parq_chest_rest","parq_dizziness","parq_joint","parq_blood_pressure","parq_other"];
@@ -875,18 +873,34 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
   }
   // ── Concession pass (admin controls) ──
   const [concInfo,setConcInfo]=useState(null); // {checkins, baseline}
+  // ATTENDED means checked in at the desk — the same thing MY BOOKINGS counts.
+  // It used to count "date is in the past" from the forward-only window, which
+  // holds no past dates, so it always read 0.
+  const attendedBks=(concInfo&&concInfo.checkins)||0;
+  const upcomingBks=concInfo?concInfo.upcoming
+    :bookings.filter(b=>b.email===member.email&&b.date_key>=toDS(new Date())).length;
+  const totalBks=concInfo?concInfo.total:attendedBks+upcomingBks;
   const [concActive,setConcActive]=useState(isConcessionActive(member));
   const [concBusy,setConcBusy]=useState(false);
   const [concMsg,setConcMsg]=useState("");
   useEffect(()=>{
     if(!currentUserIsAdmin)return;
     (async()=>{
-      const [ci,base]=await Promise.all([
-        sbGet("bookings",`email=eq.${encodeURIComponent(member.email)}&checked_in=is.true&select=date_key`),
+      // Every booking this member has ever had — not the forward-only window the
+      // main app keeps in memory, which has no past dates in it at all.
+      const [all,base]=await Promise.all([
+        sbGet("bookings",`email=eq.${encodeURIComponent(member.email)}&select=date_key,checked_in`),
         sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__CONCESSION__"+member.email)}&select=content`)
       ]);
       let b=0;if(base&&base.length&&base[0].content){try{b=parseInt(JSON.parse(base[0].content).baseline)||0;}catch{}}
-      setConcInfo({checkins:(ci||[]).length,baseline:b});
+      const rows=all||[];
+      const today=toDS(new Date());
+      setConcInfo({
+        checkins:rows.filter(r=>r.checked_in).length,
+        baseline:b,
+        total:rows.length,
+        upcoming:rows.filter(r=>r.date_key>=today).length
+      });
     })();
   },[]);
   async function writeConcBaseline(b){
@@ -1053,7 +1067,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
           React.createElement("div",{className:"adm-stat-lbl"},"UPCOMING")
         ),
         React.createElement("div",{className:"adm-stat"},
-          React.createElement("div",{className:"adm-stat-num"},attendedBks+upcomingBks),
+          React.createElement("div",{className:"adm-stat-num"},totalBks),
           React.createElement("div",{className:"adm-stat-lbl"},"TOTAL")
         )
       ),
@@ -7848,6 +7862,7 @@ function App(){
   const isMaster=session?.email===ADMIN_EMAIL;
   const [mFlags,setMFlags]=useState({wk:true,welladm:true,sc:true,aibuild:true});
   const [concCheckins,setConcCheckins]=useState(0);
+  const [myAllBks,setMyAllBks]=useState([]);
   const [concBase,setConcBase]=useState(0);
   const workoutsEnabled=memberData?.workouts_enabled===true;
   const routinesEnabled=memberData?.routines_enabled===true;
@@ -7981,22 +7996,26 @@ function App(){
     const data=await sbGet("bookings",`date_key=gte.${from}&date_key=lte.${to}&select=email,name,date_key,time,session_type,checked_in`);
     setBookings(data||[]);
   }
-  // Concession card: load this member's all-time class check-ins + their card baseline.
+  // This member's whole booking history — used by the MY BOOKINGS tiles and by
+  // the concession card. refreshBookings only loads forward from today, so
+  // anything already attended is absent from it.
   useEffect(()=>{
-    if(!session||isAdmin||!isConcessionActive(memberData)){setConcCheckins(0);setConcBase(0);return;}
+    if(!session){setConcCheckins(0);setConcBase(0);setMyAllBks([]);return;}
     let cancelled=false;
     (async()=>{
-      const [ci,base]=await Promise.all([
-        sbGet("bookings",`email=eq.${encodeURIComponent(session.email)}&checked_in=is.true&select=date_key`),
+      const [all,base]=await Promise.all([
+        sbGet("bookings",`email=eq.${encodeURIComponent(session.email)}&select=date_key,checked_in`),
         sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__CONCESSION__"+session.email)}&select=content`)
       ]);
       if(cancelled)return;
-      setConcCheckins((ci||[]).length);
+      const rows=all||[];
+      setMyAllBks(rows);
+      setConcCheckins(rows.filter(r=>r.checked_in).length);
       let b=0;if(base&&base.length&&base[0].content){try{b=parseInt(JSON.parse(base[0].content).baseline)||0;}catch{}}
       setConcBase(b);
     })();
     return ()=>{cancelled=true;};
-  },[session,isAdmin,memberData&&memberData.concession,memberData&&memberData.membership_type]);
+  },[session,isAdmin,memberData&&memberData.concession,memberData&&memberData.membership_type,bookings]);
   // Per-member access: admins see all; null = full/legacy; else only tabs listed are visible.
   const acc=id=>isAdmin||memberAccess===null||memberAccess.includes(id);
   // Concession card state (member side): credits = 10 minus (attended since baseline) minus (upcoming reserved).
@@ -8627,15 +8646,11 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       classesEnabled&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"adm-stats-row",style:{marginBottom:18}},
         React.createElement("div",{className:"adm-stat"},
-          React.createElement("div",{className:"adm-stat-num"},
-            session?bookings.filter(b=>b.email===session.email).length:0
-          ),
+          React.createElement("div",{className:"adm-stat-num"},myAllBks.length),
           React.createElement("div",{className:"adm-stat-lbl"},"CLASSES BOOKED")
         ),
         React.createElement("div",{className:"adm-stat"},
-          React.createElement("div",{className:"adm-stat-num"},
-            session?bookings.filter(b=>b.email===session.email&&b.checked_in).length:0
-          ),
+          React.createElement("div",{className:"adm-stat-num"},concCheckins),
           React.createElement("div",{className:"adm-stat-lbl"},"CLASSES ATTENDED")
         ),
         React.createElement("div",{className:"adm-stat"},

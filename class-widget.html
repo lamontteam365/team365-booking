@@ -138,7 +138,6 @@ html,body{background:#080808;color:#fff;font-family:'DM Sans',sans-serif}
 .guest-notice{background:#0a0a0a;border:1px solid #1a1a1a;border-radius:0;padding:12px 14px;margin-bottom:16px;font-size:10px;letter-spacing:0.06em;color:#555;line-height:1.7}
 .guest-notice a{color:#888;text-decoration:underline;text-underline-offset:3px}
 .guest-notice a:hover{color:#fff}
-.w-foot{text-align:center;font-size:7px;letter-spacing:0.18em;color:#2a2a2a;margin-top:32px}
 </style>
 </head>
 <body>
@@ -567,8 +566,7 @@ function ClassWidget(){
         conf.payment==="online"&&React.createElement("button",{className:"btn-p",style:{marginTop:4},onClick:()=>window.open(SHOPIFY_PAY_URL,"_blank")},"COMPLETE PAYMENT →"),
         React.createElement("button",{className:"btn-g",style:{marginTop:conf.payment==="online"?0:4},onClick:resetGuest},"BOOK ANOTHER CLASS")
       )
-    ),
-    React.createElement("div",{className:"w-foot"},"COMMITMENT. CONSISTENCY. DETERMINATION.")
+    )
   );
 }
 ReactDOM.render(React.createElement(ClassWidget),document.getElementById("root"));
