@@ -1831,14 +1831,13 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   }
 
   // ── Add a session time ──────────────────────────────────────────────────────
-  function wsAddTime(time,weeks,ongoing){
-    if(!time)return;
+  async function wsAddTime(time,weeks,ongoing){
+    if(!time)return false;
     if(wdIsSingle(weeks,ongoing)){
       const cur={...(wellSlots||{})};
       const o={...(cur[admDK]||{})};const add=new Set(o.add||[]);add.add(time);
       cur[admDK]={...o,add:[...add],hide:(o.hide||[]).filter(t=>t!==time)};
-      if(saveWellSlots)saveWellSlots(cur);
-      return;
+      return saveWellSlots?await saveWellSlots(cur):false;
     }
     const cur=JSON.parse(JSON.stringify(wellDow||{}));
     const k=String(admDOW);
@@ -1847,19 +1846,19 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
     o.add.push({time,from:admDK,until:wdUntilFor(weeks,ongoing)});
     o.hide=(o.hide||[]).filter(r=>r.time!==time);
     cur[k]=o;
-    if(saveWellDow)saveWellDow(cur);
+    const ok=saveWellDow?await saveWellDow(cur):false;
     // Clear stale per-date hides on this weekday so the new rule actually shows.
-    if(saveWellSlots)saveWellSlots(wsStripDates({...(wellSlots||{})},time,["hide"]));
+    if(ok&&saveWellSlots)await saveWellSlots(wsStripDates({...(wellSlots||{})},time,["hide"]));
+    return ok;
   }
 
   // ── Hide a session time ─────────────────────────────────────────────────────
-  function wsHideTime(time,weeks,ongoing){
+  async function wsHideTime(time,weeks,ongoing){
     if(wdIsSingle(weeks,ongoing)){
       const cur={...(wellSlots||{})};
       const o={...(cur[admDK]||{})};const h=new Set(o.hide||[]);h.add(time);
       cur[admDK]={...o,hide:[...h],add:(o.add||[]).filter(t=>t!==time)};
-      if(saveWellSlots)saveWellSlots(cur);
-      return;
+      return saveWellSlots?await saveWellSlots(cur):false;
     }
     const cur=JSON.parse(JSON.stringify(wellDow||{}));
     const k=String(admDOW);
@@ -1867,15 +1866,16 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
     o.hide=(o.hide||[]).filter(r=>r.time!==time);
     o.hide.push({time,from:admDK,until:wdUntilFor(weeks,ongoing)});
     cur[k]=o;
-    if(saveWellDow)saveWellDow(cur);
+    const ok=saveWellDow?await saveWellDow(cur):false;
     // A per-date add would out-rank the rule — clear those on this weekday.
-    if(saveWellSlots)saveWellSlots(wsStripDates({...(wellSlots||{})},time,["add"]));
+    if(ok&&saveWellSlots)await saveWellSlots(wsStripDates({...(wellSlots||{})},time,["add"]));
+    return ok;
   }
 
   // ── Turn a hidden time back on ──────────────────────────────────────────────
   // scope "date" brings back this one date and leaves any rule running.
   // scope "all" ends the recurring hide entirely.
-  function wsShowTime(time,scope){
+  async function wsShowTime(time,scope){
     const ruleHidden=!!wellRuleFor(wellDow,admDOW,time,"hide");
     if(scope==="date"){
       const cur={...(wellSlots||{})};
@@ -1883,23 +1883,24 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
       const nextAdd=new Set(o.add||[]);
       if(ruleHidden)nextAdd.add(time); // per-date add out-ranks the rule hide
       cur[admDK]={...o,hide:(o.hide||[]).filter(t=>t!==time),add:[...nextAdd]};
-      if(saveWellSlots)saveWellSlots(cur);
-      return;
+      return saveWellSlots?await saveWellSlots(cur):false;
     }
     const cur=JSON.parse(JSON.stringify(wellDow||{}));
     const k=String(admDOW);
     if(cur[k])cur[k].hide=(cur[k].hide||[]).filter(r=>r.time!==time);
-    if(saveWellDow)saveWellDow(cur);
-    if(saveWellSlots)saveWellSlots(wsStripDates({...(wellSlots||{})},time,["hide"]));
+    const ok=saveWellDow?await saveWellDow(cur):false;
+    if(ok&&saveWellSlots)await saveWellSlots(wsStripDates({...(wellSlots||{})},time,["hide"]));
+    return ok;
   }
 
   // ── Remove a custom time altogether ─────────────────────────────────────────
-  function wsRemoveCustom(time){
+  async function wsRemoveCustom(time){
     const cur=JSON.parse(JSON.stringify(wellDow||{}));
     const k=String(admDOW);
     if(cur[k])cur[k].add=(cur[k].add||[]).filter(r=>r.time!==time);
-    if(saveWellDow)saveWellDow(cur);
-    if(saveWellSlots)saveWellSlots(wsStripDates({...(wellSlots||{})},time,["add","hide"]));
+    const ok=saveWellDow?await saveWellDow(cur):false;
+    if(ok&&saveWellSlots)await saveWellSlots(wsStripDates({...(wellSlots||{})},time,["add","hide"]));
+    return ok;
   }
 
   // Bookings that already sit inside a hide range, so we can warn before hiding.
@@ -2367,7 +2368,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
                     setWellShowTime(null);setWellHideTime(null);
                     if(hidden){
                       if(ruleHiddenNow&&!dateHidden)setWellShowTime(time);   // rule is hiding it — ask
-                      else wsShowTime(time,"date");                          // just this date's hide
+                      else wsShowTime(time,"date");                         // just this date's hide
                     }else{
                       setWellHideWeeks("1");setWellHideOngoing(false);setWellHideTime(time);
                     }
@@ -2392,9 +2393,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
                         const tail=hits.length===1?"Hide anyway? The booking stays in the system — you'll need to contact them.":"Hide anyway? The bookings stay in the system — you'll need to contact them.";
                         if(!window.confirm(head+"\n\n"+lines+more+"\n\n"+tail))return;
                       }
-                      wsHideTime(time,wellHideWeeks,wellHideOngoing);
-                      setWellHideTime(null);
-                      showToast("Session hidden ✓");
+                      const okHide=await wsHideTime(time,wellHideWeeks,wellHideOngoing);
+                      if(okHide){setWellHideTime(null);showToast("Session hidden ✓");}
                     },
                     style:{flex:2,background:wellHideBusy?"#1a1a1a":"#fff",color:wellHideBusy?"#444":"#000",border:"none",borderRadius:0,padding:"9px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:wellHideBusy?"default":"pointer"}},wellHideBusy?"CHECKING…":"HIDE SESSION")
                 )
@@ -2402,8 +2402,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
               showingThis&&React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #2a2a2a",borderTop:"none",borderRadius:0,padding:"14px",marginBottom:7}},
                 React.createElement("div",{style:{fontSize:8,color:"#555",letterSpacing:"0.08em",lineHeight:1.6,marginBottom:10}},fmt12(time)+" is hidden "+wellRuleLabel(hideRule).toLowerCase()+" on every "+DAYS_FULL[admDOW]+". Bring back just this date, or turn it back on for good?"),
                 React.createElement("div",{style:{display:"flex",gap:8}},
-                  React.createElement("button",{onClick:()=>{wsShowTime(time,"date");setWellShowTime(null);showToast("Back on for this date ✓");},style:{flex:1,background:"none",border:"1px solid #333",borderRadius:0,padding:"9px",color:"#aaa",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",cursor:"pointer"}},"JUST THIS DATE"),
-                  React.createElement("button",{onClick:()=>{wsShowTime(time,"all");setWellShowTime(null);showToast("Turned back on ✓");},style:{flex:1,background:"#fff",color:"#000",border:"none",borderRadius:0,padding:"9px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",cursor:"pointer"}},"TURN BACK ON")
+                  React.createElement("button",{onClick:async()=>{const ok=await wsShowTime(time,"date");if(ok){setWellShowTime(null);showToast("Back on for this date ✓");}},style:{flex:1,background:"none",border:"1px solid #333",borderRadius:0,padding:"9px",color:"#aaa",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",cursor:"pointer"}},"JUST THIS DATE"),
+                  React.createElement("button",{onClick:async()=>{const ok=await wsShowTime(time,"all");if(ok){setWellShowTime(null);showToast("Turned back on ✓");}},style:{flex:1,background:"#fff",color:"#000",border:"none",borderRadius:0,padding:"9px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",cursor:"pointer"}},"TURN BACK ON")
                 )
               )
             );
@@ -2416,7 +2416,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
                 React.createElement("div",{style:{marginTop:10}},wkCtl(wellAddWeeks,setWellAddWeeks,wellAddOngoing,setWellAddOngoing)),
                 React.createElement("div",{style:{display:"flex",gap:8,marginTop:12}},
                   React.createElement("button",{onClick:()=>setAddingWell(false),style:{flex:1,background:"none",border:"1px solid #333",borderRadius:0,padding:"9px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
-                  React.createElement("button",{disabled:!wellNewTime,onClick:()=>{if(!wellNewTime)return;wsAddTime(wellNewTime,wellAddWeeks,wellAddOngoing);setAddingWell(false);showToast("Time added ✓");},style:{flex:2,background:wellNewTime?"#fff":"#1a1a1a",color:wellNewTime?"#000":"#444",border:"none",borderRadius:0,padding:"9px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:wellNewTime?"pointer":"default"}},"ADD TIME")
+                  React.createElement("button",{disabled:!wellNewTime,onClick:async()=>{if(!wellNewTime)return;const ok=await wsAddTime(wellNewTime,wellAddWeeks,wellAddOngoing);if(ok){setAddingWell(false);showToast("Time added ✓");}},style:{flex:2,background:wellNewTime?"#fff":"#1a1a1a",color:wellNewTime?"#000":"#444",border:"none",borderRadius:0,padding:"9px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:wellNewTime?"pointer":"default"}},"ADD TIME")
                 )
             ),
           React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,margin:"20px 0 10px"}},"BOOKINGS"),
@@ -7935,22 +7935,36 @@ function App(){
     if(dow in dowLimits)return dowLimits[dow]; // whole-weekday default capacity
     return MAX_SPOTS;
   }
+  // Write a settings row to coaching_notes and REPORT whether it stuck.
+  // The old code ignored the result, so a refused write looked like a success:
+  // local state updated, the toast said "saved", nothing reached the database.
+  async function saveNote(className,payload){
+    const body=typeof payload==="string"?payload:JSON.stringify(payload);
+    const q="class_name=eq."+encodeURIComponent(className);
+    const existing=await sbGet("coaching_notes",q+"&select=class_name");
+    if(existing&&existing.length)return await sbPatch("coaching_notes",q,{content:body,updated_at:Date.now()});
+    return await sbPost("coaching_notes",{class_name:className,content:body,updated_at:Date.now()});
+  }
+  // Roll local state back and say so, rather than leaving the screen lying.
+  function noteFailed(revert,what){
+    if(revert)revert();
+    showToast("Couldn't save "+what+" — nothing changed");
+    return false;
+  }
   async function saveDowLimit(dow,spots){
-    const n=parseInt(spots);if(isNaN(n)||n<1)return;
-    const newMap={...dowLimits,[dow]:n};
+    const n=parseInt(spots);if(isNaN(n)||n<1)return false;
+    const prev=dowLimits;const newMap={...dowLimits,[dow]:n};
     setDowLimits(newMap);
-    const existing=await sbGet("coaching_notes","class_name=eq.__DOW_LIMITS__&select=class_name");
-    if(existing&&existing.length){await sbPatch("coaching_notes","class_name=eq.__DOW_LIMITS__",{content:JSON.stringify(newMap),updated_at:Date.now()});}
-    else{await sbPost("coaching_notes",{class_name:"__DOW_LIMITS__",content:JSON.stringify(newMap),updated_at:Date.now()});}
+    const ok=await saveNote("__DOW_LIMITS__",newMap);
+    return ok||noteFailed(()=>setDowLimits(prev),"day capacity");
   }
   async function saveDowSlotLimit(dow,time,spots){
-    const n=parseInt(spots);const k=dow+":"+time;const newMap={...dowSlotLimits};
-    if(isNaN(n)||n<1)return;
-    newMap[k]=n;
+    const n=parseInt(spots);const k=dow+":"+time;
+    if(isNaN(n)||n<1)return false;
+    const prev=dowSlotLimits;const newMap={...dowSlotLimits};newMap[k]=n;
     setDowSlotLimits(newMap);
-    const existing=await sbGet("coaching_notes","class_name=eq.__DOW_SLOT_LIMITS__&select=class_name");
-    if(existing&&existing.length){await sbPatch("coaching_notes","class_name=eq.__DOW_SLOT_LIMITS__",{content:JSON.stringify(newMap),updated_at:Date.now()});}
-    else{await sbPost("coaching_notes",{class_name:"__DOW_SLOT_LIMITS__",content:JSON.stringify(newMap),updated_at:Date.now()});}
+    const ok=await saveNote("__DOW_SLOT_LIMITS__",newMap);
+    return ok||noteFailed(()=>setDowSlotLimits(prev),"slot capacity");
   }
   async function saveClassLimit(time,dateKey,spots){
     const n=parseInt(spots);if(isNaN(n)||n<1)return;
@@ -8017,20 +8031,18 @@ function App(){
     return dowNames[dow]||"";
   }
   async function saveDowName(dow,name){
-    const newDn={...dowNames,[dow]:name.toUpperCase()};
+    const prev=dowNames;const newDn={...dowNames,[dow]:name.toUpperCase()};
     setDowNames(newDn);
-    const existing=await sbGet("coaching_notes","class_name=eq.__DOW_NAMES__&select=class_name");
-    if(existing&&existing.length){await sbPatch("coaching_notes","class_name=eq.__DOW_NAMES__",{content:JSON.stringify(newDn),updated_at:Date.now()});}
-    else{await sbPost("coaching_notes",{class_name:"__DOW_NAMES__",content:JSON.stringify(newDn),updated_at:Date.now()});}
+    const ok=await saveNote("__DOW_NAMES__",newDn);
+    return ok||noteFailed(()=>setDowNames(prev),"class name");
   }
   async function saveDowSlotName(dow,time,name){
-    const k=dow+":"+time;const newMap={...dowSlotNames};
+    const k=dow+":"+time;const prev=dowSlotNames;const newMap={...dowSlotNames};
     const v=(name||"").trim().toUpperCase();
     if(v)newMap[k]=v;else delete newMap[k];
     setDowSlotNames(newMap);
-    const existing=await sbGet("coaching_notes","class_name=eq.__DOW_SLOT_NAMES__&select=class_name");
-    if(existing&&existing.length){await sbPatch("coaching_notes","class_name=eq.__DOW_SLOT_NAMES__",{content:JSON.stringify(newMap),updated_at:Date.now()});}
-    else{await sbPost("coaching_notes",{class_name:"__DOW_SLOT_NAMES__",content:JSON.stringify(newMap),updated_at:Date.now()});}
+    const ok=await saveNote("__DOW_SLOT_NAMES__",newMap);
+    return ok||noteFailed(()=>setDowSlotNames(prev),"slot name");
   }
   async function saveWellSlots(next){
     // next: full overrides object keyed by date_key. Prune empty entries.
@@ -8039,10 +8051,10 @@ function App(){
       const o=next[dk]||{};const hide=(o.hide||[]).filter(Boolean);const add=(o.add||[]).filter(Boolean);
       if(hide.length||add.length)clean[dk]={hide,add};
     });
+    const prev=wellSlots;
     setWellSlots(clean);
-    const existing=await sbGet("coaching_notes","class_name=eq.__WELL_SLOTS__&select=class_name");
-    if(existing&&existing.length){await sbPatch("coaching_notes","class_name=eq.__WELL_SLOTS__",{content:JSON.stringify(clean),updated_at:Date.now()});}
-    else{await sbPost("coaching_notes",{class_name:"__WELL_SLOTS__",content:JSON.stringify(clean),updated_at:Date.now()});}
+    const ok=await saveNote("__WELL_SLOTS__",clean);
+    return ok||noteFailed(()=>setWellSlots(prev),"this date");
   }
   async function saveWellDow(next){
     // next: { "<0-6>": { add:[{time,from,until}], hide:[{time,from,until}] } }
@@ -8054,16 +8066,16 @@ function App(){
       const hide=(o.hide||[]).filter(r=>r&&r.time);
       if(add.length||hide.length)clean[dow]={add,hide};
     });
+    const prev=wellDow;
     setWellDow(clean);
-    const existing=await sbGet("coaching_notes","class_name=eq.__WELL_DOW__&select=class_name");
-    if(existing&&existing.length){await sbPatch("coaching_notes","class_name=eq.__WELL_DOW__",{content:JSON.stringify(clean),updated_at:Date.now()});}
-    else{await sbPost("coaching_notes",{class_name:"__WELL_DOW__",content:JSON.stringify(clean),updated_at:Date.now()});}
+    const ok=await saveNote("__WELL_DOW__",clean);
+    return ok||noteFailed(()=>setWellDow(prev),"the repeat");
   }
   async function saveMilestoneConfig(cfg){
+    const prev=milestoneConfig;
     setMilestoneConfig(cfg);
-    const existing=await sbGet("coaching_notes","class_name=eq.__MILESTONE_CONFIG__&select=class_name");
-    if(existing&&existing.length){await sbPatch("coaching_notes","class_name=eq.__MILESTONE_CONFIG__",{content:JSON.stringify(cfg),updated_at:Date.now()});}
-    else{await sbPost("coaching_notes",{class_name:"__MILESTONE_CONFIG__",content:JSON.stringify(cfg),updated_at:Date.now()});}
+    const ok=await saveNote("__MILESTONE_CONFIG__",cfg);
+    return ok||noteFailed(()=>setMilestoneConfig(prev),"milestones");
   }
   function isPastClass(time){
     if(isPastD(selDate))return true;if(!isToday(selDate))return false;
