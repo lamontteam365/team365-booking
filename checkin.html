@@ -162,6 +162,14 @@ const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"]
 const SAT_TIMES=["06:30","07:30","08:30","09:30"];
 const MAX_SPOTS=16;
 const DEFAULT_DOW_NAMES={1:"RISE UP",2:"STRENGTH LOWER",3:"ASCEND",4:"STRENGTH UPPER",5:"ELEVATE",6:"SUMMIT"};
+// ── Hero background · __BG__PROFILE__ ────────────────────────────────────────
+// Follows whatever the master admin picks in the app header. The Strength
+// library is already dark, so a chosen image renders untinted; with nothing
+// picked the stylesheet's stock photo and tint stay exactly as they are.
+const PROFILE_BG_KEY="__BG__PROFILE__";
+const HERO_BG_BASE="https://raw.githubusercontent.com/lamontteam365/team365-booking/main/images/";
+const heroBgUrl=n=>n?`${HERO_BG_BASE}Strength-${n}.jpg`:null;
+
 // ── Recurring class rules · __CLASS_DOW__ ────────────────────────────────────
 // Same engine as the app, so a recurring class shows at the desk too.
 function classRuleActive(r,dk){
@@ -204,6 +212,7 @@ function App(){
   const [slotNames,setSlotNames]=useState({});
   const [dowNames,setDowNames]=useState(DEFAULT_DOW_NAMES);
   const [classDow,setClassDow]=useState({});
+  const [heroBg,setHeroBg]=useState("");
   const [loading,setLoading]=useState(true);
   const [expandedSlot,setExpandedSlot]=useState(null);
   const [busy,setBusy]=useState({});
@@ -215,6 +224,9 @@ function App(){
     });
     sbGet("coaching_notes","class_name=eq.__CLASS_DOW__&select=content&limit=1").then(rows=>{
       if(rows&&rows[0]){try{const cd=JSON.parse(rows[0].content);if(cd&&typeof cd==="object")setClassDow(cd);}catch{}}
+    });
+    sbGet("coaching_notes","class_name=eq."+encodeURIComponent(PROFILE_BG_KEY)+"&select=content&limit=1").then(rows=>{
+      if(rows&&rows[0])setHeroBg((rows[0].content||"").trim());
     });
   },[]);
   const selDK=toDS(selDate);
@@ -274,7 +286,8 @@ function App(){
   const FULL_MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
   const refreshStr=clockTime(lastRefresh.getTime());
   return React.createElement("div",{className:"app"},
-    React.createElement("div",{className:"hero"},
+    React.createElement("div",{className:"hero",
+      style:heroBg?{backgroundImage:`url("${heroBgUrl(heroBg)}")`}:undefined},
       React.createElement("div",{className:"hero-circle"},
         React.createElement("img",{
           src:"https://raw.githubusercontent.com/lamontteam365/team365-booking/main/icon-192.png",

@@ -4940,6 +4940,19 @@ const SC_COL_LABEL={Core:"CORE ACTIVATION",Main:"MAIN EXERCISE",Mobility:"MOBILI
 // "https://raw.githubusercontent.com/<username>/<repo>/main/<folder>/"
 const SC_BG_BASE="https://raw.githubusercontent.com/lamontteam365/team365-booking/main/images/";
 const scBgUrl=n=>SC_BG_BASE?`${SC_BG_BASE}Strength-${n}.jpg`:null;
+// ── Profile / hero background · __BG__PROFILE__ ──────────────────────────────
+// Master admin picks a number; every hero uses it. The Strength library is
+// already pre-darkened (nothing brighter than ~90/255), so a chosen image is
+// rendered WITHOUT a tint. The stock hero below is a brighter photo, so when
+// nothing is picked each surface keeps the tint it has always had.
+const PROFILE_BG_KEY="__BG__PROFILE__";
+const HERO_DEFAULT="https://raw.githubusercontent.com/lamontteam365/team365-booking/main/images/671a9a90865c3673c895b473f6d1feed.jpg";
+// tint: the gradient this surface uses for the stock photo, e.g. "rgba(8,8,8,0.80),rgba(8,8,8,0.80)"
+function heroStyle(bgNum,tint,position){
+  const pos=position||"center";
+  if(bgNum)return {backgroundImage:`url("${scBgUrl(bgNum)}")`,backgroundSize:"cover",backgroundPosition:pos};
+  return {backgroundImage:`linear-gradient(${tint}),url("${HERO_DEFAULT}")`,backgroundSize:"cover",backgroundPosition:pos};
+}
 function loadHtml2Canvas(){
   if(window.html2canvas)return Promise.resolve();
   if(window.__h2cLoading)return window.__h2cLoading;
@@ -7853,6 +7866,7 @@ function App(){
   const [wellSlots,setWellSlots]=useState({});
   const [wellDow,setWellDow]=useState({});
   const [classDow,setClassDow]=useState({});
+  const [profileBg,setProfileBg]=useState("");
   const [repeatWeeks,setRepeatWeeks]=useState(1);
   const [milestoneConfig,setMilestoneConfig]=useState({interval:25,label:"classes completed — keep it up!"});
   const photoRef=useRef(null);
@@ -7954,6 +7968,8 @@ function App(){
       if(wdData&&wdData.length){try{const wd=JSON.parse(wdData[0].content);if(wd&&typeof wd==="object")setWellDow(wd);}catch{}}
       const cdData=await sbGet("coaching_notes","class_name=eq.__CLASS_DOW__&select=content");
       if(cdData&&cdData.length){try{const cd=JSON.parse(cdData[0].content);if(cd&&typeof cd==="object")setClassDow(cd);}catch{}}
+      const pbData=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(PROFILE_BG_KEY)+"&select=content");
+      if(pbData&&pbData.length)setProfileBg((pbData[0].content||"").trim());
       const mcData=await sbGet("coaching_notes","class_name=eq.__MILESTONE_CONFIG__&select=content");
       if(mcData&&mcData.length){try{const mc=JSON.parse(mcData[0].content);setMilestoneConfig(p=>({...p,...mc}));}catch{}}
       const mfData=await sbGet("coaching_notes","class_name=eq.__MFLAGS__&select=content");
@@ -8372,6 +8388,12 @@ function App(){
     const ok=await saveNote("__WELL_DOW__",clean);
     return ok||noteFailed(()=>setWellDow(prev),"the repeat");
   }
+  async function saveProfileBg(val){
+    const prev=profileBg;
+    setProfileBg(val);
+    const ok=await saveNote(PROFILE_BG_KEY,String(val||""));
+    return ok||noteFailed(()=>setProfileBg(prev),"the background");
+  }
   async function saveClassDow(next){
     // next: { "<0-6>": { add:[{time,spots,name,from,until}], hide:[{time,from,until}] } }
     const clean={};
@@ -8500,7 +8522,20 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
   );
   return React.createElement("div",{className:"app",onTouchStart:handleTouchStart,onTouchEnd:handleTouchEnd},
     cropSrc&&React.createElement(ImageCropper,{imageSrc:cropSrc,onSave:handleCropSave,onCancel:()=>setCropSrc(null)}),
-    React.createElement("div",{className:"hdr",style:{paddingBottom:0,backgroundImage:"linear-gradient(rgba(8,8,8,0.80),rgba(8,8,8,0.80)),url(\"https://raw.githubusercontent.com/lamontteam365/team365-booking/main/images/671a9a90865c3673c895b473f6d1feed.jpg\")",backgroundSize:"cover",backgroundPosition:"center top"}},
+    React.createElement("div",{className:"hdr",style:{paddingBottom:0,position:"relative",...heroStyle(profileBg,"rgba(8,8,8,0.80),rgba(8,8,8,0.80)","center top")}},
+      // Background picker — master admin only. Absolutely positioned so the
+      // header's three-part layout underneath is untouched.
+      isMaster&&React.createElement("select",{
+        value:profileBg,
+        onChange:e=>saveProfileBg(e.target.value),
+        title:"Header background — same Strength images the S&C posters use",
+        style:{position:"absolute",top:6,right:6,zIndex:3,background:"rgba(0,0,0,0.55)",color:"#888",
+               border:"1px solid #2a2a2a",borderRadius:0,fontSize:8,letterSpacing:"0.06em",
+               padding:"2px 3px",width:38,height:18,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",outline:"none"}
+      },
+        React.createElement("option",{value:""},"BG"),
+        Array.from({length:30},(_,i)=>i+1).map(n=>React.createElement("option",{key:n,value:String(n)},n))
+      ),
       React.createElement("div",{style:{display:"flex",alignItems:"center",padding:"30px 4px 30px",position:"relative",minHeight:140}},
         React.createElement("div",{style:{flex:1,paddingLeft:0,zIndex:1}},
           React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:8,fontWeight:700,color:"#fff",letterSpacing:"0.04em",lineHeight:1.3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},session.name.toUpperCase()),

@@ -242,6 +242,13 @@ function classTimesFor(dk,baseTimes,dateAdds,dateHides,classDow){
     .filter(t=>!(dateHides||[]).includes(t))
     .sort();
 }
+// ── Hero background · __BG__PROFILE__ ────────────────────────────────────────
+// Whatever the master admin picks in the app's header appears here too. The
+// Strength library is already dark, so a chosen image renders untinted; with
+// nothing picked this keeps the stock photo and the tint in the stylesheet.
+const PROFILE_BG_KEY="__BG__PROFILE__";
+const HERO_BG_BASE="https://raw.githubusercontent.com/lamontteam365/team365-booking/main/images/";
+const heroBgUrl=n=>n?`${HERO_BG_BASE}Strength-${n}.jpg`:null;
 const DAY_SHORT=["Mon","Tue","Wed","Thu","Fri","Sat"];
 const DAY_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const DAY_SESS=["Rise Up","Strength Lower","Ascend","Strength Upper","Elevate","Summit"];
@@ -270,6 +277,18 @@ async function sbPostStatus(t,d){
     return r.ok?{ok:true}:{ok:false,duplicate:r.status===409,status:r.status};
   }catch{return {ok:false,duplicate:false,status:0};}
 }
+// Apply the shared hero background once it loads. The hero lives outside React,
+// so this paints the node directly; until then the stylesheet's stock image shows.
+(async()=>{
+  try{
+    const d=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(PROFILE_BG_KEY)+"&select=content");
+    const n=(d&&d.length&&(d[0].content||"").trim())||"";
+    if(!n)return;
+    const el=document.querySelector(".hero");
+    if(el)el.style.backgroundImage=`url("${heroBgUrl(n)}")`;
+  }catch{}
+})();
+
 // ── Notify admin ───────────────────────────────────────────────────────────────
 async function notifyAdmin(data){
   try{
