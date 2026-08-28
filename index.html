@@ -394,7 +394,7 @@ html,body{background:#080808;min-height:100vh}
 .sp-month-lbl{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.14em;color:#fff}
 .fp-section{margin-top:16px;padding:14px;background:#0a0a0a;border:1px solid #888;border-radius:0}
 .fp-title{font-size:10px;letter-spacing:0.16em;color:#aaa;font-weight:600;margin-bottom:12px}
-.fp-msg{font-size:11px;color:#4aaa66;letter-spacing:0.04em;margin-top:10px;line-height:1.6}
+.fp-msg{font-size:11px;color:#1d9bf0;letter-spacing:0.04em;margin-top:10px;line-height:1.6}
 .fp-err{font-size:11px;color:#e06040;letter-spacing:0.04em;margin-top:10px}
 .fp-link{background:none;border:none;color:#555;font-family:'DM Sans',sans-serif;font-size:11px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;transition:color .15s;letter-spacing:0.04em;margin-top:6px;display:block;text-align:center}
 .fp-link:hover{color:#aaa}
@@ -2981,7 +2981,7 @@ function InviteForm(props){
     React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.1em",marginBottom:12,lineHeight:1.7}},description),
     React.createElement("input",{type:"email",placeholder:"member@email.com",value:email,onChange:e=>setEmail(e.target.value),onKeyDown:e=>{if(e.key==="Enter")send();},style:{width:"100%",background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ccc",fontSize:13,padding:"10px 12px",fontFamily:"'DM Sans',sans-serif",letterSpacing:"0.02em",boxSizing:"border-box",marginBottom:10,outline:"none"}}),
     React.createElement("button",{onClick:send,disabled:sending||!email.trim(),style:{width:"100%",background:email.trim()?"#1d9bf0":"#1a1a1a",border:"none",borderRadius:0,padding:"11px",color:email.trim()?"#fff":"#444",fontSize:10,letterSpacing:"0.14em",fontWeight:600,cursor:email.trim()?"pointer":"default",fontFamily:"'DM Sans',sans-serif",transition:"all .15s"}},sending?"SENDING...":buttonLabel),
-    msg&&React.createElement("div",{style:{marginTop:10,fontSize:10,letterSpacing:"0.1em",color:msg.startsWith("✓")?"#4aaa66":"#e05",textAlign:"center"}},msg)
+    msg&&React.createElement("div",{style:{marginTop:10,fontSize:10,letterSpacing:"0.1em",color:msg.startsWith("✓")?"#1d9bf0":"#e05",textAlign:"center"}},msg)
   );
 }
 function TrainingTierEditor({showToast}){
@@ -4705,7 +4705,7 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
                   React.createElement("button",{onClick:()=>{setEditingExName(ex.id);setExNameDraft(ex.name);},style:CS.editBtn},"RENAME"),
                   React.createElement("button",{
                     onClick:()=>toggleExercise(ex),
-                    style:{...CS.editBtn,color:ex.enabled?"#4aaa66":"#555",borderColor:ex.enabled?"#2a4a2a":"#2a2a2a"}
+                    style:{...CS.editBtn,color:ex.enabled?"#1d9bf0":"#555",borderColor:ex.enabled?"#1d3a5a":"#2a2a2a"}
                   },ex.enabled?"ON":"OFF"),
                   React.createElement("button",{onClick:()=>deleteExercise(ex),style:{...CS.editBtn,color:"#8a2515",borderColor:"#3a1208"}},"DELETE")
                 )
@@ -6904,12 +6904,12 @@ function MemberWorkoutAdmin({member,memberView,setMemberView,isMaster,mfPasteAI}
         React.createElement("span",{style:{marginLeft:"auto",fontSize:11,transform:ptCol?"rotate(-90deg)":"none",transition:"transform .15s"}},"▾")
       )
     ),
-    !ptCol&&setMemberView&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(memberView?"#1d5a34":"#222"),borderRadius:0,padding:"10px 12px",marginTop:10,marginBottom:6}},
+    !ptCol&&setMemberView&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(memberView?"#1d3a5a":"#222"),borderRadius:0,padding:"10px 12px",marginTop:10,marginBottom:6}},
       React.createElement("div",null,
         React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"MEMBER VIEW"),
         React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"See their program as they see it — with completed sets & past weeks")
       ),
-      React.createElement("button",{onClick:()=>setMemberView(v=>!v),style:{background:memberView?"#4aaa66":"#222",color:memberView?"#000":"#555",border:"1px solid "+(memberView?"#4aaa66":"#333"),borderRadius:0,padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},memberView?"ON":"OFF")
+      React.createElement("button",{onClick:()=>setMemberView(v=>!v),style:{background:memberView?"#1d9bf0":"#222",color:memberView?"#fff":"#555",border:"1px solid "+(memberView?"#1d9bf0":"#333"),borderRadius:0,padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},memberView?"ON":"OFF")
     ),
     !ptCol&&(memberView?React.createElement(MemberWorkoutReview,{email:member.email}):React.createElement(React.Fragment,null,
     React.createElement("div",{style:{marginBottom:12}},
@@ -7465,12 +7465,12 @@ function RoutinesAdmin({member,selfEmail}){
       React.createElement("span",{style:{fontSize:8,letterSpacing:"0.16em",fontWeight:700,color:"#000",background:"#c9a227",padding:"3px 7px"}},"COACH EDITING"),
       React.createElement("span",{style:{fontSize:8.5,letterSpacing:"0.06em",color:"#666"}},"Admin only — members never see this editing screen")
     ),
-    !rtCol&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(showTimes?"#1d5a34":"#222"),borderRadius:0,padding:"10px 12px",marginTop:10,marginBottom:6}},
+    !rtCol&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(showTimes?"#1d3a5a":"#222"),borderRadius:0,padding:"10px 12px",marginTop:10,marginBottom:6}},
       React.createElement("div",null,
         React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"MEMBER VIEW"),
         React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"See their routines and logged times as they see them")
       ),
-      React.createElement("button",{onClick:()=>setShowTimes(v=>!v),style:{background:showTimes?"#4aaa66":"#222",color:showTimes?"#000":"#555",border:"1px solid "+(showTimes?"#4aaa66":"#333"),borderRadius:0,padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},showTimes?"ON":"OFF")
+      React.createElement("button",{onClick:()=>setShowTimes(v=>!v),style:{background:showTimes?"#1d9bf0":"#222",color:showTimes?"#fff":"#555",border:"1px solid "+(showTimes?"#1d9bf0":"#333"),borderRadius:0,padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},showTimes?"ON":"OFF")
     ),
     !rtCol&&!showTimes&&React.createElement("div",{style:{marginBottom:12}},
       React.createElement("label",{style:{display:"block",fontSize:9,letterSpacing:"0.12em",color:"#666",marginBottom:4}},"THIS MEMBER'S TITLE — OVERRIDES GLOBAL"),
@@ -7507,8 +7507,8 @@ function RoutinesAdmin({member,selfEmail}){
           React.createElement("button",{onClick:()=>toggle(r.id),style:{background:"none",border:"none",color:"#000",fontSize:12,cursor:"pointer",transform:isOpen?"none":"rotate(-90deg)",transition:"transform .15s",padding:"0 2px",flexShrink:0}},"▾"),
           React.createElement("input",{value:r.title,onChange:e=>updR(r.id,"title",e.target.value),placeholder:"Routine title e.g. AMRAP 1",style:{flex:"1 1 auto",minWidth:40,background:"transparent",border:"none",color:"#000",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",outline:"none"}}),
           React.createElement("button",{onClick:()=>toggleVV(r),title:isSelf?"YOUR profile — toggles the VIDEO VIEW button for EVERYONE on this routine.":"Toggles the VIDEO VIEW button for THIS member on this routine.",style:{background:r.vvoff?"none":"#1d9bf0",border:"1px solid "+(r.vvoff?"#ccc":"#1d9bf0"),borderRadius:0,color:r.vvoff?"#888":"#fff",fontSize:8,fontWeight:600,letterSpacing:"0.02em",padding:"3px 5px",cursor:"pointer",flexShrink:0,fontFamily:"'DM Sans',sans-serif"}},r.vvoff?"VIDEO OFF":"VIDEO ON"),
-          React.createElement("button",{onClick:()=>updR(r.id,"hidden",!r.hidden),title:"Show or hide this routine for THIS member. Hiding keeps their logged times.",style:{background:r.hidden?"none":"#4aaa66",border:"1px solid "+(r.hidden?"#c9a227":"#4aaa66"),borderRadius:0,color:r.hidden?"#c9a227":"#fff",fontSize:8,fontWeight:600,letterSpacing:"0.02em",padding:"3px 5px",cursor:"pointer",flexShrink:0,fontFamily:"'DM Sans',sans-serif"}},r.hidden?"HIDDEN":"VISIBLE"),
-          React.createElement("button",{onClick:()=>updR(r.id,"mode",r.mode==="pillar"?"":"pillar"),title:"3-pillar targets (Commitment / Consistency / Determination). On = member picks a pillar; off = simple time only.",style:{background:r.mode==="pillar"?"#1d5a34":"none",border:"1px solid "+(r.mode==="pillar"?"#1d5a34":"#ccc"),borderRadius:0,color:r.mode==="pillar"?"#fff":"#666",fontSize:8,fontWeight:600,letterSpacing:"0.02em",padding:"3px 5px",cursor:"pointer",flexShrink:0,fontFamily:"'DM Sans',sans-serif"}},"3 PILLAR"),
+          React.createElement("button",{onClick:()=>updR(r.id,"hidden",!r.hidden),title:"Show or hide this routine for THIS member. Hiding keeps their logged times.",style:{background:r.hidden?"none":"#1d9bf0",border:"1px solid "+(r.hidden?"#c9a227":"#1d9bf0"),borderRadius:0,color:r.hidden?"#c9a227":"#fff",fontSize:8,fontWeight:600,letterSpacing:"0.02em",padding:"3px 5px",cursor:"pointer",flexShrink:0,fontFamily:"'DM Sans',sans-serif"}},r.hidden?"HIDDEN":"VISIBLE"),
+          React.createElement("button",{onClick:()=>updR(r.id,"mode",r.mode==="pillar"?"":"pillar"),title:"3-pillar targets (Commitment / Consistency / Determination). On = member picks a pillar; off = simple time only.",style:{background:r.mode==="pillar"?"#1d3a5a":"none",border:"1px solid "+(r.mode==="pillar"?"#1d3a5a":"#ccc"),borderRadius:0,color:r.mode==="pillar"?"#fff":"#666",fontSize:8,fontWeight:600,letterSpacing:"0.02em",padding:"3px 5px",cursor:"pointer",flexShrink:0,fontFamily:"'DM Sans',sans-serif"}},"3 PILLAR"),
           React.createElement("button",{onClick:()=>dupRoutine(r.id),title:"Duplicate routine",style:{background:"none",border:"1px solid #ccc",borderRadius:0,color:"#333",fontSize:11,padding:"2px 6px",cursor:"pointer",flexShrink:0}},"⧉"),
           React.createElement("button",{onClick:()=>removeRoutine(r.id),style:{background:"none",border:"1px solid #ccc",borderRadius:0,color:"#8a2515",fontSize:10,padding:"2px 6px",cursor:"pointer",flexShrink:0}},"✕")
         ),
