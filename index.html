@@ -4506,7 +4506,11 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
     setCommunityBestsMale(maleMap);setCommunityBestsFemale(femaleMap);
     const holderEmails=[...new Set([...Object.values(maleMap),...Object.values(femaleMap)].filter(c=>c&&c.holder_email).map(c=>c.holder_email))];
     if(holderEmails.length>0){
-      const photoData=await sbGet("members",`email=in.(${holderEmails.join(",")})&select=email,photo`);
+      // members_public, not members: the members table is "your own row or admin
+      // only", so a regular member got nothing back and every holder fell through
+      // to the initials circle. The public view carries the photo and is readable
+      // by any signed-in member — the notice board already reads it this way.
+      const photoData=await sbGet("members_public",`email=in.(${holderEmails.map(e=>encodeURIComponent(e)).join(",")})&select=email,photo`);
       const pMap={};
       (photoData||[]).forEach(m=>{if(m.photo)pMap[m.email]=m.photo;});
       setHolderPhotos(pMap);
