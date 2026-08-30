@@ -4154,7 +4154,7 @@ function CoachingView({showToast}){
   const [newRowName,setNewRowName]=useState("");
   const [savingRow,setSavingRow]=useState(false);
   const [removingGroup,setRemovingGroup]=useState(null);
-  const [showLib,setShowLib]=useState(false);
+  const [showLib,setShowLib]=useState(()=>(typeof window!=="undefined"&&typeof URLSearchParams!=="undefined")?new URLSearchParams(window.location.search).get("goto")==="library":false);
   useEffect(()=>{
     [...BASE_GROUPS.map(g=>g.label)].forEach(label=>{
       sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__EXTRA__"+label)+"&select=content")
@@ -7796,6 +7796,9 @@ function RoutinesView({session,ttl,isAdmin}){
     })))
   );
 }
+// Deep link: menu.html's LIBRARY EDITOR button opens straight to the Library Details editor
+// via ?goto=library, read once here so App() and CoachingView() can both check it at mount.
+const T365_DEEP_LINK=(typeof window!=="undefined"&&typeof URLSearchParams!=="undefined")?new URLSearchParams(window.location.search).get("goto"):null;
 function App(){
   const [ready,setReady]=useState(false);
   const [session,setSession]=useState(null);
@@ -7804,7 +7807,7 @@ function App(){
   const [memberPhotos,setMemberPhotos]=useState({});
   const [weekStart,setWeekStart]=useState(getWeekStart);
   const [selDay,setSelDay]=useState(getInitDay);
-  const [tab,setTab]=useState(()=>ssGet("t365-tab","community"));
+  const [tab,setTab]=useState(()=>T365_DEEP_LINK==="library"?"admin":ssGet("t365-tab","community"));
   useEffect(()=>{ssSet("t365-tab",tab);},[tab]);
   // Keep the active tab scrolled into view in both nav bars whenever the tab changes
   useEffect(()=>{
@@ -7817,7 +7820,7 @@ function App(){
     }catch(e){}
   },[tab]);
   const ADMIN_SEG_ORDER=["members","classes","wellness","scbuilder","sections","functions","onboarding","coaching"];
-  const [admSeg,setAdmSeg]=useState(()=>lsGet("t365-admseg","members"));
+  const [admSeg,setAdmSeg]=useState(()=>T365_DEEP_LINK==="library"?"coaching":lsGet("t365-admseg","members"));
   useEffect(()=>{lsSet("t365-admseg",admSeg);},[admSeg]);
   // Keep the active admin sub-section scrolled into view when it changes
   useEffect(()=>{
