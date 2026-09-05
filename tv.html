@@ -404,13 +404,14 @@ function buildFlow(name,rows,opts){
          var ccRight='<div class="r3col"><div class="st r3card kwcard"><div class="kwmid"><div class="kwlabel">CLASS COMPLETE IN</div><span class="timer bigtimer mid" data-secs="'+segsec+'" data-dir="down" data-adv="1" data-finalseg="1">'+mmss(segsec)+'</span></div></div></div>';
          S.push(screenWrap(motbar(scroll)+'<div class="cols">'+left+ccRight+'</div>'+clockbar({rlabel:rlab,rnum:rnum,rtot:rtot,ss:acc+si+1,sm:acc+si+1,tot:totStn,elapsed:segEl,total:total,sttime:segsec,stloop:false,roundtime:elapsed+rsec-segEl,adv:false,wname:wname}),'board r3board','data-final'));
        } else {
+         var _recFull = isRec(seg.exercise);
          var boardRight = nxt ? excard("COMING UP NEXT",nxt.exercise,nxt.maori,fmtMinShort(nxt.duration),nxt.c,nxt.o,nxt.d,true,true,true,null,null,"right")
-                              : previewcard(nextg.hdr.toUpperCase(),fmtMinLabel(nextg.dur||mmss(roundSum(nextg))),previewBody(dispG(nextg),pvStart(nextg,nextStart)),true);
-         S.push(screenWrap(motbar(scroll)+'<div class="cols">'+left+boardRight+'</div>'+clockbar({rlabel:rlab,rnum:rnum,rtot:rtot,ss:acc+si+1,sm:acc+si+1,tot:totStn,elapsed:segEl,total:total,sttime:segsec,stloop:false,roundtime:elapsed+rsec-segEl,adv:false,wname:wname})+'<span class="timer" data-secs="'+((nxt&&isRec(seg.exercise))?segsec:Math.max(1,segsec-30))+'" data-dir="down" data-adv="1"'+((nxt&&isRec(seg.exercise))?' data-warn="1"':'')+' style="display:none"></span>','board r3board','data-final'));
+                              : previewcard(nextg.hdr.toUpperCase(),fmtMinLabel(nextg.dur||mmss(roundSum(nextg))),previewBody(dispG(nextg),pvStart(nextg,nextStart)),!_recFull);
+         S.push(screenWrap(motbar(scroll)+'<div class="cols">'+left+boardRight+'</div>'+clockbar({rlabel:rlab,rnum:rnum,rtot:rtot,ss:acc+si+1,sm:acc+si+1,tot:totStn,elapsed:segEl,total:total,sttime:segsec,stloop:false,roundtime:elapsed+rsec-segEl,adv:false,wname:wname})+'<span class="timer" data-secs="'+(_recFull?segsec:Math.max(1,segsec-30))+'" data-dir="down" data-adv="1"'+(_recFull?' data-warn="1"':'')+' style="display:none"></span>','board r3board','data-final'));
          if(nxt&&!isRec(seg.exercise)){
            var kwRight=excard("COMING UP NEXT",nxt.exercise,nxt.maori,fmtMinShort(nxt.duration),nxt.c,nxt.o,nxt.d,true,true,false);
            S.push(screenWrap(motbar(scroll)+'<div class="cols">'+kwcard("KEEP WORKING","COMING UP NEXT",'data-secs="30" data-dir="down"')+kwRight+'</div>'+clockbar({rlabel:rlab,rnum:rnum,rtot:rtot,ss:acc+si+1,sm:acc+si+1,tot:totStn,elapsed:segEnd-30,total:total,sttime:30,stloop:false,roundtime:elapsed+rsec-(segEnd-30),adv:true,advon:"station",warn:true,wname:wname}),'board r3board','data-final data-warn30enter'));
-         } else if(!nxt){
+         } else if(!nxt&&!_recFull){
            S.push(transitionScreen(rlab,rnum,rtot,acc+si+1,totStn,segEnd-30,total,dispG(nextg),pvStart(nextg,nextStart),scroll,wname));
          }
        }
