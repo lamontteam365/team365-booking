@@ -58,6 +58,7 @@ html,body{background:#080808;min-height:100vh}
 .d-dot{width:4px;height:4px;border-radius:50%;background:transparent}
 .day-btn.dhb .d-dot{background:#666}
 .day-btn.da.dhb .d-dot{background:#888}
+.no-classes{text-align:center;padding:52px 0;font-size:11px;letter-spacing:0.2em;color:#444;font-weight:600;line-height:2.2}
 .cls-wrap{flex:1;padding:14px 16px;display:flex;flex-direction:column;gap:7px}
 .day-hdr{font-size:9px;letter-spacing:0.22em;font-weight:600;margin-bottom:6px;line-height:1.6}
 .day-hdr span{color:#fff}
@@ -577,6 +578,57 @@ const MAX_SPOTS=16;
 const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
 const SAT_TIMES=["06:30","07:30","08:30","09:30"];
 const WELL_TIMES=["06:00","08:00","10:00","12:00","14:00","16:00","18:00"];
+// ── Base timetable · __BASE_TIMES__ ──────────────────────────────────────────
+// Per-weekday base class times, keyed "0".."6" (Sunday = 0), edited in Admin and
+// stored in coaching_notes. Precedence is deliberate:
+//   record ABSENT  -> the legacy hardcoded timetable above applies, so a database
+//                     that has not been set up yet behaves exactly as it always did
+//   record PRESENT -> a weekday it does not mention has NO classes. That is what
+//                     "clear all" writes, and it is what makes an empty app possible.
+function dowOf(dk){return new Date(dk+"T00:00:00").getDay();}
+function baseTimesFor(bt,dk){
+  const dow=dowOf(dk);
+  if(!bt||typeof bt!=="object")return dow===0?[]:dow===6?SAT_TIMES:WD_TIMES;
+  return Array.isArray(bt[dow])?bt[dow]:[];
+}
+// ── Class resolver ───────────────────────────────────────────────────────────
+// ONE precedence chain for every property of a class, shared by the app, both
+// booking widgets and the check-in kiosk. Because every surface resolves a class
+// the same way, a class cannot look different depending on where it is seen.
+//   1. per-date row (class_limits)   2. recurring rule (__CLASS_DOW__)
+//   3. weekday default               4. system default
+// ctx = { classDow, dowNames, dowSlotNames, dateRow(dk,time) }
+// dateRow returns {max_spots,name,session_type,duration_min} for that exact
+// date+time, or null. Returns null when the class is hidden for that date.
+const DEFAULT_DURATION=60;
+// Before classes carried a type, Tuesday and Thursday were the Strength days.
+// Kept as the last-resort fallback so untyped rules and historic rows classify.
+const LEGACY_STRENGTH_DOWS=[2,4];
+function resolveClass(dk,time,ctx){
+  ctx=ctx||{};
+  const row=ctx.dateRow?ctx.dateRow(dk,time):null;
+  if(row&&row.max_spots===0)return null;
+  const rule=classAddRule(ctx.classDow,dk,time);
+  const dow=dowOf(dk);
+  const dsn=(ctx.dowSlotNames||{})[dow+":"+time];
+  return {
+    name:(row&&row.name)||dsn||(rule&&rule.name)||((ctx.dowNames||{})[dow])||"",
+    spots:(row&&row.max_spots)||(rule&&rule.spots)||((ctx.dowSlotLimits||{})[dow+":"+time])||((ctx.dowLimits||{})[dow])||MAX_SPOTS,
+    type:(row&&row.session_type)||(rule&&rule.type)||(LEGACY_STRENGTH_DOWS.indexOf(dow)>=0?"Strength":"HIIT"),
+    duration:(row&&row.duration_min)||(rule&&rule.duration)||DEFAULT_DURATION
+  };
+}
+
+// ── Wellness base timetable · __WELL_BASE_TIMES__ ────────────────────────────
+// Same contract as __BASE_TIMES__ above: absent = the legacy flat list (and no
+// Sunday, as before); present = a weekday it does not mention has no sessions.
+// Wellness keeps its own separate booking system — this shares only the pattern.
+function wellBaseTimesFor(bt,dk){
+  const dow=(typeof dowOf==="function"?dowOf(dk):new Date(dk+"T00:00:00").getDay());
+  if(!bt||typeof bt!=="object")return dow===0?[]:WELL_TIMES;
+  return Array.isArray(bt[dow])?bt[dow]:[];
+}
+
 // How far ahead members/guests may book. One number, used everywhere.
 const BOOKING_WEEKS=12;
 const BOOKING_DAYS=BOOKING_WEEKS*7;
@@ -599,14 +651,14 @@ function wellRuleActive(r,dk){
 //   base WELL_TIMES -> recurring adds -> recurring hides -> this date's add -> this date's hide
 // A per-date add therefore un-hides a slot a recurring rule hides, and a
 // per-date hide always wins.
-function wellTimesFor(dk,wellSlots,wellDow){
+function wellTimesFor(dk,wellSlots,wellDow,wellBase){
   const o=(wellSlots&&wellSlots[dk])||{};
   const dHide=o.hide||[];const dAdd=o.add||[];
   const dow=new Date(dk+"T00:00:00").getDay();
   const rules=(wellDow&&wellDow[dow])||{};
   const rAdd=(rules.add||[]).filter(r=>wellRuleActive(r,dk)).map(r=>r.time);
   const rHide=(rules.hide||[]).filter(r=>wellRuleActive(r,dk)).map(r=>r.time);
-  return [...new Set([...WELL_TIMES,...rAdd,...dAdd])]
+  return [...new Set([...wellBaseTimesFor(wellBase,dk),...rAdd,...dAdd])]
     .filter(t=>dAdd.includes(t)||!rHide.includes(t))
     .filter(t=>!dHide.includes(t))
     .sort();
@@ -671,9 +723,9 @@ function needsMoreNotice(dateKey,time){
   const start=new Date(dateKey+"T00:00:00");start.setHours(p[0]||0,p[1]||0,0,0);
   return (start.getTime()-Date.now())<BOOKING_NOTICE_HOURS*3600000;
 }
-const DAY_SHORT=["Mon","Tue","Wed","Thu","Fri","Sat"];
-const DAY_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-const DAY_SESS=["Rise Up","Strength Lower","Ascend","Strength Upper","Elevate","Summit"];
+const DAY_SHORT=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const DAY_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const DAY_SESS=["Rise Up","Strength Lower","Ascend","Strength Upper","Elevate","Summit","Session"];
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const MONTHS_FULL=["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
 const mondayOf=d=>{const x=new Date(d);x.setHours(0,0,0,0);const day=x.getDay();x.setDate(x.getDate()-(day===0?6:day-1));return x;};
@@ -719,18 +771,30 @@ const lsGet=(k,fb=null)=>{try{const v=localStorage.getItem(k);return v?JSON.pars
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
 const ssGet=(k,fb=null)=>{try{const v=sessionStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;}};
 const ssSet=(k,v)=>{try{sessionStorage.setItem(k,JSON.stringify(v));}catch{}};
-const getWeekStart=()=>{const now=new Date();const m=mondayOf(now);return now.getDay()===0?addDays(m,7):m;};
-const getInitDay=()=>{const d=new Date().getDay();return d===0?0:Math.min(d-1,5);};
+const getWeekStart=()=>mondayOf(new Date());
+const getInitDay=()=>{const d=new Date().getDay();return d===0?6:d-1;};
 function timeAgo(ts){const s=Math.floor((Date.now()-ts)/1000);if(s<60)return"just now";if(s<3600)return`${Math.floor(s/60)}m ago`;if(s<86400)return`${Math.floor(s/3600)}h ago`;return`${Math.floor(s/86400)}d ago`;}
 const fmtJoinDate=ts=>{if(!ts)return"Unknown";const d=new Date(ts);return`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;};
 // ── Membership tier limits ────────────────────────────────────────────────────
-function getTierLimits(membershipType){
+// Built-in tiers, used when __TIER_LIMITS__ has not been set up. Each entry is
+// matched against the member's membership_type by substring, in order, so the
+// stored record can rename or add tiers without a code change.
+// null = unlimited. Stored shape: [{match:"CORE",hiit:2,strength:1,wellness:1},...]
+const DEFAULT_TIER_LIMITS=[
+  {match:"SIGNATURE",hiit:null,strength:null,wellness:2},
+  {match:"DUO",hiit:null,strength:null,wellness:2},
+  {match:"CORE",hiit:2,strength:1,wellness:1},
+  {match:"COMMUNITY",hiit:3,strength:1,wellness:1},
+  {match:"ESSENTIAL",hiit:3,strength:1,wellness:1}
+];
+const FALLBACK_TIER={hiit:3,strength:1,wellness:1}; // Foundation and any other tier
+function getTierLimits(membershipType,overrides){
   if(!membershipType)return{hiit:0,strength:0,wellness:0};
   const mt=membershipType.toUpperCase();
-  if(mt.includes("SIGNATURE")||mt.includes("DUO"))return{hiit:null,strength:null,wellness:2};
-  if(mt.includes("CORE"))return{hiit:2,strength:1,wellness:1};
-  if(mt.includes("COMMUNITY")||mt.includes("ESSENTIAL"))return{hiit:3,strength:1,wellness:1};
-  return{hiit:3,strength:1,wellness:1}; // Foundation and any other tier
+  const table=Array.isArray(overrides)&&overrides.length?overrides:DEFAULT_TIER_LIMITS;
+  const hit=table.find(t=>t&&t.match&&mt.includes(String(t.match).toUpperCase()));
+  if(hit)return{hiit:hit.hiit,strength:hit.strength,wellness:hit.wellness};
+  return{...FALLBACK_TIER};
 }
 // ── Concession (10-class card) ──
 // A concession member holds a flat 10-class card and BYPASSES the weekly tier
@@ -779,7 +843,7 @@ function ImageCropper({imageSrc,onSave,onCancel}){
   );
 }
 // ── Member Profile Overlay (Admin) ────────────────────────────────────────────
-function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,isMaster,mfPasteAI,selfEmail,canManageWk}){
+function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,isMaster,mfPasteAI,selfEmail,canManageWk,setBookingExcused}){
   const joinDate=fmtJoinDate(member.joined_at);
   const PARQ_LABELS=["Heart condition","Chest pain during activity","Chest pain at rest","Dizziness/loss of consciousness","Bone or joint problem","Blood pressure medication","Other reason to avoid activity"];
   const PARQ_KEYS=["parq_heart","parq_chest_activity","parq_chest_rest","parq_dizziness","parq_joint","parq_blood_pressure","parq_other"];
@@ -883,13 +947,16 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
   const [concActive,setConcActive]=useState(isConcessionActive(member));
   const [concBusy,setConcBusy]=useState(false);
   const [concMsg,setConcMsg]=useState("");
+  const [noShows,setNoShows]=useState([]);
+  const [nsBusy,setNsBusy]=useState({});
+  const [showNs,setShowNs]=useState(false);
   useEffect(()=>{
     if(!currentUserIsAdmin)return;
     (async()=>{
       // Every booking this member has ever had — not the forward-only window the
       // main app keeps in memory, which has no past dates in it at all.
       const [all,base]=await Promise.all([
-        sbGet("bookings",`email=eq.${encodeURIComponent(member.email)}&select=date_key,checked_in`),
+        sbGet("bookings",`email=eq.${encodeURIComponent(member.email)}&select=id,date_key,time,checked_in,excused,session_type`),
         sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__CONCESSION__"+member.email)}&select=content`)
       ]);
       let b=0;if(base&&base.length&&base[0].content){try{b=parseInt(JSON.parse(base[0].content).baseline)||0;}catch{}}
@@ -901,6 +968,9 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
         total:rows.length,
         upcoming:rows.filter(r=>r.date_key>=today).length
       });
+      // A class that has been and gone with no check-in is a no-show.
+      setNoShows(rows.filter(r=>r.date_key<today&&!r.checked_in)
+                     .sort((a,b)=>a.date_key<b.date_key?1:-1));
     })();
   },[]);
   async function writeConcBaseline(b){
@@ -1069,6 +1139,44 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
         React.createElement("div",{className:"adm-stat"},
           React.createElement("div",{className:"adm-stat-num"},totalBks),
           React.createElement("div",{className:"adm-stat-lbl"},"TOTAL")
+        ),
+        React.createElement("div",{className:"adm-stat"},
+          React.createElement("div",{className:"adm-stat-num",style:{color:noShows.filter(n=>!n.excused).length>0?"#e06040":"#fff"}},noShows.filter(n=>!n.excused).length),
+          React.createElement("div",{className:"adm-stat-lbl"},"NO-SHOWS")
+        )
+      ),
+      // ── No-shows ──────────────────────────────────────────────────────────
+      // A booked class that came and went without a check-in. It still consumes
+      // the member's weekly allowance (or a concession class) unless excused.
+      noShows.length>0&&React.createElement(React.Fragment,null,
+        React.createElement("div",{onClick:()=>setShowNs(v=>!v),
+          style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#141414",color:"#bbb",border:"1px solid #666",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginBottom:showNs?8:0}},
+          React.createElement("span",null,"NO-SHOWS"),
+          React.createElement("span",{style:{fontSize:11,transform:showNs?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
+        ),
+        showNs&&React.createElement("div",{style:{border:"1px solid #222",borderRadius:0,marginBottom:10}},
+          React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#444",lineHeight:1.7,padding:"10px 13px 6px"}},
+            "Excusing one keeps it in the history but stops it counting toward their weekly allowance or concession card. Only has an effect within the same Mon\u2013Sun week for plan members."),
+          noShows.map((n,i)=>React.createElement("div",{key:n.id||i,
+            style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"10px 13px",borderTop:"1px solid #111",opacity:n.excused?0.45:1}},
+            React.createElement("div",null,
+              React.createElement("div",{style:{fontSize:13,color:"#fff",letterSpacing:"0.02em"}},
+                (()=>{const d=new Date(n.date_key+"T12:00:00");return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()]+" "+d.getDate()+" "+MONTHS[d.getMonth()];})()
+                +(n.time?" \u00b7 "+fmt12(n.time):"")),
+              React.createElement("div",{style:{fontSize:9,letterSpacing:"0.1em",color:n.excused?"#1d9bf0":"#e06040",fontWeight:600,marginTop:2}},
+                n.excused?"EXCUSED":"DID NOT ATTEND")
+            ),
+            React.createElement("button",{disabled:!!nsBusy[n.id],
+              onClick:async()=>{
+                if(!setBookingExcused)return;
+                setNsBusy(p=>({...p,[n.id]:true}));
+                const ok=await setBookingExcused(n,!n.excused);
+                if(ok)setNoShows(prev=>prev.map(x=>x.id===n.id?{...x,excused:!n.excused}:x));
+                setNsBusy(p=>({...p,[n.id]:false}));
+              },
+              style:{background:"transparent",color:n.excused?"#666":"#1d9bf0",border:"1px solid "+(n.excused?"#333":"#1d3a5a"),borderRadius:0,fontFamily:"'DM Sans',sans-serif",fontSize:10,letterSpacing:"0.1em",fontWeight:600,padding:"8px 14px",cursor:"pointer",flexShrink:0}},
+              nsBusy[n.id]?"\u2026":n.excused?"UNDO":"EXCUSE")
+          ))
         )
       ),
       React.createElement("div",{onClick:()=>setShowDet(v=>!v),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginTop:16,marginBottom:showDet?10:0}},React.createElement("span",null,"MEMBER DETAILS"),React.createElement("span",{style:{fontSize:11,transform:showDet?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")),
@@ -1437,7 +1545,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
   );
 }
 // ── Wellness View ─────────────────────────────────────────────────────────────
-function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,wellDow,calendarEnabled}){
+function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,wellDow,calendarEnabled,tierOverrides,wellBaseTimes}){
   const [wellBks,setWellBks]=useState([]);
   const [weekStart,setWeekStart]=useState(getWeekStart);
   const [selDay,setSelDay]=useState(getInitDay);
@@ -1452,8 +1560,8 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,w
   }
   const selDate=addDays(weekStart,selDay);
   const selDK=toDS(selDate);
-  const wellTimes=wellTimesFor(selDK,wellSlots,wellDow);
-  const weekDates=Array.from({length:6},(_,i)=>addDays(weekStart,i));
+  const wellTimes=wellTimesFor(selDK,wellSlots,wellDow,wellBaseTimes);
+  const weekDates=Array.from({length:7},(_,i)=>addDays(weekStart,i));
   const isThisWeek=toDS(weekStart)===toDS(mondayOf(new Date()));
   // Stop paging once the next week would run past the booking horizon.
   const atHorizon=toDS(addDays(weekStart,7))>bookingHorizonDS();
@@ -1497,7 +1605,7 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,w
     ),
     React.createElement("div",{className:"week-nav",style:{paddingTop:0}},
       React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"‹"),
-      React.createElement("div",{className:"wk-label"},`${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} – ${MONTHS[weekDates[5].getMonth()]} ${weekDates[5].getDate()}  ${weekDates[0].getFullYear()}`),
+      React.createElement("div",{className:"wk-label"},`${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} – ${MONTHS[weekDates[6].getMonth()]} ${weekDates[6].getDate()}  ${weekDates[0].getFullYear()}`),
       React.createElement("button",{className:"wk-arrow",disabled:atHorizon,onClick:()=>{if(atHorizon){showToast("Bookings open "+BOOKING_WEEKS+" weeks ahead");return;}setWeekStart(w=>addDays(w,7));}},"›")
     ),
     React.createElement("div",{className:"day-strip"},
@@ -1523,7 +1631,7 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,w
         const past=isPastSlot(time);
         const tooSoon=!isAdmin&&!past&&needsMoreNotice(selDK,time);
         const lk=`${selDK}-${time}`;const isBusy=!!busy[lk];
-        const wellLimit=isAdmin?null:getTierLimits(memberData?.membership_type).wellness;
+        const wellLimit=isAdmin?null:getTierLimits(memberData?.membership_type,tierOverrides).wellness;
         // Concession members can book wellness freely (separate from their 10-class card).
         const isConcWell=!isAdmin&&isConcessionActive(memberData);
         const weekMonday=toDS(mondayOf(new Date(selDK+"T00:00:00")));
@@ -1825,7 +1933,200 @@ function MilestoneAdminPanel({milestoneConfig,saveMilestoneConfig,showToast}){
     )
   );
 }
-function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail}){
+
+// ── Class scheduling admin ───────────────────────────────────────────────────
+// Shared look with the rest of the admin screen: #141414 panels, #666 borders,
+// zero radius, Bebas for buttons and numbers, DM Sans for labels.
+const SCH_INPUT={background:"#0e0e0e",border:"1px solid #333",borderRadius:0,padding:"9px 10px",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:14,outline:"none",width:"100%",boxSizing:"border-box"};
+const SCH_LBL={display:"block",fontSize:9,letterSpacing:"0.16em",color:"#555",fontWeight:600,marginBottom:6};
+const SCH_PANEL={background:"#141414",border:"1px solid #666",borderRadius:0,padding:14,marginBottom:10};
+const SCH_PRIMARY={width:"100%",background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.16em",padding:"13px",cursor:"pointer",borderRadius:0};
+const SCH_GHOST={background:"transparent",color:"#666",border:"1px solid #333",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.12em",padding:"9px 14px",cursor:"pointer",borderRadius:0};
+const DOW_LABELS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const DOW_ORDER=[1,2,3,4,5,6,0]; // Monday-first, matching every day strip in the app
+// First date on or after dk that falls on weekday dow.
+function nextDowOnOrAfter(dk,dow){
+  const d=new Date(dk+"T00:00:00");
+  let guard=0;
+  while(d.getDay()!==dow&&guard++<7)d.setDate(d.getDate()+1);
+  return toDS(d);
+}
+// Collapsible panel header, same pattern as the other admin sections.
+function SchPanel({title,hint,open,onToggle,children}){
+  return React.createElement("div",{style:{marginBottom:10}},
+    React.createElement("button",{onClick:onToggle,
+      style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:open?"#fff":"#141414",color:open?"#000":"#bbb",border:"1px solid "+(open?"#fff":"#666"),borderRadius:0,padding:"10px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer"}},
+      React.createElement("span",null,title),
+      React.createElement("span",{style:{fontSize:11,transform:open?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
+    ),
+    hint&&!open&&React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#444",padding:"5px 2px 0",lineHeight:1.6}},hint),
+    open&&React.createElement("div",{style:{marginTop:8}},children)
+  );
+}
+
+// ── NEW CLASS ────────────────────────────────────────────────────────────────
+// One class, any set of weekdays, in a single action.
+function NewClassForm({admDK,defaultDow,onCreate,showToast}){
+  const [name,setName]=useState("");
+  const [type,setType]=useState("HIIT");
+  const [time,setTime]=useState("06:00");
+  const [days,setDays]=useState([defaultDow]);
+  const [spots,setSpots]=useState("10");
+  const [duration,setDuration]=useState("45");
+  const [weeks,setWeeks]=useState("4");
+  const [ongoing,setOngoing]=useState(true);
+  const [busy,setBusy]=useState(false);
+  const toggleDay=d=>setDays(p=>p.includes(d)?p.filter(x=>x!==d):[...p,d]);
+  const canSave=!!time&&days.length>0&&!busy;
+  const summary=days.length===0?"Pick at least one day"
+    :(ongoing?"Every ":"For "+Math.max(1,parseInt(weeks)||1)+" weeks on ")
+      +DOW_ORDER.filter(d=>days.includes(d)).map(d=>DOW_LABELS[d]).join(", ")
+      +" at "+fmt12(time)+(ongoing?", from now on":"");
+  return React.createElement("div",{style:SCH_PANEL},
+    React.createElement("div",{style:{marginBottom:12}},
+      React.createElement("label",{style:SCH_LBL},"CLASS NAME"),
+      React.createElement("input",{value:name,onChange:e=>setName(e.target.value),placeholder:"e.g. RISE UP",style:SCH_INPUT})
+    ),
+    React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}},
+      React.createElement("div",{style:{flex:1}},
+        React.createElement("label",{style:SCH_LBL},"TYPE"),
+        React.createElement("div",{style:{display:"flex",gap:6}},
+          ["HIIT","Strength"].map(t=>React.createElement("button",{key:t,onClick:()=>setType(t),
+            style:{flex:1,background:type===t?"#fff":"transparent",color:type===t?"#000":"#666",border:"1px solid "+(type===t?"#fff":"#333"),borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",padding:"9px 4px",cursor:"pointer"}},t.toUpperCase()))
+        )
+      ),
+      React.createElement("div",{style:{width:110}},
+        React.createElement("label",{style:SCH_LBL},"TIME"),
+        React.createElement("input",{type:"time",value:time,onChange:e=>setTime(e.target.value),style:SCH_INPUT})
+      )
+    ),
+    React.createElement("div",{style:{marginBottom:12}},
+      React.createElement("label",{style:SCH_LBL},"DAYS"),
+      React.createElement("div",{style:{display:"flex",gap:4}},
+        DOW_ORDER.map(d=>React.createElement("button",{key:d,onClick:()=>toggleDay(d),
+          style:{flex:1,minWidth:0,background:days.includes(d)?"#fff":"#0e0e0e",color:days.includes(d)?"#000":"#666",border:"1px solid "+(days.includes(d)?"#fff":"#333"),borderRadius:0,fontSize:9,letterSpacing:"0.06em",fontWeight:600,fontFamily:"'DM Sans',sans-serif",padding:"9px 0",cursor:"pointer"}},DOW_LABELS[d].toUpperCase()))
+      )
+    ),
+    React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}},
+      React.createElement("div",{style:{flex:1}},
+        React.createElement("label",{style:SCH_LBL},"SPOTS"),
+        React.createElement("input",{type:"number",min:1,value:spots,onChange:e=>setSpots(e.target.value),style:SCH_INPUT})
+      ),
+      React.createElement("div",{style:{flex:1}},
+        React.createElement("label",{style:SCH_LBL},"MINUTES"),
+        React.createElement("input",{type:"number",min:5,step:5,value:duration,onChange:e=>setDuration(e.target.value),style:SCH_INPUT})
+      )
+    ),
+    React.createElement("div",{style:{marginBottom:6}},
+      React.createElement("label",{style:SCH_LBL},"REPEAT"),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+        React.createElement("input",{type:"number",min:1,max:520,value:ongoing?"":weeks,disabled:ongoing,onChange:e=>setWeeks(e.target.value),
+          style:{...SCH_INPUT,width:72,textAlign:"center",color:ongoing?"#333":"#fff"}}),
+        React.createElement("span",{style:{fontSize:9,letterSpacing:"0.12em",color:"#555",fontWeight:600}},"WEEKS"),
+        React.createElement("button",{onClick:()=>setOngoing(!ongoing),
+          style:{marginLeft:"auto",background:ongoing?"#0a1a2a":"transparent",color:ongoing?"#1d9bf0":"#666",border:"1px solid "+(ongoing?"#1d3a5a":"#333"),borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",padding:"9px 14px",cursor:"pointer"}},"ONGOING")
+      )
+    ),
+    React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#1d9bf0",margin:"8px 0 12px",lineHeight:1.6}},summary),
+    React.createElement("button",{disabled:!canSave,style:{...SCH_PRIMARY,background:canSave?"#fff":"#111",color:canSave?"#000":"#333",cursor:canSave?"pointer":"not-allowed"},
+      onClick:async()=>{
+        setBusy(true);
+        const ok=await onCreate({days,time,spots,name,type,duration,weeks,ongoing,fromDK:admDK});
+        setBusy(false);
+        if(ok){showToast("Class created ✓");setName("");}
+        else showToast("Could not create the class");
+      }},busy?"SAVING…":"CREATE CLASS")
+  );
+}
+
+// ── BASE TIMETABLE ───────────────────────────────────────────────────────────
+// The standing weekly shape. Empty everywhere = the app shows NO CLASSES
+// SCHEDULED and only classes created above appear.
+function BaseTimetableEditor({baseTimes,saveBaseTimes,showToast,title,emptyHint}){
+  const [draft,setDraft]=useState(()=>{
+    const d={};for(let i=0;i<7;i++){const v=(baseTimes||{})[i];d[i]=Array.isArray(v)?[...v]:[];}
+    return d;
+  });
+  const [newTime,setNewTime]=useState({});
+  const [busy,setBusy]=useState(false);
+  const [dirty,setDirty]=useState(false);
+  const usingLegacy=!baseTimes||typeof baseTimes!=="object";
+  const add=(d)=>{const t=newTime[d];if(!t)return;
+    setDraft(p=>({...p,[d]:[...new Set([...(p[d]||[]),t])].sort()}));setNewTime(p=>({...p,[d]:""}));setDirty(true);};
+  const drop=(d,t)=>{setDraft(p=>({...p,[d]:(p[d]||[]).filter(x=>x!==t)}));setDirty(true);};
+  const clearAll=()=>{const d={};for(let i=0;i<7;i++)d[i]=[];setDraft(d);setDirty(true);};
+  return React.createElement("div",{style:SCH_PANEL},
+    usingLegacy&&React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#c98a1e",lineHeight:1.7,marginBottom:12}},
+      emptyHint||"Not set up yet — the app is still using the built-in timetable. Saving here takes control of it."),
+    DOW_ORDER.map(d=>React.createElement("div",{key:d,style:{marginBottom:10,paddingBottom:10,borderBottom:"1px solid #1a1a1a"}},
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},
+        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",color:"#fff",width:44}},DOW_LABELS[d].toUpperCase()),
+        React.createElement("input",{type:"time",value:newTime[d]||"",onChange:e=>setNewTime(p=>({...p,[d]:e.target.value})),
+          style:{...SCH_INPUT,width:120,padding:"6px 8px",fontSize:13}}),
+        React.createElement("button",{onClick:()=>add(d),style:{...SCH_GHOST,padding:"7px 12px",fontSize:11}},"ADD")
+      ),
+      (draft[d]||[]).length===0
+        ?React.createElement("div",{style:{fontSize:9,letterSpacing:"0.12em",color:"#333",fontWeight:600,paddingLeft:52}},"NO CLASSES")
+        :React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:5,paddingLeft:52}},
+            (draft[d]||[]).map(t=>React.createElement("button",{key:t,onClick:()=>drop(d,t),title:"Remove",
+              style:{background:"#0a1a2a",border:"1px solid #1d3a5a",color:"#1d9bf0",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.06em",padding:"4px 9px",cursor:"pointer"}},fmt12(t)+" ✕"))
+          )
+    )),
+    React.createElement("div",{style:{display:"flex",gap:8,marginTop:12}},
+      React.createElement("button",{onClick:clearAll,style:{...SCH_GHOST,flex:1}},"CLEAR ALL"),
+      React.createElement("button",{disabled:busy||!dirty,
+        style:{...SCH_PRIMARY,flex:2,background:dirty?"#fff":"#111",color:dirty?"#000":"#333",cursor:dirty?"pointer":"not-allowed"},
+        onClick:async()=>{setBusy(true);const ok=await saveBaseTimes(draft);setBusy(false);
+          if(ok){setDirty(false);showToast("Timetable saved ✓");}else showToast("Could not save the timetable");}},
+        busy?"SAVING…":"SAVE TIMETABLE")
+    )
+  );
+}
+
+// ── MEMBERSHIP ALLOWANCES ────────────────────────────────────────────────────
+// Was hardcoded and matched on the membership name in code. Now editable, so a
+// tier can be renamed, added or re-capped without a redeploy.
+function TierLimitsEditor({tierOverrides,saveTierOverrides,showToast}){
+  const [rows,setRows]=useState(()=>Array.isArray(tierOverrides)&&tierOverrides.length
+    ?tierOverrides.map(t=>({...t}))
+    :DEFAULT_TIER_LIMITS.map(t=>({...t})));
+  const [busy,setBusy]=useState(false);
+  const [dirty,setDirty]=useState(false);
+  const setCell=(i,k,v)=>{setRows(p=>p.map((r,j)=>j===i?{...r,[k]:v}:r));setDirty(true);};
+  const numCell=(i,k)=>React.createElement("input",{
+    value:rows[i][k]===null?"":rows[i][k],placeholder:"∞",
+    onChange:e=>{const v=e.target.value.trim();setCell(i,k,v===""?null:(parseInt(v)||0));},
+    style:{...SCH_INPUT,width:52,padding:"6px 4px",fontSize:13,textAlign:"center"}});
+  return React.createElement("div",{style:SCH_PANEL},
+    React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#444",lineHeight:1.7,marginBottom:12}},
+      "Matched against a member's plan name by substring, top to bottom. Leave a box empty for unlimited. Anything that matches nothing gets 3 HIIT / 1 Strength / 1 Wellness."),
+    React.createElement("div",{style:{display:"flex",gap:6,marginBottom:6,paddingLeft:2}},
+      React.createElement("div",{style:{...SCH_LBL,flex:1,marginBottom:0}},"PLAN CONTAINS"),
+      React.createElement("div",{style:{...SCH_LBL,width:52,textAlign:"center",marginBottom:0}},"HIIT"),
+      React.createElement("div",{style:{...SCH_LBL,width:52,textAlign:"center",marginBottom:0}},"STR"),
+      React.createElement("div",{style:{...SCH_LBL,width:52,textAlign:"center",marginBottom:0}},"WELL"),
+      React.createElement("div",{style:{width:26}})
+    ),
+    rows.map((r,i)=>React.createElement("div",{key:i,style:{display:"flex",gap:6,marginBottom:6,alignItems:"center"}},
+      React.createElement("input",{value:r.match||"",onChange:e=>setCell(i,"match",e.target.value),
+        style:{...SCH_INPUT,flex:1,padding:"6px 8px",fontSize:13}}),
+      numCell(i,"hiit"),numCell(i,"strength"),numCell(i,"wellness"),
+      React.createElement("button",{onClick:()=>{setRows(p=>p.filter((_,j)=>j!==i));setDirty(true);},
+        style:{width:26,background:"none",border:"1px solid #333",color:"#666",borderRadius:0,fontSize:11,padding:"6px 0",cursor:"pointer"}},"✕")
+    )),
+    React.createElement("div",{style:{display:"flex",gap:8,marginTop:10}},
+      React.createElement("button",{onClick:()=>{setRows(p=>[...p,{match:"",hiit:3,strength:1,wellness:1}]);setDirty(true);},
+        style:{...SCH_GHOST,flex:1}},"+ ADD TIER"),
+      React.createElement("button",{disabled:busy||!dirty,
+        style:{...SCH_PRIMARY,flex:2,background:dirty?"#fff":"#111",color:dirty?"#000":"#333",cursor:dirty?"pointer":"not-allowed"},
+        onClick:async()=>{setBusy(true);const ok=await saveTierOverrides(rows);setBusy(false);
+          if(ok){setDirty(false);showToast("Allowances saved ✓");}else showToast("Could not save");}},
+        busy?"SAVING…":"SAVE ALLOWANCES")
+    )
+  );
+}
+
+function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail}){
   const [expandedTier,setExpandedTier]=useState(null);
   const [admDate,setAdmDate]=useState(new Date());
   const [expanded,setExpanded]=useState({});
@@ -1860,6 +2161,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   const [editingTime,setEditingTime]=useState(null);
   const [newTimeVal,setNewTimeVal]=useState("");
   const [undoData,setUndoData]=useState(null);
+  const [schPanel,setSchPanel]=useState(null); // which scheduling panel is open
   const undoTimerRef=useRef(null);
   const [editingClassName,setEditingClassName]=useState(false);
   const [classNameInput,setClassNameInput]=useState("");
@@ -2064,6 +2366,42 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
     return ok;
   }
 
+  // Create one class across any set of weekdays in a single write to __CLASS_DOW__.
+  // Each weekday's run starts on the first occurrence of that weekday on or after
+  // the date on screen, so ticking Mon+Fri on a Wednesday starts each on its own day.
+  async function csCreateClass({days,time,spots,name,type,duration,weeks,ongoing,fromDK}){
+    if(!time||!days||!days.length)return false;
+    const n=Math.max(1,parseInt(spots)||MAX_SPOTS);
+    const dur=Math.max(5,parseInt(duration)||DEFAULT_DURATION);
+    const wk=Math.max(1,parseInt(weeks)||1);
+    const nm=(name||"").trim().toUpperCase();
+    const cur=JSON.parse(JSON.stringify(classDow||{}));
+    const spans=[];
+    days.forEach(d=>{
+      const k=String(d);
+      const o=cur[k]||{add:[],hide:[]};
+      const start=nextDowOnOrAfter(fromDK,d);
+      const until=ongoing?null:toDS(addDays(new Date(start+"T00:00:00"),(wk-1)*7));
+      const rule={time,spots:n,type:type||"HIIT",duration:dur,from:start,until};
+      if(nm)rule.name=nm;
+      o.add=(o.add||[]).filter(r=>r.time!==time);
+      o.add.push(rule);
+      o.hide=(o.hide||[]).filter(r=>r.time!==time);
+      cur[k]=o;
+      spans.push({dow:d,from:start,to:until||bookingHorizonDS()});
+    });
+    const ok=saveClassDow?await saveClassDow(cur):false;
+    if(!ok)return false;
+    // A per-date "hidden" row out-ranks the rule, so clear any that would
+    // silently swallow the class we just created.
+    for(const sp of spans){
+      const rows=await sbGet("class_limits",
+        `time_slot=eq.${encodeURIComponent(time)}&date_key=gte.${sp.from}&date_key=lte.${sp.to}&select=date_key,max_spots`);
+      const stale=(rows||[]).filter(r=>new Date(r.date_key+"T00:00:00").getDay()===sp.dow&&r.max_spots===0);
+      for(const r of stale){if(deleteClass)await deleteClass(time,r.date_key);}
+    }
+    return true;
+  }
   // Bookings already sitting inside a hide range, so we can warn first.
   async function csBookingsInRange(time,weeks,ongoing){
     const from=admDK;
@@ -2185,7 +2523,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   }
   const visMembers=masterHidden?members.filter(m=>m.email!==ADMIN_EMAIL):members;
   const admDK=toDS(admDate);const admDOW=admDate.getDay();const admIsSat=admDOW===6;
-  const standardTimes=admDOW===0?[]:admIsSat?SAT_TIMES:WD_TIMES;
+  const standardTimes=baseTimesFor(baseTimes,admDK);
   const admDateRows=Object.keys(classLimits||{}).filter(k=>k.startsWith(admDK+':')).map(k=>k.slice(admDK.length+1));
   const admDateAdds=admDateRows.filter(t=>classLimits[admDK+':'+t]>0);
   const admDateHides=admDateRows.filter(t=>classLimits[admDK+':'+t]===0);
@@ -2197,7 +2535,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   const admVisibleTimes=classTimesFor(admDK,standardTimes,admDateAdds,admDateHides,classDow);
   const dayBks=bookings.filter(b=>b.date_key===admDK);
   const totalBooked=dayBks.length;const totalSpots=admVisibleTimes.reduce((s,t)=>s+(getMaxSpots?getMaxSpots(t,admDK):MAX_SPOTS),0);
-  function changeDay(n){let d=new Date(admDate);d.setDate(d.getDate()+n);if(d.getDay()===0)d.setDate(d.getDate()+n);setAdmDate(d);setExpanded({});}
+  function changeDay(n){let d=new Date(admDate);d.setDate(d.getDate()+n);setAdmDate(d);setExpanded({});}
   async function adminCancel(time,email){
     setBookings(prev=>prev.filter(b=>!(b.date_key===admDK&&b.time===time&&b.email===email)));
     await sbDelete("bookings",`email=eq.${encodeURIComponent(email)}&date_key=eq.${admDK}&time=eq.${encodeURIComponent(time)}`);
@@ -2209,7 +2547,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   // Program access via mFlags.wk / mFlags.wkAdminHide above. Master always has access.
   const canScBuild=isMaster||(mFlags.sc!==false&&!(mFlags.scAdminHide||[]).includes(selfEmail));
   return React.createElement("div",{className:"adm-wrap"},
-    selectedMember&&React.createElement(MemberProfileOverlay,{member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin,mfWk:mFlags.wk,isMaster,mfPasteAI:mFlags.pasteAI,selfEmail,canManageWk:(isMaster||(mFlags.wk!==false&&!(mFlags.wkAdminHide||[]).includes(selfEmail)))}),
+    selectedMember&&React.createElement(MemberProfileOverlay,{member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin,mfWk:mFlags.wk,isMaster,mfPasteAI:mFlags.pasteAI,selfEmail,setBookingExcused,canManageWk:(isMaster||(mFlags.wk!==false&&!(mFlags.wkAdminHide||[]).includes(selfEmail)))}),
     React.createElement("div",{className:"adm-title"},"ADMIN"),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"0 0 6px"}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
@@ -2267,7 +2605,22 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
         React.createElement("div",{className:"adm-day-lbl"},admDateLabel.toUpperCase()),
         React.createElement("button",{className:"adm-arrow",onClick:()=>changeDay(1)},"›")
       ),
-      admDOW!==0&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#111",border:"1px solid #222",borderRadius:0,padding:"9px 14px",marginBottom:10}},
+      React.createElement(SchPanel,{title:"+ NEW CLASS",open:schPanel==="new",
+        hint:"Name it, pick the type, tick the days it runs on.",
+        onToggle:()=>setSchPanel(p=>p==="new"?null:"new")},
+        React.createElement(NewClassForm,{admDK,defaultDow:admDOW,showToast,onCreate:csCreateClass})
+      ),
+      React.createElement(SchPanel,{title:"BASE TIMETABLE",open:schPanel==="base",
+        hint:"The standing weekly shape. Clear it all and only the classes you create appear.",
+        onToggle:()=>setSchPanel(p=>p==="base"?null:"base")},
+        React.createElement(BaseTimetableEditor,{baseTimes,saveBaseTimes,showToast})
+      ),
+      isMaster&&React.createElement(SchPanel,{title:"MEMBERSHIP ALLOWANCES",open:schPanel==="tiers",
+        hint:"Weekly caps per plan. Was fixed in code — now editable here.",
+        onToggle:()=>setSchPanel(p=>p==="tiers"?null:"tiers")},
+        React.createElement(TierLimitsEditor,{tierOverrides,saveTierOverrides,showToast})
+      ),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#111",border:"1px solid #222",borderRadius:0,padding:"9px 14px",marginBottom:10}},
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,flex:1}},
           React.createElement("div",{style:{fontSize:8,letterSpacing:"0.15em",color:"#555",fontWeight:600,flexShrink:0}},"CLASS NAME"),
           editingClassName
@@ -2296,7 +2649,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
               )
         )
       ),
-      admDOW!==0&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#111",border:"1px solid #222",borderRadius:0,padding:"9px 14px",marginBottom:10}},
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#111",border:"1px solid #222",borderRadius:0,padding:"9px 14px",marginBottom:10}},
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,flex:1}},
           React.createElement("div",{style:{fontSize:8,letterSpacing:"0.15em",color:"#555",fontWeight:600,flexShrink:0}},"MAX SPOTS · ALL"),
           editingDayLimit
@@ -2570,7 +2923,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
           )
         );
       }),
-      admDOW!==0&&React.createElement("div",{style:{marginTop:12}},
+      React.createElement("div",{style:{marginTop:12}},
         !addingClass
           ?React.createElement("button",{onClick:()=>{setAddingClass(true);setNewClassTime("");setNewClassSpots("16");setNewClassName("");},style:{width:"100%",background:"none",border:"1px dashed #2a2a2a",borderRadius:0,padding:"11px",color:"#555",fontSize:10,letterSpacing:"0.14em",cursor:"pointer"}},"+ ADD CLASS")
           :React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:0,padding:"14px"}},
@@ -2618,15 +2971,20 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
         React.createElement("div",{className:"adm-day-lbl"},admDateLabel.toUpperCase()),
         React.createElement("button",{className:"adm-arrow",onClick:()=>changeDay(1)},"›")
       ),
+      React.createElement(SchPanel,{title:"BASE TIMETABLE",open:schPanel==="wellbase",
+        hint:"Standing sauna times per day. Sunday starts empty — add times only if you want them.",
+        onToggle:()=>setSchPanel(p=>p==="wellbase"?null:"wellbase")},
+        React.createElement(BaseTimetableEditor,{baseTimes:wellBaseTimes,saveBaseTimes:saveWellBaseTimes,showToast,
+          emptyHint:"Not set up yet — the built-in sauna times apply to every day except Sunday. Saving here takes control of them."})
+      ),
       !wellAdmLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
-      :admDOW===0?React.createElement("div",{className:"adm-no-classes"},"No wellness on Sunday")
       :(()=>{
         const wsO=(wellSlots&&wellSlots[admDK])||{};
         const wsHide=wsO.hide||[];const wsAdd=wsO.add||[];
         const dowRules=(wellDow&&wellDow[admDOW])||{};
         const ruleAddTimes=(dowRules.add||[]).map(r=>r.time);
         const ruleHideTimes=(dowRules.hide||[]).map(r=>r.time);
-        const allWellTimes=[...new Set([...WELL_TIMES,...wsAdd,...wsHide,...ruleAddTimes,...ruleHideTimes])].sort();
+        const allWellTimes=[...new Set([...wellBaseTimesFor(wellBaseTimes,admDK),...wsAdd,...wsHide,...ruleAddTimes,...ruleHideTimes])].sort();
         const dayWellBks=wellAdmBks.filter(b=>b.date_key===admDK).slice().sort((a,b)=>a.time<b.time?-1:a.time>b.time?1:0);
         return React.createElement(React.Fragment,null,
           React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,margin:"4px 0 8px"}},"SESSION TIMES"),
@@ -2637,7 +2995,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
             const ruleHiddenNow=!!hideRule&&wellRuleActive(hideRule,admDK);
             const hidden=dateHidden||(ruleHiddenNow&&!dateAdded);
             const addRule=wellRuleFor(wellDow,admDOW,time,"add");
-            const custom=!WELL_TIMES.includes(time);
+            const custom=!wellBaseTimesFor(wellBaseTimes,admDK).includes(time);
             const booked=dayWellBks.some(b=>b.time===time);
             const hidingThis=wellHideTime===time;
             const showingThis=wellShowTime===time;
@@ -7866,6 +8224,15 @@ function App(){
   const [dowNames,setDowNames]=useState({1:"RISE UP",2:"STRENGTH LOWER",3:"ASCEND",4:"STRENGTH UPPER",5:"ELEVATE",6:"SUMMIT"});
   // Recurring per-slot names: keyed by "dow:time" (e.g. "4:19:15"), applies every week for that weekday+time.
   const [dowSlotNames,setDowSlotNames]=useState({});
+  // Base timetable (__BASE_TIMES__) and wellness base (__WELL_BASE_TIMES__).
+  // null = record not loaded / not set, so the legacy hardcoded timetable applies.
+  const [baseTimes,setBaseTimes]=useState(null);
+  const [wellBaseTimes,setWellBaseTimes]=useState(null);
+  // Editable membership tier allowances (__TIER_LIMITS__). null = built-in defaults.
+  const [tierOverrides,setTierOverrides]=useState(null);
+  // Full class_limits rows keyed "date:time", so the resolver can read name,
+  // spots, type and duration from one place instead of three parallel maps.
+  const [classRows,setClassRows]=useState({});
   // Recurring per-slot capacity: keyed by "dow:time", applies every week for that weekday+time.
   const [dowSlotLimits,setDowSlotLimits]=useState({});
   // Whole-weekday default capacity: keyed by dow (0-6), applies to every class that weekday.
@@ -7950,10 +8317,10 @@ function App(){
       lsSet("t365-photocache",pcache);
       const photoMap={};Object.keys(pcache).forEach(e=>{if(pcache[e]&&pcache[e].photo)photoMap[e]=pcache[e].photo;});
       setMemberPhotos(photoMap);
-      const limitsData=await sbGet("class_limits","select=time_slot,date_key,max_spots,name");
-      const lm={};const sn0={};
-      (limitsData||[]).forEach(r=>{lm[`${r.date_key}:${r.time_slot}`]=r.max_spots;if(r.name)sn0[`${r.date_key}:${r.time_slot}`]=r.name;});
-      setClassLimits(lm);setSlotNames(sn0);
+      const limitsData=await sbGet("class_limits","select=time_slot,date_key,max_spots,name,session_type,duration_min");
+      const lm={};const sn0={};const rows0={};
+      (limitsData||[]).forEach(r=>{const k=`${r.date_key}:${r.time_slot}`;lm[k]=r.max_spots;if(r.name)sn0[k]=r.name;rows0[k]=r;});
+      setClassLimits(lm);setSlotNames(sn0);setClassRows(rows0);
       const ffData=await sbGet("feature_flags","id=eq.1&select=*");
       if(ffData&&ffData.length){
         setWellnessEnabled(ffData[0].wellness_enabled!==false);
@@ -7963,6 +8330,12 @@ function App(){
       }
       const dnData=await sbGet("coaching_notes","class_name=eq.__DOW_NAMES__&select=content");
       if(dnData&&dnData.length){try{const dn=JSON.parse(dnData[0].content);setDowNames(p=>({...p,...dn}));}catch{}}
+      const btData=await sbGet("coaching_notes","class_name=eq.__BASE_TIMES__&select=content");
+      if(btData&&btData.length){try{const bt=JSON.parse(btData[0].content);if(bt&&typeof bt==="object")setBaseTimes(bt);}catch{}}
+      const wbtData=await sbGet("coaching_notes","class_name=eq.__WELL_BASE_TIMES__&select=content");
+      if(wbtData&&wbtData.length){try{const wbt=JSON.parse(wbtData[0].content);if(wbt&&typeof wbt==="object")setWellBaseTimes(wbt);}catch{}}
+      const tlData=await sbGet("coaching_notes","class_name=eq.__TIER_LIMITS__&select=content");
+      if(tlData&&tlData.length){try{const tl=JSON.parse(tlData[0].content);if(tl&&typeof tl==="object")setTierOverrides(tl);}catch{}}
       const dsnData=await sbGet("coaching_notes","class_name=eq.__DOW_SLOT_NAMES__&select=content");
       if(dsnData&&dsnData.length){try{const dsn=JSON.parse(dsnData[0].content);if(dsn&&typeof dsn==="object")setDowSlotNames(dsn);}catch{}}
       const dslData=await sbGet("coaching_notes","class_name=eq.__DOW_SLOT_LIMITS__&select=content");
@@ -8016,7 +8389,7 @@ function App(){
   },[session]);
   async function refreshBookings(){
     const from=toDS(new Date());const to=bookingHorizonDS();
-    const data=await sbGet("bookings",`date_key=gte.${from}&date_key=lte.${to}&select=email,name,date_key,time,session_type,checked_in`);
+    const data=await sbGet("bookings",`date_key=gte.${from}&date_key=lte.${to}&select=id,email,name,date_key,time,session_type,checked_in,excused`);
     setBookings(data||[]);
   }
   // This member's whole booking history — used by the MY BOOKINGS tiles and by
@@ -8027,13 +8400,13 @@ function App(){
     let cancelled=false;
     (async()=>{
       const [all,base]=await Promise.all([
-        sbGet("bookings",`email=eq.${encodeURIComponent(session.email)}&select=date_key,checked_in`),
+        sbGet("bookings",`email=eq.${encodeURIComponent(session.email)}&select=date_key,checked_in,excused`),
         sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__CONCESSION__"+session.email)}&select=content`)
       ]);
       if(cancelled)return;
       const rows=all||[];
       setMyAllBks(rows);
-      setConcCheckins(rows.filter(r=>r.checked_in).length);
+      setConcCheckins(rows.filter(r=>r.checked_in&&!r.excused).length);
       let b=0;if(base&&base.length&&base[0].content){try{b=parseInt(JSON.parse(base[0].content).baseline)||0;}catch{}}
       setConcBase(b);
     })();
@@ -8044,8 +8417,12 @@ function App(){
   // Concession card state (member side): credits = 10 minus (attended since baseline) minus (upcoming reserved).
   const isConcession=!isAdmin&&isConcessionActive(memberData);
   const concTodayDS=toDS(new Date());
-  const concUpcoming=(isConcession&&session)?bookings.filter(b=>b.email===session.email&&b.date_key>=concTodayDS&&!b.checked_in).length:0;
-  const concUsed=isConcession?Math.max(0,concCheckins-concBase)+concUpcoming:0;
+  // Every booking the member holds that is not excused costs a class: attended,
+  // still upcoming, or a no-show. Previously a past booking that was never checked
+  // in counted as neither, so concession no-shows were silently free.
+  const concUpcoming=(isConcession&&session)?bookings.filter(b=>b.email===session.email&&b.date_key>=concTodayDS&&!b.checked_in&&!b.excused).length:0;
+  const concNoShows=(isConcession&&session)?myAllBks.filter(b=>b.date_key<concTodayDS&&!b.checked_in&&!b.excused).length:0;
+  const concUsed=isConcession?Math.max(0,concCheckins-concBase)+concUpcoming+concNoShows:0;
   const concRemaining=isConcession?Math.max(0,CONCESSION_LIMIT-concUsed):null;
   // My Bookings appears automatically whenever the member can access any bookable section.
   const canBook=(classesEnabled&&acc("book"))||(strengthEnabled&&acc("strength"))||(wellnessEnabled&&acc("wellness"));
@@ -8091,13 +8468,13 @@ function App(){
   }
   const selDate=addDays(weekStart,selDay);
   const selDK=toDS(selDate);
-  const baseTimes=selDate.getDay()===6?SAT_TIMES:WD_TIMES;
+  const dayBaseTimes=baseTimesFor(baseTimes,selDK);
   const dateRowsBook=Object.keys(classLimits||{}).filter(k=>k.startsWith(selDK+':')).map(k=>k.slice(selDK.length+1));
-  const times=classTimesFor(selDK,baseTimes,
+  const times=classTimesFor(selDK,dayBaseTimes,
     dateRowsBook.filter(t=>classLimits[selDK+':'+t]>0),
     dateRowsBook.filter(t=>classLimits[selDK+':'+t]===0),
     classDow);
-  const weekDates=Array.from({length:6},(_,i)=>addDays(weekStart,i));
+  const weekDates=Array.from({length:7},(_,i)=>addDays(weekStart,i));
   const isThisWeek=toDS(weekStart)===toDS(mondayOf(new Date()));
   // Stop paging once the next week would run past the booking horizon.
   const atHorizon=toDS(addDays(weekStart,7))>bookingHorizonDS();
@@ -8164,7 +8541,9 @@ function App(){
     return bookings.filter(b=>{
       if(b.email!==email)return false;
       if(b.date_key<mon||b.date_key>sun)return false;
-      const bType=b.session_type||(isStrengthDay(b.date_key)?"Strength":"HIIT");
+      // An excused no-show stays as history but stops consuming the allowance.
+      if(b.excused)return false;
+      const bType=b.session_type||classTypeOf(b.date_key,b.time);
       return bType===type;
     }).length;
   }
@@ -8177,13 +8556,13 @@ function App(){
     const list=getBksFor(selDK,time);const maxSp=Math.min(getMaxSpots(time,selDK),freshMax);
     if(list.length>=maxSp){showToast("Class is full");setBkBusy(p=>({...p,[lk]:false}));return;}
     if(list.some(b=>b.email===session.email)){showToast("Already booked");setBkBusy(p=>({...p,[lk]:false}));return;}
-    const sessionType=isStrengthDay(selDK)?"Strength":"HIIT";
+    const sessionType=classTypeOf(selDK,time);
     if(!isAdmin){
       if(isConcession){
         // Concession bypasses the weekly tier caps — only the 10-class card cap applies.
         if(concRemaining<=0){showToast(`All ${CONCESSION_LIMIT} concession classes used — see Team 365`);setBkBusy(p=>({...p,[lk]:false}));return;}
       }else{
-        const limits=getTierLimits(memberData?.membership_type);
+        const limits=getTierLimits(memberData?.membership_type,tierOverrides);
         const typeLimit=sessionType==="Strength"?limits.strength:limits.hiit;
         if(typeLimit===0){showToast("No membership — contact admin");setBkBusy(p=>({...p,[lk]:false}));return;}
         if(typeLimit!==null&&weeklyClassCount(session.email,sessionType,selDK)>=typeLimit){
@@ -8195,15 +8574,15 @@ function App(){
     setBookings(prev=>[...prev,newBk]);
     const ok=await sbPost("bookings",newBk);
     if(!ok){setBookings(prev=>prev.filter(b=>!(b.email===session.email&&b.date_key===selDK&&b.time===time)));showToast("Booking failed — try again");}
-    else{showToast("Spot reserved ✓");if(calendarEnabled)openAddToCalendar({title:"Team 365 "+(slotNames[selDK+":"+time]||getDayClassName(selDK,time)||sessionType),dateKey:selDK,time,durationMin:60,details:"Booked via the Team 365 app."});}
+    else{showToast("Spot reserved ✓");if(calendarEnabled)openAddToCalendar({title:"Team 365 "+(slotNames[selDK+":"+time]||getDayClassName(selDK,time)||sessionType),dateKey:selDK,time,durationMin:classDurationOf(selDK,time),details:"Booked via the Team 365 app."});}
     setBkBusy(p=>({...p,[lk]:false}));
   }
   // Book the same weekday+time for N consecutive weeks. Skips full/unavailable/limit weeks, reports a summary.
   async function handleBookRecurring(time,weeks){
     if(!session)return;
     const lk=`${selDK}-${time}`;setBkBusy(p=>({...p,[lk]:true}));
-    const sessionType=isStrengthDay(selDK)?"Strength":"HIIT";
-    const limits=getTierLimits(memberData?.membership_type);
+    const sessionType=classTypeOf(selDK,time);
+    const limits=getTierLimits(memberData?.membership_type,tierOverrides);
     const typeLimit=sessionType==="Strength"?limits.strength:limits.hiit;
     if(!isAdmin&&!isConcession&&typeLimit===0){showToast("No membership — contact admin");setBkBusy(p=>({...p,[lk]:false}));return;}
     if(!isAdmin&&isConcession&&concRemaining<=0){showToast(`All ${CONCESSION_LIMIT} concession classes used — see Team 365`);setBkBusy(p=>({...p,[lk]:false}));return;}
@@ -8231,7 +8610,7 @@ function App(){
     if(n===0)showToast("Those weeks are full — nothing booked");
     else if(skipped.length===0)showToast(`Booked ${n} week${n>1?"s":""} ✓`);
     else showToast(`Booked ${n} of ${weeks} — ${skipped.map(d=>d.getDate()+" "+MONTHS[d.getMonth()]).join(", ")} full`);
-    if(added.length&&calendarEnabled)openAddToCalendar({title:"Team 365 "+(slotNames[added[0].date_key+":"+time]||getDayClassName(added[0].date_key,time)||sessionType),dateKey:added[0].date_key,time,durationMin:60,recurWeeks:added.length,details:"Booked via the Team 365 app."});
+    if(added.length&&calendarEnabled)openAddToCalendar({title:"Team 365 "+(slotNames[added[0].date_key+":"+time]||getDayClassName(added[0].date_key,time)||sessionType),dateKey:added[0].date_key,time,durationMin:classDurationOf(added[0].date_key,time),recurWeeks:added.length,details:"Booked via the Team 365 app."});
     setBkBusy(p=>({...p,[lk]:false}));
   }
   async function handleCancel(time,dk){
@@ -8246,16 +8625,25 @@ function App(){
     await sbDelete("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=eq.${dk}&time=eq.${encodeURIComponent(time)}`);
     showToast("Wellness session cancelled");
   }
+  // Everything about a class now comes from ONE resolver — see resolveClass() at
+  // the top of this file. The wrappers below keep every existing call site working.
+  const classCtx={classDow,dowNames,dowSlotNames,dowSlotLimits,dowLimits,
+    dateRow:(dk,t)=>classRows[`${dk}:${t}`]||null};
+  const classOf=(dateKey,time)=>resolveClass(dateKey,time,classCtx);
   function getMaxSpots(time,dateKey){
     const k=`${dateKey}:${time}`;
     if(k in classLimits)return classLimits[k]; // specific-date override (incl 0 = hidden)
-    const rule=classAddRule(classDow,dateKey,time); // recurring class carries its own capacity
-    if(rule&&rule.spots)return rule.spots;
-    const dow=new Date(dateKey+"T00:00:00").getDay();
-    const dk2=dow+":"+time;
-    if(dk2 in dowSlotLimits)return dowSlotLimits[dk2]; // recurring weekday+time capacity
-    if(dow in dowLimits)return dowLimits[dow]; // whole-weekday default capacity
-    return MAX_SPOTS;
+    const c=classOf(dateKey,time);
+    return c?c.spots:MAX_SPOTS;
+  }
+  // Strength vs HIIT now comes off the class itself rather than the weekday.
+  function classTypeOf(dateKey,time){
+    const c=classOf(dateKey,time);
+    return (c&&c.type)||(isStrengthDay(dateKey)?"Strength":"HIIT");
+  }
+  function classDurationOf(dateKey,time){
+    const c=classOf(dateKey,time);
+    return (c&&c.duration)||DEFAULT_DURATION;
   }
   // Write a settings row to coaching_notes and REPORT whether it stuck.
   // The old code ignored the result, so a refused write looked like a success:
@@ -8347,12 +8735,9 @@ function App(){
     if(!enabled&&tab==="strength")setTab("community");
   }
   function getDayClassName(dateKey,time){
-    const dow=new Date(dateKey+"T00:00:00").getDay();
-    // Precedence: weekday+time name > this recurring class's own name > whole-weekday name.
-    if(time&&dowSlotNames[dow+":"+time])return dowSlotNames[dow+":"+time];
-    const rule=time?classAddRule(classDow,dateKey,time):null;
-    if(rule&&rule.name)return rule.name;
-    return dowNames[dow]||"";
+    if(!time)return dowNames[new Date(dateKey+"T00:00:00").getDay()]||"";
+    const c=classOf(dateKey,time);
+    return c?c.name:"";
   }
   async function saveDowName(dow,name){
     const prev=dowNames;const newDn={...dowNames,[dow]:name.toUpperCase()};
@@ -8414,6 +8799,48 @@ function App(){
     setClassDow(clean);
     const ok=await saveNote("__CLASS_DOW__",clean);
     return ok||noteFailed(()=>setClassDow(prev),"the repeat");
+  }
+  // Base timetable. Writing this record is what switches the app from the legacy
+  // hardcoded timetable to one Sam controls. An empty array for a weekday = no classes.
+  async function saveBaseTimes(next){
+    const clean={};
+    for(let d=0;d<7;d++){const v=(next||{})[d];clean[d]=Array.isArray(v)?[...new Set(v.filter(Boolean))].sort():[];}
+    const prev=baseTimes;
+    setBaseTimes(clean);
+    const ok=await saveNote("__BASE_TIMES__",clean);
+    return ok||noteFailed(()=>setBaseTimes(prev),"the timetable");
+  }
+  async function saveWellBaseTimes(next){
+    const clean={};
+    for(let d=0;d<7;d++){const v=(next||{})[d];clean[d]=Array.isArray(v)?[...new Set(v.filter(Boolean))].sort():[];}
+    const prev=wellBaseTimes;
+    setWellBaseTimes(clean);
+    const ok=await saveNote("__WELL_BASE_TIMES__",clean);
+    return ok||noteFailed(()=>setWellBaseTimes(prev),"the wellness timetable");
+  }
+  // Membership allowances. Stored as a list so tiers can be renamed or added
+  // without a code change. null in hiit/strength/wellness means unlimited.
+  async function saveTierOverrides(next){
+    const clean=(next||[]).filter(t=>t&&String(t.match||"").trim()).map(t=>({
+      match:String(t.match).trim().toUpperCase(),
+      hiit:t.hiit===null?null:(parseInt(t.hiit)||0),
+      strength:t.strength===null?null:(parseInt(t.strength)||0),
+      wellness:t.wellness===null?null:(parseInt(t.wellness)||0)
+    }));
+    const prev=tierOverrides;
+    setTierOverrides(clean);
+    const ok=await saveNote("__TIER_LIMITS__",clean);
+    return ok||noteFailed(()=>setTierOverrides(prev),"the tier limits");
+  }
+  // Excuse / un-excuse a no-show. The booking stays as history either way; an
+  // excused one simply stops counting toward the weekly cap or the concession card.
+  async function setBookingExcused(bk,val){
+    const ok=await sbPatch("bookings",`id=eq.${bk.id}`,{excused:val});
+    if(ok){
+      setBookings(prev=>prev.map(b=>(b.id===bk.id?{...b,excused:val}:b)));
+      showToast(val?"No-show excused ✓":"No-show reinstated");
+    }else{showToast("Could not save");}
+    return ok;
   }
   async function saveMilestoneConfig(cfg){
     const prev=milestoneConfig;
@@ -8605,7 +9032,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       ),
       React.createElement("div",{className:"week-nav",style:{paddingTop:0}},
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"‹"),
-        React.createElement("div",{className:"wk-label"},`${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} – ${MONTHS[weekDates[5].getMonth()]} ${weekDates[5].getDate()}  ${weekDates[0].getFullYear()}`),
+        React.createElement("div",{className:"wk-label"},`${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} – ${MONTHS[weekDates[6].getMonth()]} ${weekDates[6].getDate()}  ${weekDates[0].getFullYear()}`),
         React.createElement("button",{className:"wk-arrow",disabled:atHorizon,onClick:()=>{if(atHorizon){showToast("Bookings open "+BOOKING_WEEKS+" weeks ahead");return;}setWeekStart(w=>addDays(w,7));}},"›")
       ),
       React.createElement("div",{className:"day-strip"},
@@ -8626,12 +9053,13 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
             React.createElement("option",{value:4},"4 weeks")
           )
         ),
+        times.length===0&&React.createElement("div",{className:"no-classes"},"NO CLASSES SCHEDULED"),
         times.map(time=>{
           const list=getBksFor(selDK,time);const taken=list.length;const maxSp=getMaxSpots(time,selDK);const left=maxSp-taken;
           const userBkd=userBooked(selDK,time);const full=left===0&&!userBkd;
           const past=isPastClass(time);const lk=`${selDK}-${time}`;const busy=!!bkBusy[lk];
-          const sessionType=isStrengthDay(selDK)?"Strength":"HIIT";
-          const tierLimits=getTierLimits(memberData?.membership_type);
+          const sessionType=classTypeOf(selDK,time);
+          const tierLimits=getTierLimits(memberData?.membership_type,tierOverrides);
           const typeLimit=sessionType==="Strength"?tierLimits.strength:tierLimits.hiit;
           const weekUsed=!userBkd&&session?weeklyClassCount(session.email,sessionType,selDK):0;
           // Concession members ignore weekly caps — blocked only when the 10-class card is used up.
@@ -8681,7 +9109,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         })
       )
       ),
-      effBookSub==="wellness"&&showWellness&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin,memberData,wellSlots,wellDow,calendarEnabled})
+      effBookSub==="wellness"&&showWellness&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin,memberData,wellSlots,wellDow,calendarEnabled,tierOverrides,wellBaseTimes})
     ),
     effTab==="my"&&canBook&&React.createElement("div",{className:"my-wrap"},
       React.createElement("div",{className:"my-hdr"},"MY BOOKINGS"),
@@ -8775,7 +9203,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       effWkSub==="routines"&&showRoutines&&React.createElement(RoutinesView,{session,ttl:wkTitles.rt,isAdmin})
     ),
     effTab==="progress"&&acc("progress")&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}),
-    effTab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:""}),
+    effTab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:""}),
     ),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),

@@ -160,6 +160,47 @@ async function sbPatch(t,q,d){try{await AUTH_READY;const r=await fetch(`${SB_URL
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
 const SAT_TIMES=["06:30","07:30","08:30","09:30"];
+// ── Base timetable · __BASE_TIMES__ ──────────────────────────────────────────
+// Per-weekday base class times, keyed "0".."6" (Sunday = 0), edited in Admin and
+// stored in coaching_notes. Precedence is deliberate:
+//   record ABSENT  -> the legacy hardcoded timetable above applies, so a database
+//                     that has not been set up yet behaves exactly as it always did
+//   record PRESENT -> a weekday it does not mention has NO classes. That is what
+//                     "clear all" writes, and it is what makes an empty app possible.
+function dowOf(dk){return new Date(dk+"T00:00:00").getDay();}
+function baseTimesFor(bt,dk){
+  const dow=dowOf(dk);
+  if(!bt||typeof bt!=="object")return dow===0?[]:dow===6?SAT_TIMES:WD_TIMES;
+  return Array.isArray(bt[dow])?bt[dow]:[];
+}
+// ── Class resolver ───────────────────────────────────────────────────────────
+// ONE precedence chain for every property of a class, shared by the app, both
+// booking widgets and the check-in kiosk. Because every surface resolves a class
+// the same way, a class cannot look different depending on where it is seen.
+//   1. per-date row (class_limits)   2. recurring rule (__CLASS_DOW__)
+//   3. weekday default               4. system default
+// ctx = { classDow, dowNames, dowSlotNames, dateRow(dk,time) }
+// dateRow returns {max_spots,name,session_type,duration_min} for that exact
+// date+time, or null. Returns null when the class is hidden for that date.
+const DEFAULT_DURATION=60;
+// Before classes carried a type, Tuesday and Thursday were the Strength days.
+// Kept as the last-resort fallback so untyped rules and historic rows classify.
+const LEGACY_STRENGTH_DOWS=[2,4];
+function resolveClass(dk,time,ctx){
+  ctx=ctx||{};
+  const row=ctx.dateRow?ctx.dateRow(dk,time):null;
+  if(row&&row.max_spots===0)return null;
+  const rule=classAddRule(ctx.classDow,dk,time);
+  const dow=dowOf(dk);
+  const dsn=(ctx.dowSlotNames||{})[dow+":"+time];
+  return {
+    name:(row&&row.name)||dsn||(rule&&rule.name)||((ctx.dowNames||{})[dow])||"",
+    spots:(row&&row.max_spots)||(rule&&rule.spots)||((ctx.dowSlotLimits||{})[dow+":"+time])||((ctx.dowLimits||{})[dow])||MAX_SPOTS,
+    type:(row&&row.session_type)||(rule&&rule.type)||(LEGACY_STRENGTH_DOWS.indexOf(dow)>=0?"Strength":"HIIT"),
+    duration:(row&&row.duration_min)||(rule&&rule.duration)||DEFAULT_DURATION
+  };
+}
+
 const MAX_SPOTS=16;
 const DEFAULT_DOW_NAMES={1:"RISE UP",2:"STRENGTH LOWER",3:"ASCEND",4:"STRENGTH UPPER",5:"ELEVATE",6:"SUMMIT"};
 // ── Hero background · __BG__PROFILE__ ────────────────────────────────────────
@@ -203,7 +244,7 @@ function clockTime(ms){
   const d=new Date(ms);const h=d.getHours();
   return `${h%12||12}:${String(d.getMinutes()).padStart(2,"0")}${h<12?"am":"pm"}`;
 }
-function getToday(){const d=new Date();if(d.getDay()===0){d.setDate(d.getDate()+1);}return d;}
+function getToday(){return new Date();}
 function App(){
   const today=getToday();
   const [selDate,setSelDate]=useState(today);
@@ -212,6 +253,12 @@ function App(){
   const [slotNames,setSlotNames]=useState({});
   const [dowNames,setDowNames]=useState(DEFAULT_DOW_NAMES);
   const [classDow,setClassDow]=useState({});
+  // Same records the app reads, so a class resolves identically at the desk.
+  const [baseTimes0,setBaseTimes]=useState(null);
+  const [dowSlotNames,setDowSlotNames]=useState({});
+  const [dowSlotLimits,setDowSlotLimits]=useState({});
+  const [dowLimits,setDowLimits]=useState({});
+  const [classRows,setClassRows]=useState({});
   const [heroBg,setHeroBg]=useState("");
   const [loading,setLoading]=useState(true);
   const [expandedSlot,setExpandedSlot]=useState(null);
@@ -221,6 +268,18 @@ function App(){
   useEffect(()=>{
     sbGet("coaching_notes","class_name=eq.__DOW_NAMES__&select=content&limit=1").then(rows=>{
       if(rows&&rows[0]){try{const dn=JSON.parse(rows[0].content);setDowNames(p=>({...p,...dn}));}catch{}}
+    });
+    sbGet("coaching_notes","class_name=eq.__BASE_TIMES__&select=content&limit=1").then(rows=>{
+      if(rows&&rows[0]){try{const v=JSON.parse(rows[0].content);if(v&&typeof v==="object")setBaseTimes(v);}catch{}}
+    });
+    sbGet("coaching_notes","class_name=eq.__DOW_SLOT_NAMES__&select=content&limit=1").then(rows=>{
+      if(rows&&rows[0]){try{const v=JSON.parse(rows[0].content);if(v&&typeof v==="object")setDowSlotNames(v);}catch{}}
+    });
+    sbGet("coaching_notes","class_name=eq.__DOW_SLOT_LIMITS__&select=content&limit=1").then(rows=>{
+      if(rows&&rows[0]){try{const v=JSON.parse(rows[0].content);if(v&&typeof v==="object")setDowSlotLimits(v);}catch{}}
+    });
+    sbGet("coaching_notes","class_name=eq.__DOW_LIMITS__&select=content&limit=1").then(rows=>{
+      if(rows&&rows[0]){try{const v=JSON.parse(rows[0].content);if(v&&typeof v==="object")setDowLimits(v);}catch{}}
     });
     sbGet("coaching_notes","class_name=eq.__CLASS_DOW__&select=content&limit=1").then(rows=>{
       if(rows&&rows[0]){try{const cd=JSON.parse(rows[0].content);if(cd&&typeof cd==="object")setClassDow(cd);}catch{}}
@@ -237,34 +296,35 @@ function App(){
     setLoading(true);
     const dk=toDS(selDate);
     const [bks,limits]=await Promise.all([
-      sbGet("bookings",`date_key=eq.${dk}&select=id,name,email,time,checked_in,checked_in_at&order=time.asc,name.asc`),
-      sbGet("class_limits",`date_key=eq.${dk}&select=time_slot,max_spots,name`)
+      sbGet("bookings",`date_key=eq.${dk}&select=id,name,email,time,checked_in,checked_in_at,excused&order=time.asc,name.asc`),
+      sbGet("class_limits",`date_key=eq.${dk}&select=time_slot,max_spots,name,session_type,duration_min`)
     ]);
     setBookings(bks||[]);
-    const cl={};const sn={};
+    const cl={};const sn={};const rows={};
     (limits||[]).forEach(r=>{
       cl[r.time_slot]=r.max_spots;
       if(r.name)sn[r.time_slot]=r.name;
+      rows[r.time_slot]=r;
     });
     setClassLimits(cl);
     setSlotNames(sn);
+    setClassRows(rows);
     setLastRefresh(new Date());
     setLoading(false);
   },[selDate]);
   useEffect(()=>{loadData();},[loadData]);
   useEffect(()=>{const id=setInterval(()=>loadData(),180000);return()=>clearInterval(id);},[loadData]);
-  const baseTimes=isSat?SAT_TIMES:WD_TIMES;
+  const baseTimes=baseTimesFor(baseTimes0,selDK);
   const rowTimes=Object.keys(classLimits);
   const allTimes=classTimesFor(selDK,baseTimes,
     rowTimes.filter(t=>classLimits[t]>0),
     rowTimes.filter(t=>classLimits[t]===0),
     classDow);
-  function getClassName(time){
-    if(slotNames[time])return slotNames[time];
-    const rule=classAddRule(classDow,selDK,time);
-    if(rule&&rule.name)return rule.name;
-    return dowNames[dayOfWeek]||"";
-  }
+  // One shared resolver — see resolveClass() at the top of this file.
+  const classCtx={classDow,dowNames,dowSlotNames,dowSlotLimits,dowLimits,
+    dateRow:(dk,t)=>(dk===selDK?(classRows[t]||null):null)};
+  const classOf=(time)=>resolveClass(selDK,time,classCtx);
+  function getClassName(time){const c=classOf(time);return c?c.name:"";}
   async function toggleCheckIn(bk){
     if(busy[bk.id])return;
     setBusy(p=>({...p,[bk.id]:true}));
@@ -278,8 +338,7 @@ function App(){
   }
   function showToast(msg){setToast({show:true,msg});setTimeout(()=>setToast({show:false,msg:""}),2200);}
   function changeDay(delta){
-    let next=addDays(selDate,delta);
-    if(next.getDay()===0)next=addDays(next,delta>0?1:-1);
+    const next=addDays(selDate,delta);
     setSelDate(next);setExpandedSlot(null);
   }
   const DAY_NAMES=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
@@ -318,7 +377,7 @@ function App(){
                 const list=bookings.filter(b=>b.time===time);
                 const taken=list.length;
                 const ruleCls=classAddRule(classDow,selDK,time);
-                const maxSp=classLimits[time]||(ruleCls&&ruleCls.spots)||MAX_SPOTS;
+                const maxSp=classLimits[time]||(classOf(time)||{}).spots||MAX_SPOTS;
                 const checkedCount=list.filter(b=>b.checked_in).length;
                 const isExpanded=expandedSlot===time;
                 const className=getClassName(time);
