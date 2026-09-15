@@ -8523,15 +8523,13 @@ function App(){
     const em=fpEmail.toLowerCase().trim();
     if(!em||!/\S+@\S+\.\S+/.test(em)){setFpErr("Please enter a valid email address.");return;}
     setFpBusy(true);setFpErr("");
-    let firstName="there",token=null;
     try{
       const rr=await fetch(`${SB_URL}/functions/v1/dynamic-api`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({action:"requestReset",email:em})});
       const jj=await rr.json().catch(()=>({}));
       if(!jj||!jj.ok){setFpBusy(false);setFpErr("No account found with that email.");return;}
-      firstName=jj.firstName||"there";token=jj.token;
     }catch(e){setFpBusy(false);setFpErr("Something went wrong. Please try again.");return;}
-    const params=new URLSearchParams({action:"passwordReset",to:em,firstName,token});
-    try{await fetch(APPS_SCRIPT_URL+"?"+params.toString(),{method:"GET",mode:"no-cors"});}catch(e){}
+    // The edge function now sends the reset email itself. The token is never
+    // returned to the browser, so there is nothing to forward from here.
     setFpBusy(false);setFpMsg("Reset link sent! Check your email. The link expires in 24 hours.");
   }
   function weeklyClassCount(email,type,refDateKey){
