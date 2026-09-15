@@ -9047,10 +9047,11 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         !isAdmin&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,margin:"0 0 12px"}},
           React.createElement("span",{style:{fontSize:9,letterSpacing:"0.12em",color:"#555",fontWeight:600,flexShrink:0}},"REPEAT WEEKLY"),
           React.createElement("select",{value:repeatWeeks,onChange:e=>setRepeatWeeks(parseInt(e.target.value)),style:{flex:1,background:"#141414",border:"1px solid "+(repeatWeeks>1?"#1d3a5a":"#2a2a2a"),borderRadius:0,color:repeatWeeks>1?"#1d9bf0":"#ccc",fontSize:12,padding:"7px 8px",fontFamily:"'DM Sans',sans-serif",outline:"none",cursor:"pointer"}},
+            // Options run to the booking horizon, so the dropdown can never offer
+            // more weeks than a member is actually allowed to book.
             React.createElement("option",{value:1},"This class only"),
-            React.createElement("option",{value:2},"2 weeks"),
-            React.createElement("option",{value:3},"3 weeks"),
-            React.createElement("option",{value:4},"4 weeks")
+            ...Array.from({length:BOOKING_WEEKS-1},(_,i)=>
+              React.createElement("option",{key:i+2,value:i+2},(i+2)+" weeks"))
           )
         ),
         times.length===0&&React.createElement("div",{className:"no-classes"},"NO CLASSES SCHEDULED"),
