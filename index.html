@@ -736,6 +736,10 @@ const isPastD=d=>toDS(d)<toDS(new Date());
 const fmt12=t=>{const[h,m]=t.split(":").map(Number);return`${h%12||12}:${String(m).padStart(2,"0")}${h<12?"am":"pm"}`;};
 const dateStr=d=>`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 // ── Add to Calendar ───────────────────────────────────────────────────────────
+// Studio location records, edited in Admin > Onboarding > Studio Location.
+const STUDIO_ADDRESS_KEY="__STUDIO_ADDRESS__";
+const ARRIVAL_NOTES_KEY="__ARRIVAL_NOTES__";
+// Fallback only, for a database where the address has not been set yet.
 const GYM_LOCATION="Team 365";
 function calDates(dateKey,time,durationMin){const[Y,Mo,Da]=(dateKey||"").split("-").map(Number);const[h,mi]=((time||"0:0").split(":")).map(Number);const start=new Date(Y,(Mo||1)-1,Da,h||0,mi||0,0,0);const end=new Date(start.getTime()+durationMin*60000);return{start,end};}
 function calUTC(d){return d.toISOString().replace(/[-:]/g,"").replace(/\.\d{3}Z$/,"Z");}
@@ -801,6 +805,11 @@ function getTierLimits(membershipType,overrides){
 // caps above ("10 classes, use them how you like"). Marked by members.concession=true
 // AND no real membership plan (membership_type empty). Getting a plan auto-ends it.
 const CONCESSION_LIMIT=10;
+// A member is flagged as lapsed when they have attended before but not in this
+// many days. The "attended before" half matters: without it every member who has
+// never checked in would be flagged, which on a new timetable is everyone, and a
+// screen of red flags is one you learn to ignore.
+const LAPSED_DAYS=21;
 function isConcessionActive(m){return !!(m&&m.concession===true&&!m.membership_type);}
 // Training-type tag (PT / ONLINE TRAINING). Independent of membership, so it can show
 // on its own (health-screening client) OR alongside a studio plan (member who also trains
@@ -948,6 +957,13 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
   const [concBusy,setConcBusy]=useState(false);
   const [concMsg,setConcMsg]=useState("");
   const [noShows,setNoShows]=useState([]);
+  // Email preferences. A member can also set these from the unsubscribe link in
+  // any email; this is so you can see and change them without hunting for one.
+  const [emPrefs,setEmPrefs]=useState({
+    reminders:member.email_reminders!==false,
+    confirmations:member.email_confirmations!==false
+  });
+  const [emBusy,setEmBusy]=useState("");
   const [nsBusy,setNsBusy]=useState({});
   const [showNs,setShowNs]=useState(false);
   useEffect(()=>{
@@ -1144,6 +1160,34 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
           React.createElement("div",{className:"adm-stat-num",style:{color:noShows.filter(n=>!n.excused).length>0?"#e06040":"#fff"}},noShows.filter(n=>!n.excused).length),
           React.createElement("div",{className:"adm-stat-lbl"},"NO-SHOWS")
         )
+      ),
+      // ── Email preferences ─────────────────────────────────────────────────
+      currentUserIsAdmin&&React.createElement("div",{style:{background:"#141414",border:"1px solid #666",borderRadius:0,padding:"14px 16px",marginBottom:10}},
+        React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:12}},"EMAILS"),
+        [
+          {k:"reminders",col:"email_reminders",label:"Class reminders",hint:"The night before a booked class"},
+          {k:"confirmations",col:"email_confirmations",label:"Booking confirmations",hint:"When they book a class"}
+        ].map(function(row){
+          const on=emPrefs[row.k];
+          return React.createElement("div",{key:row.k,style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"8px 0"}},
+            React.createElement("div",null,
+              React.createElement("div",{style:{fontSize:13,color:"#fff",letterSpacing:"0.02em"}},row.label),
+              React.createElement("div",{style:{fontSize:10,color:"#555",marginTop:2}},row.hint)
+            ),
+            React.createElement("button",{disabled:emBusy===row.k,
+              style:{background:on?"#fff":"#222",color:on?"#000":"#555",border:"1px solid "+(on?"#fff":"#333"),borderRadius:0,padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0},
+              onClick:async()=>{
+                const next=!on;
+                setEmBusy(row.k);
+                const ok=await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,{[row.col]:next});
+                setEmBusy("");
+                if(ok){
+                  setEmPrefs(p=>({...p,[row.k]:next}));
+                  member[row.col]=next;
+                }
+              }},emBusy===row.k?"\u2026":(on?"ON":"OFF"))
+          );
+        })
       ),
       // ── No-shows ──────────────────────────────────────────────────────────
       // A booked class that came and went without a check-in. It still consumes
@@ -1545,7 +1589,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
   );
 }
 // ── Wellness View ─────────────────────────────────────────────────────────────
-function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,wellDow,calendarEnabled,tierOverrides,wellBaseTimes}){
+function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,wellDow,calendarEnabled,tierOverrides,wellBaseTimes,calLocation,calDetails}){
   const [wellBks,setWellBks]=useState([]);
   const [weekStart,setWeekStart]=useState(getWeekStart);
   const [selDay,setSelDay]=useState(getInitDay);
@@ -1590,7 +1634,7 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,w
     setWellBks(prev=>[...prev,newBk]);
     const ok=await sbPost("wellness_bookings",newBk);
     if(!ok){setWellBks(prev=>prev.filter(b=>!(b.date_key===selDK&&b.time===time)));showToast("Booking failed — try again");}
-    else{showToast("Wellness session booked ✓");notifyWellnessBooking(session.name,session.email,selDK,time);if(calendarEnabled)openAddToCalendar({title:"Team 365 Sauna & Cold Plunge",dateKey:selDK,time,durationMin:90,details:"Booked via the Team 365 app."});}
+    else{showToast("Wellness session booked ✓");notifyWellnessBooking(session.name,session.email,selDK,time);if(calendarEnabled)openAddToCalendar({title:"Team 365 Sauna & Cold Plunge",dateKey:selDK,time,durationMin:90,location:calLocation(),details:calDetails("Booked via the Team 365 app.")});}
     setBusy(p=>({...p,[lk]:false}));
   }
   async function handleCancel(time){
@@ -2162,6 +2206,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   const [newTimeVal,setNewTimeVal]=useState("");
   const [undoData,setUndoData]=useState(null);
   const [schPanel,setSchPanel]=useState(null); // which scheduling panel is open
+  // email -> date_key of their most recent check-in, for the lapsed flag.
+  const [lastSeen,setLastSeen]=useState(null);
   const undoTimerRef=useRef(null);
   const [editingClassName,setEditingClassName]=useState(false);
   const [classNameInput,setClassNameInput]=useState("");
@@ -2503,6 +2549,16 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   useEffect(()=>{
     if((admSeg==="members"||admSeg==="functions"||(admSeg==="sections"&&isMaster))&&!membersLoaded){
       sbGet("members","select=*&order=name.asc").then(data=>{setMembers(data||[]);setMembersLoaded(true);});
+      // Every attendance on record, reduced to the latest per member.
+      sbGet("bookings","checked_in=eq.true&select=email,date_key").then(rows=>{
+        const seen={};
+        (rows||[]).forEach(r=>{
+          const e=String(r.email||"").toLowerCase();
+          if(!e||!r.date_key)return;
+          if(!seen[e]||r.date_key>seen[e])seen[e]=r.date_key;
+        });
+        setLastSeen(seen);
+      });
       sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__MASTER_HIDDEN__")+"&select=content").then(r=>{setMasterHidden(!!(r&&r.length&&r[0].content==="1"));});
     }
     if(admSeg==="wellness"&&!wellAdmLoaded){
@@ -2520,6 +2576,14 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
       if(showToast)showToast(nv?"You are now hidden from members":"You are now visible");
     }catch(e){setMasterHidden(!nv);if(showToast)showToast("Could not save");}
     setMhSaving(false);
+  }
+  // null while attendance is still loading, so nothing is flagged prematurely.
+  function lapsedDays(mb){
+    if(!lastSeen||!mb||mb.is_admin)return null;
+    const last=lastSeen[String(mb.email||"").toLowerCase()];
+    if(!last)return null; // never attended — not lapsed, just new
+    const days=Math.floor((new Date(toDS(new Date())+"T00:00:00")-new Date(last+"T00:00:00"))/86400000);
+    return days>LAPSED_DAYS?days:null;
   }
   const visMembers=masterHidden?members.filter(m=>m.email!==ADMIN_EMAIL):members;
   const admDK=toDS(admDate);const admDOW=admDate.getDay();const admIsSat=admDOW===6;
@@ -2573,12 +2637,20 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
       visMembers.map((mb,i)=>{
         const mbBks=bookings.filter(b=>b.email===mb.email&&b.date_key>=toDS(new Date())).length;
         const joinDate=fmtJoinDate(mb.joined_at);
-        return React.createElement("div",{key:i,className:"adm-member-card",onClick:()=>openMemberProfile(mb)},
+        const lapsed=lapsedDays(mb);
+        return React.createElement("div",{key:i,className:"adm-member-card",style:lapsed?{borderColor:"#e06040"}:undefined,onClick:()=>openMemberProfile(mb)},
           React.createElement("div",{className:"adm-mc-top"},
             React.createElement("div",null,React.createElement("div",{className:"adm-mc-name"},(mb.name||"").toUpperCase())),
-            mb.photo
-              ?React.createElement("img",{src:mb.photo,style:{width:32,height:32,borderRadius:"50%",objectFit:"cover",border:"1px solid #1d9bf0",flexShrink:0},alt:""})
-              :React.createElement("div",{style:{width:32,height:32,borderRadius:"50%",background:"#1a1a1a",border:"1px solid #1d9bf0",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,color:"#666",flexShrink:0}},initials(mb.name||"?"))
+            React.createElement("div",{style:{position:"relative",flexShrink:0}},
+              mb.photo
+                ?React.createElement("img",{src:mb.photo,style:{width:32,height:32,borderRadius:"50%",objectFit:"cover",border:"1px solid "+(lapsed?"#e06040":"#1d9bf0"),display:"block"},alt:""})
+                :React.createElement("div",{style:{width:32,height:32,borderRadius:"50%",background:"#1a1a1a",border:"1px solid "+(lapsed?"#e06040":"#1d9bf0"),display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,color:"#666"}},initials(mb.name||"?")),
+              lapsed&&React.createElement("div",{title:"Not seen in "+lapsed+" days",
+                style:{position:"absolute",top:-3,right:-3,width:11,height:11,borderRadius:"50%",background:"#e06040",border:"2px solid #141414"}})
+            )
+          ),
+          lapsed&&React.createElement("div",{className:"adm-mc-detail"},
+            React.createElement("span",{style:{color:"#e06040",fontWeight:700,letterSpacing:"0.1em"}},"NOT SEEN IN "+lapsed+" DAYS")
           ),
           React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.email)),
           mb.phone&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.phone)),
@@ -3551,6 +3623,64 @@ function OnboardingPanel({id,title,children,openPanel,setOpenPanel,titles,onSave
     open&&React.createElement("div",{style:{padding:"0 14px 14px"}},children)
   );
 }
+// ── Studio location ──────────────────────────────────────────────────────────
+// Where classes actually happen, and what to do on arrival. Stored in
+// coaching_notes so it is editable in Admin rather than baked into five files.
+// This feeds the calendar invite a member gets when they book: GYM_LOCATION was
+// the literal string "Team 365", which no map application can resolve, so every
+// invite ever sent has had a useless location.
+function StudioLocationEditor({showToast}){
+  const [addr,setAddr]=useState("");
+  const [notes,setNotes]=useState("");
+  const [loaded,setLoaded]=useState(false);
+  const [saving,setSaving]=useState(false);
+  const [dirty,setDirty]=useState(false);
+  useEffect(()=>{
+    Promise.all([
+      sbGet("coaching_notes","class_name=eq."+encodeURIComponent(STUDIO_ADDRESS_KEY)+"&select=content"),
+      sbGet("coaching_notes","class_name=eq."+encodeURIComponent(ARRIVAL_NOTES_KEY)+"&select=content")
+    ]).then(([a,n])=>{
+      if(a&&a.length)setAddr((a[0].content||"").trim());
+      if(n&&n.length)setNotes((n[0].content||"").trim());
+      setLoaded(true);
+    });
+  },[]);
+  async function saveNote(key,val){
+    const q="class_name=eq."+encodeURIComponent(key);
+    const ex=await sbGet("coaching_notes",q+"&select=class_name");
+    if(ex&&ex.length)return await sbPatch("coaching_notes",q,{content:val,updated_at:Date.now()});
+    return await sbPost("coaching_notes",{class_name:key,content:val,updated_at:Date.now()});
+  }
+  const L={display:"block",fontSize:9,letterSpacing:"0.16em",color:"#555",fontWeight:600,marginBottom:6};
+  const I={width:"100%",background:"#0e0e0e",border:"1px solid #333",borderRadius:0,padding:"10px 12px",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:14,outline:"none",boxSizing:"border-box"};
+  if(!loaded)return React.createElement("div",{className:"no-bk"},"LOADING...");
+  return React.createElement("div",null,
+    React.createElement("div",{style:{fontSize:10,letterSpacing:"0.06em",color:"#444",lineHeight:1.7,marginBottom:14}},
+      "Used in the calendar invite members get when they book, and in their emails. Kept out of the public booking pages \u2014 only someone who has actually booked ever sees it."),
+    React.createElement("div",{style:{marginBottom:14}},
+      React.createElement("label",{style:L},"ADDRESS"),
+      React.createElement("input",{value:addr,placeholder:"62 Pine Avenue, South New Brighton, Christchurch 8061",
+        onChange:e=>{setAddr(e.target.value);setDirty(true);},style:I})
+    ),
+    React.createElement("div",{style:{marginBottom:14}},
+      React.createElement("label",{style:L},"ARRIVAL NOTES"),
+      React.createElement("textarea",{value:notes,rows:4,
+        placeholder:"Which door, where to park, anything to know before 6am. Keep it short \u2014 it goes in the calendar invite.",
+        onChange:e=>{setNotes(e.target.value);setDirty(true);},style:{...I,resize:"vertical",lineHeight:1.6}})
+    ),
+    React.createElement("button",{disabled:saving||!dirty,
+      style:{width:"100%",background:dirty?"#fff":"#111",color:dirty?"#000":"#333",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.16em",padding:13,cursor:dirty?"pointer":"not-allowed"},
+      onClick:async()=>{
+        setSaving(true);
+        const a=await saveNote(STUDIO_ADDRESS_KEY,addr.trim());
+        const b=await saveNote(ARRIVAL_NOTES_KEY,notes.trim());
+        setSaving(false);
+        if(a&&b){setDirty(false);showToast("Location saved \u2713");}
+        else showToast("Could not save the location");
+      }},saving?"SAVING\u2026":"SAVE LOCATION")
+  );
+}
+
 function OnboardingView({showToast}){
   const [openPanel,setOpenPanel]=useState(null);
   const [titles,setTitles]=useState({});
@@ -3569,6 +3699,9 @@ function OnboardingView({showToast}){
   }
   return React.createElement("div",{style:{marginTop:16}},
     React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},"ONBOARDING · ADMIN"),
+    React.createElement(OnboardingPanel,{id:"location",title:"STUDIO LOCATION",openPanel,setOpenPanel,titles,onSaveTitle},
+      React.createElement(StudioLocationEditor,{showToast})
+    ),
     React.createElement(OnboardingPanel,{id:"process",title:"ONBOARDING PROCESS",openPanel,setOpenPanel,titles,onSaveTitle},
       React.createElement(ProcessNoteEditor,{showToast})
     ),
@@ -8230,6 +8363,15 @@ function App(){
   const [wellBaseTimes,setWellBaseTimes]=useState(null);
   // Editable membership tier allowances (__TIER_LIMITS__). null = built-in defaults.
   const [tierOverrides,setTierOverrides]=useState(null);
+  // Session briefs, keyed by CLASS NAME. Read from the class's own coaching note
+  // — a section titled "SESSION BRIEF" — so it is written where the rest of the
+  // class notes already live, and it follows the class name wherever it runs.
+  // Fetched only when a row is expanded; "" means checked and there isn't one.
+  const [classBriefs,setClassBriefs]=useState({});
+  // Where classes happen, and what to do on arrival. Both go into the calendar
+  // invite a member gets when they book.
+  const [studioAddress,setStudioAddress]=useState("");
+  const [arrivalNotes,setArrivalNotes]=useState("");
   // Full class_limits rows keyed "date:time", so the resolver can read name,
   // spots, type and duration from one place instead of three parallel maps.
   const [classRows,setClassRows]=useState({});
@@ -8330,6 +8472,10 @@ function App(){
       }
       const dnData=await sbGet("coaching_notes","class_name=eq.__DOW_NAMES__&select=content");
       if(dnData&&dnData.length){try{const dn=JSON.parse(dnData[0].content);setDowNames(p=>({...p,...dn}));}catch{}}
+      const saData=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(STUDIO_ADDRESS_KEY)+"&select=content");
+      if(saData&&saData.length)setStudioAddress((saData[0].content||"").trim());
+      const anData=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(ARRIVAL_NOTES_KEY)+"&select=content");
+      if(anData&&anData.length)setArrivalNotes((anData[0].content||"").trim());
       const btData=await sbGet("coaching_notes","class_name=eq.__BASE_TIMES__&select=content");
       if(btData&&btData.length){try{const bt=JSON.parse(btData[0].content);if(bt&&typeof bt==="object")setBaseTimes(bt);}catch{}}
       const wbtData=await sbGet("coaching_notes","class_name=eq.__WELL_BASE_TIMES__&select=content");
@@ -8482,6 +8628,26 @@ function App(){
   const userBooked=(dk,t)=>session&&getBksFor(dk,t).some(b=>b.email===session.email);
   const weekDots=weekDates.map(d=>isAdmin?bookings.some(b=>b.date_key===toDS(d)):session&&bookings.some(b=>b.date_key===toDS(d)&&b.email===session.email));
   const [expandedClass,setExpandedClass]=useState(null);
+  // Session brief for whichever class row is open. Declared after
+  // expandedClass so the dependency array is not read before it exists.
+  useEffect(()=>{
+    if(!expandedClass)return;
+    const nm=(getDayClassName(selDK,expandedClass)||"").toUpperCase();
+    if(!nm||classBriefs[nm]!==undefined)return;
+    sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(nm)}&select=content`).then(d=>{
+      let brief="";
+      if(d&&d.length&&d[0].content){
+        try{
+          const parsed=JSON.parse(d[0].content);
+          if(Array.isArray(parsed)){
+            const sec=parsed.find(x=>x&&String(x.title||"").toUpperCase().indexOf("SESSION BRIEF")>=0);
+            if(sec)brief=String(sec.body||"").trim();
+          }
+        }catch{}
+      }
+      setClassBriefs(p=>({...p,[nm]:brief}));
+    });
+  },[expandedClass,selDK]);
   const myUpcoming=session?bookings.filter(b=>b.email===session.email&&b.date_key>=toDS(new Date())).sort((a,b)=>a.date_key.localeCompare(b.date_key)||a.time.localeCompare(b.time)):[];
   function showToast(msg){setToast({msg,show:true});setTimeout(()=>setToast(t=>({...t,show:false})),2200);}
   async function handleAuth(){
@@ -8572,7 +8738,7 @@ function App(){
     setBookings(prev=>[...prev,newBk]);
     const ok=await sbPost("bookings",newBk);
     if(!ok){setBookings(prev=>prev.filter(b=>!(b.email===session.email&&b.date_key===selDK&&b.time===time)));showToast("Booking failed — try again");}
-    else{showToast("Spot reserved ✓");if(calendarEnabled)openAddToCalendar({title:"Team 365 "+(slotNames[selDK+":"+time]||getDayClassName(selDK,time)||sessionType),dateKey:selDK,time,durationMin:classDurationOf(selDK,time),details:"Booked via the Team 365 app."});}
+    else{showToast("Spot reserved ✓");if(calendarEnabled)openAddToCalendar({title:"Team 365 "+(slotNames[selDK+":"+time]||getDayClassName(selDK,time)||sessionType),dateKey:selDK,time,durationMin:classDurationOf(selDK,time),location:calLocation(),details:calDetails("Booked via the Team 365 app.")});}
     setBkBusy(p=>({...p,[lk]:false}));
   }
   // Book the same weekday+time for N consecutive weeks. Skips full/unavailable/limit weeks, reports a summary.
@@ -8608,7 +8774,7 @@ function App(){
     if(n===0)showToast("Those weeks are full — nothing booked");
     else if(skipped.length===0)showToast(`Booked ${n} week${n>1?"s":""} ✓`);
     else showToast(`Booked ${n} of ${weeks} — ${skipped.map(d=>d.getDate()+" "+MONTHS[d.getMonth()]).join(", ")} full`);
-    if(added.length&&calendarEnabled)openAddToCalendar({title:"Team 365 "+(slotNames[added[0].date_key+":"+time]||getDayClassName(added[0].date_key,time)||sessionType),dateKey:added[0].date_key,time,durationMin:classDurationOf(added[0].date_key,time),recurWeeks:added.length,details:"Booked via the Team 365 app."});
+    if(added.length&&calendarEnabled)openAddToCalendar({title:"Team 365 "+(slotNames[added[0].date_key+":"+time]||getDayClassName(added[0].date_key,time)||sessionType),dateKey:added[0].date_key,time,durationMin:classDurationOf(added[0].date_key,time),recurWeeks:added.length,location:calLocation(),details:calDetails("Booked via the Team 365 app.")});
     setBkBusy(p=>({...p,[lk]:false}));
   }
   async function handleCancel(time,dk){
@@ -8623,6 +8789,10 @@ function App(){
     await sbDelete("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=eq.${dk}&time=eq.${encodeURIComponent(time)}`);
     showToast("Wellness session cancelled");
   }
+  // Calendar invites carry the real address so a map application can find it,
+  // plus any arrival notes. Falls back to the old label if nothing is set yet.
+  const calLocation=()=>studioAddress||GYM_LOCATION;
+  const calDetails=base=>arrivalNotes?(base+"\n\n"+arrivalNotes):base;
   // Everything about a class now comes from ONE resolver — see resolveClass() at
   // the top of this file. The wrappers below keep every existing call site working.
   const classCtx={classDow,dowNames,dowSlotNames,dowSlotLimits,dowLimits,
@@ -9085,6 +9255,15 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
               )
             ),
             isExpanded&&React.createElement("div",{className:"adm-members-list",style:{borderTop:"1px solid #222"}},
+              (function(){
+                const nm=(getDayClassName(selDK,time)||"").toUpperCase();
+                const brief=classBriefs[nm];
+                if(!brief)return null;
+                return React.createElement("div",{style:{padding:"12px 13px",borderBottom:"1px solid #1a1a1a"}},
+                  React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,marginBottom:6}},"SESSION BRIEF"),
+                  React.createElement("div",{style:{fontSize:12,color:"#aaa",lineHeight:1.7,fontWeight:300,whiteSpace:"pre-line"}},brief)
+                );
+              })(),
               isAdmin
                 ?(list.length===0
                     ?React.createElement("div",{className:"adm-empty"},"NO BOOKINGS YET")
@@ -9108,7 +9287,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         })
       )
       ),
-      effBookSub==="wellness"&&showWellness&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin,memberData,wellSlots,wellDow,calendarEnabled,tierOverrides,wellBaseTimes})
+      effBookSub==="wellness"&&showWellness&&React.createElement(WellnessView,{session,showToast,bookings,isAdmin,memberData,wellSlots,wellDow,calendarEnabled,tierOverrides,wellBaseTimes,calLocation,calDetails})
     ),
     effTab==="my"&&canBook&&React.createElement("div",{className:"my-wrap"},
       React.createElement("div",{className:"my-hdr"},"MY BOOKINGS"),
