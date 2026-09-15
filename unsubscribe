@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#080808"/>
+<meta name="robots" content="noindex"/>
+<title>Team 365 · Email Preferences</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=Syncopate:wght@700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#080808;color:#fff;font-family:'DM Sans',Arial,sans-serif;min-height:100vh}
+.wrap{max-width:480px;margin:0 auto;padding:48px 20px 32px;text-align:center;display:flex;flex-direction:column;min-height:100vh;min-height:100dvh}
+/* Hero — same circle and blue ring as the check-in kiosk */
+.logo{width:72px;height:72px;border-radius:50%;border:2px solid #1d9bf0;background:#111;overflow:hidden;margin:0 auto 14px}
+.logo img{width:100%;height:100%;object-fit:cover;display:block}
+.brand{font-family:'Syncopate',Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.14em;color:#fff;line-height:1.2;margin-bottom:3px}
+.tag{font-family:'Syncopate',Arial,sans-serif;font-size:6px;font-weight:700;letter-spacing:0.18em;color:#555;line-height:1.2;margin-bottom:40px}
+/* Body */
+.title{font-family:'Bebas Neue',Arial,sans-serif;font-size:30px;letter-spacing:0.12em;color:#fff;margin-bottom:14px}
+.msg{font-size:14px;color:#aaa;line-height:1.8;font-weight:300;margin-bottom:32px}
+.msg strong{color:#fff;font-weight:500}
+.card{background:#141414;border:1px solid #666;border-radius:0;padding:20px;margin-bottom:28px}
+.card-lbl{font-size:11px;letter-spacing:0.14em;color:#555;font-weight:600;margin-bottom:10px}
+.btn{display:block;width:100%;background:#fff;color:#000;border:none;font-family:'Bebas Neue',Arial,sans-serif;font-size:15px;letter-spacing:0.16em;padding:15px;text-decoration:none;cursor:pointer;border-radius:0}
+.btn:hover{background:#ddd}
+.btn:disabled{background:#111;color:#333;cursor:not-allowed}
+.ghost{display:block;width:100%;background:transparent;color:#666;border:1px solid #333;font-family:'Bebas Neue',Arial,sans-serif;font-size:12px;letter-spacing:0.14em;padding:12px;text-decoration:none;cursor:pointer;border-radius:0}
+.ghost:hover{border-color:#666;color:#aaa}
+.loading{font-size:10px;letter-spacing:0.22em;color:#333;padding:20px 0}
+.load-bar{width:80px;height:1px;background:#1a1a1a;overflow:hidden;margin:12px auto 0}
+.load-fill{height:100%;background:#fff;animation:ld 1.5s ease-in-out infinite}
+@keyframes ld{0%{width:0}50%{width:100%}100%{width:0}}
+/* Same footer as the base of the app */
+.foot{margin-top:auto;padding-top:40px}
+.foot-name{font-size:10px;letter-spacing:0.22em;color:#fff;font-weight:400}
+.foot-by{margin-top:4px;font-size:8px;letter-spacing:0.06em;color:#999}
+.foot-by a{color:#1d9bf0;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">
+    <img src="https://raw.githubusercontent.com/lamontteam365/team365-booking/main/icon-192.png" alt="Team 365" onerror="this.style.display='none'"/>
+  </div>
+  <div class="brand">LAMONT TEAM 365</div>
+  <div class="tag">EVERYDAY. ALL YEAR ROUND.</div>
+
+  <div id="body">
+    <div class="loading">UPDATING YOUR PREFERENCES<div class="load-bar"><div class="load-fill"></div></div></div>
+  </div>
+
+  <div class="foot">
+    <div class="foot-name">LAMONT FITNESS APPLICATIONS</div>
+    <div class="foot-by">POWERED BY <a href="https://www.lamontcollective.com" target="_blank" rel="noopener">WWW.LAMONTCOLLECTIVE.COM</a></div>
+  </div>
+</div>
+
+<script>
+// ── Team 365 · unsubscribe landing page ──────────────────────────────────────
+// The link in every Team 365 email points here. This page reads its own query
+// string, calls the email-prefs edge function to record the change, and shows
+// the result.
+//
+// The heavy lifting is deliberately server-side: this page can only ever change
+// the preference for the exact address the link was signed for, because the
+// token is an HMAC the server checks. Editing the email in the URL does nothing.
+var PREFS_API = "https://xczwmexavysvljmobbgv.supabase.co/functions/v1/email-prefs";
+
+var q = new URLSearchParams(location.search);
+var email = (q.get("e") || "").toLowerCase();
+var token = q.get("t") || "";
+var kind  = q.get("k") === "confirmations" ? "confirmations" : "reminders";
+var want  = q.get("v") === "on";
+
+var LABEL = { reminders: "class reminders", confirmations: "booking confirmations" };
+var el = document.getElementById("body");
+
+function esc(s){
+  return String(s == null ? "" : s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function flipUrl(on){
+  return location.pathname
+    + "?e=" + encodeURIComponent(email)
+    + "&t=" + encodeURIComponent(token)
+    + "&k=" + encodeURIComponent(kind)
+    + "&v=" + (on ? "on" : "off");
+}
+function render(html){ el.innerHTML = html; }
+
+function showInvalid(){
+  render(
+    '<div class="title">LINK NOT VALID</div>' +
+    '<div class="msg">This link has expired or isn\'t quite right. Please use the link at the bottom of a recent Team 365 email, or just reply to any of our emails and we\'ll sort it out for you.</div>'
+  );
+}
+function showError(){
+  render(
+    '<div class="title">SOMETHING WENT WRONG</div>' +
+    '<div class="msg">We couldn\'t update your preferences just now. Please try again in a moment, or reply to any Team 365 email and we\'ll do it for you.</div>' +
+    '<a class="ghost" href="' + esc(location.href) + '">TRY AGAIN</a>'
+  );
+}
+function showOff(){
+  var label = LABEL[kind];
+  render(
+    '<div class="title">UNSUBSCRIBED</div>' +
+    '<div class="msg">You won\'t get ' + label + ' at <strong>' + esc(email) + '</strong> any more.' +
+    '<br><br>Your bookings are unaffected — you\'re still booked into any class you\'ve reserved.</div>' +
+    '<div class="card">' +
+      '<div class="card-lbl">CHANGED YOUR MIND?</div>' +
+      '<a class="btn" href="' + esc(flipUrl(true)) + '">TURN ' + label.toUpperCase() + ' BACK ON</a>' +
+    '</div>'
+  );
+}
+function showOn(){
+  var label = LABEL[kind];
+  render(
+    '<div class="title">YOU\'RE BACK ON</div>' +
+    '<div class="msg">We\'ll send ' + label + ' to <strong>' + esc(email) + '</strong> again.</div>' +
+    '<a class="ghost" href="' + esc(flipUrl(false)) + '">TURN THEM OFF AGAIN</a>'
+  );
+}
+
+if (!email || !token) {
+  showInvalid();
+} else {
+  fetch(PREFS_API
+        + "?e=" + encodeURIComponent(email)
+        + "&t=" + encodeURIComponent(token)
+        + "&k=" + encodeURIComponent(kind)
+        + "&v=" + (want ? "on" : "off"))
+    .then(function(r){ return r.json().catch(function(){ return {}; }); })
+    .then(function(j){
+      if (j && j.ok) { want ? showOn() : showOff(); }
+      else if (j && (j.error === "badtoken" || j.error === "missing")) { showInvalid(); }
+      else { showError(); }
+    })
+    .catch(showError);
+}
+</script>
+</body>
+</html>
