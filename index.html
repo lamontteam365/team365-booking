@@ -2010,7 +2010,29 @@ function SchPanel({title,hint,open,onToggle,children}){
 
 // ── NEW CLASS ────────────────────────────────────────────────────────────────
 // One class, any set of weekdays, in a single action.
-function NewClassForm({admDK,defaultDow,onCreate,showToast}){
+// The session brief for whatever name has been typed into a class. Shows the
+// existing brief for that style if there is one, an empty box marked REQUIRED if
+// there is not. Editing it here changes the brief for every class of that name,
+// which the note under the box says out loud.
+function ClassBriefBox({name,briefs,onChange,value}){
+  const key=(name||"").trim().toUpperCase();
+  const stored=key?((briefs||{})[key]||""):"";
+  const isNew=!!key&&!stored;
+  return React.createElement("div",{style:{marginBottom:12}},
+    React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:4}},
+      React.createElement("label",{style:SCH_LBL},"SESSION BRIEF"),
+      key&&React.createElement("div",{style:{fontSize:8,letterSpacing:"0.12em",fontWeight:600,color:isNew?"#e06040":"#1d9bf0"}},
+        isNew?"REQUIRED":"ALREADY SET")
+    ),
+    React.createElement("textarea",{value:value,rows:8,disabled:!key,
+      onChange:e=>onChange(e.target.value),
+      placeholder:key?"Session brief required \u2014 what "+key+" is and how it runs.":"Name the class first.",
+      style:{...SCH_INPUT,height:"auto",lineHeight:1.7,resize:"vertical",fontSize:12,color:key?"#fff":"#333"}}),
+    key&&React.createElement("div",{style:{fontSize:8,color:"#555",letterSpacing:"0.08em",lineHeight:1.6,marginTop:5}},
+      stored?"Shared by every class named "+key+" \u2014 editing it here changes it everywhere.":"Shown under the class on the booking screen.")
+  );
+}
+function NewClassForm({admDK,defaultDow,onCreate,showToast,classBriefs,saveClassBriefs}){
   const [name,setName]=useState("");
   const [type,setType]=useState("HIIT");
   const [time,setTime]=useState("06:00");
@@ -2020,6 +2042,11 @@ function NewClassForm({admDK,defaultDow,onCreate,showToast}){
   const [weeks,setWeeks]=useState("4");
   const [ongoing,setOngoing]=useState(true);
   const [busy,setBusy]=useState(false);
+  // null means "whatever is stored for this name" — a string means it has been
+  // edited here, so retyping the name picks the stored one back up.
+  const [briefDraft,setBriefDraft]=useState(null);
+  const briefKey=name.trim().toUpperCase();
+  const briefValue=briefDraft!==null?briefDraft:((classBriefs||{})[briefKey]||"");
   const toggleDay=d=>setDays(p=>p.includes(d)?p.filter(x=>x!==d):[...p,d]);
   const canSave=!!time&&days.length>0&&!busy;
   const summary=days.length===0?"Pick at least one day"
@@ -2029,7 +2056,7 @@ function NewClassForm({admDK,defaultDow,onCreate,showToast}){
   return React.createElement("div",{style:SCH_PANEL},
     React.createElement("div",{style:{marginBottom:12}},
       React.createElement("label",{style:SCH_LBL},"CLASS NAME"),
-      React.createElement("input",{value:name,onChange:e=>setName(e.target.value),placeholder:"e.g. RISE UP",style:SCH_INPUT})
+      React.createElement("input",{value:name,onChange:e=>{setName(e.target.value);setBriefDraft(null);},placeholder:"e.g. RISE UP",style:SCH_INPUT})
     ),
     React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}},
       React.createElement("div",{style:{flex:1}},
@@ -2071,13 +2098,24 @@ function NewClassForm({admDK,defaultDow,onCreate,showToast}){
           style:{marginLeft:"auto",background:ongoing?"#0a1a2a":"transparent",color:ongoing?"#1d9bf0":"#666",border:"1px solid "+(ongoing?"#1d3a5a":"#333"),borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",padding:"9px 14px",cursor:"pointer"}},"ONGOING")
       )
     ),
+    React.createElement(ClassBriefBox,{name,briefs:classBriefs,value:briefValue,onChange:setBriefDraft}),
     React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#1d9bf0",margin:"8px 0 12px",lineHeight:1.6}},summary),
     React.createElement("button",{disabled:!canSave,style:{...SCH_PRIMARY,background:canSave?"#fff":"#111",color:canSave?"#000":"#333",cursor:canSave?"pointer":"not-allowed"},
       onClick:async()=>{
         setBusy(true);
         const ok=await onCreate({days,time,spots,name,type,duration,weeks,ongoing,fromDK:admDK});
+        // Save the brief alongside the class, but only if it actually changed.
+        if(ok&&briefKey&&saveClassBriefs){
+          const cur=(classBriefs||{})[briefKey]||"";
+          const next=(briefValue||"").trim();
+          if(next!==cur){
+            const all={...(classBriefs||{})};
+            if(next)all[briefKey]=next;else delete all[briefKey];
+            await saveClassBriefs(all);
+          }
+        }
         setBusy(false);
-        if(ok){showToast("Class created ✓");setName("");}
+        if(ok){showToast("Class created ✓");setName("");setBriefDraft(null);}
         else showToast("Could not create the class");
       }},busy?"SAVING…":"CREATE CLASS")
   );
@@ -2170,7 +2208,7 @@ function TierLimitsEditor({tierOverrides,saveTierOverrides,showToast}){
   );
 }
 
-function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail}){
+function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail}){
   const [expandedTier,setExpandedTier]=useState(null);
   const [admDate,setAdmDate]=useState(new Date());
   const [expanded,setExpanded]=useState({});
@@ -2187,6 +2225,23 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   const [limitInput,setLimitInput]=useState("");
   const [editingName,setEditingName]=useState(null);
   const [nameInput,setNameInput]=useState("");
+  // The brief shown in the CLASS NAME panel. null means "whatever is stored for
+  // the name currently typed", so retyping the name picks the stored one back up.
+  const [nameBrief,setNameBrief]=useState(null);
+  // The name the brief belongs to: what has been typed, or the class's effective
+  // name when the input has been left on its placeholder.
+  const [nameBriefKey,setNameBriefKey]=useState("");
+  const briefKeyNow=(nameInput.trim()||nameBriefKey||"").trim().toUpperCase();
+  async function commitBrief(){
+    const key=briefKeyNow;
+    if(!key||nameBrief===null||!saveClassBriefs)return;
+    const cur=(classBriefs||{})[key]||"";
+    const next=(nameBrief||"").trim();
+    if(next===cur)return;
+    const all={...(classBriefs||{})};
+    if(next)all[key]=next;else delete all[key];
+    await saveClassBriefs(all);
+  }
   const [addingClass,setAddingClass]=useState(false);
   const [newClassTime,setNewClassTime]=useState("");
   const [newClassSpots,setNewClassSpots]=useState("16");
@@ -2486,6 +2541,21 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
     ||(classAddRule(classDow,admDK,time)||{}).name
     ||dowNames?.[admDOW]
     ||"";
+  // Every style that could want a brief: the workout rows in Details, every
+  // name already in use on the timetable (this is how Strength Upper and Lower
+  // turn up), and anything already written. Nothing has to be registered.
+  const [styleLabels,setStyleLabels]=useState([]);
+  useEffect(()=>{loadStyleLabels().then(setStyleLabels);},[]);
+  const briefNames=(function(){
+    const out=styleLabels.slice();
+    const add=n=>{const v=(n||"").trim();if(v&&out.indexOf(v)<0)out.push(v);};
+    Object.keys(dowNames||{}).forEach(k=>add(dowNames[k]));
+    Object.keys(dowSlotNames||{}).forEach(k=>add(dowSlotNames[k]));
+    Object.keys(slotNames||{}).forEach(k=>add(slotNames[k]));
+    Object.keys(classDow||{}).forEach(d=>((classDow[d]||{}).add||[]).forEach(r=>add(r&&r.name)));
+    Object.keys(classBriefs||{}).forEach(add);
+    return out;
+  })();
 
   // The next N dates falling on the weekday on screen, starting with it.
   function runDates(weeks){
@@ -2680,12 +2750,17 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
       React.createElement(SchPanel,{title:"+ NEW CLASS",open:schPanel==="new",
         hint:"Name it, pick the type, tick the days it runs on.",
         onToggle:()=>setSchPanel(p=>p==="new"?null:"new")},
-        React.createElement(NewClassForm,{admDK,defaultDow:admDOW,showToast,onCreate:csCreateClass})
+        React.createElement(NewClassForm,{admDK,defaultDow:admDOW,showToast,onCreate:csCreateClass,classBriefs,saveClassBriefs})
       ),
       React.createElement(SchPanel,{title:"BASE TIMETABLE",open:schPanel==="base",
         hint:"The standing weekly shape. Clear it all and only the classes you create appear.",
         onToggle:()=>setSchPanel(p=>p==="base"?null:"base")},
         React.createElement(BaseTimetableEditor,{baseTimes,saveBaseTimes,showToast})
+      ),
+      React.createElement(SchPanel,{title:"SESSION BRIEFS",open:schPanel==="briefs",
+        hint:"One brief per workout style. Also editable on the class itself.",
+        onToggle:()=>setSchPanel(p=>p==="briefs"?null:"briefs")},
+        React.createElement(ClassBriefEditor,{names:briefNames,briefs:classBriefs,saveBriefs:saveClassBriefs,showToast})
       ),
       isMaster&&React.createElement(SchPanel,{title:"MEMBERSHIP ALLOWANCES",open:schPanel==="tiers",
         hint:"Weekly caps per plan. Was fixed in code — now editable here.",
@@ -2840,7 +2915,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
               !isEditingThis&&!isEditingTimeThis&&React.createElement("button",{
                 className:"sp-ex-edit",
                 style:{fontSize:9,flexShrink:0},
-                onClick:e=>{e.stopPropagation();if(isEditingNameThis){setEditingName(null);}else{setEditingName(time);setNameInput(slotNames?.[admDK+":"+time]||dowSlotNames?.[admDOW+":"+time]||"");setEditingLimit(null);setEditingTime(null);}}
+                onClick:e=>{e.stopPropagation();if(isEditingNameThis){setEditingName(null);}else{setEditingName(time);setNameInput(slotNames?.[admDK+":"+time]||dowSlotNames?.[admDOW+":"+time]||"");setNameBriefKey(admClassName(time)||"");setNameBrief(null);setEditingLimit(null);setEditingTime(null);}}
               },isEditingNameThis?"✕":"Name"),
               isExtra&&!isEditingThis&&React.createElement("button",{
                 className:"sp-ex-edit",
@@ -2907,23 +2982,27 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
               placeholder:slotNames?.[admDK+":"+time]||dowSlotNames?.[admDOW+":"+time]||dowNames?.[admDOW]||"e.g. POWER HOUR",
               style:{width:"100%",boxSizing:"border-box",background:"#0e0e0e",border:"1px solid #333",borderRadius:0,padding:"9px 10px",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:14,outline:"none",marginBottom:10}
             }),
+            React.createElement(ClassBriefBox,{name:briefKeyNow,briefs:classBriefs,
+              value:nameBrief!==null?nameBrief:((classBriefs||{})[briefKeyNow]||""),
+              onChange:setNameBrief}),
             React.createElement("div",{style:{fontSize:8,color:"#555",letterSpacing:"0.08em",lineHeight:1.5,marginBottom:8}},"Apply to just this date, to a run of weeks, or to every "+["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][admDOW]+" at "+fmt12(time)+"."),
             runCtl(),
             React.createElement("div",{style:{display:"flex",gap:6}},
               React.createElement("button",{
-                onClick:async()=>{const n=nameInput.trim()||null;if(saveSlotName)await saveSlotName(time,admDK,n);setEditingName(null);showToast("This date updated ✓");},
+                onClick:async()=>{const n=nameInput.trim()||null;if(saveSlotName)await saveSlotName(time,admDK,n);await commitBrief();setEditingName(null);showToast("This date updated ✓");},
                 style:{flex:1,background:"#222",color:"#fff",border:"1px solid #333",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.06em",padding:"10px 4px",cursor:"pointer"}
               },"THIS DATE"),
               React.createElement("button",{
                 onClick:async()=>{
                   const n=nameInput.trim()||null;
                   const c=await applyRun(scopeWeeks,dk=>saveSlotName?saveSlotName(time,dk,n):null);
+                  await commitBrief();
                   setEditingName(null);showToast(c+" week"+(c===1?"":"s")+" updated ✓");
                 },
                 style:{flex:1,background:"#222",color:"#fff",border:"1px solid #333",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.06em",padding:"10px 4px",cursor:"pointer"}
               },(Math.max(1,parseInt(scopeWeeks)||1))+" WEEKS"),
               React.createElement("button",{
-                onClick:async()=>{if(saveDowSlotName)await saveDowSlotName(admDOW,time,nameInput.trim());if(saveSlotName&&slotNames?.[admDK+":"+time])await saveSlotName(time,admDK,null);setEditingName(null);showToast("Every "+["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][admDOW]+" "+fmt12(time)+" updated ✓");},
+                onClick:async()=>{if(saveDowSlotName)await saveDowSlotName(admDOW,time,nameInput.trim());if(saveSlotName&&slotNames?.[admDK+":"+time])await saveSlotName(time,admDK,null);await commitBrief();setEditingName(null);showToast("Every "+["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][admDOW]+" "+fmt12(time)+" updated ✓");},
                 style:{flex:1,background:"#1d9bf0",color:"#fff",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.06em",padding:"10px 4px",cursor:"pointer"}
               },"EVERY "+["SUN","MON","TUE","WED","THU","FRI","SAT"][admDOW]),
               React.createElement("button",{onClick:()=>setEditingName(null),
@@ -4638,76 +4717,69 @@ const DETAILS_BASE_GROUPS=[
   {label:"ELEVATE",base:["ELEVATE 1","ELEVATE 2","ELEVATE 3","ELEVATE 4"]},
   {label:"SUMMIT",base:["SUMMIT 1","SUMMIT 2","SUMMIT 3","SUMMIT 4"]},
 ];
-// Read once per page load — the list only changes when you add a workout in
-// Details, and that reloads the screen anyway.
-let __WK_LIST=null;
-async function loadWorkoutList(){
-  if(__WK_LIST)return __WK_LIST;
-  async function extrasOf(label){
-    const d=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__EXTRA__"+label)+"&select=content");
-    if(d&&d.length&&d[0].content){try{const p=JSON.parse(d[0].content);if(Array.isArray(p))return p;}catch{}}
-    return [];
-  }
-  const out=[];
-  for(const g of DETAILS_BASE_GROUPS){
-    out.push({label:g.label,names:[...g.base,...(await extrasOf(g.label))]});
-  }
+// Every workout style Details knows about: the four standing rows plus any row
+// added there. Read once per page load — it only changes when a workout type is
+// added, which reloads the screen anyway.
+let __STYLE_LABELS=null;
+async function loadStyleLabels(){
+  if(__STYLE_LABELS)return __STYLE_LABELS;
+  const out=DETAILS_BASE_GROUPS.map(g=>g.label);
   const cg=await sbGet("coaching_notes","class_name=eq.__CUSTOM_GROUPS__&select=content");
-  let labels=[];
-  if(cg&&cg.length&&cg[0].content){try{const p=JSON.parse(cg[0].content);if(Array.isArray(p))labels=p;}catch{}}
-  for(const label of labels){
-    const names=await extrasOf(label);
-    if(names.length)out.push({label,names});
+  if(cg&&cg.length&&cg[0].content){
+    try{const p=JSON.parse(cg[0].content);if(Array.isArray(p))p.forEach(l=>{if(l&&out.indexOf(l)<0)out.push(l);});}catch{}
   }
-  __WK_LIST=out;
+  __STYLE_LABELS=out;
   return out;
 }
-// Points one class in the timetable at one workout from Admin -> Details.
-// The class NAME is the brand you show members ("ELEVATE"); the WORKOUT is
-// which session actually runs that day ("ELEVATE 2"), and it is what the
-// session brief is read from. Admin only.
-function WorkoutPicker({current,dayLabel,onSave}){
-  const [open,setOpen]=useState(false);
-  const [groups,setGroups]=useState(null);
-  const [val,setVal]=useState(current||"");
-  const [busy,setBusy]=useState("");
-  useEffect(()=>{setVal(current||"");},[current]);
-  useEffect(()=>{if(open&&!groups)loadWorkoutList().then(setGroups);},[open,groups]);
-  const SEL={width:"100%",boxSizing:"border-box",background:"#0e0e0e",border:"1px solid #333",borderRadius:0,padding:"9px 10px",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:13,outline:"none",marginBottom:10};
-  const BTN={flex:1,background:"#222",color:"#fff",border:"1px solid #333",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.06em",padding:"10px 4px",cursor:"pointer"};
-  async function commit(scope){
-    setBusy(scope);
-    await onSave(val,scope);
-    setBusy("");setOpen(false);
+// Admin -> Classes -> SESSION BRIEFS. One brief per workout STYLE, not per
+// workout. ELEVATE 1 and ELEVATE 4 are the same ingredients in a different
+// order, so a brief written for the style stays true every week and needs no
+// per-class upkeep. The brief is normally written on the class itself, in
+// + NEW CLASS or when renaming one; this panel is the roll-up, so a style with
+// no class on the timetable yet can still be written ahead of time.
+function ClassBriefEditor({names,briefs,saveBriefs,showToast}){
+  const [draft,setDraft]=useState(briefs||{});
+  const [open,setOpen]=useState("");
+  const [saving,setSaving]=useState("");
+  useEffect(()=>{setDraft(briefs||{});},[briefs]);
+  async function commit(name){
+    setSaving(name);
+    const next={...(briefs||{})};
+    const v=(draft[name]||"").trim();
+    if(v)next[name]=v;else delete next[name];
+    const ok=await saveBriefs(next);
+    setSaving("");
+    if(ok!==false){setOpen("");showToast(v?"Brief saved \u2713":"Brief cleared \u2713");}
   }
-  return React.createElement("div",{style:{padding:"11px 13px",borderBottom:"1px solid #1a1a1a"}},
-    React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}},
-      React.createElement("div",null,
-        React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600}},"WORKOUT"),
-        React.createElement("div",{style:{fontSize:12,color:current?"#1d9bf0":"#444",marginTop:3,letterSpacing:"0.04em"}},current||"Not set")
-      ),
-      React.createElement("button",{onClick:()=>setOpen(o=>!o),
-        style:{background:"none",border:"1px solid #333",color:open?"#e06040":"#aaa",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.1em",padding:"6px 12px",cursor:"pointer",flexShrink:0}},
-        open?"CLOSE":(current?"CHANGE":"SET"))
-    ),
-    open&&React.createElement("div",{style:{marginTop:11}},
-      groups===null
-        ?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"8px 0"}},"LOADING...")
-        :React.createElement(React.Fragment,null,
-            React.createElement("select",{value:val,onChange:e=>setVal(e.target.value),style:SEL},
-              React.createElement("option",{value:""},"— none —"),
-              groups.map(g=>React.createElement("optgroup",{key:g.label,label:g.label},
-                g.names.map(n=>React.createElement("option",{key:n,value:n},n))
-              ))
-            ),
-            React.createElement("div",{style:{fontSize:8,color:"#555",letterSpacing:"0.08em",lineHeight:1.5,marginBottom:8}},
-              "Pulls the SESSION BRIEF from that workout's coaching note in Details."),
-            React.createElement("div",{style:{display:"flex",gap:6}},
-              React.createElement("button",{disabled:!!busy,onClick:()=>commit("date"),style:BTN},busy==="date"?"…":"THIS DATE"),
-              React.createElement("button",{disabled:!!busy,onClick:()=>commit("dow"),style:{...BTN,background:"#1d9bf0",border:"none"}},busy==="dow"?"…":"EVERY "+String(dayLabel||"").toUpperCase())
-            )
+  return React.createElement("div",null,
+    React.createElement("div",{style:{fontSize:8,color:"#555",letterSpacing:"0.08em",lineHeight:1.7,marginBottom:12}},
+      "One brief per style, shared by every class of that name and shown under the class on the booking screen. You can also write it on the class itself when you create or rename it."),
+    names.map(function(name){
+      const isOpen=open===name;
+      const has=!!(briefs&&briefs[name]);
+      return React.createElement("div",{key:name,style:{border:"1px solid "+(isOpen?"#333":"#1e1e1e"),borderRadius:0,marginBottom:8,background:"#0e0e0e"}},
+        React.createElement("div",{onClick:()=>setOpen(isOpen?"":name),
+          style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"11px 13px",cursor:"pointer"}},
+          React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.1em",color:"#fff"}},name),
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
+            React.createElement("div",{style:{fontSize:9,letterSpacing:"0.1em",color:has?"#1d9bf0":"#444",fontWeight:600}},has?"SET":"EMPTY"),
+            React.createElement("div",{style:{fontSize:11,color:"#444",transform:isOpen?"none":"rotate(-90deg)",transition:"transform .15s"}},"\u25be")
           )
-    )
+        ),
+        isOpen&&React.createElement("div",{style:{padding:"0 13px 13px"}},
+          React.createElement("textarea",{value:draft[name]||"",rows:9,
+            onChange:e=>{const v=e.target.value;setDraft(d=>({...d,[name]:v}));},
+            placeholder:"What this style is and how it runs.",
+            style:{width:"100%",boxSizing:"border-box",background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#aaa",fontSize:12,padding:"10px",fontFamily:"'DM Sans',sans-serif",lineHeight:1.7,resize:"vertical",outline:"none",marginBottom:9}}),
+          React.createElement("div",{style:{display:"flex",gap:8}},
+            React.createElement("button",{onClick:()=>commit(name),disabled:saving===name,
+              style:{flex:1,background:"#fff",color:"#000",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",padding:"10px 0",cursor:"pointer"}},saving===name?"SAVING...":"SAVE BRIEF"),
+            React.createElement("button",{onClick:()=>{setDraft(d=>({...d,[name]:(briefs&&briefs[name])||""}));setOpen("");},
+              style:{flex:1,background:"#1a1a1a",color:"#888",border:"1px solid #2a2a2a",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",padding:"10px 0",cursor:"pointer"}},"CANCEL")
+          )
+        )
+      );
+    })
   );
 }
 function CoachingView({showToast}){
@@ -8444,10 +8516,6 @@ function App(){
   const [dowNames,setDowNames]=useState({1:"RISE UP",2:"STRENGTH LOWER",3:"ASCEND",4:"STRENGTH UPPER",5:"ELEVATE",6:"SUMMIT"});
   // Recurring per-slot names: keyed by "dow:time" (e.g. "4:19:15"), applies every week for that weekday+time.
   const [dowSlotNames,setDowSlotNames]=useState({});
-  // Which workout from Admin -> Details runs in a given slot. Two layers, the
-  // same shape as the names above: a per-date pick wins over the weekday rule.
-  const [slotWorkouts,setSlotWorkouts]=useState({});
-  const [dowSlotWorkouts,setDowSlotWorkouts]=useState({});
   // Base timetable (__BASE_TIMES__) and wellness base (__WELL_BASE_TIMES__).
   // null = record not loaded / not set, so the legacy hardcoded timetable applies.
   const [baseTimes,setBaseTimes]=useState(null);
@@ -8575,10 +8643,8 @@ function App(){
       if(tlData&&tlData.length){try{const tl=JSON.parse(tlData[0].content);if(tl&&typeof tl==="object")setTierOverrides(tl);}catch{}}
       const dsnData=await sbGet("coaching_notes","class_name=eq.__DOW_SLOT_NAMES__&select=content");
       if(dsnData&&dsnData.length){try{const dsn=JSON.parse(dsnData[0].content);if(dsn&&typeof dsn==="object")setDowSlotNames(dsn);}catch{}}
-      const swData=await sbGet("coaching_notes","class_name=eq.__SLOT_WORKOUTS__&select=content");
-      if(swData&&swData.length){try{const sw=JSON.parse(swData[0].content);if(sw&&typeof sw==="object")setSlotWorkouts(sw);}catch{}}
-      const dswData=await sbGet("coaching_notes","class_name=eq.__DOW_SLOT_WORKOUTS__&select=content");
-      if(dswData&&dswData.length){try{const dsw=JSON.parse(dswData[0].content);if(dsw&&typeof dsw==="object")setDowSlotWorkouts(dsw);}catch{}}
+      const cbData=await sbGet("coaching_notes","class_name=eq.__CLASS_BRIEFS__&select=content");
+      if(cbData&&cbData.length){try{const cb=JSON.parse(cbData[0].content);if(cb&&typeof cb==="object")setClassBriefs(cb);}catch{}}
       const dslData=await sbGet("coaching_notes","class_name=eq.__DOW_SLOT_LIMITS__&select=content");
       if(dslData&&dslData.length){try{const dsl=JSON.parse(dslData[0].content);if(dsl&&typeof dsl==="object")setDowSlotLimits(dsl);}catch{}}
       const dlData=await sbGet("coaching_notes","class_name=eq.__DOW_LIMITS__&select=content");
@@ -8723,30 +8789,11 @@ function App(){
   const userBooked=(dk,t)=>session&&getBksFor(dk,t).some(b=>b.email===session.email);
   const weekDots=weekDates.map(d=>isAdmin?bookings.some(b=>b.date_key===toDS(d)):session&&bookings.some(b=>b.date_key===toDS(d)&&b.email===session.email));
   const [expandedClass,setExpandedClass]=useState(null);
-  // Which workout runs in a slot: a per-date pick beats the weekday rule.
-  const workoutFor=(dk,time)=>slotWorkouts[dk+":"+time]||dowSlotWorkouts[dowOf(dk)+":"+time]||"";
-  // Session brief for whichever class row is open. It is read from the coaching
-  // note of the WORKOUT attached to that class in Admin -> Details — the section
-  // titled SESSION BRIEF — so it lives where the rest of the coaching prep is.
-  // Declared after expandedClass so the dependency array is not read too early.
-  const openWorkout=expandedClass?workoutFor(selDK,expandedClass).toUpperCase():"";
-  useEffect(()=>{
-    const nm=openWorkout;
-    if(!nm||classBriefs[nm]!==undefined)return;
-    sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(nm)}&select=content`).then(d=>{
-      let brief="";
-      if(d&&d.length&&d[0].content){
-        try{
-          const parsed=JSON.parse(d[0].content);
-          if(Array.isArray(parsed)){
-            const sec=parsed.find(x=>x&&String(x.title||"").toUpperCase().indexOf("SESSION BRIEF")>=0);
-            if(sec)brief=String(sec.body||"").trim();
-          }
-        }catch{}
-      }
-      setClassBriefs(p=>({...p,[nm]:brief}));
-    });
-  },[openWorkout]);
+  // The session brief for a class, by its name. One generic brief per style,
+  // written in Admin -> Details -> SESSION BRIEFS: ELEVATE 1 and ELEVATE 4 run
+  // the same ingredients in a different order, so a brief written for the style
+  // stays true every week and needs no per-class upkeep.
+  const briefFor=(dk,time)=>classBriefs[(getDayClassName(dk,time)||"").toUpperCase()]||"";
   const myUpcoming=session?bookings.filter(b=>b.email===session.email&&b.date_key>=toDS(new Date())).sort((a,b)=>a.date_key.localeCompare(b.date_key)||a.time.localeCompare(b.time)):[];
   function showToast(msg){setToast({msg,show:true});setTimeout(()=>setToast(t=>({...t,show:false})),2200);}
   async function handleAuth(){
@@ -9020,21 +9067,11 @@ function App(){
     const ok=await saveNote("__DOW_SLOT_NAMES__",newMap);
     return ok||noteFailed(()=>setDowSlotNames(prev),"slot name");
   }
-  async function saveSlotWorkout(time,dateKey,w){
-    const k=dateKey+":"+time;const prev=slotWorkouts;const next={...slotWorkouts};
-    const v=(w||"").trim();
-    if(v)next[k]=v;else delete next[k];
-    setSlotWorkouts(next);
-    const ok=await saveNote("__SLOT_WORKOUTS__",next);
-    return ok||noteFailed(()=>setSlotWorkouts(prev),"workout");
-  }
-  async function saveDowSlotWorkout(dow,time,w){
-    const k=dow+":"+time;const prev=dowSlotWorkouts;const next={...dowSlotWorkouts};
-    const v=(w||"").trim();
-    if(v)next[k]=v;else delete next[k];
-    setDowSlotWorkouts(next);
-    const ok=await saveNote("__DOW_SLOT_WORKOUTS__",next);
-    return ok||noteFailed(()=>setDowSlotWorkouts(prev),"workout");
+  async function saveClassBriefs(next){
+    const prev=classBriefs;
+    setClassBriefs(next);
+    const ok=await saveNote("__CLASS_BRIEFS__",next);
+    return ok||noteFailed(()=>setClassBriefs(prev),"session brief");
   }
   async function saveWellSlots(next){
     // next: full overrides object keyed by date_key. Prune empty entries.
@@ -9370,22 +9407,8 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
               )
             ),
             isExpanded&&React.createElement("div",{className:"adm-members-list",style:{borderTop:"1px solid #222"}},
-              isAdmin&&React.createElement(WorkoutPicker,{
-                current:workoutFor(selDK,time),
-                dayLabel:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][dowOf(selDK)],
-                onSave:async(w,scope)=>{
-                  if(scope==="dow"){
-                    await saveDowSlotWorkout(dowOf(selDK),time,w);
-                    if(slotWorkouts[selDK+":"+time])await saveSlotWorkout(time,selDK,"");
-                  }else{
-                    await saveSlotWorkout(time,selDK,w);
-                  }
-                  showToast(w?"Workout set \u2713":"Workout cleared \u2713");
-                }
-              }),
               (function(){
-                const nm=(workoutFor(selDK,time)||"").toUpperCase();
-                const brief=nm?classBriefs[nm]:"";
+                const brief=briefFor(selDK,time);
                 if(!brief)return null;
                 return React.createElement("div",{style:{padding:"12px 13px",borderBottom:"1px solid #1a1a1a"}},
                   React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,marginBottom:6}},"SESSION BRIEF"),
@@ -9509,7 +9532,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       effWkSub==="routines"&&showRoutines&&React.createElement(RoutinesView,{session,ttl:wkTitles.rt,isAdmin})
     ),
     effTab==="progress"&&acc("progress")&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}),
-    effTab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:""}),
+    effTab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:""}),
     ),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
