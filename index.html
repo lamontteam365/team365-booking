@@ -516,6 +516,22 @@ html,body{background:#080808;min-height:100vh}
 const { useState, useEffect, useRef } = React;
 const ADMIN_EMAIL = "lamont.team365@gmail.com";
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz5cruljVDUVScwm14Sj1z5_6cRrNK9cgOaq7Tx8P9LfPAEI7p_kx8ZJnaghF_SmU46Fw/exec";
+// Ask Supabase to send the booking confirmation. Deliberately fire-and-forget:
+// the booking is already saved, so a mail problem must never surface as a
+// booking failure. The edge function does the deciding — it re-reads the
+// booking with the service role and will only mail the address that actually
+// holds it, and it checks the member's opt-out switch before sending. That is
+// why the Apps Script secret is not in this file.
+function sendBookingConfirm({ email, time, dates, type }) {
+  try {
+    if (!email || !time || !dates || !dates.length) return;
+    fetch(`${SB_URL}/functions/v1/booking-confirm`, {
+      method: "POST",
+      headers: { "apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ email, time, dates, type: type || "class" })
+    }).catch(() => {});
+  } catch (e) {}
+}
 async function notifyWellnessBooking(name, email, dateKey, time) {
   try {
     const d = new Date(dateKey + "T12:00:00");
@@ -1634,7 +1650,7 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,w
     setWellBks(prev=>[...prev,newBk]);
     const ok=await sbPost("wellness_bookings",newBk);
     if(!ok){setWellBks(prev=>prev.filter(b=>!(b.date_key===selDK&&b.time===time)));showToast("Booking failed — try again");}
-    else{showToast("Wellness session booked ✓");notifyWellnessBooking(session.name,session.email,selDK,time);if(calendarEnabled)openAddToCalendar({title:"Team 365 Sauna & Cold Plunge",dateKey:selDK,time,durationMin:90,location:calLocation(),details:calDetails("Booked via the Team 365 app.")});}
+    else{showToast("Wellness session booked ✓");notifyWellnessBooking(session.name,session.email,selDK,time);sendBookingConfirm({email:session.email,time,dates:[selDK],type:"wellness"});if(calendarEnabled)openAddToCalendar({title:"Team 365 Sauna & Cold Plunge",dateKey:selDK,time,durationMin:90,location:calLocation(),details:calDetails("Booked via the Team 365 app.")});}
     setBusy(p=>({...p,[lk]:false}));
   }
   async function handleCancel(time){
@@ -8894,7 +8910,7 @@ function App(){
     setBookings(prev=>[...prev,newBk]);
     const ok=await sbPost("bookings",newBk);
     if(!ok){setBookings(prev=>prev.filter(b=>!(b.email===session.email&&b.date_key===selDK&&b.time===time)));showToast("Booking failed — try again");}
-    else{showToast("Spot reserved ✓");if(calendarEnabled)openAddToCalendar({title:"Team 365 "+(slotNames[selDK+":"+time]||getDayClassName(selDK,time)||sessionType),dateKey:selDK,time,durationMin:classDurationOf(selDK,time),location:calLocation(),details:calDetails("Booked via the Team 365 app.")});}
+    else{showToast("Spot reserved ✓");sendBookingConfirm({email:session.email,time,dates:[selDK],type:"class"});if(calendarEnabled)openAddToCalendar({title:"Team 365 "+(slotNames[selDK+":"+time]||getDayClassName(selDK,time)||sessionType),dateKey:selDK,time,durationMin:classDurationOf(selDK,time),location:calLocation(),details:calDetails("Booked via the Team 365 app.")});}
     setBkBusy(p=>({...p,[lk]:false}));
   }
   // Book the same weekday+time for N consecutive weeks. Skips full/unavailable/limit weeks, reports a summary.
@@ -8930,6 +8946,7 @@ function App(){
     if(n===0)showToast("Those weeks are full — nothing booked");
     else if(skipped.length===0)showToast(`Booked ${n} week${n>1?"s":""} ✓`);
     else showToast(`Booked ${n} of ${weeks} — ${skipped.map(d=>d.getDate()+" "+MONTHS[d.getMonth()]).join(", ")} full`);
+    if(added.length)sendBookingConfirm({email:session.email,time,dates:added.map(b=>b.date_key),type:"class"});
     if(added.length&&calendarEnabled)openAddToCalendar({title:"Team 365 "+(slotNames[added[0].date_key+":"+time]||getDayClassName(added[0].date_key,time)||sessionType),dateKey:added[0].date_key,time,durationMin:classDurationOf(added[0].date_key,time),recurWeeks:added.length,location:calLocation(),details:calDetails("Booked via the Team 365 app.")});
     setBkBusy(p=>({...p,[lk]:false}));
   }
