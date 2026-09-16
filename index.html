@@ -7917,6 +7917,7 @@ function MemberWorkoutsView({session,memberData,ttl}){
   const weekDS=toDS(weekStart);
   const key=mwKey(session.email,weekStart);
   const notesKey="__MWN__"+session.email+"__"+weekDS;
+  const dayNote=dk=>mwDayNote(wNotes,dk);
   useEffect(()=>{load();},[weekStart]);
   async function load(){
     setLoading(true);
@@ -8041,16 +8042,9 @@ function MemberWorkoutsView({session,memberData,ttl}){
     React.createElement("div",{style:{padding:"14px 16px 80px"}},
       React.createElement("div",{className:"day-hdr",style:{textAlign:"center",marginBottom:12}},React.createElement("span",null,MW_DAY_FULL[dk])),
       loading?React.createElement("div",{className:"sp-loading"},"LOADING...")
-      :exercises.length===0?React.createElement("div",null,
-        React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.08em",textAlign:"center",marginBottom:16}},"No workout set for this day — use the space below as your journal."),
-        React.createElement("div",{style:{marginTop:0}},
-          React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#666",fontWeight:600,marginBottom:6}},"MY NOTES"),
-          React.createElement("textarea",{defaultValue:wNotes[`${dk}__w1`]||"",placeholder:"Use this space as your journal — how are you feeling, sleep, nutrition, energy, soreness, anything you want to note.",rows:4,
-            onBlur:e=>saveNote(dk,1,e.target.value),
-            style:{width:"100%",background:"#141414",border:"1px solid #262626",borderRadius:0,color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:13,lineHeight:1.6,padding:"10px 12px",outline:"none",resize:"vertical",boxSizing:"border-box"}})
-        )
-      )
-      :workouts.map(w=>{
+      :React.createElement(React.Fragment,null,
+        exercises.length===0&&React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.08em",textAlign:"center",marginBottom:4}},"No workout set for this day \u2014 use the space below as your journal."),
+        workouts.map(w=>{
         const body=[];let lastSec=null;
         w.exercises.forEach((ex,exIdx)=>{
           if((ex.section||"")!==lastSec){
@@ -8059,26 +8053,45 @@ function MemberWorkoutsView({session,memberData,ttl}){
           }
           body.push(renderEx(ex));
         });
-        body.push(React.createElement("div",{key:`note_${dk}_${w.num}_${weekDS}`,style:{marginTop:14}},
-          React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#666",fontWeight:600,marginBottom:6}},"MY NOTES"),
-          React.createElement("textarea",{defaultValue:wNotes[`${dk}__w${w.num}`]||"",placeholder:"Add anything not tracked above — e.g. how did it feel? time, energy, soreness, weather, etc.",rows:3,
-            onBlur:e=>saveNote(dk,w.num,e.target.value),
-            style:{width:"100%",background:"#141414",border:"1px solid #262626",borderRadius:0,color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:13,lineHeight:1.6,padding:"10px 12px",outline:"none",resize:"vertical",boxSizing:"border-box"}})
-        ));
         const isOpen=openW.has(dk+"_"+w.num);
         return React.createElement("div",{key:"w"+w.num,style:multiW?{border:"1px solid #333",borderRadius:0,background:"#0d0d0d",padding:"0 14px",marginBottom:14,overflow:"hidden"}:null},
           multiW&&React.createElement("div",{onClick:()=>toggleW(dk+"_"+w.num),style:{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",background:"#fff",color:"#000",margin:"0 -14px",padding:"9px 14px",marginBottom:isOpen?10:0}},
             React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.1em",color:"#000"}},(w.name||("WORKOUT "+w.num)).toUpperCase()),
             React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
               React.createElement("span",{style:{fontSize:10,letterSpacing:"0.1em",color:"#555"}},w.exercises.length+(w.exercises.length===1?" EXERCISE":" EXERCISES")),
-              React.createElement("div",{style:{color:"#000",fontSize:13,transition:"transform .2s",transform:isOpen?"none":"rotate(-90deg)",lineHeight:1}},"▾")
+              React.createElement("div",{style:{color:"#000",fontSize:13,transition:"transform .2s",transform:isOpen?"none":"rotate(-90deg)",lineHeight:1}},"\u25be")
             )
           ),
           (!multiW||isOpen)&&React.createElement("div",{style:multiW?{padding:"4px 0 14px"}:null},...body)
         );
-      })
+        }),
+        // ONE note for the whole day, at the foot of it and outside the workout
+        // cards. It used to be one per workout, which put two identically
+        // labelled boxes on an AM/PM day and hid each one when its card was
+        // collapsed \u2014 and a rest-day journal silently became "notes about
+        // workout 1" the moment a workout was added to that day.
+        React.createElement("div",{key:`note_${dk}_${weekDS}`,style:{marginTop:exercises.length===0?12:18}},
+          React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#666",fontWeight:600,marginBottom:6}},"MY NOTES"),
+          React.createElement("textarea",{defaultValue:dayNote(dk),
+            placeholder:exercises.length===0
+              ?"Use this space as your journal \u2014 how are you feeling, sleep, nutrition, energy, soreness, anything you want to note."
+              :"How did today go? Anything not tracked above \u2014 how it felt, energy, sleep, soreness, nutrition.",
+            rows:4,
+            onBlur:e=>saveNote(dk,1,e.target.value),
+            style:{width:"100%",background:"#141414",border:"1px solid #262626",borderRadius:0,color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:13,lineHeight:1.6,padding:"10px 12px",outline:"none",resize:"vertical",boxSizing:"border-box"}})
+        )
+      )
     )
   );
+}
+// The note for a whole day. Day notes live at w1; the fallback picks up
+// anything written into w2/w3 back when each workout had its own box, so an
+// older entry still surfaces instead of being orphaned.
+function mwDayNote(wNotes,dk){
+  const n=wNotes||{};
+  if((n[dk+"__w1"]||"").trim())return n[dk+"__w1"];
+  const other=Object.keys(n).filter(k=>k.indexOf(dk+"__w")===0&&(n[k]||"").trim());
+  return other.length?n[other[0]]:"";
 }
 // ── Admin: read-only "Member View" of a member's program with their completions ──
 function MemberWorkoutReview({email}){
@@ -8146,8 +8159,9 @@ function MemberWorkoutReview({email}){
       exercises.length>0&&React.createElement("div",{style:{fontSize:11,letterSpacing:"0.06em",fontWeight:600,color:doneCount===exercises.length?"#4aaa66":doneCount>0?"#e0a040":"#666"}},doneCount+" of "+exercises.length+" done")
     ),
     loading?React.createElement("div",{style:{fontSize:11,color:"#444",padding:"12px 0",letterSpacing:"0.1em"}},"LOADING…")
-    :exercises.length===0?React.createElement("div",{style:{fontSize:11,color:"#555",padding:"12px 0"}},"No workout set for this day")
-    :workouts.map(w=>React.createElement("div",{key:"w"+w.num,style:{border:"1px solid #222",borderRadius:0,padding:"10px 12px",marginBottom:10}},
+    :React.createElement(React.Fragment,null,
+      exercises.length===0&&React.createElement("div",{style:{fontSize:11,color:"#555",padding:"12px 0"}},"No workout set for this day"),
+      workouts.map(w=>React.createElement("div",{key:"w"+w.num,style:{border:"1px solid #222",borderRadius:0,padding:"10px 12px",marginBottom:10}},
         (workouts.length>1||w.name)&&React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.08em",color:"#1d9bf0",marginBottom:6}},(w.name||("WORKOUT "+w.num)).toUpperCase()),
         w.exercises.map(ex=>{
           const setCount=Math.max(1,parseInt(ex.sets)||1);
@@ -8169,12 +8183,17 @@ function MemberWorkoutReview({email}){
             React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:5,marginTop:6}},...setEls),
             ex.notes&&React.createElement("div",{style:{fontSize:10,color:"#888",marginTop:5,whiteSpace:"pre-wrap",lineHeight:1.5}},ex.notes)
           );
-        }),
-        wNotes[dk+"__w"+w.num]&&React.createElement("div",{style:{marginTop:8,background:"#0e0e0e",border:"1px solid #222",borderRadius:0,padding:"8px 10px"}},
+        })
+      )),
+      (function(){
+        const note=mwDayNote(wNotes,dk);
+        if(!note)return null;
+        return React.createElement("div",{style:{marginTop:10,background:"#0e0e0e",border:"1px solid #222",borderRadius:0,padding:"9px 11px"}},
           React.createElement("div",{style:{fontSize:8,letterSpacing:"0.12em",color:"#666",fontWeight:600,marginBottom:3}},"MEMBER'S NOTES"),
-          React.createElement("div",{style:{fontSize:12,color:"#bbb",whiteSpace:"pre-wrap",lineHeight:1.5}},wNotes[dk+"__w"+w.num])
-        )
-      ))
+          React.createElement("div",{style:{fontSize:12,color:"#bbb",whiteSpace:"pre-wrap",lineHeight:1.5}},note)
+        );
+      })()
+    )
   );
 }
 // ── Main App ──────────────────────────────────────────────────────────────────
