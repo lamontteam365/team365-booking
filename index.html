@@ -4627,13 +4627,91 @@ function LibraryDetailsEditor({showToast,allWorkoutNames}){
     React.createElement("button",{onClick:save,disabled:saving,style:{width:"100%",marginTop:8,background:"#fff",color:"#000",border:"none",borderRadius:0,padding:"12px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",cursor:"pointer"}},saving?"SAVING & UPDATING…":"SAVE LIBRARY")
   );
 }
+// ── Workouts (Admin -> Details) ───────────────────────────────────────────────
+// The four standing rows of workouts. CoachingView renders them, and the
+// timetable's workout picker offers the same list, so a class can be pointed at
+// the exact workout it runs. Custom rows added in Details live in
+// __CUSTOM_GROUPS__; every row's extra workouts live in __EXTRA__<label>.
+const DETAILS_BASE_GROUPS=[
+  {label:"RISE UP",base:["RISE UP 1","RISE UP 2","RISE UP 3","RISE UP 4"]},
+  {label:"ASCEND",base:["ASCEND 1","ASCEND 2","ASCEND 3","ASCEND 4"]},
+  {label:"ELEVATE",base:["ELEVATE 1","ELEVATE 2","ELEVATE 3","ELEVATE 4"]},
+  {label:"SUMMIT",base:["SUMMIT 1","SUMMIT 2","SUMMIT 3","SUMMIT 4"]},
+];
+// Read once per page load — the list only changes when you add a workout in
+// Details, and that reloads the screen anyway.
+let __WK_LIST=null;
+async function loadWorkoutList(){
+  if(__WK_LIST)return __WK_LIST;
+  async function extrasOf(label){
+    const d=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__EXTRA__"+label)+"&select=content");
+    if(d&&d.length&&d[0].content){try{const p=JSON.parse(d[0].content);if(Array.isArray(p))return p;}catch{}}
+    return [];
+  }
+  const out=[];
+  for(const g of DETAILS_BASE_GROUPS){
+    out.push({label:g.label,names:[...g.base,...(await extrasOf(g.label))]});
+  }
+  const cg=await sbGet("coaching_notes","class_name=eq.__CUSTOM_GROUPS__&select=content");
+  let labels=[];
+  if(cg&&cg.length&&cg[0].content){try{const p=JSON.parse(cg[0].content);if(Array.isArray(p))labels=p;}catch{}}
+  for(const label of labels){
+    const names=await extrasOf(label);
+    if(names.length)out.push({label,names});
+  }
+  __WK_LIST=out;
+  return out;
+}
+// Points one class in the timetable at one workout from Admin -> Details.
+// The class NAME is the brand you show members ("ELEVATE"); the WORKOUT is
+// which session actually runs that day ("ELEVATE 2"), and it is what the
+// session brief is read from. Admin only.
+function WorkoutPicker({current,dayLabel,onSave}){
+  const [open,setOpen]=useState(false);
+  const [groups,setGroups]=useState(null);
+  const [val,setVal]=useState(current||"");
+  const [busy,setBusy]=useState("");
+  useEffect(()=>{setVal(current||"");},[current]);
+  useEffect(()=>{if(open&&!groups)loadWorkoutList().then(setGroups);},[open,groups]);
+  const SEL={width:"100%",boxSizing:"border-box",background:"#0e0e0e",border:"1px solid #333",borderRadius:0,padding:"9px 10px",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:13,outline:"none",marginBottom:10};
+  const BTN={flex:1,background:"#222",color:"#fff",border:"1px solid #333",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.06em",padding:"10px 4px",cursor:"pointer"};
+  async function commit(scope){
+    setBusy(scope);
+    await onSave(val,scope);
+    setBusy("");setOpen(false);
+  }
+  return React.createElement("div",{style:{padding:"11px 13px",borderBottom:"1px solid #1a1a1a"}},
+    React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}},
+      React.createElement("div",null,
+        React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600}},"WORKOUT"),
+        React.createElement("div",{style:{fontSize:12,color:current?"#1d9bf0":"#444",marginTop:3,letterSpacing:"0.04em"}},current||"Not set")
+      ),
+      React.createElement("button",{onClick:()=>setOpen(o=>!o),
+        style:{background:"none",border:"1px solid #333",color:open?"#e06040":"#aaa",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.1em",padding:"6px 12px",cursor:"pointer",flexShrink:0}},
+        open?"CLOSE":(current?"CHANGE":"SET"))
+    ),
+    open&&React.createElement("div",{style:{marginTop:11}},
+      groups===null
+        ?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"8px 0"}},"LOADING...")
+        :React.createElement(React.Fragment,null,
+            React.createElement("select",{value:val,onChange:e=>setVal(e.target.value),style:SEL},
+              React.createElement("option",{value:""},"— none —"),
+              groups.map(g=>React.createElement("optgroup",{key:g.label,label:g.label},
+                g.names.map(n=>React.createElement("option",{key:n,value:n},n))
+              ))
+            ),
+            React.createElement("div",{style:{fontSize:8,color:"#555",letterSpacing:"0.08em",lineHeight:1.5,marginBottom:8}},
+              "Pulls the SESSION BRIEF from that workout's coaching note in Details."),
+            React.createElement("div",{style:{display:"flex",gap:6}},
+              React.createElement("button",{disabled:!!busy,onClick:()=>commit("date"),style:BTN},busy==="date"?"…":"THIS DATE"),
+              React.createElement("button",{disabled:!!busy,onClick:()=>commit("dow"),style:{...BTN,background:"#1d9bf0",border:"none"}},busy==="dow"?"…":"EVERY "+String(dayLabel||"").toUpperCase())
+            )
+          )
+    )
+  );
+}
 function CoachingView({showToast}){
-  const BASE_GROUPS=[
-    {label:"RISE UP",base:["RISE UP 1","RISE UP 2","RISE UP 3","RISE UP 4"]},
-    {label:"ASCEND",base:["ASCEND 1","ASCEND 2","ASCEND 3","ASCEND 4"]},
-    {label:"ELEVATE",base:["ELEVATE 1","ELEVATE 2","ELEVATE 3","ELEVATE 4"]},
-    {label:"SUMMIT",base:["SUMMIT 1","SUMMIT 2","SUMMIT 3","SUMMIT 4"]},
-  ];
+  const BASE_GROUPS=DETAILS_BASE_GROUPS;
   const [extras,setExtras]=useState({});
   const [customGroups,setCustomGroups]=useState([]);
   const [selectedClass,setSelectedClass]=useState(null);
@@ -8332,6 +8410,15 @@ function App(){
   const [toast,setToast]=useState({msg:"",show:false});
   const [showProf,setShowProf]=useState(false);
   const [memberData,setMemberData]=useState(null);
+  // The member's own email switches — the same two an admin sees on their
+  // profile, and the same two the unsubscribe link at the foot of every email
+  // flips. Kept here so nobody has to go hunting for an old email to opt out.
+  const [myEmPrefs,setMyEmPrefs]=useState({reminders:true,confirmations:true});
+  const [myEmBusy,setMyEmBusy]=useState("");
+  useEffect(()=>{
+    if(!memberData)return;
+    setMyEmPrefs({reminders:memberData.email_reminders!==false,confirmations:memberData.email_confirmations!==false});
+  },[memberData]);
   const [profForm,setProfForm]=useState({name:"",email:"",phone:"",photo:"",newPw:"",confirmPw:""});
   const [profErr,setProfErr]=useState("");
   const [profOk,setProfOk]=useState("");
@@ -8357,6 +8444,10 @@ function App(){
   const [dowNames,setDowNames]=useState({1:"RISE UP",2:"STRENGTH LOWER",3:"ASCEND",4:"STRENGTH UPPER",5:"ELEVATE",6:"SUMMIT"});
   // Recurring per-slot names: keyed by "dow:time" (e.g. "4:19:15"), applies every week for that weekday+time.
   const [dowSlotNames,setDowSlotNames]=useState({});
+  // Which workout from Admin -> Details runs in a given slot. Two layers, the
+  // same shape as the names above: a per-date pick wins over the weekday rule.
+  const [slotWorkouts,setSlotWorkouts]=useState({});
+  const [dowSlotWorkouts,setDowSlotWorkouts]=useState({});
   // Base timetable (__BASE_TIMES__) and wellness base (__WELL_BASE_TIMES__).
   // null = record not loaded / not set, so the legacy hardcoded timetable applies.
   const [baseTimes,setBaseTimes]=useState(null);
@@ -8484,6 +8575,10 @@ function App(){
       if(tlData&&tlData.length){try{const tl=JSON.parse(tlData[0].content);if(tl&&typeof tl==="object")setTierOverrides(tl);}catch{}}
       const dsnData=await sbGet("coaching_notes","class_name=eq.__DOW_SLOT_NAMES__&select=content");
       if(dsnData&&dsnData.length){try{const dsn=JSON.parse(dsnData[0].content);if(dsn&&typeof dsn==="object")setDowSlotNames(dsn);}catch{}}
+      const swData=await sbGet("coaching_notes","class_name=eq.__SLOT_WORKOUTS__&select=content");
+      if(swData&&swData.length){try{const sw=JSON.parse(swData[0].content);if(sw&&typeof sw==="object")setSlotWorkouts(sw);}catch{}}
+      const dswData=await sbGet("coaching_notes","class_name=eq.__DOW_SLOT_WORKOUTS__&select=content");
+      if(dswData&&dswData.length){try{const dsw=JSON.parse(dswData[0].content);if(dsw&&typeof dsw==="object")setDowSlotWorkouts(dsw);}catch{}}
       const dslData=await sbGet("coaching_notes","class_name=eq.__DOW_SLOT_LIMITS__&select=content");
       if(dslData&&dslData.length){try{const dsl=JSON.parse(dslData[0].content);if(dsl&&typeof dsl==="object")setDowSlotLimits(dsl);}catch{}}
       const dlData=await sbGet("coaching_notes","class_name=eq.__DOW_LIMITS__&select=content");
@@ -8628,11 +8723,15 @@ function App(){
   const userBooked=(dk,t)=>session&&getBksFor(dk,t).some(b=>b.email===session.email);
   const weekDots=weekDates.map(d=>isAdmin?bookings.some(b=>b.date_key===toDS(d)):session&&bookings.some(b=>b.date_key===toDS(d)&&b.email===session.email));
   const [expandedClass,setExpandedClass]=useState(null);
-  // Session brief for whichever class row is open. Declared after
-  // expandedClass so the dependency array is not read before it exists.
+  // Which workout runs in a slot: a per-date pick beats the weekday rule.
+  const workoutFor=(dk,time)=>slotWorkouts[dk+":"+time]||dowSlotWorkouts[dowOf(dk)+":"+time]||"";
+  // Session brief for whichever class row is open. It is read from the coaching
+  // note of the WORKOUT attached to that class in Admin -> Details — the section
+  // titled SESSION BRIEF — so it lives where the rest of the coaching prep is.
+  // Declared after expandedClass so the dependency array is not read too early.
+  const openWorkout=expandedClass?workoutFor(selDK,expandedClass).toUpperCase():"";
   useEffect(()=>{
-    if(!expandedClass)return;
-    const nm=(getDayClassName(selDK,expandedClass)||"").toUpperCase();
+    const nm=openWorkout;
     if(!nm||classBriefs[nm]!==undefined)return;
     sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(nm)}&select=content`).then(d=>{
       let brief="";
@@ -8647,7 +8746,7 @@ function App(){
       }
       setClassBriefs(p=>({...p,[nm]:brief}));
     });
-  },[expandedClass,selDK]);
+  },[openWorkout]);
   const myUpcoming=session?bookings.filter(b=>b.email===session.email&&b.date_key>=toDS(new Date())).sort((a,b)=>a.date_key.localeCompare(b.date_key)||a.time.localeCompare(b.time)):[];
   function showToast(msg){setToast({msg,show:true});setTimeout(()=>setToast(t=>({...t,show:false})),2200);}
   async function handleAuth(){
@@ -8920,6 +9019,22 @@ function App(){
     setDowSlotNames(newMap);
     const ok=await saveNote("__DOW_SLOT_NAMES__",newMap);
     return ok||noteFailed(()=>setDowSlotNames(prev),"slot name");
+  }
+  async function saveSlotWorkout(time,dateKey,w){
+    const k=dateKey+":"+time;const prev=slotWorkouts;const next={...slotWorkouts};
+    const v=(w||"").trim();
+    if(v)next[k]=v;else delete next[k];
+    setSlotWorkouts(next);
+    const ok=await saveNote("__SLOT_WORKOUTS__",next);
+    return ok||noteFailed(()=>setSlotWorkouts(prev),"workout");
+  }
+  async function saveDowSlotWorkout(dow,time,w){
+    const k=dow+":"+time;const prev=dowSlotWorkouts;const next={...dowSlotWorkouts};
+    const v=(w||"").trim();
+    if(v)next[k]=v;else delete next[k];
+    setDowSlotWorkouts(next);
+    const ok=await saveNote("__DOW_SLOT_WORKOUTS__",next);
+    return ok||noteFailed(()=>setDowSlotWorkouts(prev),"workout");
   }
   async function saveWellSlots(next){
     // next: full overrides object keyed by date_key. Prune empty entries.
@@ -9255,9 +9370,22 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
               )
             ),
             isExpanded&&React.createElement("div",{className:"adm-members-list",style:{borderTop:"1px solid #222"}},
+              isAdmin&&React.createElement(WorkoutPicker,{
+                current:workoutFor(selDK,time),
+                dayLabel:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][dowOf(selDK)],
+                onSave:async(w,scope)=>{
+                  if(scope==="dow"){
+                    await saveDowSlotWorkout(dowOf(selDK),time,w);
+                    if(slotWorkouts[selDK+":"+time])await saveSlotWorkout(time,selDK,"");
+                  }else{
+                    await saveSlotWorkout(time,selDK,w);
+                  }
+                  showToast(w?"Workout set \u2713":"Workout cleared \u2713");
+                }
+              }),
               (function(){
-                const nm=(getDayClassName(selDK,time)||"").toUpperCase();
-                const brief=classBriefs[nm];
+                const nm=(workoutFor(selDK,time)||"").toUpperCase();
+                const brief=nm?classBriefs[nm]:"";
                 if(!brief)return null;
                 return React.createElement("div",{style:{padding:"12px 13px",borderBottom:"1px solid #1a1a1a"}},
                   React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,marginBottom:6}},"SESSION BRIEF"),
@@ -9451,6 +9579,35 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         React.createElement("div",{className:"prof-section"},"HEALTH INFORMATION"),
         React.createElement("a",{href:"/register.html",style:{display:"block",width:"100%",background:"transparent",color:"#aaa",border:"1px solid #2a2a2a",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.18em",padding:"15px",borderRadius:0,textAlign:"center",textDecoration:"none",marginBottom:4}},"UPDATE HEALTH SCREENING FORM"),
         React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.06em",marginBottom:4}},"Update your medical conditions, fitness level, or consents"),
+        React.createElement("div",{className:"prof-section"},"EMAILS"),
+        [
+          {k:"reminders",col:"email_reminders",label:"Class reminders",hint:"The night before a class you have booked"},
+          {k:"confirmations",col:"email_confirmations",label:"Booking confirmations",hint:"When you book a class"}
+        ].map(function(row){
+          const on=myEmPrefs[row.k];
+          return React.createElement("div",{key:row.k,style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"9px 0"}},
+            React.createElement("div",null,
+              React.createElement("div",{style:{fontSize:14,color:"#fff",fontWeight:300,letterSpacing:"0.02em"}},row.label),
+              React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.06em",marginTop:3}},row.hint)
+            ),
+            React.createElement("button",{type:"button",disabled:myEmBusy===row.k,
+              style:{background:on?"#fff":"#0e0e0e",color:on?"#000":"#555",border:"1px solid "+(on?"#fff":"#2a2a2a"),borderRadius:0,padding:"7px 20px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0},
+              onClick:async()=>{
+                const next=!on;
+                setMyEmBusy(row.k);
+                const ok=await sbPatch("members",`email=eq.${encodeURIComponent(session.email)}`,{[row.col]:next});
+                setMyEmBusy("");
+                if(ok){
+                  setMyEmPrefs(p=>({...p,[row.k]:next}));
+                  setMemberData(m=>m?{...m,[row.col]:next}:m);
+                  showToast(next?"Turned on \u2713":"Turned off \u2713");
+                }else{
+                  showToast("Couldn't save that \u2014 nothing changed");
+                }
+              }},myEmBusy===row.k?"\u2026":(on?"ON":"OFF"))
+          );
+        }),
+        React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.06em",lineHeight:1.6,marginTop:4,marginBottom:4}},"Turning these off never affects your bookings."),
         React.createElement("div",{className:"prof-section"},"CHANGE PASSWORD"),
         React.createElement("label",{className:"fl"},"NEW PASSWORD"),
         React.createElement("input",{className:"fi",type:"password",placeholder:"Leave blank to keep current",value:profForm.newPw,onChange:e=>{setProfForm(f=>({...f,newPw:e.target.value}));setProfErr("");setProfOk("");}}),
