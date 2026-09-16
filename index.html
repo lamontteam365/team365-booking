@@ -540,10 +540,11 @@ function sendBookingConfirm({ email, time, dates, type }) {
 // The code is minted by the friend-pass edge function, which checks the member
 // is real and enforces the one-open-pass rule in the database rather than here.
 // Nothing about a pass can be read or spent from a browser.
-const PASS_API_URL = `${SB_URL}/functions/v1/friend-pass`;
+// Built inside the call, not as a top-level const: SB_URL is declared further
+// down this file, so reading it at module level throws before the app mounts.
 async function friendPassCall(payload){
   try{
-    const r = await fetch(PASS_API_URL, {
+    const r = await fetch(`${SB_URL}/functions/v1/friend-pass`, {
       method:"POST",
       headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
       body: JSON.stringify(payload)
