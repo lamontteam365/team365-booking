@@ -74,6 +74,9 @@ body{font-family:'DM Sans',sans-serif;color:#fff}
 /* Slots */
 .no-classes{text-align:center;padding:52px 0;font-size:11px;letter-spacing:0.2em;color:#444;font-weight:600;line-height:2.2}
 .slot-list{display:flex;flex-direction:column;gap:7px;margin-bottom:20px}
+.slot-brief{background:#0e0e0e;border:1px solid #333;border-top:none;padding:11px 14px;margin-top:-7px}
+.slot-brief-lbl{font-size:7px;letter-spacing:0.14em;color:#555;font-weight:600;margin-bottom:5px}
+.slot-brief-txt{font-size:11px;color:#999;line-height:1.7;font-weight:300;white-space:pre-line}
 .slot-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#141414;border:1px solid #666;border-radius:0;cursor:pointer;transition:all .15s}
 .slot-row:hover:not(.off):not(.past){border-color:#333}
 .slot-row.sel{border-color:#fff;background:#111}
@@ -381,6 +384,9 @@ function BookingWidget(){
   // Same records the app reads, so a class resolves identically here.
   const[baseTimes,setBaseTimes]=useState(null);
   const[dowSlotNames,setDowSlotNames]=useState({});
+  // Session briefs, one per class style, written in the app under
+  // Admin -> Classes. Keyed by the class name in capitals.
+  const[classBriefs,setClassBriefs]=useState({});
   const[dowSlotLimits,setDowSlotLimits]=useState({});
   const[dowLimits,setDowLimits]=useState({});
   const weekDates=Array.from({length:7},(_,i)=>addDays(weekStart,i));
@@ -422,6 +428,9 @@ function BookingWidget(){
     });
     sbGet("coaching_notes","class_name=eq.__DOW_SLOT_NAMES__&select=content").then(d=>{
       if(d&&d.length&&d[0].content){try{const v=JSON.parse(d[0].content);if(v&&typeof v==="object")setDowSlotNames(v);}catch{}}
+    });
+    sbGet("coaching_notes","class_name=eq.__CLASS_BRIEFS__&select=content").then(d=>{
+      if(d&&d.length&&d[0].content){try{const v=JSON.parse(d[0].content);if(v&&typeof v==="object")setClassBriefs(v);}catch{}}
     });
     sbGet("coaching_notes","class_name=eq.__DOW_SLOT_LIMITS__&select=content").then(d=>{
       if(d&&d.length&&d[0].content){try{const v=JSON.parse(d[0].content);if(v&&typeof v==="object")setDowSlotLimits(v);}catch{}}
@@ -498,6 +507,12 @@ function BookingWidget(){
   const selDOW=selDate.getDay();
   const sessName=dowNames[selDOW]||DAY_SESS[selDay];
   function getSlotName(time,dk){const c=classOf(dk,time);return (c&&c.name)||null;}
+  // The brief for whatever this class is called, matched on the same name the
+  // row displays so the two can never disagree.
+  function getSlotBrief(time,dk,fallbackName){
+    const nm=((getSlotName(time,dk)||fallbackName||"")+"").trim().toUpperCase();
+    return (nm&&classBriefs[nm])||"";
+  }
   const dayBaseTimes=baseTimesFor(baseTimes,selDK);
   const dateAddTimes=classLimits.filter(l=>l.date_key===selDK&&l.max_spots>0).map(l=>l.time_slot);
   const hiddenTimes=classLimits.filter(l=>l.date_key===selDK&&l.max_spots===0).map(l=>l.time_slot);
@@ -573,7 +588,9 @@ function BookingWidget(){
               const{taken,left,maxSp}=classSlots(time);
               const full=left===0;
               const low=left<=3&&left>0;
-              return React.createElement("div",{key:time,
+              const brief=selTime===time?getSlotBrief(time,selDK,sessName):"";
+              return React.createElement(React.Fragment,{key:time},
+                React.createElement("div",{
                 className:`slot-row${selTime===time?" sel":""}${past?" past":full?" off":""}`,
                 onClick:()=>{if(!past&&!full)setSelTime(time);}},
                 React.createElement("div",{style:{display:"flex",flexDirection:"column",minWidth:72}},
@@ -592,6 +609,11 @@ function BookingWidget(){
                   ?null
                   :full?React.createElement("button",{className:"slot-btn sb-off",disabled:true},"Full")
                   :React.createElement("button",{className:"slot-btn sb-book",onClick:e=>{e.stopPropagation();setSelTime(time);}},"Book")
+                ),
+                brief&&React.createElement("div",{className:"slot-brief"},
+                  React.createElement("div",{className:"slot-brief-lbl"},"SESSION BRIEF"),
+                  React.createElement("div",{className:"slot-brief-txt"},brief)
+                )
               );
             }else{
               const taken=wellSlotTaken(time);
