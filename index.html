@@ -5274,7 +5274,7 @@ function CoachingView({showToast}){
   );
 }
 // ── Progress Tab ──────────────────────────────────────────────────────────────
-function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,myAllBks,saveMilestoneConfig,memberData,dowNames}){
+function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,myAllBks,myStatsAdj,saveMilestoneConfig,memberData,dowNames}){
   const [exercises,setExercises]=useState([]);
   const [myPBs,setMyPBs]=useState({});
   const [communityBestsMale,setCommunityBestsMale]=useState({});
@@ -5715,7 +5715,10 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,myAllBk
       // about classes already attended, every one of which is in the past.
       const hist=(myAllBks&&myAllBks.length)?myAllBks:(bookings||[]);
       const checkedInSorted=hist.filter(b=>b.email===session.email&&b.checked_in&&b.date_key).sort((a,b)=>a.date_key.localeCompare(b.date_key));
-      const attended=checkedInSorted.length;
+      // An admin correcting someone's attended count moves their milestones
+      // with it — otherwise the badge they have earned stays locked behind a
+      // check-in that never got tapped.
+      const attended=Math.max(0,checkedInSorted.length-((myStatsAdj&&myStatsAdj.attended)||0));
       if(attended===0)return null;
       const specials=((milestoneConfig||{}).specials||[]).filter(s=>{const cls=s.classes?.toString().toLowerCase();return cls==="first"?attended>=1:attended>=parseInt(s.classes);});
       const sorted=[...specials].sort((a,b)=>a.classes-b.classes);
@@ -8770,6 +8773,7 @@ function App(){
   // shows the same two numbers the admin sees on their profile. Display only:
   // the concession card and the milestones still count real check-ins.
   const [myStatsAdj,setMyStatsAdj]=useState({booked:0,attended:0});
+  const [profFriendCol,setProfFriendCol]=useState(true);
   const [concBase,setConcBase]=useState(0);
   const workoutsEnabled=memberData?.workouts_enabled===true;
   const routinesEnabled=memberData?.routines_enabled===true;
@@ -9770,7 +9774,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       effWkSub==="strength"&&showStrength&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTabRouter,{session,isAdmin,showToast,bookings,memberData})),
       effWkSub==="routines"&&showRoutines&&React.createElement(RoutinesView,{session,ttl:wkTitles.rt,isAdmin})
     ),
-    effTab==="progress"&&acc("progress")&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,myAllBks,saveMilestoneConfig,memberData,dowNames}),
+    effTab==="progress"&&acc("progress")&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,myAllBks,myStatsAdj,saveMilestoneConfig,memberData,dowNames}),
     effTab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:""}),
     ),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
@@ -9871,8 +9875,11 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         }),
         React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.06em",lineHeight:1.6,marginTop:4,marginBottom:4}},"Turning these off never affects your bookings."),
         classesEnabled&&React.createElement(React.Fragment,null,
-          React.createElement("div",{className:"prof-section"},"BRING A FRIEND"),
-          React.createElement(BringAFriend,{
+          React.createElement("button",{onClick:()=>setProfFriendCol(c=>!c),
+            style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",border:"none",borderRadius:0,padding:"12px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.18em",cursor:"pointer",marginTop:22,marginBottom:profFriendCol?4:12}},
+            React.createElement("span",null,"BRING A FRIEND"),
+            React.createElement("span",{style:{fontSize:11,transform:profFriendCol?"rotate(-90deg)":"none",transition:"transform .15s"}},"\u25be")),
+          !profFriendCol&&React.createElement(BringAFriend,{
             email:session.email,showToast,unlimited:isMaster,
             widgetUrl:"https://team365-booking.vercel.app/WIDGET.HTML"})
         ),
