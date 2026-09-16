@@ -2045,6 +2045,11 @@ function NewClassForm({admDK,defaultDow,onCreate,showToast,classBriefs,saveClass
   // null means "whatever is stored for this name" — a string means it has been
   // edited here, so retyping the name picks the stored one back up.
   const [briefDraft,setBriefDraft]=useState(null);
+  // The HIIT/STRENGTH toggle follows the name until you set it by hand, after
+  // which it stays where you put it. The toggle is what the booking spends from
+  // the member's weekly allowance, so it is never decided by the name alone.
+  const [typeTouched,setTypeTouched]=useState(false);
+  function typeFromName(n){return /STRENGTH/.test((n||"").toUpperCase())?"Strength":"HIIT";}
   const briefKey=name.trim().toUpperCase();
   const briefValue=briefDraft!==null?briefDraft:((classBriefs||{})[briefKey]||"");
   const toggleDay=d=>setDays(p=>p.includes(d)?p.filter(x=>x!==d):[...p,d]);
@@ -2056,13 +2061,13 @@ function NewClassForm({admDK,defaultDow,onCreate,showToast,classBriefs,saveClass
   return React.createElement("div",{style:SCH_PANEL},
     React.createElement("div",{style:{marginBottom:12}},
       React.createElement("label",{style:SCH_LBL},"CLASS NAME"),
-      React.createElement("input",{value:name,onChange:e=>{setName(e.target.value);setBriefDraft(null);},placeholder:"e.g. RISE UP",style:SCH_INPUT})
+      React.createElement("input",{value:name,onChange:e=>{const v=e.target.value;setName(v);setBriefDraft(null);if(!typeTouched)setType(typeFromName(v));},placeholder:"e.g. RISE UP",style:SCH_INPUT})
     ),
     React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}},
       React.createElement("div",{style:{flex:1}},
         React.createElement("label",{style:SCH_LBL},"TYPE"),
         React.createElement("div",{style:{display:"flex",gap:6}},
-          ["HIIT","Strength"].map(t=>React.createElement("button",{key:t,onClick:()=>setType(t),
+          ["HIIT","Strength"].map(t=>React.createElement("button",{key:t,onClick:()=>{setType(t);setTypeTouched(true);},
             style:{flex:1,background:type===t?"#fff":"transparent",color:type===t?"#000":"#666",border:"1px solid "+(type===t?"#fff":"#333"),borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",padding:"9px 4px",cursor:"pointer"}},t.toUpperCase()))
         )
       ),
@@ -2115,7 +2120,7 @@ function NewClassForm({admDK,defaultDow,onCreate,showToast,classBriefs,saveClass
           }
         }
         setBusy(false);
-        if(ok){showToast("Class created ✓");setName("");setBriefDraft(null);}
+        if(ok){showToast("Class created ✓");setName("");setBriefDraft(null);setTypeTouched(false);setType("HIIT");}
         else showToast("Could not create the class");
       }},busy?"SAVING…":"CREATE CLASS")
   );
@@ -2541,17 +2546,22 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
     ||(classAddRule(classDow,admDK,time)||{}).name
     ||dowNames?.[admDOW]
     ||"";
-  // Every style that could want a brief: the workout rows in Details, every
-  // name already in use on the timetable (this is how Strength Upper and Lower
-  // turn up), and anything already written. Nothing has to be registered.
+  // Every style that could want a brief: the workout rows in Details, the
+  // standing names on the timetable (this is how Strength Upper and Lower turn
+  // up), and anything already written. Upper-cased, because that is how briefs
+  // are keyed, and de-duplicated so "Elite" and "ELITE" are one entry.
+  //
+  // Deliberately NOT the per-date names in class_limits: those are one-off
+  // overrides for a single date, including dates long past, so scraping them
+  // fills this list with names that were never styles.
   const [styleLabels,setStyleLabels]=useState([]);
   useEffect(()=>{loadStyleLabels().then(setStyleLabels);},[]);
   const briefNames=(function(){
-    const out=styleLabels.slice();
-    const add=n=>{const v=(n||"").trim();if(v&&out.indexOf(v)<0)out.push(v);};
+    const out=[];
+    const add=n=>{const v=(n||"").trim().toUpperCase();if(v&&out.indexOf(v)<0)out.push(v);};
+    styleLabels.forEach(add);
     Object.keys(dowNames||{}).forEach(k=>add(dowNames[k]));
     Object.keys(dowSlotNames||{}).forEach(k=>add(dowSlotNames[k]));
-    Object.keys(slotNames||{}).forEach(k=>add(slotNames[k]));
     Object.keys(classDow||{}).forEach(d=>((classDow[d]||{}).add||[]).forEach(r=>add(r&&r.name)));
     Object.keys(classBriefs||{}).forEach(add);
     return out;
