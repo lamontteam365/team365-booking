@@ -5714,7 +5714,11 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,myAllBk
       // Count from the FULL history, not the forward-only window: a milestone is
       // about classes already attended, every one of which is in the past.
       const hist=(myAllBks&&myAllBks.length)?myAllBks:(bookings||[]);
-      const checkedInSorted=hist.filter(b=>b.email===session.email&&b.checked_in&&b.date_key).sort((a,b)=>a.date_key.localeCompare(b.date_key));
+      // myAllBks is already this member's own history and carries no email
+      // column, so only filter on email when a row actually has one - otherwise
+      // every row is rejected and the section hides itself at zero.
+      const checkedInSorted=hist.filter(b=>(!b.email||b.email===session.email)&&b.checked_in&&b.date_key)
+        .sort((a,b)=>a.date_key.localeCompare(b.date_key));
       // An admin correcting someone's attended count moves their milestones
       // with it — otherwise the badge they have earned stays locked behind a
       // check-in that never got tapped.
@@ -8772,6 +8776,7 @@ function App(){
   // The admin's correction to this member's headline counts, so MY BOOKINGS
   // shows the same two numbers the admin sees on their profile. Display only:
   // the concession card and the milestones still count real check-ins.
+  const [myAttended,setMyAttended]=useState(0);
   const [myStatsAdj,setMyStatsAdj]=useState({booked:0,attended:0});
   const [profFriendCol,setProfFriendCol]=useState(true);
   const [concBase,setConcBase]=useState(0);
@@ -8925,11 +8930,11 @@ function App(){
   // the concession card. refreshBookings only loads forward from today, so
   // anything already attended is absent from it.
   useEffect(()=>{
-    if(!session){setConcCheckins(0);setConcBase(0);setMyAllBks([]);setMyStatsAdj({booked:0,attended:0});return;}
+    if(!session){setConcCheckins(0);setMyAttended(0);setConcBase(0);setMyAllBks([]);setMyStatsAdj({booked:0,attended:0});return;}
     let cancelled=false;
     (async()=>{
       const [all,base,adj]=await Promise.all([
-        sbGet("bookings",`email=eq.${encodeURIComponent(session.email)}&select=date_key,checked_in,excused`),
+        sbGet("bookings",`email=eq.${encodeURIComponent(session.email)}&select=id,date_key,checked_in,excused`),
         sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__CONCESSION__"+session.email)}&select=content`),
         sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__STATS_ADJ__"+session.email)}&select=content`)
       ]);
@@ -8942,6 +8947,10 @@ function App(){
       const rows=all||[];
       setMyAllBks(rows);
       setConcCheckins(rows.filter(r=>r.checked_in&&!r.excused).length);
+      // What the member sees as CLASSES ATTENDED, and what the admin's profile
+      // shows: simply whether they checked in. The concession figure above is a
+      // different question and deliberately stays separate.
+      setMyAttended(rows.filter(r=>r.checked_in).length);
       let b=0;if(base&&base.length&&base[0].content){try{b=parseInt(JSON.parse(base[0].content).baseline)||0;}catch{}}
       setConcBase(b);
     })();
@@ -9396,11 +9405,16 @@ function App(){
   // and the no-show flag all correct themselves — everything downstream reads
   // checked_in. A display offset could not do that.
   async function setBookingCheckedIn(bk,val){
-    const ok=await sbPatch("bookings",`id=eq.${bk.id}`,
-      {checked_in:val,checked_in_at:val?Date.now():null});
+    // Clearing `excused` matters: they turned up, so there is nothing to
+    // excuse. Leaving both flags set left the booking in a contradictory state
+    // that the admin screen and the member screen then counted differently.
+    const patch=val
+      ?{checked_in:true,checked_in_at:Date.now(),excused:false}
+      :{checked_in:false,checked_in_at:null};
+    const ok=await sbPatch("bookings",`id=eq.${bk.id}`,patch);
     if(ok){
-      setBookings(prev=>prev.map(b=>(b.id===bk.id?{...b,checked_in:val,checked_in_at:val?Date.now():null}:b)));
-      setMyAllBks(prev=>prev.map(b=>(b.id===bk.id?{...b,checked_in:val}:b)));
+      setBookings(prev=>prev.map(b=>(b.id===bk.id?{...b,...patch}:b)));
+      setMyAllBks(prev=>prev.map(b=>(b.id===bk.id?{...b,...patch}:b)));
       showToast(val?"Marked as attended \u2713":"Attendance removed");
     }else{showToast("Could not save");}
     return ok;
@@ -9692,7 +9706,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
           React.createElement("div",{className:"adm-stat-lbl"},"CLASSES BOOKED")
         ),
         React.createElement("div",{className:"adm-stat"},
-          React.createElement("div",{className:"adm-stat-num"},Math.max(0,concCheckins-(myStatsAdj.attended||0))),
+          React.createElement("div",{className:"adm-stat-num"},Math.max(0,myAttended-(myStatsAdj.attended||0))),
           React.createElement("div",{className:"adm-stat-lbl"},"CLASSES ATTENDED")
         ),
         React.createElement("div",{className:"adm-stat"},
