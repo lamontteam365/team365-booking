@@ -544,15 +544,18 @@ function sendBookingConfirm({ email, time, dates, type }) {
 // down this file, so reading it at module level throws before the app mounts.
 async function friendPassCall(payload){
   try{
+    // SB_HDR.Authorization carries the signed-in user's token. The function
+    // works out who is asking from that, so an email in the body cannot be
+    // used to mint or read somebody else's pass.
     const r = await fetch(`${SB_URL}/functions/v1/friend-pass`, {
       method:"POST",
-      headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
+      headers:{"apikey":SB_KEY,"Authorization":SB_HDR.Authorization,"Content-Type":"application/json"},
       body: JSON.stringify(payload)
     });
     return await r.json().catch(()=>({ok:false}));
   }catch(e){ return {ok:false,error:"network"}; }
 }
-function BringAFriend({email,showToast,widgetUrl}){
+function BringAFriend({email,showToast,widgetUrl,unlimited}){
   const [code,setCode]=useState(null);
   const [busy,setBusy]=useState(false);
   const [err,setErr]=useState("");
@@ -569,6 +572,7 @@ function BringAFriend({email,showToast,widgetUrl}){
     if(j&&j.ok&&j.code)setCode(j.code);
     else if(j&&j.error==="used_this_month")setNextAt(j.nextAt||"next month");
     else if(j&&j.error==="not_a_member")setErr("We couldn't find your membership \u2014 contact Team 365.");
+    else if(j&&j.error==="not_signed_in")setErr("Please log out and back in, then try again.");
     else setErr("Couldn't get a pass just now \u2014 try again in a moment.");
   }
   async function share(){
@@ -593,7 +597,10 @@ function BringAFriend({email,showToast,widgetUrl}){
             style:{width:"100%",background:"#fff",color:"#000",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.12em",padding:"12px",cursor:"pointer"}},
             "SEND IT TO A FRIEND"),
           React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.04em",lineHeight:1.6,marginTop:9,textAlign:"center"}},
-            "One friend pass per month.")
+            unlimited?"Master admin \u2014 no limit. Tap again for another code.":"One friend pass per month."),
+          unlimited&&React.createElement("button",{onClick:()=>{setCode(null);getCode();},disabled:busy,
+            style:{width:"100%",marginTop:8,background:"none",border:"1px solid #333",color:"#aaa",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.12em",padding:"10px",cursor:"pointer"}},
+            busy?"\u2026":"GENERATE ANOTHER")
         )
       :nextAt
       ?React.createElement("div",{style:{background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,padding:"14px",textAlign:"center"}},
@@ -607,7 +614,7 @@ function BringAFriend({email,showToast,widgetUrl}){
             style:{width:"100%",background:busy?"#1a1a1a":"#fff",color:busy?"#444":"#000",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.12em",padding:"12px",cursor:busy?"default":"pointer"}},
             busy?"GETTING YOUR PASS\u2026":"GET MY FRIEND PASS"),
           React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.04em",lineHeight:1.6,marginTop:9,textAlign:"center"}},
-            "One friend pass per month."),
+            unlimited?"Master admin \u2014 no limit.":"One friend pass per month."),
           err&&React.createElement("div",{style:{fontSize:11,color:"#e06040",marginTop:9,lineHeight:1.5}},err)
         )
   );
@@ -948,7 +955,7 @@ function ImageCropper({imageSrc,onSave,onCancel}){
   );
 }
 // ── Member Profile Overlay (Admin) ────────────────────────────────────────────
-function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,isMaster,mfPasteAI,selfEmail,canManageWk,setBookingExcused}){
+function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,isMaster,mfPasteAI,selfEmail,canManageWk,setBookingExcused,setBookingCheckedIn}){
   const joinDate=fmtJoinDate(member.joined_at);
   const PARQ_LABELS=["Heart condition","Chest pain during activity","Chest pain at rest","Dizziness/loss of consciousness","Bone or joint problem","Blood pressure medication","Other reason to avoid activity"];
   const PARQ_KEYS=["parq_heart","parq_chest_activity","parq_chest_rest","parq_dizziness","parq_joint","parq_blood_pressure","parq_other"];
@@ -1028,6 +1035,22 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
     }
     setSavingAcc(false);setAccMsg("Access updated ✓");setTimeout(()=>setAccMsg(""),2500);
   }
+  // Set the two headline counts to whatever the admin types. Stored as the
+  // difference from the real history, so future bookings still increment.
+  async function saveStatsAdj(nextBooked,nextAttended){
+    setAdjBusy(true);
+    // The offset may be negative, which credits classes the app never saw —
+    // useful when someone trained here before this system existed.
+    const next={booked:rawTotal-Math.max(0,nextBooked),
+                attended:rawAttended-Math.max(0,nextAttended)};
+    const key="__STATS_ADJ__"+member.email;
+    const q=`class_name=eq.${encodeURIComponent(key)}`;
+    const ex=await sbGet("coaching_notes",q+"&select=class_name");
+    const body={content:JSON.stringify(next),updated_at:Date.now()};
+    if(ex&&ex.length)await sbPatch("coaching_notes",q,body);
+    else await sbPost("coaching_notes",{class_name:key,...body});
+    setStatsAdj(next);setAdjBusy(false);setAdjOpen(false);
+  }
   async function setWorkoutsFlag(v){
     setSavingAcc(true);
     await sbPatch("members",`email=eq.${encodeURIComponent(member.email)}`,{workouts_enabled:v});
@@ -1042,13 +1065,25 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
   }
   // ── Concession pass (admin controls) ──
   const [concInfo,setConcInfo]=useState(null); // {checkins, baseline}
+  // Admin corrections to the headline counts. Stored as an OFFSET, not as a
+  // replacement, so real bookings keep counting on top of whatever you set.
+  // Same shape as the concession baseline above it.
+  const [statsAdj,setStatsAdj]=useState({booked:0,attended:0});
+  const [adjOpen,setAdjOpen]=useState(false);
+  const [adjBooked,setAdjBooked]=useState("");
+  const [adjAttended,setAdjAttended]=useState("");
+  const [adjBusy,setAdjBusy]=useState(false);
   // ATTENDED means checked in at the desk — the same thing MY BOOKINGS counts.
   // It used to count "date is in the past" from the forward-only window, which
   // holds no past dates, so it always read 0.
-  const attendedBks=(concInfo&&concInfo.checkins)||0;
+  const rawAttended=(concInfo&&concInfo.checkins)||0;
   const upcomingBks=concInfo?concInfo.upcoming
     :bookings.filter(b=>b.email===member.email&&b.date_key>=toDS(new Date())).length;
-  const totalBks=concInfo?concInfo.total:attendedBks+upcomingBks;
+  const rawTotal=concInfo?concInfo.total:rawAttended+upcomingBks;
+  // What the admin sees. Never below zero, so an offset left from a larger
+  // history cannot show a negative count.
+  const attendedBks=Math.max(0,rawAttended-(statsAdj.attended||0));
+  const totalBks=Math.max(0,rawTotal-(statsAdj.booked||0));
   const [concActive,setConcActive]=useState(isConcessionActive(member));
   const [concBusy,setConcBusy]=useState(false);
   const [concMsg,setConcMsg]=useState("");
@@ -1067,10 +1102,16 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
     (async()=>{
       // Every booking this member has ever had — not the forward-only window the
       // main app keeps in memory, which has no past dates in it at all.
-      const [all,base]=await Promise.all([
+      const [all,base,adj]=await Promise.all([
         sbGet("bookings",`email=eq.${encodeURIComponent(member.email)}&select=id,date_key,time,checked_in,excused,session_type`),
-        sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__CONCESSION__"+member.email)}&select=content`)
+        sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__CONCESSION__"+member.email)}&select=content`),
+        sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__STATS_ADJ__"+member.email)}&select=content`)
       ]);
+      if(adj&&adj.length&&adj[0].content){
+        try{const a=JSON.parse(adj[0].content);
+          setStatsAdj({booked:parseInt(a.booked,10)||0,attended:parseInt(a.attended,10)||0});
+        }catch{}
+      }
       let b=0;if(base&&base.length&&base[0].content){try{b=parseInt(JSON.parse(base[0].content).baseline)||0;}catch{}}
       const rows=all||[];
       const today=toDS(new Date());
@@ -1257,6 +1298,50 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
           React.createElement("div",{className:"adm-stat-lbl"},"NO-SHOWS")
         )
       ),
+      // ── Correcting the counts ─────────────────────────────────────────────
+      // Stored as an offset from the real booking history rather than as a
+      // replacement, so whatever you set here keeps counting upward as the
+      // member books and checks in. The bookings themselves are untouched.
+      currentUserIsAdmin&&concInfo&&React.createElement("div",{style:{marginBottom:16}},
+        !adjOpen
+          ?React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}},
+              React.createElement("div",{style:{fontSize:9,color:"#444",letterSpacing:"0.06em"}},
+                (statsAdj.booked||statsAdj.attended)
+                  ?"Counts adjusted \u00b7 "+rawTotal+" booked / "+rawAttended+" attended on record"
+                  :""),
+              React.createElement("button",{
+                onClick:()=>{setAdjBooked(String(totalBks));setAdjAttended(String(attendedBks));setAdjOpen(true);},
+                style:{background:"none",border:"1px solid #333",color:"#888",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.1em",padding:"6px 12px",cursor:"pointer",flexShrink:0}},
+                "ADJUST COUNTS")
+            )
+          :React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:0,padding:"14px"}},
+              React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,marginBottom:10}},"ADJUST COUNTS"),
+              React.createElement("div",{style:{display:"flex",gap:10,marginBottom:10}},
+                React.createElement("div",{style:{flex:1}},
+                  React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.1em",fontWeight:600,marginBottom:4}},"CLASSES BOOKED"),
+                  React.createElement("input",{type:"number",min:0,value:adjBooked,onChange:e=>setAdjBooked(e.target.value),
+                    style:{width:"100%",boxSizing:"border-box",background:"#141414",border:"1px solid #333",borderRadius:0,padding:"9px 10px",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:16,textAlign:"center",outline:"none"}})
+                ),
+                React.createElement("div",{style:{flex:1}},
+                  React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.1em",fontWeight:600,marginBottom:4}},"CLASSES ATTENDED"),
+                  React.createElement("input",{type:"number",min:0,value:adjAttended,onChange:e=>setAdjAttended(e.target.value),
+                    style:{width:"100%",boxSizing:"border-box",background:"#141414",border:"1px solid #333",borderRadius:0,padding:"9px 10px",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:16,textAlign:"center",outline:"none"}})
+                )
+              ),
+              React.createElement("div",{style:{fontSize:8,color:"#555",letterSpacing:"0.06em",lineHeight:1.6,marginBottom:10}},
+                "On record: "+rawTotal+" booked, "+rawAttended+" attended. Setting a number here shifts the display only \u2014 no bookings are deleted, and new ones still count on top."),
+              React.createElement("div",{style:{display:"flex",gap:6}},
+                React.createElement("button",{disabled:adjBusy,onClick:()=>saveStatsAdj(parseInt(adjBooked)||0,parseInt(adjAttended)||0),
+                  style:{flex:2,background:"#fff",color:"#000",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",padding:"10px",cursor:"pointer"}},adjBusy?"SAVING\u2026":"SAVE"),
+                React.createElement("button",{disabled:adjBusy,onClick:()=>{setAdjBooked("0");setAdjAttended("0");saveStatsAdj(0,0);},
+                  style:{flex:1,background:"none",border:"1px solid #3a1a12",color:"#8a2515",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",padding:"10px",cursor:"pointer"}},"RESET TO 0"),
+                React.createElement("button",{disabled:adjBusy,onClick:()=>{setAdjBooked(String(rawTotal));setAdjAttended(String(rawAttended));saveStatsAdj(rawTotal,rawAttended);},
+                  style:{flex:1,background:"none",border:"1px solid #333",color:"#888",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",padding:"10px",cursor:"pointer"}},"ACTUAL"),
+                React.createElement("button",{onClick:()=>setAdjOpen(false),
+                  style:{background:"none",border:"1px solid #333",color:"#666",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",padding:"10px 12px",cursor:"pointer",flexShrink:0}},"\u2715")
+              )
+            )
+      ),
       // ── Email preferences ─────────────────────────────────────────────────
       currentUserIsAdmin&&React.createElement("div",{style:{background:"#141414",border:"1px solid #666",borderRadius:0,padding:"14px 16px",marginBottom:10}},
         React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:12}},"EMAILS"),
@@ -1296,7 +1381,9 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
         ),
         showNs&&React.createElement("div",{style:{border:"1px solid #222",borderRadius:0,marginBottom:10}},
           React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#444",lineHeight:1.7,padding:"10px 13px 6px"}},
-            "Excusing one keeps it in the history but stops it counting toward their weekly allowance or concession card. Only has an effect within the same Mon\u2013Sun week for plan members."),
+            "ATTENDED is for someone who trained but forgot the kiosk \u2014 it marks the booking itself, so their attended count, concession card and milestones all correct themselves."),
+          React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#444",lineHeight:1.7,padding:"0 13px 8px"}},
+            "EXCUSE is for someone who genuinely missed it but shouldn\u2019t be charged \u2014 it stays in the history but stops counting toward their weekly allowance or concession card. Only has an effect within the same Mon\u2013Sun week for plan members."),
           noShows.map((n,i)=>React.createElement("div",{key:n.id||i,
             style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"10px 13px",borderTop:"1px solid #111",opacity:n.excused?0.45:1}},
             React.createElement("div",null,
@@ -1306,16 +1393,34 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
               React.createElement("div",{style:{fontSize:9,letterSpacing:"0.1em",color:n.excused?"#1d9bf0":"#e06040",fontWeight:600,marginTop:2}},
                 n.excused?"EXCUSED":"DID NOT ATTEND")
             ),
-            React.createElement("button",{disabled:!!nsBusy[n.id],
-              onClick:async()=>{
-                if(!setBookingExcused)return;
-                setNsBusy(p=>({...p,[n.id]:true}));
-                const ok=await setBookingExcused(n,!n.excused);
-                if(ok)setNoShows(prev=>prev.map(x=>x.id===n.id?{...x,excused:!n.excused}:x));
-                setNsBusy(p=>({...p,[n.id]:false}));
-              },
-              style:{background:"transparent",color:n.excused?"#666":"#1d9bf0",border:"1px solid "+(n.excused?"#333":"#1d3a5a"),borderRadius:0,fontFamily:"'DM Sans',sans-serif",fontSize:10,letterSpacing:"0.1em",fontWeight:600,padding:"8px 14px",cursor:"pointer",flexShrink:0}},
-              nsBusy[n.id]?"\u2026":n.excused?"UNDO":"EXCUSE")
+            React.createElement("div",{style:{display:"flex",gap:6,flexShrink:0}},
+              // They were here — the kiosk just never saw them.
+              React.createElement("button",{disabled:!!nsBusy[n.id],
+                onClick:async()=>{
+                  if(!setBookingCheckedIn)return;
+                  setNsBusy(p=>({...p,[n.id]:true}));
+                  const ok=await setBookingCheckedIn(n,true);
+                  if(ok){
+                    // It is no longer a no-show, so it leaves this list and the
+                    // counts above recompute from the corrected record.
+                    setNoShows(prev=>prev.filter(x=>x.id!==n.id));
+                    setConcInfo(ci=>ci?{...ci,checkins:(ci.checkins||0)+1}:ci);
+                  }
+                  setNsBusy(p=>({...p,[n.id]:false}));
+                },
+                style:{background:"transparent",color:"#4aaa66",border:"1px solid #1d3a22",borderRadius:0,fontFamily:"'DM Sans',sans-serif",fontSize:10,letterSpacing:"0.1em",fontWeight:600,padding:"8px 12px",cursor:"pointer"}},
+                nsBusy[n.id]?"\u2026":"ATTENDED"),
+              React.createElement("button",{disabled:!!nsBusy[n.id],
+                onClick:async()=>{
+                  if(!setBookingExcused)return;
+                  setNsBusy(p=>({...p,[n.id]:true}));
+                  const ok=await setBookingExcused(n,!n.excused);
+                  if(ok)setNoShows(prev=>prev.map(x=>x.id===n.id?{...x,excused:!n.excused}:x));
+                  setNsBusy(p=>({...p,[n.id]:false}));
+                },
+                style:{background:"transparent",color:n.excused?"#666":"#1d9bf0",border:"1px solid "+(n.excused?"#333":"#1d3a5a"),borderRadius:0,fontFamily:"'DM Sans',sans-serif",fontSize:10,letterSpacing:"0.1em",fontWeight:600,padding:"8px 12px",cursor:"pointer"}},
+                nsBusy[n.id]?"\u2026":n.excused?"UNDO":"EXCUSE")
+            )
           ))
         )
       ),
@@ -2309,7 +2414,7 @@ function TierLimitsEditor({tierOverrides,saveTierOverrides,showToast}){
   );
 }
 
-function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail}){
+function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail}){
   const [expandedTier,setExpandedTier]=useState(null);
   const [admDate,setAdmDate]=useState(new Date());
   const [expanded,setExpanded]=useState({});
@@ -2787,7 +2892,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   // Program access via mFlags.wk / mFlags.wkAdminHide above. Master always has access.
   const canScBuild=isMaster||(mFlags.sc!==false&&!(mFlags.scAdminHide||[]).includes(selfEmail));
   return React.createElement("div",{className:"adm-wrap"},
-    selectedMember&&React.createElement(MemberProfileOverlay,{member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin,mfWk:mFlags.wk,isMaster,mfPasteAI:mFlags.pasteAI,selfEmail,setBookingExcused,canManageWk:(isMaster||(mFlags.wk!==false&&!(mFlags.wkAdminHide||[]).includes(selfEmail)))}),
+    selectedMember&&React.createElement(MemberProfileOverlay,{member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin,mfWk:mFlags.wk,isMaster,mfPasteAI:mFlags.pasteAI,selfEmail,setBookingExcused,setBookingCheckedIn,canManageWk:(isMaster||(mFlags.wk!==false&&!(mFlags.wkAdminHide||[]).includes(selfEmail)))}),
     React.createElement("div",{className:"adm-title"},"ADMIN"),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"0 0 6px"}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
@@ -5169,7 +5274,7 @@ function CoachingView({showToast}){
   );
 }
 // ── Progress Tab ──────────────────────────────────────────────────────────────
-function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}){
+function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,myAllBks,saveMilestoneConfig,memberData,dowNames}){
   const [exercises,setExercises]=useState([]);
   const [myPBs,setMyPBs]=useState({});
   const [communityBestsMale,setCommunityBestsMale]=useState({});
@@ -5606,7 +5711,10 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,saveMil
         })()),
     (()=>{
       if(!session)return null;
-      const checkedInSorted=(bookings||[]).filter(b=>b.email===session.email&&b.checked_in&&b.date_key).sort((a,b)=>a.date_key.localeCompare(b.date_key));
+      // Count from the FULL history, not the forward-only window: a milestone is
+      // about classes already attended, every one of which is in the past.
+      const hist=(myAllBks&&myAllBks.length)?myAllBks:(bookings||[]);
+      const checkedInSorted=hist.filter(b=>b.email===session.email&&b.checked_in&&b.date_key).sort((a,b)=>a.date_key.localeCompare(b.date_key));
       const attended=checkedInSorted.length;
       if(attended===0)return null;
       const specials=((milestoneConfig||{}).specials||[]).filter(s=>{const cls=s.classes?.toString().toLowerCase();return cls==="first"?attended>=1:attended>=parseInt(s.classes);});
@@ -9270,6 +9378,20 @@ function App(){
     }else{showToast("Could not save");}
     return ok;
   }
+  // Someone trained but forgot the kiosk. This marks the booking itself as
+  // attended, so the attended count, their concession card, their milestones
+  // and the no-show flag all correct themselves — everything downstream reads
+  // checked_in. A display offset could not do that.
+  async function setBookingCheckedIn(bk,val){
+    const ok=await sbPatch("bookings",`id=eq.${bk.id}`,
+      {checked_in:val,checked_in_at:val?Date.now():null});
+    if(ok){
+      setBookings(prev=>prev.map(b=>(b.id===bk.id?{...b,checked_in:val,checked_in_at:val?Date.now():null}:b)));
+      setMyAllBks(prev=>prev.map(b=>(b.id===bk.id?{...b,checked_in:val}:b)));
+      showToast(val?"Marked as attended \u2713":"Attendance removed");
+    }else{showToast("Could not save");}
+    return ok;
+  }
   async function saveMilestoneConfig(cfg){
     const prev=milestoneConfig;
     setMilestoneConfig(cfg);
@@ -9627,10 +9749,10 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
           return items;
         })())
       ),
-      !isAdmin&&session&&classesEnabled&&React.createElement(React.Fragment,null,
+      session&&classesEnabled&&React.createElement(React.Fragment,null,
         React.createElement("button",{onClick:()=>setMyFriendCol(c=>!c),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",border:"none",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",marginTop:20,marginBottom:10}},React.createElement("span",null,"BRING A FRIEND"),React.createElement("span",{style:{fontSize:11,transform:myFriendCol?"rotate(-90deg)":"none",transition:"transform .15s"}},"\u25be")),
         !myFriendCol&&React.createElement(BringAFriend,{
-          email:session.email,showToast,
+          email:session.email,showToast,unlimited:isMaster,
           widgetUrl:"https://team365-booking.vercel.app/WIDGET.HTML"})
       ),
     ),
@@ -9645,8 +9767,8 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       effWkSub==="strength"&&showStrength&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTabRouter,{session,isAdmin,showToast,bookings,memberData})),
       effWkSub==="routines"&&showRoutines&&React.createElement(RoutinesView,{session,ttl:wkTitles.rt,isAdmin})
     ),
-    effTab==="progress"&&acc("progress")&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,saveMilestoneConfig,memberData,dowNames}),
-    effTab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:""}),
+    effTab==="progress"&&acc("progress")&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,myAllBks,saveMilestoneConfig,memberData,dowNames}),
+    effTab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:""}),
     ),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
