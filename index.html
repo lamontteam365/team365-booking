@@ -556,14 +556,18 @@ function BringAFriend({email,showToast,widgetUrl}){
   const [code,setCode]=useState(null);
   const [busy,setBusy]=useState(false);
   const [err,setErr]=useState("");
+  // Set when this month's pass has already been spent. The limit is enforced
+  // in the edge function, not here — this only reports what it was told.
+  const [nextAt,setNextAt]=useState("");
   const shareText=code
     ? "Come train with me at Team 365. Use my friend pass "+code+" when you book \u2014 your first session is on me: "+widgetUrl
     : "";
   async function getCode(){
-    setBusy(true);setErr("");
+    setBusy(true);setErr("");setNextAt("");
     const j=await friendPassCall({action:"issue",memberEmail:email});
     setBusy(false);
     if(j&&j.ok&&j.code)setCode(j.code);
+    else if(j&&j.error==="used_this_month")setNextAt(j.nextAt||"next month");
     else if(j&&j.error==="not_a_member")setErr("We couldn't find your membership \u2014 contact Team 365.");
     else setErr("Couldn't get a pass just now \u2014 try again in a moment.");
   }
@@ -574,8 +578,9 @@ function BringAFriend({email,showToast,widgetUrl}){
       showToast("Copied \u2014 paste it to your friend \u2713");
     }catch(e){/* the user dismissed the share sheet */}
   }
-  return React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:0,padding:"16px 16px 18px",marginBottom:18}},
-    React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#1d9bf0",fontWeight:600,marginBottom:8}},"BRING A FRIEND"),
+  // No heading or outer box: the collapsible header above this already says
+  // BRING A FRIEND, and a titled card inside a titled section reads as clutter.
+  return React.createElement("div",{style:{paddingBottom:6}},
     React.createElement("div",{style:{fontSize:12,color:"#888",lineHeight:1.7,fontWeight:300,marginBottom:14}},
       "Give a friend their first session free. Send them your pass code \u2014 they enter it when they book and pay nothing."),
     code
@@ -588,12 +593,21 @@ function BringAFriend({email,showToast,widgetUrl}){
             style:{width:"100%",background:"#fff",color:"#000",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.12em",padding:"12px",cursor:"pointer"}},
             "SEND IT TO A FRIEND"),
           React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.04em",lineHeight:1.6,marginTop:9,textAlign:"center"}},
-            "One pass at a time. Once it's used, come back for another.")
+            "One friend pass per month.")
+        )
+      :nextAt
+      ?React.createElement("div",{style:{background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,padding:"14px",textAlign:"center"}},
+          React.createElement("div",{style:{fontSize:12,color:"#888",lineHeight:1.7,fontWeight:300}},
+            "You\u2019ve used this month\u2019s friend pass."),
+          React.createElement("div",{style:{fontSize:11,color:"#1d9bf0",letterSpacing:"0.06em",fontWeight:600,marginTop:6}},
+            "Your next one is ready on "+nextAt+".")
         )
       :React.createElement(React.Fragment,null,
           React.createElement("button",{onClick:getCode,disabled:busy,
             style:{width:"100%",background:busy?"#1a1a1a":"#fff",color:busy?"#444":"#000",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.12em",padding:"12px",cursor:busy?"default":"pointer"}},
             busy?"GETTING YOUR PASS\u2026":"GET MY FRIEND PASS"),
+          React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.04em",lineHeight:1.6,marginTop:9,textAlign:"center"}},
+            "One friend pass per month."),
           err&&React.createElement("div",{style:{fontSize:11,color:"#e06040",marginTop:9,lineHeight:1.5}},err)
         )
   );
@@ -8669,6 +8683,7 @@ function App(){
   useEffect(()=>{ssSet("t365-wksub",wkSub);},[wkSub]);
   const [myClsCol,setMyClsCol]=useState(true);
   const [myWellCol,setMyWellCol]=useState(true);
+  const [myFriendCol,setMyFriendCol]=useState(true);
   useEffect(()=>{
     (async()=>{
       let joinedAt=0;
@@ -9535,9 +9550,6 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     ),
     effTab==="my"&&canBook&&React.createElement("div",{className:"my-wrap"},
       React.createElement("div",{className:"my-hdr"},"MY BOOKINGS"),
-      !isAdmin&&session&&classesEnabled&&React.createElement(BringAFriend,{
-        email:session.email,showToast,
-        widgetUrl:"https://team365-booking.vercel.app/WIDGET.HTML"}),
       classesEnabled&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"adm-stats-row",style:{marginBottom:18}},
         React.createElement("div",{className:"adm-stat"},
@@ -9614,6 +9626,12 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
           });
           return items;
         })())
+      ),
+      !isAdmin&&session&&classesEnabled&&React.createElement(React.Fragment,null,
+        React.createElement("button",{onClick:()=>setMyFriendCol(c=>!c),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",border:"none",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",marginTop:20,marginBottom:10}},React.createElement("span",null,"BRING A FRIEND"),React.createElement("span",{style:{fontSize:11,transform:myFriendCol?"rotate(-90deg)":"none",transition:"transform .15s"}},"\u25be")),
+        !myFriendCol&&React.createElement(BringAFriend,{
+          email:session.email,showToast,
+          widgetUrl:"https://team365-booking.vercel.app/WIDGET.HTML"})
       ),
     ),
     (!isAdmin&&TAB_ORDER.length===0)&&React.createElement("div",{style:{textAlign:"center",padding:"70px 28px",color:"#777"}},

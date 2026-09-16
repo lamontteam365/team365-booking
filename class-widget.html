@@ -470,12 +470,20 @@ function ClassWidget(){
     }
     // Redeem the pass only now the booking exists, so a failed booking never
     // burns someone's pass. If the redeem itself fails the booking still stands.
-    const paid=passInfo?"Friend pass":(payMethod==="gym"?"Pay at gym":"Online");
-    if(passInfo)await passCall({action:"redeem",code:passInfo.code,email:em,name:nm,dateKey:selDK,time:selTime,bookingRef:ref});
+    // If the class filled between applying the code and confirming, the server
+    // refuses and the pass stays unspent — the booking still stands, they just
+    // pay for it as a normal guest.
+    let passUsed=false;
+    if(passInfo){
+      const rr=await passCall({action:"redeem",code:passInfo.code,email:em,name:nm,dateKey:selDK,time:selTime,bookingRef:ref});
+      passUsed=!!(rr&&rr.ok);
+      if(!passUsed)setPassInfo(null);   // it was not spent, so do not claim it was
+    }
+    const paid=passUsed?"Friend pass":(payMethod==="gym"?"Pay at gym":"Online");
     const bookData={guestName:nm,guestEmail:em,guestPhone:ph||"N/A",bookingType:`Class – ${sessName}`,dateLabel,timeLabel,bookingRef:ref,payment:paid};
     notifyAdmin(bookData);notifyGuest(bookData);
-    if(!passInfo&&payMethod==="online")window.open(SHOPIFY_PAY_URL,"_blank");
-    setConf({ref,nm,em,dateLabel,timeLabel,sessName,payment:passInfo?"pass":payMethod});
+    if(!passUsed&&payMethod==="online")window.open(SHOPIFY_PAY_URL,"_blank");
+    setConf({ref,nm,em,dateLabel,timeLabel,sessName,payment:passUsed?"pass":payMethod});
     setStep(3);setBusy(false);
   }
   function handleGuestBook(){submitBooking(payment);}
@@ -662,10 +670,13 @@ function ClassWidget(){
               React.createElement("button",{className:"pass-btn",disabled:passBusy||passCode.trim().length<8,
                 onClick:async()=>{
                   setPassBusy(true);setPassErr("");
-                  const j=await passCall({action:"check",code:passCode});
+                  // Send the class too: a pass may not take one of the last two places,
+          // and the friend should be told that now, not after filling the form.
+          const j=await passCall({action:"check",code:passCode,dateKey:selDK,time:selTime});
                   setPassBusy(false);
                   if(j&&j.valid){setPassInfo({code:passCode.trim().toUpperCase(),from:j.from||""});}
                   else if(j&&j.error==="already_used")setPassErr("That pass has already been used.");
+          else if(j&&j.error==="class_nearly_full")setPassErr("This class is nearly full, so the last spots are held for paying bookings. Try another class \u2014 your pass stays valid.");
                   else if(j&&j.error==="network")setPassErr("Couldn't check that just now \u2014 try again.");
                   else setPassErr("That code isn't valid.");
                 }},passBusy?"\u2026":"APPLY")
