@@ -532,6 +532,71 @@ function sendBookingConfirm({ email, time, dates, type }) {
     }).catch(() => {});
   } catch (e) {}
 }
+// ── Bring a friend ──────────────────────────────────────────────────────────
+// A member gets ONE open pass at a time: they hand the code to a friend, who
+// types it into the public booking widget and books that session without
+// paying. Once it is used they can generate another.
+//
+// The code is minted by the friend-pass edge function, which checks the member
+// is real and enforces the one-open-pass rule in the database rather than here.
+// Nothing about a pass can be read or spent from a browser.
+const PASS_API_URL = `${SB_URL}/functions/v1/friend-pass`;
+async function friendPassCall(payload){
+  try{
+    const r = await fetch(PASS_API_URL, {
+      method:"POST",
+      headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+    return await r.json().catch(()=>({ok:false}));
+  }catch(e){ return {ok:false,error:"network"}; }
+}
+function BringAFriend({email,showToast,widgetUrl}){
+  const [code,setCode]=useState(null);
+  const [busy,setBusy]=useState(false);
+  const [err,setErr]=useState("");
+  const shareText=code
+    ? "Come train with me at Team 365. Use my friend pass "+code+" when you book \u2014 your first session is on me: "+widgetUrl
+    : "";
+  async function getCode(){
+    setBusy(true);setErr("");
+    const j=await friendPassCall({action:"issue",memberEmail:email});
+    setBusy(false);
+    if(j&&j.ok&&j.code)setCode(j.code);
+    else if(j&&j.error==="not_a_member")setErr("We couldn't find your membership \u2014 contact Team 365.");
+    else setErr("Couldn't get a pass just now \u2014 try again in a moment.");
+  }
+  async function share(){
+    try{
+      if(navigator.share){await navigator.share({title:"Team 365",text:shareText});return;}
+      await navigator.clipboard.writeText(shareText);
+      showToast("Copied \u2014 paste it to your friend \u2713");
+    }catch(e){/* the user dismissed the share sheet */}
+  }
+  return React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:0,padding:"16px 16px 18px",marginBottom:18}},
+    React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#1d9bf0",fontWeight:600,marginBottom:8}},"BRING A FRIEND"),
+    React.createElement("div",{style:{fontSize:12,color:"#888",lineHeight:1.7,fontWeight:300,marginBottom:14}},
+      "Give a friend their first session free. Send them your pass code \u2014 they enter it when they book and pay nothing."),
+    code
+      ?React.createElement(React.Fragment,null,
+          React.createElement("div",{style:{background:"#141414",border:"1px solid #333",borderRadius:0,padding:"14px",textAlign:"center",marginBottom:12}},
+            React.createElement("div",{style:{fontSize:9,letterSpacing:"0.16em",color:"#555",fontWeight:600,marginBottom:6}},"YOUR PASS CODE"),
+            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:30,letterSpacing:"0.18em",color:"#fff"}},code)
+          ),
+          React.createElement("button",{onClick:share,
+            style:{width:"100%",background:"#fff",color:"#000",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.12em",padding:"12px",cursor:"pointer"}},
+            "SEND IT TO A FRIEND"),
+          React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.04em",lineHeight:1.6,marginTop:9,textAlign:"center"}},
+            "One pass at a time. Once it's used, come back for another.")
+        )
+      :React.createElement(React.Fragment,null,
+          React.createElement("button",{onClick:getCode,disabled:busy,
+            style:{width:"100%",background:busy?"#1a1a1a":"#fff",color:busy?"#444":"#000",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.12em",padding:"12px",cursor:busy?"default":"pointer"}},
+            busy?"GETTING YOUR PASS\u2026":"GET MY FRIEND PASS"),
+          err&&React.createElement("div",{style:{fontSize:11,color:"#e06040",marginTop:9,lineHeight:1.5}},err)
+        )
+  );
+}
 async function notifyWellnessBooking(name, email, dateKey, time) {
   try {
     const d = new Date(dateKey + "T12:00:00");
@@ -9469,6 +9534,9 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     ),
     effTab==="my"&&canBook&&React.createElement("div",{className:"my-wrap"},
       React.createElement("div",{className:"my-hdr"},"MY BOOKINGS"),
+      !isAdmin&&session&&classesEnabled&&React.createElement(BringAFriend,{
+        email:session.email,showToast,
+        widgetUrl:"https://team365-booking.vercel.app/WIDGET.HTML"}),
       classesEnabled&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"adm-stats-row",style:{marginBottom:18}},
         React.createElement("div",{className:"adm-stat"},

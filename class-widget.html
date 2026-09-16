@@ -111,6 +111,17 @@ html,body{background:#080808;color:#fff;font-family:'DM Sans',sans-serif}
 /* Payment */
 .pay-lbl{font-size:10px;letter-spacing:0.18em;color:#bbb;font-weight:600;margin-bottom:10px}
 .pay-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px}
+.pass-box{background:#0e0e0e;border:1px solid #2a2a2a;border-radius:0;padding:13px 14px;margin-bottom:18px}
+.pass-lbl{font-size:9px;letter-spacing:0.16em;color:#555;font-weight:600;margin-bottom:8px}
+.pass-row{display:flex;gap:7px}
+.pass-in{flex:1;min-width:0;background:#141414;border:1px solid #333;border-radius:0;color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;letter-spacing:0.16em;padding:10px 11px;outline:none;text-transform:uppercase}
+.pass-btn{flex-shrink:0;background:#fff;color:#000;border:none;border-radius:0;font-family:'Bebas Neue',Arial,sans-serif;font-size:13px;letter-spacing:0.12em;padding:10px 16px;cursor:pointer}
+.pass-btn:disabled{background:#1a1a1a;color:#444;cursor:not-allowed}
+.pass-ok{background:#0a1a2a;border:1px solid #1d3a5a;border-radius:0;padding:13px 14px;margin-bottom:18px}
+.pass-ok-t{font-size:12px;letter-spacing:0.1em;color:#1d9bf0;font-weight:600;margin-bottom:4px}
+.pass-ok-s{font-size:11px;color:#888;line-height:1.6;font-weight:300}
+.pass-ok-x{background:none;border:none;color:#666;font-size:10px;letter-spacing:0.1em;cursor:pointer;padding:6px 0 0;text-decoration:underline;font-family:'DM Sans',sans-serif}
+.pass-err{font-size:11px;color:#e06040;margin-top:7px;line-height:1.5}
 .pay-opt{padding:14px 10px;background:#141414;border:1px solid #666;border-radius:0;text-align:center;transition:all .15s}
 .pay-opt.clickable{cursor:pointer}
 .pay-opt.clickable:hover{border-color:#333}
@@ -234,6 +245,23 @@ const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
 const toDS=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const isToday=d=>toDS(d)===toDS(new Date());
 const isPastD=d=>toDS(d)<toDS(new Date());
+
+// ── Bring a friend ──────────────────────────────────────────────────────────
+// A member's pass code, typed by their friend. Everything that matters happens
+// in the friend-pass edge function on the service role: this can only ask, and
+// is told yes or no. A check written here would be readable by anyone with
+// developer tools open, which for a free-class code means free classes for all.
+const PASS_API = `${SB_URL}/functions/v1/friend-pass`;
+async function passCall(payload){
+  try{
+    const r = await fetch(PASS_API, {
+      method:"POST",
+      headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+    return await r.json().catch(()=>({ok:false}));
+  }catch(e){ return {ok:false,error:"network"}; }
+}
 const fmt12=t=>{const[h,m]=t.split(":").map(Number);return`${h%12||12}:${String(m).padStart(2,"0")}${h<12?"am":"pm"}`;};
 const getWeekStart=()=>mondayOf(new Date());
 const hashPw=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)^s.charCodeAt(i);return(h>>>0).toString(36);};
@@ -281,6 +309,10 @@ function ClassWidget(){
   const[selTime,setSelTime]=useState(null);
   const[form,setForm]=useState({name:"",email:"",phone:""});
   const[payment,setPayment]=useState("gym");
+  const[passCode,setPassCode]=useState("");
+  const[passInfo,setPassInfo]=useState(null);   // {code,from} once accepted
+  const[passBusy,setPassBusy]=useState(false);
+  const[passErr,setPassErr]=useState("");
   const[busy,setBusy]=useState(false);
   const[err,setErr]=useState("");
   const[conf,setConf]=useState(null);
@@ -436,14 +468,18 @@ function ClassWidget(){
         :"Booking failed — please try again.");
       setBusy(false);return;
     }
-    const bookData={guestName:nm,guestEmail:em,guestPhone:ph||"N/A",bookingType:`Class – ${sessName}`,dateLabel,timeLabel,bookingRef:ref,payment:payMethod==="gym"?"Pay at gym":"Online"};
+    // Redeem the pass only now the booking exists, so a failed booking never
+    // burns someone's pass. If the redeem itself fails the booking still stands.
+    const paid=passInfo?"Friend pass":(payMethod==="gym"?"Pay at gym":"Online");
+    if(passInfo)await passCall({action:"redeem",code:passInfo.code,email:em,name:nm,dateKey:selDK,time:selTime,bookingRef:ref});
+    const bookData={guestName:nm,guestEmail:em,guestPhone:ph||"N/A",bookingType:`Class – ${sessName}`,dateLabel,timeLabel,bookingRef:ref,payment:paid};
     notifyAdmin(bookData);notifyGuest(bookData);
-    if(payMethod==="online")window.open(SHOPIFY_PAY_URL,"_blank");
-    setConf({ref,nm,em,dateLabel,timeLabel,sessName,payment:payMethod});
+    if(!passInfo&&payMethod==="online")window.open(SHOPIFY_PAY_URL,"_blank");
+    setConf({ref,nm,em,dateLabel,timeLabel,sessName,payment:passInfo?"pass":payMethod});
     setStep(3);setBusy(false);
   }
   function handleGuestBook(){submitBooking(payment);}
-  function resetGuest(){setStep(1);setSelTime(null);setForm({name:"",email:"",phone:""});setPayment("gym");setConf(null);setErr("");}
+  function resetGuest(){setStep(1);setSelTime(null);setForm({name:"",email:"",phone:""});setPayment("gym");setConf(null);setErr("");setPassCode("");setPassInfo(null);setPassErr("");}
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return React.createElement("div",{className:"widget"},
@@ -611,8 +647,33 @@ function ClassWidget(){
           React.createElement("label",{className:"fl"},"PHONE · OPTIONAL"),
           React.createElement("input",{className:"fi",type:"tel",placeholder:"Mobile number",value:form.phone,autoComplete:"tel",onChange:e=>setForm(f=>({...f,phone:e.target.value}))})
         ),
-        React.createElement("div",{className:"pay-lbl"},"PAYMENT METHOD"),
-        React.createElement("div",{className:"pay-opts"},
+        // Bring a friend: a member's pass covers this booking, so no payment.
+        passInfo
+          ?React.createElement("div",{className:"pass-ok"},
+            React.createElement("div",{className:"pass-ok-t"},"FRIEND PASS APPLIED"),
+            React.createElement("div",{className:"pass-ok-s"},(passInfo.from?passInfo.from+" has covered this one for you. ":"")+"Nothing to pay today \u2014 just turn up."),
+            React.createElement("button",{className:"pass-ok-x",onClick:()=>{setPassInfo(null);setPassCode("");setPassErr("");}},"REMOVE PASS")
+          )
+          :React.createElement("div",{className:"pass-box"},
+            React.createElement("div",{className:"pass-lbl"},"FRIEND PASS \u00b7 OPTIONAL"),
+            React.createElement("div",{className:"pass-row"},
+              React.createElement("input",{className:"pass-in",placeholder:"ABCD-1234",maxLength:9,value:passCode,
+                onChange:e=>{setPassCode(e.target.value.toUpperCase());setPassErr("");}}),
+              React.createElement("button",{className:"pass-btn",disabled:passBusy||passCode.trim().length<8,
+                onClick:async()=>{
+                  setPassBusy(true);setPassErr("");
+                  const j=await passCall({action:"check",code:passCode});
+                  setPassBusy(false);
+                  if(j&&j.valid){setPassInfo({code:passCode.trim().toUpperCase(),from:j.from||""});}
+                  else if(j&&j.error==="already_used")setPassErr("That pass has already been used.");
+                  else if(j&&j.error==="network")setPassErr("Couldn't check that just now \u2014 try again.");
+                  else setPassErr("That code isn't valid.");
+                }},passBusy?"\u2026":"APPLY")
+            ),
+            passErr&&React.createElement("div",{className:"pass-err"},passErr)
+          ),
+        !passInfo&&React.createElement("div",{className:"pay-lbl"},"PAYMENT METHOD"),
+        !passInfo&&React.createElement("div",{className:"pay-opts"},
           React.createElement("div",{className:`pay-opt clickable${payment==="gym"?" sel":""}`,onClick:()=>setPayment("gym")},
             React.createElement("div",{className:"pay-icon"},"🏋️"),
             React.createElement("div",{className:"pay-name"},"PAY AT GYM"),
@@ -625,7 +686,7 @@ function ClassWidget(){
           )
         ),
         err&&React.createElement("div",{className:"err-msg"},err),
-        React.createElement("button",{className:"btn-p",onClick:handleGuestBook,disabled:busy||!form.name.trim()||!form.email.trim()},busy?"CONFIRMING…":payment==="online"?"RESERVE & PAY ONLINE":"CONFIRM BOOKING"),
+        React.createElement("button",{className:"btn-p",onClick:handleGuestBook,disabled:busy||!form.name.trim()||!form.email.trim()},busy?"CONFIRMING…":(!passInfo&&payment==="online")?"RESERVE & PAY ONLINE":"CONFIRM BOOKING"),
         React.createElement("button",{className:"btn-g",onClick:()=>{setStep(1);setErr("");}},"BACK")
       ),
       // STEP 3: Confirmation
