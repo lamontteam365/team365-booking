@@ -678,8 +678,6 @@ async function sbDelete(t,q){
   }catch{return false;}
 }
 const MAX_SPOTS=16;
-const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
-const SAT_TIMES=["06:30","07:30","08:30","09:30"];
 const WELL_TIMES=["06:00","08:00","10:00","12:00","14:00","16:00","18:00"];
 // ── Base timetable · __BASE_TIMES__ ──────────────────────────────────────────
 // Per-weekday base class times, keyed "0".."6" (Sunday = 0), edited in Admin and
@@ -691,7 +689,17 @@ const WELL_TIMES=["06:00","08:00","10:00","12:00","14:00","16:00","18:00"];
 function dowOf(dk){return new Date(dk+"T00:00:00").getDay();}
 function baseTimesFor(bt,dk){
   const dow=dowOf(dk);
-  if(!bt||typeof bt!=="object")return dow===0?[]:dow===6?SAT_TIMES:WD_TIMES;
+  // No __BASE_TIMES__ record means NO base classes. It used to mean "fall back
+  // to a hardcoded weekday timetable", which was there so a database that had
+  // not been set up yet still behaved. That migration is long done, and the
+  // fallback had become a liability: sbGet returns [] for a failed request as
+  // well as for a missing row, so a dropped connection was indistinguishable
+  // from "not configured", and every surface answered by inventing eight
+  // classes nobody runs — 5:15am, 6:15am, 7:15am, 9:15am, 12:00pm and the rest.
+  // On the kiosk they sat there permanently; on the public widgets a stranger
+  // could book one. Showing too few classes when config cannot be read is a
+  // safe failure. Inventing classes people can book is not.
+  if(!bt||typeof bt!=="object")return [];
   return Array.isArray(bt[dow])?bt[dow]:[];
 }
 // ── Class resolver ───────────────────────────────────────────────────────────
@@ -707,6 +715,20 @@ const DEFAULT_DURATION=60;
 // Before classes carried a type, Tuesday and Thursday were the Strength days.
 // Kept as the last-resort fallback so untyped rules and historic rows classify.
 const LEGACY_STRENGTH_DOWS=[2,4];
+// A Whanau class counts for nothing, anywhere. Free community event: it does
+// not touch the weekly HIIT/Strength allowance, does not burn a concession
+// credit, and does not move CLASSES BOOKED, CLASSES ATTENDED or milestones.
+//
+// The flag is read off the BOOKING, where it was stamped at the time it was
+// made — not looked up from the class. Unticking the class later must not
+// retroactively start charging a booking somebody already made against their
+// allowance, and a class deleted from the timetable must not orphan its history.
+//
+// Module scope on purpose: the member screen, the admin's member profile and the
+// milestones panel are three separate components, and the moment any one of them
+// counts differently from the others the numbers disagree on screen. One
+// predicate, used by all of them.
+const isWhanauBk=b=>!!(b&&b.whanau);
 function resolveClass(dk,time,ctx){
   ctx=ctx||{};
   const row=ctx.dateRow?ctx.dateRow(dk,time):null;
@@ -718,7 +740,15 @@ function resolveClass(dk,time,ctx){
     name:(row&&row.name)||dsn||(rule&&rule.name)||((ctx.dowNames||{})[dow])||"",
     spots:(row&&row.max_spots)||(rule&&rule.spots)||((ctx.dowSlotLimits||{})[dow+":"+time])||((ctx.dowLimits||{})[dow])||MAX_SPOTS,
     type:(row&&row.session_type)||(rule&&rule.type)||(LEGACY_STRENGTH_DOWS.indexOf(dow)>=0?"Strength":"HIIT"),
-    duration:(row&&row.duration_min)||(rule&&rule.duration)||DEFAULT_DURATION
+    duration:(row&&row.duration_min)||(rule&&rule.duration)||DEFAULT_DURATION,
+    // Whanau: a free community class. Deliberately OR, not the ||-fallthrough
+    // used above — either the dated row or the recurring rule saying "free" makes
+    // it free. A per-date row gets created for unrelated reasons (changing spots
+    // for one week), and it would carry whanau=false by default; letting that
+    // quietly un-free a recurring Whanau class would start charging people's
+    // allowance with nothing on screen to show for it. Erring towards free is
+    // visible — the class keeps its * — so a mistake here announces itself.
+    whanau:(!!(row&&row.whanau))||(!!(rule&&rule.whanau))
   };
 }
 
@@ -1103,7 +1133,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
       // Every booking this member has ever had — not the forward-only window the
       // main app keeps in memory, which has no past dates in it at all.
       const [all,base,adj]=await Promise.all([
-        sbGet("bookings",`email=eq.${encodeURIComponent(member.email)}&select=id,date_key,time,checked_in,excused,session_type`),
+        sbGet("bookings",`email=eq.${encodeURIComponent(member.email)}&select=id,date_key,time,checked_in,excused,session_type,whanau`),
         sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__CONCESSION__"+member.email)}&select=content`),
         sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__STATS_ADJ__"+member.email)}&select=content`)
       ]);
@@ -1115,14 +1145,20 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
       let b=0;if(base&&base.length&&base[0].content){try{b=parseInt(JSON.parse(base[0].content).baseline)||0;}catch{}}
       const rows=all||[];
       const today=toDS(new Date());
+      // Whanau bookings are filtered out up front so every figure below — and
+      // the no-show list the admin can act on — sees the same set the member's
+      // own screen sees. Counting them here and not there is how the two
+      // screens end up telling the member two different numbers.
+      const counted=rows.filter(r=>!isWhanauBk(r));
       setConcInfo({
-        checkins:rows.filter(r=>r.checked_in).length,
+        checkins:counted.filter(r=>r.checked_in).length,
         baseline:b,
-        total:rows.length,
-        upcoming:rows.filter(r=>r.date_key>=today).length
+        total:counted.length,
+        upcoming:counted.filter(r=>r.date_key>=today).length
       });
-      // A class that has been and gone with no check-in is a no-show.
-      setNoShows(rows.filter(r=>r.date_key<today&&!r.checked_in)
+      // A class that has been and gone with no check-in is a no-show. A free
+      // community class is not chased up as one.
+      setNoShows(counted.filter(r=>r.date_key<today&&!r.checked_in)
                      .sort((a,b)=>a.date_key<b.date_key?1:-1));
     })();
   },[]);
@@ -2233,6 +2269,24 @@ function ClassBriefBox({name,briefs,onChange,value}){
       stored?"Shared by every class named "+key+" \u2014 editing it here changes it everywhere.":"Shown under the class on the booking screen.")
   );
 }
+// The WHANAU switch. Used in + NEW CLASS and on an existing class's panel, so
+// the two can never describe the same setting differently.
+function WhanauToggle({on,onChange}){
+  return React.createElement("div",{style:{marginBottom:12,border:"1px solid "+(on?"#2c5c4c":"#222"),background:on?"#0c1614":"#0e0e0e",padding:"11px 12px"}},
+    React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,cursor:"pointer"},onClick:()=>onChange(!on)},
+      React.createElement("div",null,
+        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",color:on?"#4ea88a":"#888"}},"WH\u0100NAU CLASS"),
+        React.createElement("div",{style:{fontSize:8,letterSpacing:"0.06em",color:"#555",lineHeight:1.6,marginTop:2}},
+          "Free and open to everyone \u2014 members and the public.")
+      ),
+      React.createElement("div",{style:{flexShrink:0,width:38,height:21,borderRadius:11,background:on?"#4ea88a":"#2a2a2a",position:"relative",transition:"background .15s"}},
+        React.createElement("div",{style:{position:"absolute",top:2,left:on?19:2,width:17,height:17,borderRadius:9,background:on?"#04120e":"#666",transition:"left .15s"}})
+      )
+    ),
+    on&&React.createElement("div",{style:{fontSize:8,letterSpacing:"0.06em",color:"#4ea88a",lineHeight:1.7,marginTop:9,borderTop:"1px solid #1c3a30",paddingTop:8}},
+      "Counts for nothing: no weekly HIIT or Strength allowance, no concession credit, no classes attended, no milestones. Shown with a * in the app and the widget.")
+  );
+}
 function NewClassForm({admDK,defaultDow,onCreate,showToast,classBriefs,saveClassBriefs}){
   const [name,setName]=useState("");
   const [type,setType]=useState("HIIT");
@@ -2242,6 +2296,7 @@ function NewClassForm({admDK,defaultDow,onCreate,showToast,classBriefs,saveClass
   const [duration,setDuration]=useState("45");
   const [weeks,setWeeks]=useState("4");
   const [ongoing,setOngoing]=useState(true);
+  const [whanau,setWhanau]=useState(false);
   const [busy,setBusy]=useState(false);
   // null means "whatever is stored for this name" — a string means it has been
   // edited here, so retyping the name picks the stored one back up.
@@ -2305,11 +2360,12 @@ function NewClassForm({admDK,defaultDow,onCreate,showToast,classBriefs,saveClass
       )
     ),
     React.createElement(ClassBriefBox,{name,briefs:classBriefs,value:briefValue,onChange:setBriefDraft}),
+    React.createElement(WhanauToggle,{on:whanau,onChange:setWhanau}),
     React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#1d9bf0",margin:"8px 0 12px",lineHeight:1.6}},summary),
     React.createElement("button",{disabled:!canSave,style:{...SCH_PRIMARY,background:canSave?"#fff":"#111",color:canSave?"#000":"#333",cursor:canSave?"pointer":"not-allowed"},
       onClick:async()=>{
         setBusy(true);
-        const ok=await onCreate({days,time,spots,name,type,duration,weeks,ongoing,fromDK:admDK});
+        const ok=await onCreate({days,time,spots,name,type,duration,weeks,ongoing,whanau,fromDK:admDK});
         // Save the brief alongside the class, but only if it actually changed.
         if(ok&&briefKey&&saveClassBriefs){
           const cur=(classBriefs||{})[briefKey]||"";
@@ -2321,7 +2377,7 @@ function NewClassForm({admDK,defaultDow,onCreate,showToast,classBriefs,saveClass
           }
         }
         setBusy(false);
-        if(ok){showToast("Class created ✓");setName("");setBriefDraft(null);setTypeTouched(false);setType("HIIT");}
+        if(ok){showToast(whanau?"Wh\u0101nau class created \u2713":"Class created \u2713");setName("");setBriefDraft(null);setTypeTouched(false);setType("HIIT");setWhanau(false);}
         else showToast("Could not create the class");
       }},busy?"SAVING…":"CREATE CLASS")
   );
@@ -2414,7 +2470,7 @@ function TierLimitsEditor({tierOverrides,saveTierOverrides,showToast}){
   );
 }
 
-function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail}){
+function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail}){
   const [expandedTier,setExpandedTier]=useState(null);
   const [admDate,setAdmDate]=useState(new Date());
   const [expanded,setExpanded]=useState({});
@@ -2434,6 +2490,9 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   // The brief shown in the CLASS NAME panel. null means "whatever is stored for
   // the name currently typed", so retyping the name picks the stored one back up.
   const [nameBrief,setNameBrief]=useState(null);
+  // null means "whatever the class already is", so opening the panel and not
+  // touching the switch writes nothing.
+  const [nameWhanau,setNameWhanau]=useState(null);
   // The name the brief belongs to: what has been typed, or the class's effective
   // name when the input has been left on its placeholder.
   const [nameBriefKey,setNameBriefKey]=useState("");
@@ -2676,7 +2735,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   // Create one class across any set of weekdays in a single write to __CLASS_DOW__.
   // Each weekday's run starts on the first occurrence of that weekday on or after
   // the date on screen, so ticking Mon+Fri on a Wednesday starts each on its own day.
-  async function csCreateClass({days,time,spots,name,type,duration,weeks,ongoing,fromDK}){
+  async function csCreateClass({days,time,spots,name,type,duration,weeks,ongoing,whanau,fromDK}){
     if(!time||!days||!days.length)return false;
     const n=Math.max(1,parseInt(spots)||MAX_SPOTS);
     const dur=Math.max(5,parseInt(duration)||DEFAULT_DURATION);
@@ -2691,6 +2750,9 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
       const until=ongoing?null:toDS(addDays(new Date(start+"T00:00:00"),(wk-1)*7));
       const rule={time,spots:n,type:type||"HIIT",duration:dur,from:start,until};
       if(nm)rule.name=nm;
+      // Only written when true, so an ordinary class's rule looks exactly as it
+      // always did and nothing existing has to be migrated.
+      if(whanau)rule.whanau=true;
       o.add=(o.add||[]).filter(r=>r.time!==time);
       o.add.push(rule);
       o.hide=(o.hide||[]).filter(r=>r.time!==time);
@@ -3126,7 +3188,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
               !isEditingThis&&!isEditingTimeThis&&React.createElement("button",{
                 className:"sp-ex-edit",
                 style:{fontSize:9,flexShrink:0},
-                onClick:e=>{e.stopPropagation();if(isEditingNameThis){setEditingName(null);}else{setEditingName(time);setNameInput(slotNames?.[admDK+":"+time]||dowSlotNames?.[admDOW+":"+time]||"");setNameBriefKey(admClassName(time)||"");setNameBrief(null);setEditingLimit(null);setEditingTime(null);}}
+                onClick:e=>{e.stopPropagation();if(isEditingNameThis){setEditingName(null);}else{setEditingName(time);setNameInput(slotNames?.[admDK+":"+time]||dowSlotNames?.[admDOW+":"+time]||"");setNameBriefKey(admClassName(time)||"");setNameBrief(null);setNameWhanau(null);setEditingLimit(null);setEditingTime(null);}}
               },isEditingNameThis?"✕":"Name"),
               isExtra&&!isEditingThis&&React.createElement("button",{
                 className:"sp-ex-edit",
@@ -3196,11 +3258,18 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
             React.createElement(ClassBriefBox,{name:briefKeyNow,briefs:classBriefs,
               value:nameBrief!==null?nameBrief:((classBriefs||{})[briefKeyNow]||""),
               onChange:setNameBrief}),
+            React.createElement(WhanauToggle,{
+              // Untouched, the switch shows what the class already is, read
+              // through the same resolver the booking screen uses.
+              on:nameWhanau!==null?nameWhanau:!!(((classOf&&classOf(admDK,time))||{}).whanau),
+              onChange:setNameWhanau}),
             React.createElement("div",{style:{fontSize:8,color:"#555",letterSpacing:"0.08em",lineHeight:1.5,marginBottom:8}},"Apply to just this date, to a run of weeks, or to every "+["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][admDOW]+" at "+fmt12(time)+"."),
             runCtl(),
             React.createElement("div",{style:{display:"flex",gap:6}},
               React.createElement("button",{
-                onClick:async()=>{const n=nameInput.trim()||null;if(saveSlotName)await saveSlotName(time,admDK,n);await commitBrief();setEditingName(null);showToast("This date updated ✓");},
+                onClick:async()=>{const n=nameInput.trim()||null;if(saveSlotName)await saveSlotName(time,admDK,n);await commitBrief();
+                  if(nameWhanau!==null&&saveSlotWhanau)await saveSlotWhanau(time,admDK,nameWhanau);
+                  setEditingName(null);showToast("This date updated ✓");},
                 style:{flex:1,background:"#222",color:"#fff",border:"1px solid #333",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.06em",padding:"10px 4px",cursor:"pointer"}
               },"THIS DATE"),
               React.createElement("button",{
@@ -3208,12 +3277,15 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
                   const n=nameInput.trim()||null;
                   const c=await applyRun(scopeWeeks,dk=>saveSlotName?saveSlotName(time,dk,n):null);
                   await commitBrief();
+                  if(nameWhanau!==null&&saveSlotWhanau)await applyRun(scopeWeeks,dk=>saveSlotWhanau(time,dk,nameWhanau));
                   setEditingName(null);showToast(c+" week"+(c===1?"":"s")+" updated ✓");
                 },
                 style:{flex:1,background:"#222",color:"#fff",border:"1px solid #333",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.06em",padding:"10px 4px",cursor:"pointer"}
               },(Math.max(1,parseInt(scopeWeeks)||1))+" WEEKS"),
               React.createElement("button",{
-                onClick:async()=>{if(saveDowSlotName)await saveDowSlotName(admDOW,time,nameInput.trim());if(saveSlotName&&slotNames?.[admDK+":"+time])await saveSlotName(time,admDK,null);await commitBrief();setEditingName(null);showToast("Every "+["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][admDOW]+" "+fmt12(time)+" updated ✓");},
+                onClick:async()=>{if(saveDowSlotName)await saveDowSlotName(admDOW,time,nameInput.trim());if(saveSlotName&&slotNames?.[admDK+":"+time])await saveSlotName(time,admDK,null);await commitBrief();
+                  if(nameWhanau!==null&&saveDowWhanau)await saveDowWhanau(admDOW,time,nameWhanau);
+                  setEditingName(null);showToast("Every "+["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][admDOW]+" "+fmt12(time)+" updated ✓");},
                 style:{flex:1,background:"#1d9bf0",color:"#fff",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.06em",padding:"10px 4px",cursor:"pointer"}
               },"EVERY "+["SUN","MON","TUE","WED","THU","FRI","SAT"][admDOW]),
               React.createElement("button",{onClick:()=>setEditingName(null),
@@ -5717,7 +5789,7 @@ function ProgressTab({session,isAdmin,showToast,milestoneConfig,bookings,myAllBk
       // myAllBks is already this member's own history and carries no email
       // column, so only filter on email when a row actually has one - otherwise
       // every row is rejected and the section hides itself at zero.
-      const checkedInSorted=hist.filter(b=>(!b.email||b.email===session.email)&&b.checked_in&&b.date_key)
+      const checkedInSorted=hist.filter(b=>(!b.email||b.email===session.email)&&b.checked_in&&b.date_key&&!isWhanauBk(b))
         .sort((a,b)=>a.date_key.localeCompare(b.date_key));
       // An admin correcting someone's attended count moves their milestones
       // with it — otherwise the badge they have earned stays locked behind a
@@ -8864,7 +8936,7 @@ function App(){
       lsSet("t365-photocache",pcache);
       const photoMap={};Object.keys(pcache).forEach(e=>{if(pcache[e]&&pcache[e].photo)photoMap[e]=pcache[e].photo;});
       setMemberPhotos(photoMap);
-      const limitsData=await sbGet("class_limits","select=time_slot,date_key,max_spots,name,session_type,duration_min");
+      const limitsData=await sbGet("class_limits","select=time_slot,date_key,max_spots,name,session_type,duration_min,whanau");
       const lm={};const sn0={};const rows0={};
       (limitsData||[]).forEach(r=>{const k=`${r.date_key}:${r.time_slot}`;lm[k]=r.max_spots;if(r.name)sn0[k]=r.name;rows0[k]=r;});
       setClassLimits(lm);setSlotNames(sn0);setClassRows(rows0);
@@ -8942,7 +9014,7 @@ function App(){
   },[session]);
   async function refreshBookings(){
     const from=toDS(new Date());const to=bookingHorizonDS();
-    const data=await sbGet("bookings",`date_key=gte.${from}&date_key=lte.${to}&select=id,email,name,date_key,time,session_type,checked_in,excused`);
+    const data=await sbGet("bookings",`date_key=gte.${from}&date_key=lte.${to}&select=id,email,name,date_key,time,session_type,checked_in,excused,whanau`);
     setBookings(data||[]);
   }
   // This member's whole booking history — used by the MY BOOKINGS tiles and by
@@ -8953,7 +9025,7 @@ function App(){
     let cancelled=false;
     (async()=>{
       const [all,base,adj]=await Promise.all([
-        sbGet("bookings",`email=eq.${encodeURIComponent(session.email)}&select=id,date_key,checked_in,excused`),
+        sbGet("bookings",`email=eq.${encodeURIComponent(session.email)}&select=id,date_key,checked_in,excused,whanau`),
         sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__CONCESSION__"+session.email)}&select=content`),
         sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__STATS_ADJ__"+session.email)}&select=content`)
       ]);
@@ -8965,11 +9037,11 @@ function App(){
       }else{setMyStatsAdj({booked:0,attended:0});}
       const rows=all||[];
       setMyAllBks(rows);
-      setConcCheckins(rows.filter(r=>r.checked_in&&!r.excused).length);
+      setConcCheckins(rows.filter(r=>r.checked_in&&!r.excused&&!isWhanauBk(r)).length);
       // What the member sees as CLASSES ATTENDED, and what the admin's profile
       // shows: simply whether they checked in. The concession figure above is a
       // different question and deliberately stays separate.
-      setMyAttended(rows.filter(r=>r.checked_in).length);
+      setMyAttended(rows.filter(r=>r.checked_in&&!isWhanauBk(r)).length);
       let b=0;if(base&&base.length&&base[0].content){try{b=parseInt(JSON.parse(base[0].content).baseline)||0;}catch{}}
       setConcBase(b);
     })();
@@ -8983,8 +9055,8 @@ function App(){
   // Every booking the member holds that is not excused costs a class: attended,
   // still upcoming, or a no-show. Previously a past booking that was never checked
   // in counted as neither, so concession no-shows were silently free.
-  const concUpcoming=(isConcession&&session)?bookings.filter(b=>b.email===session.email&&b.date_key>=concTodayDS&&!b.checked_in&&!b.excused).length:0;
-  const concNoShows=(isConcession&&session)?myAllBks.filter(b=>b.date_key<concTodayDS&&!b.checked_in&&!b.excused).length:0;
+  const concUpcoming=(isConcession&&session)?bookings.filter(b=>b.email===session.email&&b.date_key>=concTodayDS&&!b.checked_in&&!b.excused&&!isWhanauBk(b)).length:0;
+  const concNoShows=(isConcession&&session)?myAllBks.filter(b=>b.date_key<concTodayDS&&!b.checked_in&&!b.excused&&!isWhanauBk(b)).length:0;
   const concUsed=isConcession?Math.max(0,concCheckins-concBase)+concUpcoming+concNoShows:0;
   const concRemaining=isConcession?Math.max(0,CONCESSION_LIMIT-concUsed):null;
   // My Bookings appears automatically whenever the member can access any bookable section.
@@ -9109,6 +9181,7 @@ function App(){
       if(b.date_key<mon||b.date_key>sun)return false;
       // An excused no-show stays as history but stops consuming the allowance.
       if(b.excused)return false;
+      if(isWhanauBk(b))return false;
       const bType=b.session_type||classTypeOf(b.date_key,b.time);
       return bType===type;
     }).length;
@@ -9123,7 +9196,12 @@ function App(){
     if(list.length>=maxSp){showToast("Class is full");setBkBusy(p=>({...p,[lk]:false}));return;}
     if(list.some(b=>b.email===session.email)){showToast("Already booked");setBkBusy(p=>({...p,[lk]:false}));return;}
     const sessionType=classTypeOf(selDK,time);
-    if(!isAdmin){
+    const whanau=isWhanauClass(selDK,time);
+    // A Whanau class is free and open to everyone, so neither gate applies: not
+    // the weekly tier cap, not the concession card. The class's own spots limit
+    // still applies — it was checked above, and it is the only thing that can
+    // stop a booking here.
+    if(!isAdmin&&!whanau){
       if(isConcession){
         // Concession bypasses the weekly tier caps — only the 10-class card cap applies.
         if(concRemaining<=0){showToast(`All ${CONCESSION_LIMIT} concession classes used — see Team 365`);setBkBusy(p=>({...p,[lk]:false}));return;}
@@ -9136,7 +9214,7 @@ function App(){
         }
       }
     }
-    const newBk={email:session.email,name:session.name,date_key:selDK,time,session_type:sessionType};
+    const newBk={email:session.email,name:session.name,date_key:selDK,time,session_type:sessionType,whanau};
     setBookings(prev=>[...prev,newBk]);
     const ok=await sbPost("bookings",newBk);
     if(!ok){setBookings(prev=>prev.filter(b=>!(b.email===session.email&&b.date_key===selDK&&b.time===time)));showToast("Booking failed — try again");}
@@ -9148,10 +9226,11 @@ function App(){
     if(!session)return;
     const lk=`${selDK}-${time}`;setBkBusy(p=>({...p,[lk]:true}));
     const sessionType=classTypeOf(selDK,time);
+    const whanau=isWhanauClass(selDK,time);
     const limits=getTierLimits(memberData?.membership_type,tierOverrides);
     const typeLimit=sessionType==="Strength"?limits.strength:limits.hiit;
-    if(!isAdmin&&!isConcession&&typeLimit===0){showToast("No membership — contact admin");setBkBusy(p=>({...p,[lk]:false}));return;}
-    if(!isAdmin&&isConcession&&concRemaining<=0){showToast(`All ${CONCESSION_LIMIT} concession classes used — see Team 365`);setBkBusy(p=>({...p,[lk]:false}));return;}
+    if(!isAdmin&&!whanau&&!isConcession&&typeLimit===0){showToast("No membership — contact admin");setBkBusy(p=>({...p,[lk]:false}));return;}
+    if(!isAdmin&&!whanau&&isConcession&&concRemaining<=0){showToast(`All ${CONCESSION_LIMIT} concession classes used — see Team 365`);setBkBusy(p=>({...p,[lk]:false}));return;}
     // Concession members book against a running card balance instead of weekly caps.
     let concBudget=(!isAdmin&&isConcession)?concRemaining:Infinity;
     const added=[];const skipped=[];
@@ -9165,11 +9244,15 @@ function App(){
       const maxSp=Math.min(getMaxSpots(time,dk),freshMax);
       if(list.some(b=>b.email===session.email))continue;
       if(list.length>=maxSp){skipped.push(d);continue;}
-      if(!isAdmin&&isConcession){if(concBudget<=0){skipped.push(d);continue;}}
-      else if(!isAdmin&&typeLimit!==null&&weeklyClassCount(session.email,sessionType,dk)>=typeLimit){skipped.push(d);continue;}
-      const newBk={email:session.email,name:session.name,date_key:dk,time,session_type:sessionType};
+      // Whanau weeks cost nothing, so they neither consume the concession
+      // budget nor get skipped for a full allowance.
+      if(!whanau){
+        if(!isAdmin&&isConcession){if(concBudget<=0){skipped.push(d);continue;}}
+        else if(!isAdmin&&typeLimit!==null&&weeklyClassCount(session.email,sessionType,dk)>=typeLimit){skipped.push(d);continue;}
+      }
+      const newBk={email:session.email,name:session.name,date_key:dk,time,session_type:sessionType,whanau};
       const ok=await sbPost("bookings",newBk);
-      if(ok){added.push(newBk);if(!isAdmin&&isConcession)concBudget--;}else skipped.push(d);
+      if(ok){added.push(newBk);if(!whanau&&!isAdmin&&isConcession)concBudget--;}else skipped.push(d);
     }
     if(added.length)setBookings(prev=>[...prev,...added]);
     const n=added.length;
@@ -9206,6 +9289,12 @@ function App(){
     if(k in classLimits)return classLimits[k]; // specific-date override (incl 0 = hidden)
     const c=classOf(dateKey,time);
     return c?c.spots:MAX_SPOTS;
+  }
+  // Is this slot a free Whanau class? Read through the same resolver as the
+  // name and the spots, so the app, both widgets and the kiosk cannot disagree.
+  function isWhanauClass(dateKey,time){
+    const c=classOf(dateKey,time);
+    return !!(c&&c.whanau);
   }
   // Strength vs HIIT now comes off the class itself rather than the weekday.
   function classTypeOf(dateKey,time){
@@ -9261,6 +9350,26 @@ function App(){
     if(existing&&existing.length){await sbPatch("class_limits",`time_slot=eq.${encodeURIComponent(time)}&date_key=eq.${encodeURIComponent(dateKey)}`,{name});}
     else{await sbPost("class_limits",{time_slot:time,date_key:dateKey,max_spots:MAX_SPOTS,name});}
     setSlotNames(p=>{const n={...p};if(name)n[key]=name;else delete n[key];return n;});
+  }
+  // Whanau on a single dated class. Writes to the class_limits row, which is
+  // what out-ranks the recurring rule for that one date.
+  async function saveSlotWhanau(time,dateKey,on){
+    const q=`time_slot=eq.${encodeURIComponent(time)}&date_key=eq.${encodeURIComponent(dateKey)}`;
+    const existing=await sbGet("class_limits",q+"&select=id");
+    if(existing&&existing.length){await sbPatch("class_limits",q,{whanau:!!on});}
+    else{await sbPost("class_limits",{time_slot:time,date_key:dateKey,max_spots:getMaxSpots(time,dateKey),whanau:!!on});}
+    setClassRows(p=>{const k=`${dateKey}:${time}`;const n={...p};n[k]={...(n[k]||{}),whanau:!!on};return n;});
+  }
+  // Whanau on the recurring rule, so every future one of that weekday is free.
+  async function saveDowWhanau(dow,time,on){
+    const cur=JSON.parse(JSON.stringify(classDow||{}));
+    const k=String(dow);
+    const o=cur[k]||{add:[],hide:[]};
+    const r=(o.add||[]).find(x=>x&&x.time===time);
+    if(!r){showToast("No recurring class at that time to change");return false;}
+    if(on)r.whanau=true;else delete r.whanau;
+    cur[k]=o;
+    return saveClassDow?await saveClassDow(cur):false;
   }
   async function deleteClass(time,dateKey){
     await sbDelete("class_limits",`time_slot=eq.${encodeURIComponent(time)}&date_key=eq.${encodeURIComponent(dateKey)}`);
@@ -9659,8 +9768,14 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
           const tierLimits=getTierLimits(memberData?.membership_type,tierOverrides);
           const typeLimit=sessionType==="Strength"?tierLimits.strength:tierLimits.hiit;
           const weekUsed=!userBkd&&session?weeklyClassCount(session.email,sessionType,selDK):0;
+          // A Whanau class is free and open to everyone, so no allowance can block
+          // it. Only its own spots can. Putting the check here as well as in
+          // handleBook is deliberate: a row that says "Limit reached" on a class
+          // the member is in fact allowed to book is its own kind of bug, even if
+          // the button would have worked.
+          const whanau=isWhanauClass(selDK,time);
           // Concession members ignore weekly caps — blocked only when the 10-class card is used up.
-          const atLimit=!userBkd&&!isAdmin&&(isConcession?(concRemaining<=0):(typeLimit===0||(typeLimit!==null&&weekUsed>=typeLimit)));
+          const atLimit=!whanau&&!userBkd&&!isAdmin&&(isConcession?(concRemaining<=0):(typeLimit===0||(typeLimit!==null&&weekUsed>=typeLimit)));
           const subText=userBkd?"Booked ✓":full?"Full":atLimit?(isConcession?"No classes left":"Limit reached"):`${left} ${left===1?"Spot":"Spots"} Available`;
           const subCls=userBkd?"cg":full?"cf":atLimit?"cf":left<=3?"cl":"co";
           const isExpanded=expandedClass===time;
@@ -9668,7 +9783,11 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
             React.createElement("div",{className:`c-row${userBkd?" cb":""}${past?" cp":""}`,style:{cursor:"pointer"},onClick:()=>setExpandedClass(isExpanded?null:time)},
               React.createElement("div",{style:{display:"flex",flexDirection:"column",minWidth:72}},
                 React.createElement("div",{className:"c-time",style:{minWidth:"unset"}},fmt12(time)),
-                (slotNames[`${selDK}:${time}`]||getDayClassName(selDK,time))&&React.createElement("div",{style:{fontSize:7,letterSpacing:"0.12em",color:"#1d9bf0",fontWeight:600,marginTop:1,fontFamily:"'DM Sans',sans-serif"}},slotNames[`${selDK}:${time}`]||getDayClassName(selDK,time))
+                (slotNames[`${selDK}:${time}`]||getDayClassName(selDK,time))&&React.createElement("div",{style:{fontSize:7,letterSpacing:"0.12em",color:"#1d9bf0",fontWeight:600,marginTop:1,fontFamily:"'DM Sans',sans-serif"}},
+                (slotNames[`${selDK}:${time}`]||getDayClassName(selDK,time))+(whanau?" *":"")),
+              // The * is the marker; this line says what it means, because a lone
+              // asterisk on a booking screen is a mystery rather than an invitation.
+              whanau&&React.createElement("div",{style:{fontSize:7,letterSpacing:"0.12em",color:"#4ea88a",fontWeight:600,marginTop:1,fontFamily:"'DM Sans',sans-serif"}},"FREE \u00b7 WH\u0100NAU")
               ),
               React.createElement("div",{className:"c-mid"},
                 React.createElement("div",{className:`c-bars${userBkd?" cb-mine":""}`},Array.from({length:maxSp}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}`}))),
@@ -9721,7 +9840,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       classesEnabled&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"adm-stats-row",style:{marginBottom:18}},
         React.createElement("div",{className:"adm-stat"},
-          React.createElement("div",{className:"adm-stat-num"},Math.max(0,myAllBks.length-(myStatsAdj.booked||0))),
+          React.createElement("div",{className:"adm-stat-num"},Math.max(0,myAllBks.filter(b=>!isWhanauBk(b)).length-(myStatsAdj.booked||0))),
           React.createElement("div",{className:"adm-stat-lbl"},"CLASSES BOOKED")
         ),
         React.createElement("div",{className:"adm-stat"},
@@ -9808,7 +9927,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       effWkSub==="routines"&&showRoutines&&React.createElement(RoutinesView,{session,ttl:wkTitles.rt,isAdmin})
     ),
     effTab==="progress"&&acc("progress")&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,myAllBks,myStatsAdj,saveMilestoneConfig,memberData,dowNames}),
-    effTab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:""}),
+    effTab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:""}),
     ),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),

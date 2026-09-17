@@ -119,6 +119,10 @@ body{font-family:'DM Sans',sans-serif;color:#fff}
 /* Payment */
 .pay-lbl{font-size:10px;letter-spacing:0.18em;color:#bbb;font-weight:600;margin-bottom:10px}
 .pay-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px}
+.wh-note{background:#0c1614;border:1px solid #2c5c4c;padding:13px 14px;margin-bottom:18px}
+.wh-note-t{font-size:12px;letter-spacing:0.1em;color:#4ea88a;font-weight:600;margin-bottom:4px}
+.wh-note-s{font-size:11px;color:#888;line-height:1.6;font-weight:300}
+.wh-row{font-size:8px;letter-spacing:0.14em;color:#4ea88a;font-weight:600;margin-top:2px}
 .pass-box{background:#0e0e0e;border:1px solid #2a2a2a;border-radius:0;padding:13px 14px;margin-bottom:18px}
 .pass-lbl{font-size:9px;letter-spacing:0.16em;color:#555;font-weight:600;margin-bottom:8px}
 .pass-row{display:flex;gap:7px}
@@ -192,8 +196,6 @@ const SB_KEY="sb_publishable_tujGGhPRUimflq1-IFzuvA_Crw6knMO";
 const SB_HDR={"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return=minimal"};
 const APPS_URL="https://script.google.com/macros/s/AKfycbz5cruljVDUVScwm14Sj1z5_6cRrNK9cgOaq7Tx8P9LfPAEI7p_kx8ZJnaghF_SmU46Fw/exec";
 const MAX_SPOTS=16;
-const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
-const SAT_TIMES=["06:30","07:30","08:30","09:30"];
 const WELL_TIMES=["06:00","08:00","10:00","12:00","14:00","16:00","18:00"];
 // ── Base timetable · __BASE_TIMES__ ──────────────────────────────────────────
 // Per-weekday base class times, keyed "0".."6" (Sunday = 0), edited in Admin and
@@ -205,7 +207,17 @@ const WELL_TIMES=["06:00","08:00","10:00","12:00","14:00","16:00","18:00"];
 function dowOf(dk){return new Date(dk+"T00:00:00").getDay();}
 function baseTimesFor(bt,dk){
   const dow=dowOf(dk);
-  if(!bt||typeof bt!=="object")return dow===0?[]:dow===6?SAT_TIMES:WD_TIMES;
+  // No __BASE_TIMES__ record means NO base classes. It used to mean "fall back
+  // to a hardcoded weekday timetable", which was there so a database that had
+  // not been set up yet still behaved. That migration is long done, and the
+  // fallback had become a liability: sbGet returns [] for a failed request as
+  // well as for a missing row, so a dropped connection was indistinguishable
+  // from "not configured", and every surface answered by inventing eight
+  // classes nobody runs — 5:15am, 6:15am, 7:15am, 9:15am, 12:00pm and the rest.
+  // On the kiosk they sat there permanently; on the public widgets a stranger
+  // could book one. Showing too few classes when config cannot be read is a
+  // safe failure. Inventing classes people can book is not.
+  if(!bt||typeof bt!=="object")return [];
   return Array.isArray(bt[dow])?bt[dow]:[];
 }
 // ── Class resolver ───────────────────────────────────────────────────────────
@@ -232,7 +244,15 @@ function resolveClass(dk,time,ctx){
     name:(row&&row.name)||dsn||(rule&&rule.name)||((ctx.dowNames||{})[dow])||"",
     spots:(row&&row.max_spots)||(rule&&rule.spots)||((ctx.dowSlotLimits||{})[dow+":"+time])||((ctx.dowLimits||{})[dow])||MAX_SPOTS,
     type:(row&&row.session_type)||(rule&&rule.type)||(LEGACY_STRENGTH_DOWS.indexOf(dow)>=0?"Strength":"HIIT"),
-    duration:(row&&row.duration_min)||(rule&&rule.duration)||DEFAULT_DURATION
+    duration:(row&&row.duration_min)||(rule&&rule.duration)||DEFAULT_DURATION,
+    // Whanau: a free community class. Deliberately OR, not the ||-fallthrough
+    // used above — either the dated row or the recurring rule saying "free" makes
+    // it free. A per-date row gets created for unrelated reasons (changing spots
+    // for one week), and it would carry whanau=false by default; letting that
+    // quietly un-free a recurring Whanau class would start charging people's
+    // allowance with nothing on screen to show for it. Erring towards free is
+    // visible — the class keeps its * — so a mistake here announces itself.
+    whanau:(!!(row&&row.whanau))||(!!(rule&&rule.whanau))
   };
 }
 
@@ -427,6 +447,14 @@ function BookingWidget(){
   const atHorizon=toDS(addDays(weekStart,7))>bookingHorizonDS();
   const selDate=weekDates[selDay];
   const selDK=toDS(selDate);
+  // Free class selected? Then there is nothing to pay and nothing to redeem.
+  // A FUNCTION, not a const, on purpose. As a const it read selDK and classOf
+  // above their own declarations — a temporal-dead-zone ReferenceError that
+  // kills the whole script, so the page renders nothing at all. As a function
+  // the body runs at render time, when everything exists, and it cannot be
+  // broken again by someone moving a line. Syntax checks cannot see that bug;
+  // the browser test can, and did.
+  const isFreeClass=()=>bookType==="class"&&!!selTime&&!!selDK&&isWhanau(selTime,selDK);
   // Load availability when type or week changes
   useEffect(()=>{
     if(!bookType)return;
@@ -477,7 +505,7 @@ function BookingWidget(){
   // Fetch dynamic class limits when week changes
   useEffect(()=>{
     const keys=weekDates.map(toDS).filter(Boolean);
-    sbGet("class_limits",`date_key=in.(${keys.join(",")})&select=time_slot,date_key,max_spots,name,session_type,duration_min`).then(d=>setClassLimits(d||[]));
+    sbGet("class_limits",`date_key=in.(${keys.join(",")})&select=time_slot,date_key,max_spots,name,session_type,duration_min,whanau`).then(d=>setClassLimits(d||[]));
   },[weekStart]);
   // One shared resolver — see resolveClass() at the top of this file.
   const classCtx={classDow,dowNames,dowSlotNames,dowSlotLimits,dowLimits,
@@ -511,6 +539,9 @@ function BookingWidget(){
     const row={email:em,name:nm,date_key:selDK,time:selTime,is_guest:true,booking_ref:ref,phone:ph,created_at:Date.now()};
     // Record the class's real type rather than letting the column default to HIIT.
     if(bookType==="class")row.session_type=getSlotType(selTime,selDK);
+    // Stamped at write time, like session_type: the counters in the app read it
+    // off the booking and never look the class up again.
+    if(isFreeClass())row.whanau=true;
     const res=await sbPostStatus(bookType==="class"?"bookings":"wellness_bookings",row);
     if(!res.ok){
       setErr(res.duplicate
@@ -527,17 +558,17 @@ function BookingWidget(){
     // refuses and the pass stays unspent — the booking still stands, they just
     // pay for it as a normal guest.
     let passUsed=false;
-    if(passInfo){
+    if(!isFreeClass()&&passInfo){
       const rr=await passCall({action:"redeem",code:passInfo.code,email:em,name:nm,dateKey:selDK,time:selTime,bookingRef:ref});
       passUsed=!!(rr&&rr.ok);
       if(!passUsed)setPassInfo(null);   // it was not spent, so do not claim it was
     }
-    const paid=passUsed?"Friend pass":(payment==="gym"?"Pay at gym":"Online");
+    const paid=isFreeClass()?"Free \u2014 Wh\u0101nau class":(passUsed?"Friend pass":(payment==="gym"?"Pay at gym":"Online"));
     const bookingData={guestName:nm,guestEmail:em,guestPhone:ph||"N/A",bookingType:bookType==="class"?`Class – ${sessName}`:"Sauna + Cold Plunge",dateLabel,timeLabel,bookingRef:ref,payment:paid};
     notifyAdmin(bookingData);
     notifyGuest(bookingData);
-    if(!passUsed&&payment==="online")window.open(shopifyPayUrl(bookType),"_blank");
-    setConf({ref,nm,em,type:bookType,dateLabel,timeLabel,sessName:bookType==="class"?sessName:null,payment:passUsed?"pass":payment});
+    if(!isFreeClass()&&!passUsed&&payment==="online")window.open(shopifyPayUrl(bookType),"_blank");
+    setConf({ref,nm,em,type:bookType,dateLabel,timeLabel,sessName:bookType==="class"?sessName:null,payment:isFreeClass()?"free":(passUsed?"pass":payment)});
     setStep(3);setBusy(false);
   }
   function reset(){
@@ -551,6 +582,9 @@ function BookingWidget(){
   const selDOW=selDate.getDay();
   const sessName=dowNames[selDOW]||DAY_SESS[selDay];
   function getSlotName(time,dk){const c=classOf(dk,time);return (c&&c.name)||null;}
+  // A Whanau class is free and open to everyone. Resolved exactly as the name
+  // and the spots are, so the widget cannot disagree with the app about it.
+  function isWhanau(time,dk){const c=classOf(dk,time);return !!(c&&c.whanau);}
   // The brief for whatever this class is called, matched on the same name the
   // row displays so the two can never disagree.
   function getSlotBrief(time,dk,fallbackName){
@@ -633,13 +667,15 @@ function BookingWidget(){
               const full=left===0;
               const low=left<=3&&left>0;
               const brief=selTime===time?getSlotBrief(time,selDK,sessName):"";
+              const wh=isWhanau(time,selDK);
               return React.createElement(React.Fragment,{key:time},
                 React.createElement("div",{
                 className:`slot-row${selTime===time?" sel":""}${past?" past":full?" off":""}`,
                 onClick:()=>{if(!past&&!full)setSelTime(time);}},
                 React.createElement("div",{style:{display:"flex",flexDirection:"column",minWidth:72}},
                   React.createElement("div",{className:"slot-time",style:{minWidth:"unset"}},fmt12(time)),
-                  React.createElement("div",{className:"slot-sess"},(getSlotName(time,selDK)||sessName).toUpperCase())
+                  React.createElement("div",{className:"slot-sess"},(getSlotName(time,selDK)||sessName).toUpperCase()+(wh?" *":"")),
+                  wh&&React.createElement("div",{className:"wh-row"},"FREE \u00b7 WH\u0100NAU")
                 ),
                 React.createElement("div",{className:"slot-mid"},
                   React.createElement("div",{className:"slot-bars"},
@@ -717,8 +753,15 @@ function BookingWidget(){
         React.createElement("label",{className:"fl"},"PHONE · OPTIONAL"),
         React.createElement("input",{className:"fi",type:"tel",placeholder:"Mobile number",value:form.phone,autoComplete:"tel",onChange:e=>setForm(f=>({...f,phone:e.target.value}))})
       ),
+      // Nothing to pay on a Whanau class, so the friend pass is hidden too —
+      // otherwise somebody burns their one-a-month pass on a class that was
+      // already free, and does not get it back.
+      isFreeClass()&&React.createElement("div",{className:"wh-note"},
+        React.createElement("div",{className:"wh-note-t"},"FREE \u00b7 WH\u0100NAU CLASS"),
+        React.createElement("div",{className:"wh-note-s"},"Open to everyone and free to attend. Nothing to pay \u2014 just turn up.")
+      ),
       // Bring a friend: a member's pass covers this booking, so no payment.
-      passInfo
+      !isFreeClass()&&passInfo
         ?React.createElement("div",{className:"pass-ok"},
           React.createElement("div",{className:"pass-ok-t"},"FRIEND PASS APPLIED"),
           React.createElement("div",{className:"pass-ok-s"},(passInfo.from?passInfo.from+" has covered this one for you. ":"")+"Nothing to pay today \u2014 just turn up."),
@@ -746,8 +789,8 @@ function BookingWidget(){
           passErr&&React.createElement("div",{className:"pass-err"},passErr)
         ),
       // Payment method
-      !passInfo&&React.createElement("div",{className:"pay-lbl"},"PAYMENT METHOD"),
-      !passInfo&&React.createElement("div",{className:"pay-opts"},
+      !isFreeClass()&&!passInfo&&React.createElement("div",{className:"pay-lbl"},"PAYMENT METHOD"),
+      !isFreeClass()&&!passInfo&&React.createElement("div",{className:"pay-opts"},
         React.createElement("div",{className:`pay-opt clickable${payment==="gym"?" sel":""}`,onClick:()=>setPayment("gym")},
           React.createElement("div",{className:"pay-icon"},"🏋️"),
           React.createElement("div",{className:"pay-name"},"PAY AT GYM"),
@@ -761,7 +804,7 @@ function BookingWidget(){
       ),
       err&&React.createElement("div",{className:"err-msg"},err),
       React.createElement("button",{className:"btn-p",onClick:handleBook,disabled:busy||!form.name.trim()||!form.email.trim()},
-        busy?((!passInfo&&payment==="online")?"RESERVING SLOT…":"CONFIRMING…"):((!passInfo&&payment==="online")?"RESERVE & PAY ONLINE":"CONFIRM BOOKING")),
+        busy?((!isFreeClass()&&!passInfo&&payment==="online")?"RESERVING SLOT…":"CONFIRMING…"):((!isFreeClass()&&!passInfo&&payment==="online")?"RESERVE & PAY ONLINE":"CONFIRM BOOKING")),
       React.createElement("button",{className:"btn-g",onClick:goBack},"BACK")
     ),
     // ── STEP 3: Confirmation ────────────────────────────────────────────────────

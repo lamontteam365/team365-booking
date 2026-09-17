@@ -158,8 +158,6 @@ const AUTH_READY=receptionLogin();
 async function sbGet(t,q=""){try{await AUTH_READY;const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
 async function sbPatch(t,q,d){try{await AUTH_READY;const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{method:"PATCH",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const WD_TIMES=["05:15","06:15","07:15","09:15","12:00","17:15","18:15","19:15"];
-const SAT_TIMES=["06:30","07:30","08:30","09:30"];
 // ── Base timetable · __BASE_TIMES__ ──────────────────────────────────────────
 // Per-weekday base class times, keyed "0".."6" (Sunday = 0), edited in Admin and
 // stored in coaching_notes. Precedence is deliberate:
@@ -170,7 +168,17 @@ const SAT_TIMES=["06:30","07:30","08:30","09:30"];
 function dowOf(dk){return new Date(dk+"T00:00:00").getDay();}
 function baseTimesFor(bt,dk){
   const dow=dowOf(dk);
-  if(!bt||typeof bt!=="object")return dow===0?[]:dow===6?SAT_TIMES:WD_TIMES;
+  // No __BASE_TIMES__ record means NO base classes. It used to mean "fall back
+  // to a hardcoded weekday timetable", which was there so a database that had
+  // not been set up yet still behaved. That migration is long done, and the
+  // fallback had become a liability: sbGet returns [] for a failed request as
+  // well as for a missing row, so a dropped connection was indistinguishable
+  // from "not configured", and every surface answered by inventing eight
+  // classes nobody runs — 5:15am, 6:15am, 7:15am, 9:15am, 12:00pm and the rest.
+  // On the kiosk they sat there permanently; on the public widgets a stranger
+  // could book one. Showing too few classes when config cannot be read is a
+  // safe failure. Inventing classes people can book is not.
+  if(!bt||typeof bt!=="object")return [];
   return Array.isArray(bt[dow])?bt[dow]:[];
 }
 // ── Class resolver ───────────────────────────────────────────────────────────
@@ -197,7 +205,15 @@ function resolveClass(dk,time,ctx){
     name:(row&&row.name)||dsn||(rule&&rule.name)||((ctx.dowNames||{})[dow])||"",
     spots:(row&&row.max_spots)||(rule&&rule.spots)||((ctx.dowSlotLimits||{})[dow+":"+time])||((ctx.dowLimits||{})[dow])||MAX_SPOTS,
     type:(row&&row.session_type)||(rule&&rule.type)||(LEGACY_STRENGTH_DOWS.indexOf(dow)>=0?"Strength":"HIIT"),
-    duration:(row&&row.duration_min)||(rule&&rule.duration)||DEFAULT_DURATION
+    duration:(row&&row.duration_min)||(rule&&rule.duration)||DEFAULT_DURATION,
+    // Whanau: a free community class. Deliberately OR, not the ||-fallthrough
+    // used above — either the dated row or the recurring rule saying "free" makes
+    // it free. A per-date row gets created for unrelated reasons (changing spots
+    // for one week), and it would carry whanau=false by default; letting that
+    // quietly un-free a recurring Whanau class would start charging people's
+    // allowance with nothing on screen to show for it. Erring towards free is
+    // visible — the class keeps its * — so a mistake here announces itself.
+    whanau:(!!(row&&row.whanau))||(!!(rule&&rule.whanau))
   };
 }
 
