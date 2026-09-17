@@ -1074,12 +1074,14 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
   }
   // Set the two headline counts to whatever the admin types. Stored as the
   // difference from the real history, so future bookings still increment.
-  async function saveStatsAdj(nextBooked,nextAttended){
+  async function saveStatsAdj(nextBooked,nextAttended,nextWhanau){
     setAdjBusy(true);
     // The offset may be negative, which credits classes the app never saw —
-    // useful when someone trained here before this system existed.
+    // useful when someone trained here before this system existed, or when
+    // somebody came to Whanau events before they ever had the app.
     const next={booked:rawTotal-Math.max(0,nextBooked),
-                attended:rawAttended-Math.max(0,nextAttended)};
+                attended:rawAttended-Math.max(0,nextAttended),
+                whanau:rawWhanau-Math.max(0,nextWhanau)};
     const key="__STATS_ADJ__"+member.email;
     const q=`class_name=eq.${encodeURIComponent(key)}`;
     const ex=await sbGet("coaching_notes",q+"&select=class_name");
@@ -1109,6 +1111,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
   const [adjOpen,setAdjOpen]=useState(false);
   const [adjBooked,setAdjBooked]=useState("");
   const [adjAttended,setAdjAttended]=useState("");
+  const [adjWhanau,setAdjWhanau]=useState("");
   const [adjBusy,setAdjBusy]=useState(false);
   // ATTENDED means checked in at the desk — the same thing MY BOOKINGS counts.
   // It used to count "date is in the past" from the forward-only window, which
@@ -1126,6 +1129,15 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
   const [concMsg,setConcMsg]=useState("");
   const [noShows,setNoShows]=useState([]);
   const [communityCount,setCommunityCount]=useState(0);
+  // Wh\u0101nau events, same offset treatment as CLASSES BOOKED and ATTENDED.
+  // Someone who came to community events before they had the app has no
+  // bookings to correct, so a credit here is the only way to show what they
+  // actually turned up to.
+  // Declared AFTER the state it reads: as a const placed above the useState it
+  // threw "Cannot access 'communityCount' before initialization", which killed
+  // the whole profile overlay so it never opened at all.
+  const rawWhanau=communityCount;
+  const whanauBks=Math.max(0,rawWhanau-(statsAdj.whanau||0));
   const [wellCount,setWellCount]=useState(0);
   // Email preferences. A member can also set these from the unsubscribe link in
   // any email; this is so you can see and change them without hunting for one.
@@ -1150,7 +1162,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
       setWellCount((wellAll||[]).length);
       if(adj&&adj.length&&adj[0].content){
         try{const a=JSON.parse(adj[0].content);
-          setStatsAdj({booked:parseInt(a.booked,10)||0,attended:parseInt(a.attended,10)||0});
+          setStatsAdj({booked:parseInt(a.booked,10)||0,attended:parseInt(a.attended,10)||0,whanau:parseInt(a.whanau,10)||0});
         }catch{}
       }
       let b=0;if(base&&base.length&&base[0].content){try{b=parseInt(JSON.parse(base[0].content).baseline)||0;}catch{}}
@@ -1162,7 +1174,9 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
       // screens end up telling the member two different numbers.
       const counted=rows.filter(r=>!isWhanauBk(r));
       // The community ledger, same definition as the member's own screen:
-      // Whanau classes actually checked in to.
+      // Whanau classes actually checked in to. Kept RAW here; the offset is
+      // applied where it is displayed, so ADJUST COUNTS can still show the
+      // true figure alongside the adjusted one.
       setCommunityCount(rows.filter(r=>r.checked_in&&isWhanauBk(r)).length);
       setConcInfo({
         checkins:counted.filter(r=>r.checked_in).length,
@@ -1354,7 +1368,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
         // Same two figures the member sees on their own screen, computed the same
         // way, so the two screens cannot tell them different numbers.
         React.createElement("div",{className:"adm-stat"},
-          React.createElement("div",{className:"adm-stat-num"},communityCount),
+          React.createElement("div",{className:"adm-stat-num"},whanauBks),
           React.createElement("div",{className:"adm-stat-lbl"},"WH\u0100NAU EVENT")
         ),
         // Hidden when the wellness section itself is switched off, so the admin
@@ -1376,32 +1390,37 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
                   ?"Counts adjusted \u00b7 "+rawTotal+" booked / "+rawAttended+" attended on record"
                   :""),
               React.createElement("button",{
-                onClick:()=>{setAdjBooked(String(totalBks));setAdjAttended(String(attendedBks));setAdjOpen(true);},
+                onClick:()=>{setAdjBooked(String(totalBks));setAdjAttended(String(attendedBks));setAdjWhanau(String(whanauBks));setAdjOpen(true);},
                 style:{background:"none",border:"1px solid #333",color:"#888",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.1em",padding:"6px 12px",cursor:"pointer",flexShrink:0}},
                 "ADJUST COUNTS")
             )
           :React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:0,padding:"14px"}},
               React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,marginBottom:10}},"ADJUST COUNTS"),
-              React.createElement("div",{style:{display:"flex",gap:10,marginBottom:10}},
-                React.createElement("div",{style:{flex:1}},
-                  React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.1em",fontWeight:600,marginBottom:4}},"CLASSES BOOKED"),
+              React.createElement("div",{style:{display:"flex",gap:8,marginBottom:10}},
+                React.createElement("div",{style:{flex:"1 1 0",minWidth:0}},
+                  React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.1em",fontWeight:600,marginBottom:4,lineHeight:1.3,minHeight:24,display:"flex",alignItems:"flex-end"}},"CLASSES BOOKED"),
                   React.createElement("input",{type:"number",min:0,value:adjBooked,onChange:e=>setAdjBooked(e.target.value),
                     style:{width:"100%",boxSizing:"border-box",background:"#141414",border:"1px solid #333",borderRadius:0,padding:"9px 10px",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:16,textAlign:"center",outline:"none"}})
                 ),
-                React.createElement("div",{style:{flex:1}},
-                  React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.1em",fontWeight:600,marginBottom:4}},"CLASSES ATTENDED"),
+                React.createElement("div",{style:{flex:"1 1 0",minWidth:0}},
+                  React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.1em",fontWeight:600,marginBottom:4,lineHeight:1.3,minHeight:24,display:"flex",alignItems:"flex-end"}},"CLASSES ATTENDED"),
                   React.createElement("input",{type:"number",min:0,value:adjAttended,onChange:e=>setAdjAttended(e.target.value),
+                    style:{width:"100%",boxSizing:"border-box",background:"#141414",border:"1px solid #333",borderRadius:0,padding:"9px 10px",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:16,textAlign:"center",outline:"none"}})
+                ),
+                React.createElement("div",{style:{flex:"1 1 0",minWidth:0}},
+                  React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.1em",fontWeight:600,marginBottom:4,lineHeight:1.3,minHeight:24,display:"flex",alignItems:"flex-end"}},"WH\u0100NAU EVENT"),
+                  React.createElement("input",{type:"number",min:0,value:adjWhanau,onChange:e=>setAdjWhanau(e.target.value),
                     style:{width:"100%",boxSizing:"border-box",background:"#141414",border:"1px solid #333",borderRadius:0,padding:"9px 10px",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:16,textAlign:"center",outline:"none"}})
                 )
               ),
               React.createElement("div",{style:{fontSize:8,color:"#555",letterSpacing:"0.06em",lineHeight:1.6,marginBottom:10}},
-                "On record: "+rawTotal+" booked, "+rawAttended+" attended. Setting a number here shifts the display only \u2014 no bookings are deleted, and new ones still count on top."),
+                "On record: "+rawTotal+" booked, "+rawAttended+" attended, "+rawWhanau+" wh\u0101nau. Setting a number here shifts the display only \u2014 no bookings are deleted, and new ones still count on top."),
               React.createElement("div",{style:{display:"flex",gap:6}},
-                React.createElement("button",{disabled:adjBusy,onClick:()=>saveStatsAdj(parseInt(adjBooked)||0,parseInt(adjAttended)||0),
+                React.createElement("button",{disabled:adjBusy,onClick:()=>saveStatsAdj(parseInt(adjBooked)||0,parseInt(adjAttended)||0,parseInt(adjWhanau)||0),
                   style:{flex:2,background:"#fff",color:"#000",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",padding:"10px",cursor:"pointer"}},adjBusy?"SAVING\u2026":"SAVE"),
-                React.createElement("button",{disabled:adjBusy,onClick:()=>{setAdjBooked("0");setAdjAttended("0");saveStatsAdj(0,0);},
+                React.createElement("button",{disabled:adjBusy,onClick:()=>{setAdjBooked("0");setAdjAttended("0");setAdjWhanau("0");saveStatsAdj(0,0,0);},
                   style:{flex:1,background:"none",border:"1px solid #3a1a12",color:"#8a2515",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",padding:"10px",cursor:"pointer"}},"RESET TO 0"),
-                React.createElement("button",{disabled:adjBusy,onClick:()=>{setAdjBooked(String(rawTotal));setAdjAttended(String(rawAttended));saveStatsAdj(rawTotal,rawAttended);},
+                React.createElement("button",{disabled:adjBusy,onClick:()=>{setAdjBooked(String(rawTotal));setAdjAttended(String(rawAttended));setAdjWhanau(String(rawWhanau));saveStatsAdj(rawTotal,rawAttended,rawWhanau);},
                   style:{flex:1,background:"none",border:"1px solid #333",color:"#888",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",padding:"10px",cursor:"pointer"}},"ACTUAL"),
                 React.createElement("button",{onClick:()=>setAdjOpen(false),
                   style:{background:"none",border:"1px solid #333",color:"#666",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",padding:"10px 12px",cursor:"pointer",flexShrink:0}},"\u2715")
@@ -8939,7 +8958,7 @@ function App(){
   // shows the same two numbers the admin sees on their profile. Display only:
   // the concession card and the milestones still count real check-ins.
   const [myAttended,setMyAttended]=useState(0);
-  const [myStatsAdj,setMyStatsAdj]=useState({booked:0,attended:0});
+  const [myStatsAdj,setMyStatsAdj]=useState({booked:0,attended:0,whanau:0});
   const [profFriendCol,setProfFriendCol]=useState(true);
   const [concBase,setConcBase]=useState(0);
   const workoutsEnabled=memberData?.workouts_enabled===true;
@@ -9105,9 +9124,9 @@ function App(){
       setMyWellnessAll((wellAll||[]).length);
       if(adj&&adj.length&&adj[0].content){
         try{const a=JSON.parse(adj[0].content);
-          setMyStatsAdj({booked:parseInt(a.booked,10)||0,attended:parseInt(a.attended,10)||0});
+          setMyStatsAdj({booked:parseInt(a.booked,10)||0,attended:parseInt(a.attended,10)||0,whanau:parseInt(a.whanau,10)||0});
         }catch{}
-      }else{setMyStatsAdj({booked:0,attended:0});}
+      }else{setMyStatsAdj({booked:0,attended:0,whanau:0});}
       const rows=all||[];
       setMyAllBks(rows);
       setConcCheckins(rows.filter(r=>r.checked_in&&!r.excused&&!isWhanauBk(r)).length);
@@ -9929,7 +9948,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         // A separate ledger. Whanau classes stay out of CLASSES BOOKED and
         // CLASSES ATTENDED on purpose; this is where they are counted instead.
         React.createElement("div",{className:"adm-stat"},
-          React.createElement("div",{className:"adm-stat-num"},myCommunity),
+          React.createElement("div",{className:"adm-stat-num"},Math.max(0,myCommunity-(myStatsAdj.whanau||0))),
           React.createElement("div",{className:"adm-stat-lbl"},"WH\u0100NAU EVENT")
         ),
         // Sauna + cold plunge, all-time booked. Wellness has no check-in, so
