@@ -6253,21 +6253,31 @@ const SC_WEEK_MS=7*24*60*60*1000;
 // Pure function: given all is_active cycles for one session_type (any order), figure out
 // which one is currently live and which week of it is showing right now. FIFO queue by
 // queued_at; the cycle that reaches the front loops on itself once nothing is queued behind it.
+// Which queued block, if any, is running right now — and how many have finished.
+//
+// The last block used to be pinned as "current" forever: the loop had an
+// `isLast` escape that kept returning it once the queue ran out, with the week
+// wrapping 1-2-3-4-1-2... indefinitely. So a 4-week block queued in August was
+// still showing as CURRENT in October on week 2 of an imaginary repeat, and
+// because PREVIOUS is built from everything BEFORE the current one, a finished
+// block could never reach it. Now a block that has run its full length is done,
+// and when every queued block is done nothing is current.
+//
+// doneCount is how many have finished, so the caller does not have to infer it
+// from queueIndex — which was undefined in exactly the case that matters.
 function computeSCQueue(activeCycles){
   const q=[...activeCycles].filter(c=>c.queued_at).sort((a,b)=>a.queued_at-b.queued_at);
-  if(!q.length)return{queue:[],current:null};
+  if(!q.length)return{queue:[],current:null,doneCount:0};
   const start=q[0].queued_at;
   let remaining=Math.floor((Date.now()-start)/SC_WEEK_MS);
-  if(remaining<0)return{queue:q,current:null};
+  // Queued for a future date: nothing has started, so nothing is finished either.
+  if(remaining<0)return{queue:q,current:null,doneCount:0};
   for(let i=0;i<q.length;i++){
-    const c=q[i];const isLast=i===q.length-1;
-    if(remaining<c.num_weeks||isLast){
-      const week=isLast?(((remaining%c.num_weeks)+c.num_weeks)%c.num_weeks)+1:remaining+1;
-      return{queue:q,current:{cycle:c,week,queueIndex:i}};
-    }
+    const c=q[i];
+    if(remaining<c.num_weeks)return{queue:q,current:{cycle:c,week:remaining+1,queueIndex:i},doneCount:i};
     remaining-=c.num_weeks;
   }
-  return{queue:q,current:null};
+  return{queue:q,current:null,doneCount:q.length};
 }
 function SCExRow({ex,onEdit,onDelete,onCopy,bulkMode,checked,onCheckToggle,onDragStart,onDragOver,onDrop,isDragging}){
   const metaParts=[];
@@ -7369,6 +7379,15 @@ function SCCycleMemberView({cycle,startWeek,isLive,session,showToast}){
     playing&&React.createElement(SCPlayOverlay,{title:cycle.name,subtitle:`${cycle.session_type.toUpperCase()} · WEEK ${weekNum}${(cycle.week_labels&&cycle.week_labels[weekNum])?` · ${cycle.week_labels[weekNum]}`:""}`,exercises,onClose:()=>setPlaying(false)})
   );
 }
+// LOWER \u00b7 STRENGTH, CONDITIONING & MOBILITY — the type first, in Team 365
+// blue, because both blocks carry the same 33-character name and the type is the
+// only part that differs. It was not shown at all, so the two were indistinguishable.
+function scCycleLabel(c){
+  return React.createElement("span",null,
+    React.createElement("span",{style:{color:"#1d9bf0",fontWeight:700}},(c.session_type||"").toUpperCase()),
+    React.createElement("span",{style:{color:"#555"}}," \u00b7 "),
+    c.name);
+}
 // Router: shows the live 4-week cycle for the selected session type when one exists,
 // otherwise falls back to the untouched legacy StrengthTab experience.
 function StrengthTabRouter(props){
@@ -7385,8 +7404,10 @@ function StrengthTabRouter(props){
   const liveTypes=SC_SESSION_TYPES.filter(t=>byType[t].current);
   const allPast=[];
   SC_SESSION_TYPES.forEach(t=>{
-    const{queue,current}=byType[t];
-    if(current)queue.slice(0,current.queueIndex).reverse().forEach(c=>allPast.push(c));
+    // doneCount, not current.queueIndex: when the whole queue has run out there
+    // IS no current, and that is precisely when every block belongs in PREVIOUS.
+    const{queue,doneCount}=byType[t];
+    queue.slice(0,doneCount||0).reverse().forEach(c=>allPast.push(c));
   });
 
   const hdr=(label,open,onClick)=>React.createElement("div",{onClick,style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",padding:"11px 16px",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginTop:10}},
@@ -7397,10 +7418,10 @@ function StrengthTabRouter(props){
   return React.createElement("div",{className:"sp-wrap",style:{paddingBottom:0}},
     hdr("CURRENT CLASSES",currentOpen,()=>{const next=!currentOpen;setCurrentOpen(next);if(!next)setSelectedLiveType(null);}),
     currentOpen&&React.createElement("div",{style:{padding:"14px 4px 4px"}},
-      liveTypes.length===0?React.createElement("div",{className:"sp-loading"},"NOTHING LIVE RIGHT NOW"):
+      liveTypes.length===0?React.createElement("div",{className:"sp-loading"},allPast.length>0?"ALL BLOCKS FINISHED \u2014 SEE PREVIOUS CLASSES":"NOTHING LIVE RIGHT NOW"):
       React.createElement(React.Fragment,null,
         React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:6,padding:"0 16px 4px"}},
-          liveTypes.map(t=>React.createElement("button",{key:t,className:`scb-btn${selectedLiveType===t?" primary":""}`,style:{width:"100%",textAlign:"left"},onClick:()=>setSelectedLiveType(selectedLiveType===t?null:t)},byType[t].current.cycle.name))
+          liveTypes.map(t=>React.createElement("button",{key:t,className:`scb-btn${selectedLiveType===t?" primary":""}`,style:{width:"100%",textAlign:"left"},onClick:()=>setSelectedLiveType(selectedLiveType===t?null:t)},scCycleLabel(byType[t].current.cycle)))
         ),
         selectedLiveType&&byType[selectedLiveType].current&&React.createElement(SCCycleMemberView,{key:byType[selectedLiveType].current.cycle.id,cycle:byType[selectedLiveType].current.cycle,startWeek:byType[selectedLiveType].current.week,isLive:true,session:props.session,showToast:props.showToast})
       )
@@ -7410,7 +7431,7 @@ function StrengthTabRouter(props){
       allPast.length===0?React.createElement("div",{className:"sp-loading"},"NO PREVIOUS CYCLES YET"):
       React.createElement(React.Fragment,null,
         React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:6,padding:"0 16px 4px"}},
-          allPast.map(c=>React.createElement("button",{key:c.id,className:`scb-btn${selectedPastId===c.id?" primary":""}`,style:{width:"100%",textAlign:"left"},onClick:()=>setSelectedPastId(selectedPastId===c.id?null:c.id)},c.name))
+          allPast.map(c=>React.createElement("button",{key:c.id,className:`scb-btn${selectedPastId===c.id?" primary":""}`,style:{width:"100%",textAlign:"left"},onClick:()=>setSelectedPastId(selectedPastId===c.id?null:c.id)},scCycleLabel(c)))
         ),
         (()=>{const c=allPast.find(x=>x.id===selectedPastId);return c&&React.createElement(SCCycleMemberView,{key:c.id,cycle:c,startWeek:c.num_weeks,isLive:false,session:props.session,showToast:props.showToast});})()
       )
