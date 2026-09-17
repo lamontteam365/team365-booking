@@ -11,7 +11,7 @@
 html,body{margin:0;background:#080808;color:#fff;font-family:'DM Sans',sans-serif}
 .widget{max-width:520px;margin:0 auto;padding:24px 16px 48px}
 /* Mode bar */
-.wl-head{text-align:center;padding-top:24px;margin-bottom:22px}
+.wl-head{text-align:center;margin-bottom:22px}
 .mode-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:0.12em;color:#fff;margin-bottom:5px}
 .wl-badge{display:inline-block;margin-top:12px;font-size:9px;letter-spacing:0.18em;color:#1d9bf0;background:#0a1a2a;border:1px solid #1d3a5a;border-radius:0;padding:5px 16px}
 .mode-link{background:none;border:none;font-size:10px;letter-spacing:0.14em;color:#444;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;transition:color .15s;padding:2px 0;margin-top:14px}
@@ -53,7 +53,7 @@ html,body{margin:0;background:#080808;color:#fff;font-family:'DM Sans',sans-seri
 .day-btn.dt .d-name{color:#ccc}
 .day-btn.da .d-name,.day-btn.da .d-num{color:#000}
 /* Session label */
-.sess-lbl{font-size:9px;letter-spacing:0.2em;color:#555;font-weight:600;margin-bottom:12px}
+.sess-lbl{font-size:9px;letter-spacing:0.2em;color:#555;font-weight:600;margin-bottom:12px;text-align:center}
 /* Slot list */
 .no-classes{text-align:center;padding:52px 0;font-size:11px;letter-spacing:0.2em;color:#444;font-weight:600;line-height:2.2}
 .slot-list{display:flex;flex-direction:column;gap:7px;margin-bottom:20px}
@@ -228,9 +228,15 @@ function authLogout(){
 // Resolved once the stored session (if any) has been turned back into a live
 // token, so the first REST call of the page does not race the refresh and come
 // back empty.
+// This widget is for the public only \u2014 members book in the app \u2014 so any
+// sign-in left over from an earlier version is cleared rather than restored.
+// Every request from here goes out anonymous.
 const AUTH_READY=(async()=>{
-  let rt="";try{rt=localStorage.getItem("t365-cw-refresh")||"";}catch(e){}
-  if(rt)await authRefresh();
+  try{
+    localStorage.removeItem("t365-cw-refresh");
+    localStorage.removeItem("t365-cw-exp");
+    localStorage.removeItem("t365-cw-session");
+  }catch(e){}
 })();
 const APPS_URL="https://script.google.com/macros/s/AKfycbz5cruljVDUVScwm14Sj1z5_6cRrNK9cgOaq7Tx8P9LfPAEI7p_kx8ZJnaghF_SmU46Fw/exec";
 const SHOPIFY_PAY_URL="https://www.lamontcollective.com/products/casual-gym-session";
@@ -378,9 +384,10 @@ async function notifyGuest(data){
 }
 // ── Main Widget ───────────────────────────────────────────────────────────────
 function ClassWidget(){
-  // mode: 'guest' | 'login' | 'member'
-  const[mode,setMode]=useState(()=>{const s=lsGet("t365-cw-session");return s?"member":"guest";});
-  const[session,setSession]=useState(()=>lsGet("t365-cw-session"));
+  // Always 'guest'. The website widget is for people who do not have the app;
+  // members book in the app, which is where WHO'S ATTENDING lives.
+  const[mode,setMode]=useState("guest");
+  const[session,setSession]=useState(null);
   const[loginForm,setLoginForm]=useState({email:"",password:""});
   const[loginErr,setLoginErr]=useState("");
   const[loginBusy,setLoginBusy]=useState(false);
@@ -610,15 +617,11 @@ function ClassWidget(){
   // ── Render ──────────────────────────────────────────────────────────────────
   return React.createElement("div",{className:"widget"},
     // ── HEADER ───────────────────────────────────────────────────────────────
-    // Laid out exactly like the wellness widget: centred title, blue badge
-    // under it, and the member link on its own line below.
+    // Laid out exactly like the wellness widget: centred title with the blue
+    // badge under it, and nothing else.
     React.createElement("div",{className:"wl-head"},
       React.createElement("div",{className:"mode-title"},"BOOK A CLASS"),
-      React.createElement("div",{className:"wl-badge"},"BOOK A SESSION"),
-      mode==="guest"&&step===1&&React.createElement("div",null,
-        React.createElement("button",{className:"mode-link",onClick:()=>setMode("login")},"MEMBER? LOG IN \u203a")),
-      mode==="login"&&React.createElement("div",null,
-        React.createElement("button",{className:"mode-link",onClick:()=>setMode("guest")},"BOOK AS GUEST \u203a"))
+      React.createElement("div",{className:"wl-badge"},"BOOK A SESSION")
     ),
     // ── LOGIN PANEL ───────────────────────────────────────────────────────────
     mode==="login"&&React.createElement("div",null,
