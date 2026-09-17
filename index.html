@@ -283,9 +283,14 @@ html,body{background:#080808;min-height:100vh}
 .adm-empty{text-align:center;padding:14px;font-size:10px;letter-spacing:0.14em;color:#333;font-weight:500}
 .adm-no-classes{text-align:center;padding:48px 0;font-size:11px;letter-spacing:0.16em;color:#333;line-height:2.4}
 .adm-stats-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
-/* flex-basis 88px means up to three boxes sit on a phone row and the rest
-   wrap onto a second line, rather than five boxes squashing to illegible. */
 .adm-stat{flex:1 1 88px;background:#141414;border:1px solid #888;border-radius:0;padding:12px;text-align:center}
+/* .tight keeps every box on ONE line however many there are: equal widths,
+   no wrapping, smaller type so six still fit across a phone. min-width:0 is
+   what actually lets a flex item shrink below its content width. */
+.adm-stats-row.tight{flex-wrap:nowrap}
+.adm-stats-row.tight .adm-stat{flex:1 1 0;min-width:0;padding:10px 3px}
+.adm-stats-row.tight .adm-stat-num{font-size:23px}
+.adm-stats-row.tight .adm-stat-lbl{font-size:7px;letter-spacing:0.04em;line-height:1.3;margin-top:4px}
 .adm-stat-num{font-family:'Bebas Neue',sans-serif;font-size:32px;color:#fff;line-height:1}
 .adm-stat-lbl{font-size:9px;letter-spacing:0.16em;color:#666;font-weight:600;margin-top:3px}
 .adm-member-card{background:#141414;border:1px solid #888;border-radius:0;padding:14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
@@ -987,7 +992,7 @@ function ImageCropper({imageSrc,onSave,onCancel}){
   );
 }
 // ── Member Profile Overlay (Admin) ────────────────────────────────────────────
-function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,isMaster,mfPasteAI,selfEmail,canManageWk,setBookingExcused,setBookingCheckedIn}){
+function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,isMaster,mfPasteAI,selfEmail,canManageWk,setBookingExcused,setBookingCheckedIn,wellnessOn}){
   const joinDate=fmtJoinDate(member.joined_at);
   const PARQ_LABELS=["Heart condition","Chest pain during activity","Chest pain at rest","Dizziness/loss of consciousness","Bone or joint problem","Blood pressure medication","Other reason to avoid activity"];
   const PARQ_KEYS=["parq_heart","parq_chest_activity","parq_chest_rest","parq_dizziness","parq_joint","parq_blood_pressure","parq_other"];
@@ -1325,7 +1330,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
           memberIsAdmin&&React.createElement("div",{className:"mp-meta",style:{color:"#4aaa66",marginTop:2}},"ADMIN")
         )
       ),
-      React.createElement("div",{className:"adm-stats-row",style:{marginBottom:20}},
+      React.createElement("div",{className:"adm-stats-row tight",style:{marginBottom:20}},
         React.createElement("div",{className:"adm-stat"},
           React.createElement("div",{className:"adm-stat-num"},attendedBks),
           React.createElement("div",{className:"adm-stat-lbl"},"ATTENDED")
@@ -1345,10 +1350,12 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
         // Same two figures the member sees on their own screen, computed the same
         // way, so the two screens cannot tell them different numbers.
         React.createElement("div",{className:"adm-stat"},
-          React.createElement("div",{className:"adm-stat-num",style:{color:"#7cc4f0"}},communityCount),
+          React.createElement("div",{className:"adm-stat-num"},communityCount),
           React.createElement("div",{className:"adm-stat-lbl"},"COMMUNITY EVENTS")
         ),
-        React.createElement("div",{className:"adm-stat"},
+        // Hidden when the wellness section itself is switched off, so the admin
+        // screen does not show a number for a thing the studio is not running.
+        wellnessOn&&React.createElement("div",{className:"adm-stat"},
           React.createElement("div",{className:"adm-stat-num"},wellCount),
           React.createElement("div",{className:"adm-stat-lbl"},"WELLNESS")
         )
@@ -2971,7 +2978,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   // Program access via mFlags.wk / mFlags.wkAdminHide above. Master always has access.
   const canScBuild=isMaster||(mFlags.sc!==false&&!(mFlags.scAdminHide||[]).includes(selfEmail));
   return React.createElement("div",{className:"adm-wrap"},
-    selectedMember&&React.createElement(MemberProfileOverlay,{member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin,mfWk:mFlags.wk,isMaster,mfPasteAI:mFlags.pasteAI,selfEmail,setBookingExcused,setBookingCheckedIn,canManageWk:(isMaster||(mFlags.wk!==false&&!(mFlags.wkAdminHide||[]).includes(selfEmail)))}),
+    selectedMember&&React.createElement(MemberProfileOverlay,{member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin,mfWk:mFlags.wk,isMaster,mfPasteAI:mFlags.pasteAI,selfEmail,setBookingExcused,setBookingCheckedIn,wellnessOn:wellnessEnabled,canManageWk:(isMaster||(mFlags.wk!==false&&!(mFlags.wkAdminHide||[]).includes(selfEmail)))}),
     React.createElement("div",{className:"adm-title"},"ADMIN"),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"0 0 6px"}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
@@ -9866,7 +9873,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     effTab==="my"&&canBook&&React.createElement("div",{className:"my-wrap"},
       React.createElement("div",{className:"my-hdr"},"MY BOOKINGS"),
       classesEnabled&&React.createElement(React.Fragment,null,
-      React.createElement("div",{className:"adm-stats-row",style:{marginBottom:18}},
+      React.createElement("div",{className:"adm-stats-row tight",style:{marginBottom:18}},
         React.createElement("div",{className:"adm-stat"},
           React.createElement("div",{className:"adm-stat-num"},Math.max(0,myAllBks.filter(b=>!isWhanauBk(b)).length-(myStatsAdj.booked||0))),
           React.createElement("div",{className:"adm-stat-lbl"},"CLASSES BOOKED")
@@ -9875,14 +9882,12 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
           React.createElement("div",{className:"adm-stat-num"},Math.max(0,myAttended-(myStatsAdj.attended||0))),
           React.createElement("div",{className:"adm-stat-lbl"},"CLASSES ATTENDED")
         ),
-        React.createElement("div",{className:"adm-stat"},
-          React.createElement("div",{className:"adm-stat-num"},myUpcoming.length),
-          React.createElement("div",{className:"adm-stat-lbl"},"UPCOMING")
-        ),
+        // No UPCOMING box here: the UPCOMING CLASSES list directly below already
+        // answers that, and better, because it names them.
         // A separate ledger. Whanau classes stay out of CLASSES BOOKED and
         // CLASSES ATTENDED on purpose; this is where they are counted instead.
         React.createElement("div",{className:"adm-stat"},
-          React.createElement("div",{className:"adm-stat-num",style:{color:"#7cc4f0"}},myCommunity),
+          React.createElement("div",{className:"adm-stat-num"},myCommunity),
           React.createElement("div",{className:"adm-stat-lbl"},"COMMUNITY EVENTS")
         ),
         // Sauna + cold plunge, all-time booked. Wellness has no check-in, so
