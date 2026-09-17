@@ -8,12 +8,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Syncopate:wght@700&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{background:#080808;color:#fff;font-family:'DM Sans',sans-serif}
+html,body{margin:0;background:#080808;color:#fff;font-family:'DM Sans',sans-serif}
 .widget{max-width:520px;margin:0 auto;padding:24px 16px 48px}
 /* Mode bar */
-.mode-bar{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
-.mode-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.12em;color:#fff}
-.mode-link{background:none;border:none;font-size:10px;letter-spacing:0.14em;color:#444;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;transition:color .15s;padding:2px 0}
+.wl-head{text-align:center;padding-top:24px;margin-bottom:22px}
+.mode-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:0.12em;color:#fff;margin-bottom:5px}
+.wl-badge{display:inline-block;margin-top:12px;font-size:9px;letter-spacing:0.18em;color:#1d9bf0;background:#0a1a2a;border:1px solid #1d3a5a;border-radius:0;padding:5px 16px}
+.mode-link{background:none;border:none;font-size:10px;letter-spacing:0.14em;color:#444;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;transition:color .15s;padding:2px 0;margin-top:14px}
 .mode-link:hover{color:#aaa}
 .w-sub{font-size:10px;letter-spacing:0.14em;color:#555;font-weight:600;margin-bottom:20px}
 /* Progress dots */
@@ -608,22 +609,16 @@ function ClassWidget(){
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return React.createElement("div",{className:"widget"},
-    // ── HERO ─────────────────────────────────────────────────────────────────
-    React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",padding:"28px 0 24px"}},
-      React.createElement("div",{style:{width:62,height:62,borderRadius:"50%",border:"2px solid #1d9bf0",marginBottom:10,overflow:"hidden"}},
-        React.createElement("img",{src:"icon-192.png",style:{width:"100%",height:"100%",objectFit:"cover"},alt:"Team 365"})
-      ),
-      React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:11,fontWeight:700,color:"#fff",textAlign:"center",letterSpacing:"0.1em",lineHeight:1.3,whiteSpace:"nowrap"}},"LAMONT TEAM 365"),
-      React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:6,fontWeight:700,color:"#444",textAlign:"center",marginTop:4,letterSpacing:"0.12em",whiteSpace:"nowrap"}},"EVERYDAY. ALL YEAR ROUND.")
-    ),
-    // ── MODE BAR ─────────────────────────────────────────────────────────────
-    React.createElement("div",{className:"mode-bar"},
-      React.createElement("div",null,
-        React.createElement("div",{className:"mode-title"},"BOOK A CLASS"),
-        React.createElement("div",{className:"w-sub"},"TEAM 365 · MONDAY – SATURDAY")
-      ),
-      mode==="guest"&&step===1&&React.createElement("button",{className:"mode-link",onClick:()=>setMode("login")},"MEMBER? LOG IN ›"),
-      mode==="login"&&React.createElement("button",{className:"mode-link",onClick:()=>setMode("guest")},"BOOK AS GUEST ›")
+    // ── HEADER ───────────────────────────────────────────────────────────────
+    // Laid out exactly like the wellness widget: centred title, blue badge
+    // under it, and the member link on its own line below.
+    React.createElement("div",{className:"wl-head"},
+      React.createElement("div",{className:"mode-title"},"BOOK A CLASS"),
+      React.createElement("div",{className:"wl-badge"},"BOOK A SESSION"),
+      mode==="guest"&&step===1&&React.createElement("div",null,
+        React.createElement("button",{className:"mode-link",onClick:()=>setMode("login")},"MEMBER? LOG IN \u203a")),
+      mode==="login"&&React.createElement("div",null,
+        React.createElement("button",{className:"mode-link",onClick:()=>setMode("guest")},"BOOK AS GUEST \u203a"))
     ),
     // ── LOGIN PANEL ───────────────────────────────────────────────────────────
     mode==="login"&&React.createElement("div",null,
@@ -709,9 +704,6 @@ function ClassWidget(){
     ),
     // ── GUEST VIEW ────────────────────────────────────────────────────────────
     mode==="guest"&&React.createElement("div",null,
-      step<3&&React.createElement("div",{className:"w-dots"},
-        [0,1].map(i=>React.createElement("div",{key:i,className:`w-dot${step-1===i?" active":step-1>i?" done":""}`}))
-      ),
       // STEP 1: Day + Time
       step===1&&React.createElement("div",null,
         React.createElement("div",{className:"week-nav"},
