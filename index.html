@@ -2581,6 +2581,18 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   const [schPanel,setSchPanel]=useState(null); // which scheduling panel is open
   // email -> date_key of their most recent check-in, for the lapsed flag.
   const [lastSeen,setLastSeen]=useState(null);
+  // POSSIBLE MEMBERS: the public who have booked but never signed up.
+  // prospects holds only what the database has to remember — manual additions
+  // and the "joined" tick. The rest of the list is derived from guest bookings
+  // every time it loads, so it maintains itself.
+  const [prospects,setProspects]=useState([]);
+  const [guestBks,setGuestBks]=useState([]);
+  const [prospectsLoaded,setProspectsLoaded]=useState(false);
+  const [addingProspect,setAddingProspect]=useState(false);
+  const [pmName,setPmName]=useState("");
+  const [pmEmail,setPmEmail]=useState("");
+  const [pmPhone,setPmPhone]=useState("");
+  const [pmBusy,setPmBusy]=useState(false);
   const undoTimerRef=useRef(null);
   const [editingClassName,setEditingClassName]=useState(false);
   const [classNameInput,setClassNameInput]=useState("");
@@ -2943,7 +2955,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
     return()=>window.removeEventListener("popstate",handlePop);
   },[selectedMember]);
   useEffect(()=>{
-    if((admSeg==="members"||admSeg==="functions"||(admSeg==="sections"&&isMaster))&&!membersLoaded){
+    if((admSeg==="members"||admSeg==="possible"||admSeg==="functions"||(admSeg==="sections"&&isMaster))&&!membersLoaded){
       sbGet("members","select=*&order=name.asc").then(data=>{setMembers(data||[]);setMembersLoaded(true);});
       // Every attendance on record, reduced to the latest per member.
       sbGet("bookings","checked_in=eq.true&select=email,date_key").then(rows=>{
@@ -2956,6 +2968,14 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
         setLastSeen(seen);
       });
       sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__MASTER_HIDDEN__")+"&select=content").then(r=>{setMasterHidden(!!(r&&r.length&&r[0].content==="1"));});
+    }
+    if(admSeg==="possible"&&!prospectsLoaded){
+      Promise.all([
+        sbGet("prospects","select=*&order=created_at.desc"),
+        sbGet("bookings","is_guest=is.true&select=email,name,phone,date_key,time,whanau,checked_in")
+      ]).then(([pr,gb])=>{
+        setProspects(pr||[]);setGuestBks(gb||[]);setProspectsLoaded(true);
+      });
     }
     if(admSeg==="wellness"&&!wellAdmLoaded){
       const from=toDS(new Date());const to=bookingHorizonDS();
@@ -2982,6 +3002,88 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
     return days>LAPSED_DAYS?days:null;
   }
   const visMembers=masterHidden?members.filter(m=>m.email!==ADMIN_EMAIL):members;
+  // ── POSSIBLE MEMBERS ──────────────────────────────────────────────────────
+  // Anyone who has booked as a guest and is not in members, plus anyone added
+  // by hand. Derived on every load, so the moment someone signs up they drop
+  // off this list by themselves — nothing to tidy up.
+  const memberEmails=new Set(members.map(m=>String(m.email||"").trim().toLowerCase()).filter(Boolean));
+  const pmKey=e=>String(e||"").trim().toLowerCase();
+  const possibleList=(()=>{
+    const map=new Map();
+    const get=e=>{
+      const k=pmKey(e); if(!k)return null;
+      if(!map.has(k))map.set(k,{email:String(e).trim(),name:"",phone:"",visits:0,whanau:0,last:"",manual:false,joined:false,rowId:null});
+      return map.get(k);
+    };
+    // Oldest first, so the most recent name and phone are the ones that stick.
+    [...guestBks].sort((a,b)=>String(a.date_key||"").localeCompare(String(b.date_key||""))).forEach(b=>{
+      const p=get(b.email); if(!p)return;
+      p.visits++; if(b.whanau)p.whanau++;
+      if(b.name)p.name=b.name;
+      if(b.phone)p.phone=b.phone;
+      if(b.date_key&&b.date_key>p.last)p.last=b.date_key;
+    });
+    prospects.forEach(r=>{
+      const p=get(r.email); if(!p)return;
+      if(r.name)p.name=r.name;
+      if(r.phone)p.phone=r.phone;
+      p.joined=!!r.joined; p.rowId=r.id;
+      if(r.source==="manual"&&p.visits===0)p.manual=true;
+    });
+    return [...map.values()]
+      .filter(p=>!memberEmails.has(pmKey(p.email)))
+      .sort((a,b)=>(a.joined?1:0)-(b.joined?1:0)
+        ||String(b.last||"").localeCompare(String(a.last||""))
+        ||String(a.name||a.email).localeCompare(String(b.name||b.email)));
+  })();
+  const pmDateLabel=dk=>{
+    if(!dk)return"";
+    const d=new Date(dk+"T00:00:00");
+    if(isNaN(d))return dk;
+    return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  };
+  async function reloadProspects(){
+    const fresh=await sbGet("prospects","select=*&order=created_at.desc");
+    setProspects(fresh||[]);
+  }
+  async function toggleProspectJoined(p){
+    const next=!p.joined;
+    if(p.rowId!=null){
+      setProspects(prev=>prev.map(r=>r.id===p.rowId?{...r,joined:next}:r));
+      const okp=await sbPatch("prospects","id=eq."+p.rowId,{joined:next,updated_at:Date.now()});
+      if(!okp){setProspects(prev=>prev.map(r=>r.id===p.rowId?{...r,joined:!next}:r));showToast("Could not save");return;}
+      showToast(next?"Marked as joined ✓":"Unmarked");
+      return;
+    }
+    // Derived from bookings and never stored — the tick is the reason to store it.
+    const okp=await sbPost("prospects",{email:p.email,name:p.name||null,phone:p.phone||null,
+      source:"guest",joined:next,created_at:Date.now(),updated_at:Date.now()});
+    if(!okp){showToast("Could not save");return;}
+    await reloadProspects();
+    showToast(next?"Marked as joined ✓":"Unmarked");
+  }
+  async function addProspect(){
+    const em=pmKey(pmEmail);
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){showToast("Enter a valid email");return;}
+    if(memberEmails.has(em)){showToast("They are already a member");return;}
+    if(prospects.some(r=>pmKey(r.email)===em)||possibleList.some(p=>pmKey(p.email)===em)){showToast("Already on the list");return;}
+    setPmBusy(true);
+    const okp=await sbPost("prospects",{email:em,name:pmName.trim()||null,phone:pmPhone.trim()||null,
+      source:"manual",joined:false,created_at:Date.now(),updated_at:Date.now()});
+    setPmBusy(false);
+    if(!okp){showToast("Could not save");return;}
+    await reloadProspects();
+    setPmName("");setPmEmail("");setPmPhone("");setAddingProspect(false);
+    showToast("Added ✓");
+  }
+  async function removeProspect(p){
+    if(p.rowId==null)return;
+    if(!window.confirm("Remove "+(p.name||p.email)+" from possible members?"))return;
+    const okd=await sbDelete("prospects","id=eq."+p.rowId);
+    if(!okd){showToast("Could not remove");return;}
+    setProspects(prev=>prev.filter(r=>r.id!==p.rowId));
+    showToast("Removed");
+  }
   const admDK=toDS(admDate);const admDOW=admDate.getDay();const admIsSat=admDOW===6;
   const standardTimes=baseTimesFor(baseTimes,admDK);
   const admDateRows=Object.keys(classLimits||{}).filter(k=>k.startsWith(admDK+':')).map(k=>k.slice(admDK.length+1));
@@ -3016,6 +3118,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
     ),
     React.createElement("div",{className:"adm-seg"},
       React.createElement("button",{"data-adm":"members",className:`adm-seg-btn${admSeg==="members"?" aas":""}`,onClick:()=>setAdmSeg("members")},"MEMBERS"),
+      React.createElement("button",{"data-adm":"possible",className:`adm-seg-btn${admSeg==="possible"?" aas":""}`,onClick:()=>setAdmSeg("possible")},"POSSIBLE MEMBERS"),
       React.createElement("button",{"data-adm":"classes",className:`adm-seg-btn${admSeg==="classes"?" aas":""}`,onClick:()=>setAdmSeg("classes")},"CLASSES"),
       (isMaster||mFlags.welladm)&&React.createElement("button",{"data-adm":"wellness",className:`adm-seg-btn${admSeg==="wellness"?" aas":""}`,onClick:()=>setAdmSeg("wellness")},"WELLNESS"),
       canScBuild&&React.createElement("button",{"data-adm":"scbuilder",className:`adm-seg-btn${admSeg==="scbuilder"?" aas":""}`,onClick:()=>setAdmSeg("scbuilder")},"S&C BUILDER"),
@@ -3066,6 +3169,67 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
           React.createElement("div",{className:"adm-mc-detail"},`Joined ${joinDate} · ${mbBks} upcoming booking${mbBks!==1?"s":""}`)
         );
       })
+    )),
+    admSeg==="possible"&&(!prospectsLoaded||!membersLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
+    :React.createElement(React.Fragment,null,
+      React.createElement("div",{className:"adm-stats-row"},
+        React.createElement("div",{className:"adm-stat"},
+          React.createElement("div",{className:"adm-stat-num"},possibleList.filter(p=>!p.joined).length),
+          React.createElement("div",{className:"adm-stat-lbl"},"POSSIBLE")),
+        React.createElement("div",{className:"adm-stat"},
+          React.createElement("div",{className:"adm-stat-num"},possibleList.filter(p=>p.joined).length),
+          React.createElement("div",{className:"adm-stat-lbl"},"JOINED"))
+      ),
+      React.createElement("div",{style:{fontSize:8,letterSpacing:"0.1em",color:"#555",lineHeight:1.7,marginBottom:12}},
+        "Anyone from the public who has booked without an account, plus anyone you add by hand. They come off this list on their own once they sign up."),
+      React.createElement("button",{onClick:()=>setAddingProspect(v=>!v),
+        style:{width:"100%",background:addingProspect?"none":"#0a1620",border:"1px solid "+(addingProspect?"#2a2a2a":"#1d9bf0"),
+               borderRadius:0,color:addingProspect?"#666":"#1d9bf0",fontFamily:"'Bebas Neue',sans-serif",
+               fontSize:14,letterSpacing:"0.12em",padding:"10px 14px",cursor:"pointer",marginBottom:10}},
+        addingProspect?"CANCEL":"+ ADD A CONTACT"),
+      addingProspect&&React.createElement("div",{style:{background:"#141414",border:"1px solid #888",padding:14,marginBottom:12}},
+        [["NAME",pmName,setPmName,"text","Jane Ngata"],
+         ["EMAIL",pmEmail,setPmEmail,"email","jane@example.com"],
+         ["PHONE",pmPhone,setPmPhone,"tel","021 123 4567"]].map(([lbl,val,set,ty,ph],i)=>
+          React.createElement("div",{key:i,style:{marginBottom:10}},
+            React.createElement("div",{style:{fontSize:8,letterSpacing:"0.16em",color:"#666",fontWeight:600,marginBottom:5}},lbl),
+            React.createElement("input",{type:ty,value:val,placeholder:ph,onChange:e=>set(e.target.value),
+              style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",color:"#fff",
+                     fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:300,padding:"10px 12px",borderRadius:0,outline:"none"}}))),
+        React.createElement("button",{onClick:addProspect,disabled:pmBusy,
+          style:{width:"100%",background:"#0a1620",border:"1px solid #1d9bf0",borderRadius:0,color:"#1d9bf0",
+                 fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.12em",padding:"10px 14px",
+                 cursor:pmBusy?"default":"pointer",opacity:pmBusy?0.5:1}},pmBusy?"SAVING...":"SAVE")
+      ),
+      possibleList.length===0
+        ?React.createElement("div",{className:"no-bk"},"NO POSSIBLE MEMBERS YET")
+        :possibleList.map((p,i)=>React.createElement("div",{key:pmKey(p.email)||i,className:"adm-member-card",
+            style:{cursor:"default",borderColor:p.joined?"#2a4a2e":undefined,opacity:p.joined?0.72:1}},
+          React.createElement("div",{className:"adm-mc-top"},
+            React.createElement("div",{style:{minWidth:0}},
+              React.createElement("div",{className:"adm-mc-name"},(p.name||"NO NAME GIVEN").toUpperCase())),
+            React.createElement("button",{onClick:()=>toggleProspectJoined(p),title:p.joined?"Joined":"Mark as joined",
+              style:{flexShrink:0,width:30,height:30,borderRadius:0,background:p.joined?"#0a140c":"none",
+                     border:"1px solid "+(p.joined?"#4a8a54":"#2a2a2a"),color:p.joined?"#6fbf7a":"#333",
+                     fontSize:15,lineHeight:1,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}},"✓")
+          ),
+          p.joined&&React.createElement("div",{className:"adm-mc-detail"},
+            React.createElement("span",{style:{color:"#6fbf7a",fontWeight:700,letterSpacing:"0.1em"}},"JOINED")),
+          React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,p.email)),
+          p.phone&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,p.phone)),
+          p.whanau>0&&React.createElement("div",{className:"adm-mc-detail"},
+            React.createElement("span",{style:{color:"#7cc4f0",fontWeight:700,letterSpacing:"0.1em"}},
+              p.whanau+" WHĀNAU EVENT"+(p.whanau!==1?"S":""))),
+          React.createElement("div",{className:"adm-mc-detail"},
+            p.visits>0
+              ?`${p.visits} booking${p.visits!==1?"s":""} as a guest · last ${pmDateLabel(p.last)}`
+              :"Added by hand"),
+          p.manual&&React.createElement("div",{style:{marginTop:8}},
+            React.createElement("button",{onClick:()=>removeProspect(p),
+              style:{background:"none",border:"1px solid #2a2a2a",borderRadius:0,color:"#555",
+                     fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.1em",
+                     padding:"5px 12px",cursor:"pointer"}},"REMOVE"))
+        ))
     )),
     admSeg==="classes"&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"adm-day-nav"},
@@ -8857,7 +9021,7 @@ function App(){
       });
     }catch(e){}
   },[tab]);
-  const ADMIN_SEG_ORDER=["members","classes","wellness","scbuilder","sections","functions","onboarding","coaching"];
+  const ADMIN_SEG_ORDER=["members","possible","classes","wellness","scbuilder","sections","functions","onboarding","coaching"];
   const [admSeg,setAdmSeg]=useState(()=>T365_DEEP_LINK==="library"?"coaching":lsGet("t365-admseg","members"));
   useEffect(()=>{lsSet("t365-admseg",admSeg);},[admSeg]);
   // Keep the active admin sub-section scrolled into view when it changes
