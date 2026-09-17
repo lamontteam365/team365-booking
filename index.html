@@ -3004,15 +3004,18 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   const visMembers=masterHidden?members.filter(m=>m.email!==ADMIN_EMAIL):members;
   // ── LEADS ─────────────────────────────────────────────────────────────────
   // Anyone who has booked without an account, plus anyone an admin adds by
-  // hand. Nobody is ever removed: a lead who signs up stays here marked
+  // hand. Signing up does not remove you: a lead who joins stays here marked
   // CONVERTED, so the list is a running record of how many turn into members.
+  // Only an explicit delete takes someone off it.
   const memberEmails=new Set(members.map(m=>String(m.email||"").trim().toLowerCase()).filter(Boolean));
   const pmKey=e=>String(e||"").trim().toLowerCase();
   const possibleList=(()=>{
     const map=new Map();
     const get=e=>{
       const k=pmKey(e); if(!k)return null;
-      if(!map.has(k))map.set(k,{email:String(e).trim(),name:"",phone:"",visits:0,whanau:0,last:"",manual:false,joined:false,isMember:false,rowId:null});
+      if(!map.has(k))map.set(k,{email:String(e).trim(),name:"",phone:"",visits:0,whanau:0,
+        first:"",last:"",addedAt:null,manual:false,hasRow:false,hidden:false,rowJoined:false,
+        joined:false,isMember:false,rowId:null});
       return map.get(k);
     };
     // Oldest first, so the most recent name and phone are the ones that stick.
@@ -3021,32 +3024,46 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
       p.visits++; if(b.whanau)p.whanau++;
       if(b.name)p.name=b.name;
       if(b.phone)p.phone=b.phone;
-      if(b.date_key&&b.date_key>p.last)p.last=b.date_key;
+      if(b.date_key){
+        if(!p.first||b.date_key<p.first)p.first=b.date_key;
+        if(b.date_key>p.last)p.last=b.date_key;
+      }
     });
     prospects.forEach(r=>{
       const p=get(r.email); if(!p)return;
       if(r.name)p.name=r.name;
       if(r.phone)p.phone=r.phone;
-      p.joined=!!r.joined; p.rowId=r.id;
+      p.hasRow=true; p.rowJoined=!!r.joined; p.hidden=!!r.hidden;
+      p.rowId=r.id; p.addedAt=r.created_at||null;
       if(r.source==="manual"&&p.visits===0)p.manual=true;
     });
-    // Signing up is the conversion, so the members table decides it — the tick
-    // is only for someone who joined without the app noticing. Either counts.
     const byEmail={};members.forEach(m=>{const k=pmKey(m.email);if(k)byEmail[k]=m;});
     map.forEach(p=>{
       const m=byEmail[pmKey(p.email)];
-      if(!m)return;
-      p.isMember=true;p.joined=true;
-      if(m.name)p.name=m.name;
-      if(!p.phone&&m.phone)p.phone=m.phone;
+      if(m){
+        p.isMember=true;
+        if(m.name)p.name=m.name;
+        if(!p.phone&&m.phone)p.phone=m.phone;
+      }
+      // Signing up converts you by itself, so a member starts out converted.
+      // But a stored row always wins, so the tick can override it either way —
+      // nothing on this list is locked.
+      p.joined=p.hasRow?p.rowJoined:p.isMember;
     });
     return [...map.values()]
+      .filter(p=>!p.hidden)
       .sort((a,b)=>(a.joined?1:0)-(b.joined?1:0)
         ||String(b.last||"").localeCompare(String(a.last||""))
         ||String(a.name||a.email).localeCompare(String(b.name||b.email)));
   })();
   const convCount=possibleList.filter(p=>p.joined).length;
   const convRate=possibleList.length?Math.round(convCount/possibleList.length*100):0;
+  const pmStampLabel=ts=>{
+    if(!ts)return"";
+    const d=new Date(Number(ts));
+    if(isNaN(d))return"";
+    return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  };
   const pmDateLabel=dk=>{
     if(!dk)return"";
     const d=new Date(dk+"T00:00:00");
@@ -3058,14 +3075,12 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
     setProspects(fresh||[]);
   }
   async function toggleProspectJoined(p){
-    // A real member converted for real — that is not a tick to be undone.
-    if(p.isMember){showToast("Already a member");return;}
     const next=!p.joined;
     if(p.rowId!=null){
       setProspects(prev=>prev.map(r=>r.id===p.rowId?{...r,joined:next}:r));
       const okp=await sbPatch("prospects","id=eq."+p.rowId,{joined:next,updated_at:Date.now()});
       if(!okp){setProspects(prev=>prev.map(r=>r.id===p.rowId?{...r,joined:!next}:r));showToast("Could not save");return;}
-      showToast(next?"Marked as joined ✓":"Unmarked");
+      showToast(next?"Marked as converted ✓":"Unmarked");
       return;
     }
     // Derived from bookings and never stored — the tick is the reason to store it.
@@ -3073,16 +3088,30 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
       source:"guest",joined:next,created_at:Date.now(),updated_at:Date.now()});
     if(!okp){showToast("Could not save");return;}
     await reloadProspects();
-    showToast(next?"Marked as joined ✓":"Unmarked");
+    showToast(next?"Marked as converted ✓":"Unmarked");
   }
   async function addProspect(){
     const em=pmKey(pmEmail);
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){showToast("Enter a valid email");return;}
+    const existing=prospects.find(r=>pmKey(r.email)===em);
+    // Somebody removed earlier comes back rather than being refused — the
+    // database will not take a second row for the same email anyway.
+    if(existing&&existing.hidden){
+      setPmBusy(true);
+      const okp=await sbPatch("prospects","id=eq."+existing.id,{hidden:false,
+        name:pmName.trim()||existing.name||null,phone:pmPhone.trim()||existing.phone||null,updated_at:Date.now()});
+      setPmBusy(false);
+      if(!okp){showToast("Could not save");return;}
+      await reloadProspects();
+      setPmName("");setPmEmail("");setPmPhone("");setAddingProspect(false);
+      showToast("Back on the list ✓");
+      return;
+    }
+    if(existing||possibleList.some(p=>pmKey(p.email)===em)){showToast("Already on the list");return;}
     if(memberEmails.has(em)){showToast("They are already a member");return;}
-    if(prospects.some(r=>pmKey(r.email)===em)||possibleList.some(p=>pmKey(p.email)===em)){showToast("Already on the list");return;}
     setPmBusy(true);
     const okp=await sbPost("prospects",{email:em,name:pmName.trim()||null,phone:pmPhone.trim()||null,
-      source:"manual",joined:false,created_at:Date.now(),updated_at:Date.now()});
+      source:"manual",joined:false,hidden:false,created_at:Date.now(),updated_at:Date.now()});
     setPmBusy(false);
     if(!okp){showToast("Could not save");return;}
     await reloadProspects();
@@ -3090,11 +3119,30 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
     showToast("Added ✓");
   }
   async function removeProspect(p){
-    if(p.rowId==null)return;
-    if(!window.confirm("Remove "+(p.name||p.email)+" from possible members?"))return;
-    const okd=await sbDelete("prospects","id=eq."+p.rowId);
-    if(!okd){showToast("Could not remove");return;}
-    setProspects(prev=>prev.filter(r=>r.id!==p.rowId));
+    // The tick and the X are two different intentions, and the X is the one
+    // that cannot be seen afterwards — so say which is which before it happens.
+    if(!window.confirm("Remove "+(p.name||p.email)+" from leads?\n\nTo mark them as not converted instead, tap the tick."))return;
+    // Somebody with real guest bookings would be rebuilt from those bookings on
+    // the next load, so removing them means storing a row that says "hidden".
+    // Somebody added by hand has no such source, so the row can simply go.
+    if(p.visits===0&&p.rowId!=null){
+      const okd=await sbDelete("prospects","id=eq."+p.rowId);
+      if(!okd){showToast("Could not remove");return;}
+      setProspects(prev=>prev.filter(r=>r.id!==p.rowId));
+      showToast("Removed");
+      return;
+    }
+    if(p.rowId!=null){
+      const okp=await sbPatch("prospects","id=eq."+p.rowId,{hidden:true,updated_at:Date.now()});
+      if(!okp){showToast("Could not remove");return;}
+      setProspects(prev=>prev.map(r=>r.id===p.rowId?{...r,hidden:true}:r));
+      showToast("Removed");
+      return;
+    }
+    const okp=await sbPost("prospects",{email:p.email,name:p.name||null,phone:p.phone||null,
+      source:"guest",joined:!!p.joined,hidden:true,created_at:Date.now(),updated_at:Date.now()});
+    if(!okp){showToast("Could not remove");return;}
+    await reloadProspects();
     showToast("Removed");
   }
   const admDK=toDS(admDate);const admDOW=admDate.getDay();const admIsSat=admDOW===6;
@@ -3222,13 +3270,15 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
       possibleList.length===0
         ?React.createElement("div",{className:"no-bk"},"NO LEADS YET")
         :possibleList.map((p,i)=>React.createElement("div",{key:pmKey(p.email)||i,className:"adm-member-card",
-            style:{cursor:"default",borderColor:p.joined?"#4a8a54":undefined}},
+            style:{cursor:"default",borderColor:p.joined?"#1d9bf0":undefined}},
           React.createElement("div",{className:"adm-mc-top",style:{alignItems:"flex-start",gap:12}},
             React.createElement("div",{style:{minWidth:0,flex:1}},
-              React.createElement("div",{className:"adm-mc-name"},(p.name||"NO NAME GIVEN").toUpperCase()),
-              p.joined&&React.createElement("div",{className:"adm-mc-detail"},
-                React.createElement("span",{style:{color:"#6fbf7a",fontWeight:700,letterSpacing:"0.1em"}},
-                  p.isMember?"CONVERTED \u00b7 NOW A MEMBER":"CONVERTED")),
+              React.createElement("div",{className:"adm-mc-name",style:{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}},
+                React.createElement("span",null,(p.name||"NO NAME GIVEN").toUpperCase()),
+                p.joined&&React.createElement("span",{style:{fontFamily:"'DM Sans',sans-serif",fontSize:8,
+                  letterSpacing:"0.12em",fontWeight:700,color:"#1d9bf0"}},
+                  p.isMember?"CONVERTED \u00b7 MEMBER":"CONVERTED")
+              ),
               React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,p.email)),
               p.phone&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,p.phone)),
               p.whanau>0&&React.createElement("div",{className:"adm-mc-detail"},
@@ -3236,24 +3286,24 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
                   p.whanau+" WH\u0100NAU EVENT"+(p.whanau!==1?"S":""))),
               React.createElement("div",{className:"adm-mc-detail"},
                 p.visits>0
-                  ?`Added from the widget \u00b7 ${p.visits} booking${p.visits!==1?"s":""} \u00b7 last ${pmDateLabel(p.last)}`
-                  :"Added by Admin")
+                  ?"Added from the widget \u00b7 "+pmDateLabel(p.first)
+                  :"Added by Admin"+(pmStampLabel(p.addedAt)?" \u00b7 "+pmStampLabel(p.addedAt):""))
             ),
             // Same right-hand column as a member card: the initials disc, with
-            // the tick under it and, for a hand-added lead, an X under that.
-            React.createElement("div",{style:{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:7}},
+            // the tick under it and the X under that.
+            React.createElement("div",{style:{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:5}},
               React.createElement("div",{style:{width:32,height:32,borderRadius:"50%",background:"#1a1a1a",
-                border:"1px solid "+(p.joined?"#4a8a54":"#1d9bf0"),display:"flex",alignItems:"center",
+                border:"1px solid #1d9bf0",display:"flex",alignItems:"center",
                 justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,color:"#666"}},initials(p.name||"?")),
               React.createElement("button",{onClick:()=>toggleProspectJoined(p),
-                title:p.isMember?"Already a member":(p.joined?"Converted \u2014 tap to undo":"Mark as converted"),
-                style:{width:32,height:26,borderRadius:0,background:p.joined?"#0a140c":"none",
-                       border:"1px solid "+(p.joined?"#4a8a54":"#2a2a2a"),color:p.joined?"#6fbf7a":"#333",
-                       fontSize:14,lineHeight:1,cursor:p.isMember?"default":"pointer",
+                title:p.joined?"Converted \u2014 tap to undo":"Mark as converted",
+                style:{width:22,height:18,borderRadius:0,padding:0,background:p.joined?"#0a1620":"none",
+                       border:"1px solid "+(p.joined?"#1d9bf0":"#2a2a2a"),color:p.joined?"#1d9bf0":"#333",
+                       fontSize:10,lineHeight:1,cursor:"pointer",
                        display:"flex",alignItems:"center",justifyContent:"center"}},"\u2713"),
-              p.manual&&React.createElement("button",{onClick:()=>removeProspect(p),title:"Remove this lead",
-                style:{width:32,height:26,borderRadius:0,background:"none",border:"1px solid #2a2a2a",color:"#555",
-                       fontSize:13,lineHeight:1,cursor:"pointer",
+              React.createElement("button",{onClick:()=>removeProspect(p),title:"Remove this lead",
+                style:{width:22,height:18,borderRadius:0,padding:0,background:"none",border:"1px solid #2a2a2a",color:"#555",
+                       fontSize:9,lineHeight:1,cursor:"pointer",
                        display:"flex",alignItems:"center",justifyContent:"center"}},"\u2715")
             )
           )
