@@ -115,6 +115,10 @@ html,body{background:#080808;color:#fff;font-family:'DM Sans',sans-serif}
 .wh-note-t{font-size:12px;letter-spacing:0.1em;color:#7cc4f0;font-weight:600;margin-bottom:4px}
 .wh-note-s{font-size:11px;color:#888;line-height:1.6;font-weight:300}
 .wh-row{font-size:8px;letter-spacing:0.14em;color:#7cc4f0;font-weight:600;margin-top:2px}
+.att-wrap{background:#0e0e0e;border:1px solid #333;border-top:none;padding:0 0 9px}
+.att-lbl{font-size:7px;letter-spacing:0.14em;color:#555;font-weight:600;padding:10px 14px 6px}
+.att-row{padding:5px 14px;font-size:12px;color:#1d9bf0;font-weight:500}
+.att-none{padding:2px 14px 4px;font-size:11px;color:#555;font-weight:300}
 .pass-box{background:#0e0e0e;border:1px solid #2a2a2a;border-radius:0;padding:13px 14px;margin-bottom:18px}
 .pass-lbl{font-size:9px;letter-spacing:0.16em;color:#555;font-weight:600;margin-bottom:8px}
 .pass-row{display:flex;gap:7px}
@@ -165,7 +169,68 @@ const{useState,useEffect,useCallback}=React;
 // ── Config ────────────────────────────────────────────────────────────────────
 const SB_URL="https://xczwmexavysvljmobbgv.supabase.co";
 const SB_KEY="sb_publishable_tujGGhPRUimflq1-IFzuvA_Crw6knMO";
+// SB_HDR carries the anon key for guests and the member's own access token once
+// they log in. Mutated in place (not rebuilt) so every sbGet/sbPost already
+// holding a reference picks up the change.
 const SB_HDR={"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return=minimal"};
+// ── Member auth ─────────────────────────────────────────────────────────────
+// This widget used to "log in" by fetching the member row with the anon key and
+// comparing a password hash in the browser. That could never work: RLS lets the
+// anon role read zero rows from members, so the lookup always came back empty
+// and every member was told "No account found with that email". It also meant
+// password hashes would have been handed to the browser if it HAD worked.
+//
+// Now it uses the same Supabase Auth endpoint as the app, so a logged-in member
+// genuinely holds the authenticated role — which is what lets them see who else
+// is booked into a class without opening that up to the public.
+let AUTH_TOKEN=null;
+function setAuthToken(t){AUTH_TOKEN=t||null;SB_HDR.Authorization=`Bearer ${t||SB_KEY}`;}
+function storeAuth(j){
+  if(!j)return;
+  if(j.access_token)setAuthToken(j.access_token);
+  try{
+    if(j.refresh_token)localStorage.setItem("t365-cw-refresh",j.refresh_token);
+    const ttl=j.expires_in?+j.expires_in:3600;
+    localStorage.setItem("t365-cw-exp",String(Date.now()+ttl*1000));
+  }catch(e){}
+}
+async function authLogin(email,password){
+  try{
+    const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=password`,
+      {method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},
+       body:JSON.stringify({email,password})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.access_token)return{error:(j.error_description||j.msg||j.error||"Login failed")};
+    storeAuth(j);
+    return{ok:true,user:j.user};
+  }catch(e){return{error:"Network error"};}
+}
+async function authRefresh(){
+  let rt="";try{rt=localStorage.getItem("t365-cw-refresh")||"";}catch(e){}
+  if(!rt)return false;
+  try{
+    const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`,
+      {method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},
+       body:JSON.stringify({refresh_token:rt})});
+    const j=await r.json().catch(()=>({}));
+    if(r.ok&&j.access_token){storeAuth(j);return true;}
+    // Only sign out when the server definitively rejects the token. A 5xx or a
+    // network blip must not log a member out mid-booking.
+    if(r.status===400||r.status===401||r.status===403){authLogout();return false;}
+    return false;
+  }catch(e){return false;}
+}
+function authLogout(){
+  setAuthToken(null);
+  try{localStorage.removeItem("t365-cw-refresh");localStorage.removeItem("t365-cw-exp");}catch(e){}
+}
+// Resolved once the stored session (if any) has been turned back into a live
+// token, so the first REST call of the page does not race the refresh and come
+// back empty.
+const AUTH_READY=(async()=>{
+  let rt="";try{rt=localStorage.getItem("t365-cw-refresh")||"";}catch(e){}
+  if(rt)await authRefresh();
+})();
 const APPS_URL="https://script.google.com/macros/s/AKfycbz5cruljVDUVScwm14Sj1z5_6cRrNK9cgOaq7Tx8P9LfPAEI7p_kx8ZJnaghF_SmU46Fw/exec";
 const SHOPIFY_PAY_URL="https://www.lamontcollective.com/products/casual-gym-session";
 const MAX_SPOTS=16;
@@ -284,7 +349,6 @@ async function passCall(payload){
 }
 const fmt12=t=>{const[h,m]=t.split(":").map(Number);return`${h%12||12}:${String(m).padStart(2,"0")}${h<12?"am":"pm"}`;};
 const getWeekStart=()=>mondayOf(new Date());
-const hashPw=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)^s.charCodeAt(i);return(h>>>0).toString(36);};
 function genRef(){const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let r="T365-";for(let i=0;i<6;i++)r+=c[Math.floor(Math.random()*c.length)];return r;}
 function isPastSlot(date,time){
   if(isPastD(date))return true;
@@ -295,15 +359,15 @@ function isPastSlot(date,time){
 const lsGet=(k,fb=null)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
 // ── Supabase ──────────────────────────────────────────────────────────────────
-async function sbGet(t,q=""){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
-async function sbPost(t,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
+async function sbGet(t,q=""){try{await AUTH_READY;const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
+async function sbPost(t,d){try{await AUTH_READY;const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
 // Same POST, but reports WHY it failed. 409 = this email already holds that slot.
 async function sbPostStatus(t,d){
-  try{const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(d)});
+  try{await AUTH_READY;const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(d)});
     return r.ok?{ok:true}:{ok:false,duplicate:r.status===409,status:r.status};
   }catch{return {ok:false,duplicate:false,status:0};}
 }
-async function sbDelete(t,q){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{method:"DELETE",headers:SB_HDR});return r.ok;}catch{return false;}}
+async function sbDelete(t,q){try{await AUTH_READY;const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{method:"DELETE",headers:SB_HDR});return r.ok;}catch{return false;}}
 // ── Notify ────────────────────────────────────────────────────────────────────
 async function notifyAdmin(data){
   try{const p=new URLSearchParams({action:"guestBooking",...data});await fetch(APPS_URL+"?"+p.toString(),{method:"GET",mode:"no-cors"});}catch{}
@@ -374,6 +438,20 @@ function ClassWidget(){
     const keys=weekDates.map(toDS);
     sbGet("bookings_slots",`date_key=in.(${keys.join(",")})&select=date_key,time`).then(d=>{setBookings(d||[]);setLoading(false);});
   },[weekStart]);
+
+  // WHO'S ATTENDING. Names are only ever fetched for a signed-in member: the
+  // bookings table is readable by the authenticated role only, so a guest gets
+  // nothing back — by design, not by omission. Guests see spots available.
+  const[attendees,setAttendees]=useState([]);
+  useEffect(()=>{
+    if(!session){setAttendees([]);return;}
+    let dead=false;
+    const keys=weekDates.map(toDS);
+    sbGet("bookings",`date_key=in.(${keys.join(",")})&select=date_key,time,name`)
+      .then(d=>{if(!dead)setAttendees(d||[]);});
+    return()=>{dead=true;};
+  },[weekStart,session]);
+  const attendeesFor=(dk,t)=>attendees.filter(b=>b.date_key===dk&&b.time===t);
 
   useEffect(()=>{setSelTime(null);},[selDay]);
 
@@ -454,14 +532,20 @@ function ClassWidget(){
     const pw=loginForm.password;
     if(!em||!pw){setLoginErr("Please enter your email and password.");return;}
     setLoginBusy(true);setLoginErr("");
-    const rows=await sbGet("members",`email=eq.${encodeURIComponent(em)}&select=email,name,password`);
-    if(!rows||rows.length===0){setLoginErr("No account found with that email.");setLoginBusy(false);return;}
-    const mb=rows[0];
-    if(mb.password!==hashPw(pw)){setLoginErr("Incorrect password.");setLoginBusy(false);return;}
-    const s={email:mb.email,name:mb.name};
+    // Same credentials as the app — this is the app's own login, not a copy.
+    const res=await authLogin(em,pw);
+    if(!res.ok){
+      setLoginErr(/invalid/i.test(res.error||"")?"Incorrect email or password.":(res.error||"Login failed."));
+      setLoginBusy(false);return;
+    }
+    // Now authenticated, so the member's own row is readable and we can show
+    // their real name rather than their email address.
+    const rows=await sbGet("members",`email=eq.${encodeURIComponent(em)}&select=email,name`);
+    const mb=(rows&&rows[0])||{email:em,name:em.split("@")[0]};
+    const s={email:mb.email||em,name:mb.name||em.split("@")[0]};
     lsSet("t365-cw-session",s);setSession(s);setMode("member");setLoginBusy(false);
   }
-  function handleLogout(){lsSet("t365-cw-session",null);setSession(null);setMode("guest");setStep(1);setSelTime(null);setConf(null);}
+  function handleLogout(){authLogout();lsSet("t365-cw-session",null);setSession(null);setMode("guest");setStep(1);setSelTime(null);setConf(null);}
 
   // Member book
   async function handleMemberBook(time){
@@ -609,6 +693,15 @@ function ClassWidget(){
               brief&&React.createElement("div",{className:"slot-brief"},
                 React.createElement("div",{className:"slot-brief-lbl"},"SESSION BRIEF"),
                 React.createElement("div",{className:"slot-brief-txt"},brief)
+              ),
+              openBrief===time&&React.createElement("div",{className:"att-wrap"},
+                React.createElement("div",{className:"att-lbl"},"WHO'S ATTENDING"),
+                (function(){
+                  const who=attendeesFor(selDK,time);
+                  return who.length===0
+                    ?React.createElement("div",{className:"att-none"},"No one booked yet")
+                    :who.map((b,i)=>React.createElement("div",{key:i,className:"att-row"},b.name||"\u2014"));
+                })()
               )
             );
           })
