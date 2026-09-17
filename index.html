@@ -6683,7 +6683,18 @@ Now write the ${weeks}-week class. Reply with ONLY the JSON.`;
   function cycleStatusLabel(cycle){
     if(!cycle.is_active)return{text:"OFF",cls:""};
     const{current}=computeSCQueue(cycles.filter(c=>c.session_type===cycle.session_type&&c.is_active));
-    if(!current)return{text:`STARTS ${fmtScheduleDate(cycle.queued_at)} · ENDS ${fmtScheduleDate(cycleEndDate(cycle))}`,cls:"queued"};
+    // No current block means one of two OPPOSITE things, and they must not share
+    // a label: nothing has started yet, or everything has already finished.
+    // Before the queue walker was fixed, the last block was pinned as current
+    // forever so `current` was never null here and this branch only ever meant
+    // "not started". Now it also catches finished blocks, and calling a block
+    // that ended on 6 Sep "STARTS 9 AUG" reads like it is still waiting to run.
+    if(!current){
+      const ended=cycleEndDate(cycle)<=Date.now();
+      return ended
+        ?{text:`COMPLETED ${fmtScheduleDate(cycleEndDate(cycle))}`,cls:"past"}
+        :{text:`STARTS ${fmtScheduleDate(cycle.queued_at)} · ENDS ${fmtScheduleDate(cycleEndDate(cycle))}`,cls:"queued"};
+    }
     if(current.cycle.id===cycle.id)return{text:`WEEK ${current.week} OF ${cycle.num_weeks} · ENDS ${fmtScheduleDate(cycleEndDate(cycle))}`,cls:"live"};
     if(cycle.queued_at<current.cycle.queued_at)return{text:`COMPLETED ${fmtScheduleDate(cycleEndDate(cycle))}`,cls:"past"};
     return{text:`QUEUED · AFTER "${current.cycle.name.toUpperCase()}"`,cls:"queued"};
