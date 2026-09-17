@@ -2955,7 +2955,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
     return()=>window.removeEventListener("popstate",handlePop);
   },[selectedMember]);
   useEffect(()=>{
-    if((admSeg==="members"||admSeg==="possible"||admSeg==="functions"||(admSeg==="sections"&&isMaster))&&!membersLoaded){
+    if((admSeg==="members"||admSeg==="leads"||admSeg==="functions"||(admSeg==="sections"&&isMaster))&&!membersLoaded){
       sbGet("members","select=*&order=name.asc").then(data=>{setMembers(data||[]);setMembersLoaded(true);});
       // Every attendance on record, reduced to the latest per member.
       sbGet("bookings","checked_in=eq.true&select=email,date_key").then(rows=>{
@@ -2969,7 +2969,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
       });
       sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__MASTER_HIDDEN__")+"&select=content").then(r=>{setMasterHidden(!!(r&&r.length&&r[0].content==="1"));});
     }
-    if(admSeg==="possible"&&!prospectsLoaded){
+    if(admSeg==="leads"&&!prospectsLoaded){
       Promise.all([
         sbGet("prospects","select=*&order=created_at.desc"),
         sbGet("bookings","is_guest=is.true&select=email,name,phone,date_key,time,whanau,checked_in")
@@ -3002,17 +3002,17 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
     return days>LAPSED_DAYS?days:null;
   }
   const visMembers=masterHidden?members.filter(m=>m.email!==ADMIN_EMAIL):members;
-  // ── POSSIBLE MEMBERS ──────────────────────────────────────────────────────
-  // Anyone who has booked as a guest and is not in members, plus anyone added
-  // by hand. Derived on every load, so the moment someone signs up they drop
-  // off this list by themselves — nothing to tidy up.
+  // ── LEADS ─────────────────────────────────────────────────────────────────
+  // Anyone who has booked without an account, plus anyone an admin adds by
+  // hand. Nobody is ever removed: a lead who signs up stays here marked
+  // CONVERTED, so the list is a running record of how many turn into members.
   const memberEmails=new Set(members.map(m=>String(m.email||"").trim().toLowerCase()).filter(Boolean));
   const pmKey=e=>String(e||"").trim().toLowerCase();
   const possibleList=(()=>{
     const map=new Map();
     const get=e=>{
       const k=pmKey(e); if(!k)return null;
-      if(!map.has(k))map.set(k,{email:String(e).trim(),name:"",phone:"",visits:0,whanau:0,last:"",manual:false,joined:false,rowId:null});
+      if(!map.has(k))map.set(k,{email:String(e).trim(),name:"",phone:"",visits:0,whanau:0,last:"",manual:false,joined:false,isMember:false,rowId:null});
       return map.get(k);
     };
     // Oldest first, so the most recent name and phone are the ones that stick.
@@ -3030,12 +3030,23 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
       p.joined=!!r.joined; p.rowId=r.id;
       if(r.source==="manual"&&p.visits===0)p.manual=true;
     });
+    // Signing up is the conversion, so the members table decides it — the tick
+    // is only for someone who joined without the app noticing. Either counts.
+    const byEmail={};members.forEach(m=>{const k=pmKey(m.email);if(k)byEmail[k]=m;});
+    map.forEach(p=>{
+      const m=byEmail[pmKey(p.email)];
+      if(!m)return;
+      p.isMember=true;p.joined=true;
+      if(m.name)p.name=m.name;
+      if(!p.phone&&m.phone)p.phone=m.phone;
+    });
     return [...map.values()]
-      .filter(p=>!memberEmails.has(pmKey(p.email)))
       .sort((a,b)=>(a.joined?1:0)-(b.joined?1:0)
         ||String(b.last||"").localeCompare(String(a.last||""))
         ||String(a.name||a.email).localeCompare(String(b.name||b.email)));
   })();
+  const convCount=possibleList.filter(p=>p.joined).length;
+  const convRate=possibleList.length?Math.round(convCount/possibleList.length*100):0;
   const pmDateLabel=dk=>{
     if(!dk)return"";
     const d=new Date(dk+"T00:00:00");
@@ -3047,6 +3058,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
     setProspects(fresh||[]);
   }
   async function toggleProspectJoined(p){
+    // A real member converted for real — that is not a tick to be undone.
+    if(p.isMember){showToast("Already a member");return;}
     const next=!p.joined;
     if(p.rowId!=null){
       setProspects(prev=>prev.map(r=>r.id===p.rowId?{...r,joined:next}:r));
@@ -3118,7 +3131,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
     ),
     React.createElement("div",{className:"adm-seg"},
       React.createElement("button",{"data-adm":"members",className:`adm-seg-btn${admSeg==="members"?" aas":""}`,onClick:()=>setAdmSeg("members")},"MEMBERS"),
-      React.createElement("button",{"data-adm":"possible",className:`adm-seg-btn${admSeg==="possible"?" aas":""}`,onClick:()=>setAdmSeg("possible")},"POSSIBLE MEMBERS"),
+      React.createElement("button",{"data-adm":"leads",className:`adm-seg-btn${admSeg==="leads"?" aas":""}`,onClick:()=>setAdmSeg("leads")},"LEADS"),
       React.createElement("button",{"data-adm":"classes",className:`adm-seg-btn${admSeg==="classes"?" aas":""}`,onClick:()=>setAdmSeg("classes")},"CLASSES"),
       (isMaster||mFlags.welladm)&&React.createElement("button",{"data-adm":"wellness",className:`adm-seg-btn${admSeg==="wellness"?" aas":""}`,onClick:()=>setAdmSeg("wellness")},"WELLNESS"),
       canScBuild&&React.createElement("button",{"data-adm":"scbuilder",className:`adm-seg-btn${admSeg==="scbuilder"?" aas":""}`,onClick:()=>setAdmSeg("scbuilder")},"S&C BUILDER"),
@@ -3170,23 +3183,28 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
         );
       })
     )),
-    admSeg==="possible"&&(!prospectsLoaded||!membersLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
+    admSeg==="leads"&&(!prospectsLoaded||!membersLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
     :React.createElement(React.Fragment,null,
-      React.createElement("div",{className:"adm-stats-row"},
+      React.createElement("div",{className:"adm-stats-row tight"},
         React.createElement("div",{className:"adm-stat"},
-          React.createElement("div",{className:"adm-stat-num"},possibleList.filter(p=>!p.joined).length),
-          React.createElement("div",{className:"adm-stat-lbl"},"POSSIBLE")),
+          React.createElement("div",{className:"adm-stat-num"},possibleList.length),
+          React.createElement("div",{className:"adm-stat-lbl"},"LEADS")),
         React.createElement("div",{className:"adm-stat"},
-          React.createElement("div",{className:"adm-stat-num"},possibleList.filter(p=>p.joined).length),
-          React.createElement("div",{className:"adm-stat-lbl"},"JOINED"))
+          React.createElement("div",{className:"adm-stat-num"},convCount),
+          React.createElement("div",{className:"adm-stat-lbl"},"CONVERTED")),
+        React.createElement("div",{className:"adm-stat"},
+          React.createElement("div",{className:"adm-stat-num"},convRate+"%"),
+          React.createElement("div",{className:"adm-stat-lbl"},"CONVERSION"))
       ),
       React.createElement("div",{style:{fontSize:8,letterSpacing:"0.1em",color:"#555",lineHeight:1.7,marginBottom:12}},
-        "Anyone from the public who has booked without an account, plus anyone you add by hand. They come off this list on their own once they sign up."),
+        "Anyone who books a class without an account is added here automatically.",
+        React.createElement("br",null),
+        "Admin can also add leads manually."),
       React.createElement("button",{onClick:()=>setAddingProspect(v=>!v),
         style:{width:"100%",background:addingProspect?"none":"#0a1620",border:"1px solid "+(addingProspect?"#2a2a2a":"#1d9bf0"),
                borderRadius:0,color:addingProspect?"#666":"#1d9bf0",fontFamily:"'Bebas Neue',sans-serif",
                fontSize:14,letterSpacing:"0.12em",padding:"10px 14px",cursor:"pointer",marginBottom:10}},
-        addingProspect?"CANCEL":"+ ADD A CONTACT"),
+        addingProspect?"CANCEL":"+ ADD A LEAD"),
       addingProspect&&React.createElement("div",{style:{background:"#141414",border:"1px solid #888",padding:14,marginBottom:12}},
         [["NAME",pmName,setPmName,"text","Jane Ngata"],
          ["EMAIL",pmEmail,setPmEmail,"email","jane@example.com"],
@@ -3202,33 +3220,43 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
                  cursor:pmBusy?"default":"pointer",opacity:pmBusy?0.5:1}},pmBusy?"SAVING...":"SAVE")
       ),
       possibleList.length===0
-        ?React.createElement("div",{className:"no-bk"},"NO POSSIBLE MEMBERS YET")
+        ?React.createElement("div",{className:"no-bk"},"NO LEADS YET")
         :possibleList.map((p,i)=>React.createElement("div",{key:pmKey(p.email)||i,className:"adm-member-card",
-            style:{cursor:"default",borderColor:p.joined?"#2a4a2e":undefined,opacity:p.joined?0.72:1}},
-          React.createElement("div",{className:"adm-mc-top"},
-            React.createElement("div",{style:{minWidth:0}},
-              React.createElement("div",{className:"adm-mc-name"},(p.name||"NO NAME GIVEN").toUpperCase())),
-            React.createElement("button",{onClick:()=>toggleProspectJoined(p),title:p.joined?"Joined":"Mark as joined",
-              style:{flexShrink:0,width:30,height:30,borderRadius:0,background:p.joined?"#0a140c":"none",
-                     border:"1px solid "+(p.joined?"#4a8a54":"#2a2a2a"),color:p.joined?"#6fbf7a":"#333",
-                     fontSize:15,lineHeight:1,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}},"✓")
-          ),
-          p.joined&&React.createElement("div",{className:"adm-mc-detail"},
-            React.createElement("span",{style:{color:"#6fbf7a",fontWeight:700,letterSpacing:"0.1em"}},"JOINED")),
-          React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,p.email)),
-          p.phone&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,p.phone)),
-          p.whanau>0&&React.createElement("div",{className:"adm-mc-detail"},
-            React.createElement("span",{style:{color:"#7cc4f0",fontWeight:700,letterSpacing:"0.1em"}},
-              p.whanau+" WHĀNAU EVENT"+(p.whanau!==1?"S":""))),
-          React.createElement("div",{className:"adm-mc-detail"},
-            p.visits>0
-              ?`${p.visits} booking${p.visits!==1?"s":""} as a guest · last ${pmDateLabel(p.last)}`
-              :"Added by hand"),
-          p.manual&&React.createElement("div",{style:{marginTop:8}},
-            React.createElement("button",{onClick:()=>removeProspect(p),
-              style:{background:"none",border:"1px solid #2a2a2a",borderRadius:0,color:"#555",
-                     fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.1em",
-                     padding:"5px 12px",cursor:"pointer"}},"REMOVE"))
+            style:{cursor:"default",borderColor:p.joined?"#4a8a54":undefined}},
+          React.createElement("div",{className:"adm-mc-top",style:{alignItems:"flex-start",gap:12}},
+            React.createElement("div",{style:{minWidth:0,flex:1}},
+              React.createElement("div",{className:"adm-mc-name"},(p.name||"NO NAME GIVEN").toUpperCase()),
+              p.joined&&React.createElement("div",{className:"adm-mc-detail"},
+                React.createElement("span",{style:{color:"#6fbf7a",fontWeight:700,letterSpacing:"0.1em"}},
+                  p.isMember?"CONVERTED \u00b7 NOW A MEMBER":"CONVERTED")),
+              React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,p.email)),
+              p.phone&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,p.phone)),
+              p.whanau>0&&React.createElement("div",{className:"adm-mc-detail"},
+                React.createElement("span",{style:{color:"#7cc4f0",fontWeight:700,letterSpacing:"0.1em"}},
+                  p.whanau+" WH\u0100NAU EVENT"+(p.whanau!==1?"S":""))),
+              React.createElement("div",{className:"adm-mc-detail"},
+                p.visits>0
+                  ?`Added from the widget \u00b7 ${p.visits} booking${p.visits!==1?"s":""} \u00b7 last ${pmDateLabel(p.last)}`
+                  :"Added by Admin")
+            ),
+            // Same right-hand column as a member card: the initials disc, with
+            // the tick under it and, for a hand-added lead, an X under that.
+            React.createElement("div",{style:{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:7}},
+              React.createElement("div",{style:{width:32,height:32,borderRadius:"50%",background:"#1a1a1a",
+                border:"1px solid "+(p.joined?"#4a8a54":"#1d9bf0"),display:"flex",alignItems:"center",
+                justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,color:"#666"}},initials(p.name||"?")),
+              React.createElement("button",{onClick:()=>toggleProspectJoined(p),
+                title:p.isMember?"Already a member":(p.joined?"Converted \u2014 tap to undo":"Mark as converted"),
+                style:{width:32,height:26,borderRadius:0,background:p.joined?"#0a140c":"none",
+                       border:"1px solid "+(p.joined?"#4a8a54":"#2a2a2a"),color:p.joined?"#6fbf7a":"#333",
+                       fontSize:14,lineHeight:1,cursor:p.isMember?"default":"pointer",
+                       display:"flex",alignItems:"center",justifyContent:"center"}},"\u2713"),
+              p.manual&&React.createElement("button",{onClick:()=>removeProspect(p),title:"Remove this lead",
+                style:{width:32,height:26,borderRadius:0,background:"none",border:"1px solid #2a2a2a",color:"#555",
+                       fontSize:13,lineHeight:1,cursor:"pointer",
+                       display:"flex",alignItems:"center",justifyContent:"center"}},"\u2715")
+            )
+          )
         ))
     )),
     admSeg==="classes"&&React.createElement(React.Fragment,null,
@@ -9021,8 +9049,11 @@ function App(){
       });
     }catch(e){}
   },[tab]);
-  const ADMIN_SEG_ORDER=["members","possible","classes","wellness","scbuilder","sections","functions","onboarding","coaching"];
-  const [admSeg,setAdmSeg]=useState(()=>T365_DEEP_LINK==="library"?"coaching":lsGet("t365-admseg","members"));
+  const ADMIN_SEG_ORDER=["members","leads","classes","wellness","scbuilder","sections","functions","onboarding","coaching"];
+  // "possible" was this tab's first name; anyone whose browser still has it
+  // stored would otherwise land on an admin screen with nothing on it.
+  const [admSeg,setAdmSeg]=useState(()=>T365_DEEP_LINK==="library"?"coaching"
+    :(s=>s==="possible"?"leads":s)(lsGet("t365-admseg","members")));
   useEffect(()=>{lsSet("t365-admseg",admSeg);},[admSeg]);
   // Keep the active admin sub-section scrolled into view when it changes
   useEffect(()=>{
