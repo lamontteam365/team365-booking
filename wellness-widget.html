@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{background:#080808;color:#fff;font-family:'DM Sans',sans-serif}
+html,body{margin:0;background:#080808;color:#fff;font-family:'DM Sans',sans-serif}
 .widget{max-width:520px;margin:0 auto;padding:24px 16px 48px;min-height:680px}
 /* Header (centered, static) */
 .wl-head{text-align:center;margin-bottom:22px}
@@ -299,17 +299,12 @@ function WellnessWidget(){
   return React.createElement("div",{className:"widget"},
     // Centered header
     React.createElement("div",{className:"wl-head"},
-      React.createElement("div",{className:"mode-title"},"SAUNA & COLD PLUNGE"),
-      React.createElement("div",{className:"w-sub"},"MONDAY – SATURDAY"),
+      React.createElement("div",{className:"mode-title"},"WELLNESS SESSION"),
       React.createElement("div",{className:"wl-badge"},"BOOK A SESSION")
     ),
     // Booking closed (admin toggle off)
     flagLoaded&&!wellnessEnabled&&React.createElement("div",{className:"conf-msg",style:{textAlign:"center",padding:"30px 10px",marginBottom:0}},
       "Sauna & Cold Plunge booking is currently closed. Please check back soon, or contact us directly to book your session."
-    ),
-    // Progress dots
-    wellnessEnabled&&step<3&&React.createElement("div",{className:"w-dots"},
-      [0,1].map(i=>React.createElement("div",{key:i,className:`w-dot${step-1===i?" active":step-1>i?" done":""}`}))
     ),
     // STEP 1: Day + Time
     wellnessEnabled&&step===1&&React.createElement("div",null,
