@@ -83,6 +83,7 @@ html,body{background:#080808;min-height:100vh;font-family:'DM Sans',sans-serif;c
 .c-row.expanded{border-color:#1d9bf0;border-bottom-left-radius:0;border-bottom-right-radius:0}
 .c-time{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:0.03em;color:#fff;min-width:96px;line-height:1}
 .c-class-name{font-size:8px;letter-spacing:0.12em;color:#1d9bf0;font-weight:600;margin-top:4px;font-family:'DM Sans',sans-serif}
+.wh-row{font-size:8px;letter-spacing:0.14em;color:#7cc4f0;font-weight:600;margin-top:2px;font-family:'DM Sans',sans-serif}
 .c-mid{flex:1;display:flex;flex-direction:column;gap:7px}
 .c-bars{display:flex;gap:3px}
 .c-bar{flex:1;height:3px;border-radius:0;background:#2a2a2a}
@@ -206,14 +207,14 @@ function resolveClass(dk,time,ctx){
     spots:(row&&row.max_spots)||(rule&&rule.spots)||((ctx.dowSlotLimits||{})[dow+":"+time])||((ctx.dowLimits||{})[dow])||MAX_SPOTS,
     type:(row&&row.session_type)||(rule&&rule.type)||(LEGACY_STRENGTH_DOWS.indexOf(dow)>=0?"Strength":"HIIT"),
     duration:(row&&row.duration_min)||(rule&&rule.duration)||DEFAULT_DURATION,
-    // Whanau: a free community class. Deliberately OR, not the ||-fallthrough
-    // used above — either the dated row or the recurring rule saying "free" makes
-    // it free. A per-date row gets created for unrelated reasons (changing spots
-    // for one week), and it would carry whanau=false by default; letting that
-    // quietly un-free a recurring Whanau class would start charging people's
-    // allowance with nothing on screen to show for it. Erring towards free is
-    // visible — the class keeps its * — so a mistake here announces itself.
-    whanau:(!!(row&&row.whanau))||(!!(rule&&rule.whanau))
+    // Whanau: a free community event. Three-state on the dated row, so one date
+    // can be turned back into an ordinary paid class without touching the rule:
+    //   row.whanau == null   nothing said about this date -> use the rule
+    //   row.whanau === true  free on this date
+    //   row.whanau === false explicitly NOT free, even though the rule says free
+    // A row created for an unrelated reason (changing spots for one week) leaves
+    // it null, so it inherits rather than silently un-freeing the class.
+    whanau:(row&&row.whanau!=null)?!!row.whanau:!!(rule&&rule.whanau)
   };
 }
 
@@ -341,6 +342,9 @@ function App(){
     dateRow:(dk,t)=>(dk===selDK?(classRows[t]||null):null)};
   const classOf=(time)=>resolveClass(selDK,time,classCtx);
   function getClassName(time){const c=classOf(time);return c?c.name:"";}
+  // Whanau events are marked on the kiosk too, so whoever is on the door can see
+  // at a glance that this one is the free community session.
+  function isWhanauSlot(time){const c=classOf(time);return !!(c&&c.whanau);}
   async function toggleCheckIn(bk){
     if(busy[bk.id])return;
     setBusy(p=>({...p,[bk.id]:true}));
@@ -404,7 +408,8 @@ function App(){
                   },
                     React.createElement("div",{style:{display:"flex",flexDirection:"column",minWidth:96}},
                       React.createElement("div",{className:"c-time"},fmt12(time)),
-                      className&&React.createElement("div",{className:"c-class-name"},className)
+                      className&&React.createElement("div",{className:"c-class-name"},className),
+                      isWhanauSlot(time)&&React.createElement("div",{className:"wh-row"},"WH\u0100NAU EVENT")
                     ),
                     React.createElement("div",{className:"c-mid"},
                       React.createElement("div",{className:"c-bars"},

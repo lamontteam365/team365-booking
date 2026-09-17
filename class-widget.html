@@ -111,10 +111,10 @@ html,body{background:#080808;color:#fff;font-family:'DM Sans',sans-serif}
 /* Payment */
 .pay-lbl{font-size:10px;letter-spacing:0.18em;color:#bbb;font-weight:600;margin-bottom:10px}
 .pay-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px}
-.wh-note{background:#0c1614;border:1px solid #2c5c4c;padding:13px 14px;margin-bottom:18px}
-.wh-note-t{font-size:12px;letter-spacing:0.1em;color:#4ea88a;font-weight:600;margin-bottom:4px}
+.wh-note{background:#0b1620;border:1px solid #2a5a7a;padding:13px 14px;margin-bottom:18px}
+.wh-note-t{font-size:12px;letter-spacing:0.1em;color:#7cc4f0;font-weight:600;margin-bottom:4px}
 .wh-note-s{font-size:11px;color:#888;line-height:1.6;font-weight:300}
-.wh-row{font-size:8px;letter-spacing:0.14em;color:#4ea88a;font-weight:600;margin-top:2px}
+.wh-row{font-size:8px;letter-spacing:0.14em;color:#7cc4f0;font-weight:600;margin-top:2px}
 .pass-box{background:#0e0e0e;border:1px solid #2a2a2a;border-radius:0;padding:13px 14px;margin-bottom:18px}
 .pass-lbl{font-size:9px;letter-spacing:0.16em;color:#555;font-weight:600;margin-bottom:8px}
 .pass-row{display:flex;gap:7px}
@@ -221,14 +221,14 @@ function resolveClass(dk,time,ctx){
     spots:(row&&row.max_spots)||(rule&&rule.spots)||((ctx.dowSlotLimits||{})[dow+":"+time])||((ctx.dowLimits||{})[dow])||MAX_SPOTS,
     type:(row&&row.session_type)||(rule&&rule.type)||(LEGACY_STRENGTH_DOWS.indexOf(dow)>=0?"Strength":"HIIT"),
     duration:(row&&row.duration_min)||(rule&&rule.duration)||DEFAULT_DURATION,
-    // Whanau: a free community class. Deliberately OR, not the ||-fallthrough
-    // used above — either the dated row or the recurring rule saying "free" makes
-    // it free. A per-date row gets created for unrelated reasons (changing spots
-    // for one week), and it would carry whanau=false by default; letting that
-    // quietly un-free a recurring Whanau class would start charging people's
-    // allowance with nothing on screen to show for it. Erring towards free is
-    // visible — the class keeps its * — so a mistake here announces itself.
-    whanau:(!!(row&&row.whanau))||(!!(rule&&rule.whanau))
+    // Whanau: a free community event. Three-state on the dated row, so one date
+    // can be turned back into an ordinary paid class without touching the rule:
+    //   row.whanau == null   nothing said about this date -> use the rule
+    //   row.whanau === true  free on this date
+    //   row.whanau === false explicitly NOT free, even though the rule says free
+    // A row created for an unrelated reason (changing spots for one week) leaves
+    // it null, so it inherits rather than silently un-freeing the class.
+    whanau:(row&&row.whanau!=null)?!!row.whanau:!!(rule&&rule.whanau)
   };
 }
 
@@ -593,8 +593,8 @@ function ClassWidget(){
                 onClick:()=>setOpenBrief(t=>t===time?null:time)},
               React.createElement("div",{className:"c-time-wrap"},
                 React.createElement("div",{className:"c-time"},fmt12(time)),
-                React.createElement("div",{className:"c-class"},(getSlotName(time,selDK)||"").toUpperCase()+(wh?" *":"")),
-                wh&&React.createElement("div",{className:"wh-row"},"FREE \u00b7 WH\u0100NAU")
+                React.createElement("div",{className:"c-class"},(getSlotName(time,selDK)||"").toUpperCase()),
+                wh&&React.createElement("div",{className:"wh-row"},"WH\u0100NAU EVENT")
               ),
               React.createElement("div",{className:"c-mid"},
                 React.createElement("div",{className:"c-bars"},Array.from({length:Math.min(maxSp,20)}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}`}))),
@@ -642,16 +642,16 @@ function ClassWidget(){
             visibleTimes.map(time=>{
               const taken=bookings.filter(b=>b.date_key===selDK&&b.time===time).length;const maxSp=getMaxSpots(time,selDK);const left=maxSp-taken;
               const full=left===0;const low=left<=3&&left>0;const past=isPastSlot(selDate,time);
-              const brief=selTime===time?getSlotBrief(time,selDK):"";
+              const brief=openBrief===time?getSlotBrief(time,selDK):"";
               const wh=isWhanau(time,selDK);
               return React.createElement(React.Fragment,{key:time},
                 React.createElement("div",{
                 className:`slot-row${selTime===time?" sel":""}${past?" past":full?" off":""}`,
-                onClick:()=>{if(!full&&!past)setSelTime(time);}},
+                onClick:()=>{if(!full&&!past)setOpenBrief(t=>t===time?null:time);}},
                 React.createElement("div",{className:"slot-time-wrap"},
                   React.createElement("div",{className:"slot-time"},fmt12(time)),
-                  React.createElement("div",{className:"slot-class"},(getSlotName(time,selDK)||"").toUpperCase()+(wh?" *":"")),
-                  wh&&React.createElement("div",{className:"wh-row"},"FREE \u00b7 WH\u0100NAU")
+                  React.createElement("div",{className:"slot-class"},(getSlotName(time,selDK)||"").toUpperCase()),
+                  wh&&React.createElement("div",{className:"wh-row"},"WH\u0100NAU EVENT")
                 ),
                 React.createElement("div",{className:"slot-mid"},
                   React.createElement("div",{className:"slot-bars"},Array.from({length:Math.min(maxSp,20)}).map((_,i)=>React.createElement("div",{key:i,className:`slot-bar${i<taken?" t":""}`}))),
@@ -696,7 +696,7 @@ function ClassWidget(){
         // otherwise somebody burns their one-a-month pass on a class that was
         // already free, and does not get it back.
         isFreeClass()&&React.createElement("div",{className:"wh-note"},
-          React.createElement("div",{className:"wh-note-t"},"FREE \u00b7 WH\u0100NAU CLASS"),
+          React.createElement("div",{className:"wh-note-t"},"WH\u0100NAU EVENT"),
           React.createElement("div",{className:"wh-note-s"},"Open to everyone and free to attend. Nothing to pay \u2014 just turn up.")
         ),
         // Bring a friend: a member's pass covers this booking, so no payment.

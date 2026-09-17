@@ -282,8 +282,10 @@ html,body{background:#080808;min-height:100vh}
 .adm-remove-btn:hover{color:#e06040}
 .adm-empty{text-align:center;padding:14px;font-size:10px;letter-spacing:0.14em;color:#333;font-weight:500}
 .adm-no-classes{text-align:center;padding:48px 0;font-size:11px;letter-spacing:0.16em;color:#333;line-height:2.4}
-.adm-stats-row{display:flex;gap:8px;margin-bottom:16px}
-.adm-stat{flex:1;background:#141414;border:1px solid #888;border-radius:0;padding:12px;text-align:center}
+.adm-stats-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+/* flex-basis 88px means up to three boxes sit on a phone row and the rest
+   wrap onto a second line, rather than five boxes squashing to illegible. */
+.adm-stat{flex:1 1 88px;background:#141414;border:1px solid #888;border-radius:0;padding:12px;text-align:center}
 .adm-stat-num{font-family:'Bebas Neue',sans-serif;font-size:32px;color:#fff;line-height:1}
 .adm-stat-lbl{font-size:9px;letter-spacing:0.16em;color:#666;font-weight:600;margin-top:3px}
 .adm-member-card{background:#141414;border:1px solid #888;border-radius:0;padding:14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
@@ -741,14 +743,14 @@ function resolveClass(dk,time,ctx){
     spots:(row&&row.max_spots)||(rule&&rule.spots)||((ctx.dowSlotLimits||{})[dow+":"+time])||((ctx.dowLimits||{})[dow])||MAX_SPOTS,
     type:(row&&row.session_type)||(rule&&rule.type)||(LEGACY_STRENGTH_DOWS.indexOf(dow)>=0?"Strength":"HIIT"),
     duration:(row&&row.duration_min)||(rule&&rule.duration)||DEFAULT_DURATION,
-    // Whanau: a free community class. Deliberately OR, not the ||-fallthrough
-    // used above — either the dated row or the recurring rule saying "free" makes
-    // it free. A per-date row gets created for unrelated reasons (changing spots
-    // for one week), and it would carry whanau=false by default; letting that
-    // quietly un-free a recurring Whanau class would start charging people's
-    // allowance with nothing on screen to show for it. Erring towards free is
-    // visible — the class keeps its * — so a mistake here announces itself.
-    whanau:(!!(row&&row.whanau))||(!!(rule&&rule.whanau))
+    // Whanau: a free community event. Three-state on the dated row, so one date
+    // can be turned back into an ordinary paid class without touching the rule:
+    //   row.whanau == null   nothing said about this date -> use the rule
+    //   row.whanau === true  free on this date
+    //   row.whanau === false explicitly NOT free, even though the rule says free
+    // A row created for an unrelated reason (changing spots for one week) leaves
+    // it null, so it inherits rather than silently un-freeing the class.
+    whanau:(row&&row.whanau!=null)?!!row.whanau:!!(rule&&rule.whanau)
   };
 }
 
@@ -1118,6 +1120,8 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
   const [concBusy,setConcBusy]=useState(false);
   const [concMsg,setConcMsg]=useState("");
   const [noShows,setNoShows]=useState([]);
+  const [communityCount,setCommunityCount]=useState(0);
+  const [wellCount,setWellCount]=useState(0);
   // Email preferences. A member can also set these from the unsubscribe link in
   // any email; this is so you can see and change them without hunting for one.
   const [emPrefs,setEmPrefs]=useState({
@@ -1132,11 +1136,13 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
     (async()=>{
       // Every booking this member has ever had — not the forward-only window the
       // main app keeps in memory, which has no past dates in it at all.
-      const [all,base,adj]=await Promise.all([
+      const [all,base,adj,wellAll]=await Promise.all([
         sbGet("bookings",`email=eq.${encodeURIComponent(member.email)}&select=id,date_key,time,checked_in,excused,session_type,whanau`),
         sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__CONCESSION__"+member.email)}&select=content`),
-        sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__STATS_ADJ__"+member.email)}&select=content`)
+        sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__STATS_ADJ__"+member.email)}&select=content`),
+        sbGet("wellness_bookings",`email=eq.${encodeURIComponent(member.email)}&select=date_key`)
       ]);
+      setWellCount((wellAll||[]).length);
       if(adj&&adj.length&&adj[0].content){
         try{const a=JSON.parse(adj[0].content);
           setStatsAdj({booked:parseInt(a.booked,10)||0,attended:parseInt(a.attended,10)||0});
@@ -1150,6 +1156,9 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
       // own screen sees. Counting them here and not there is how the two
       // screens end up telling the member two different numbers.
       const counted=rows.filter(r=>!isWhanauBk(r));
+      // The community ledger, same definition as the member's own screen:
+      // Whanau classes actually checked in to.
+      setCommunityCount(rows.filter(r=>r.checked_in&&isWhanauBk(r)).length);
       setConcInfo({
         checkins:counted.filter(r=>r.checked_in).length,
         baseline:b,
@@ -1332,6 +1341,16 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
         React.createElement("div",{className:"adm-stat"},
           React.createElement("div",{className:"adm-stat-num",style:{color:noShows.filter(n=>!n.excused).length>0?"#e06040":"#fff"}},noShows.filter(n=>!n.excused).length),
           React.createElement("div",{className:"adm-stat-lbl"},"NO-SHOWS")
+        ),
+        // Same two figures the member sees on their own screen, computed the same
+        // way, so the two screens cannot tell them different numbers.
+        React.createElement("div",{className:"adm-stat"},
+          React.createElement("div",{className:"adm-stat-num",style:{color:"#7cc4f0"}},communityCount),
+          React.createElement("div",{className:"adm-stat-lbl"},"COMMUNITY EVENTS")
+        ),
+        React.createElement("div",{className:"adm-stat"},
+          React.createElement("div",{className:"adm-stat-num"},wellCount),
+          React.createElement("div",{className:"adm-stat-lbl"},"WELLNESS")
         )
       ),
       // ── Correcting the counts ─────────────────────────────────────────────
@@ -2272,19 +2291,17 @@ function ClassBriefBox({name,briefs,onChange,value}){
 // The WHANAU switch. Used in + NEW CLASS and on an existing class's panel, so
 // the two can never describe the same setting differently.
 function WhanauToggle({on,onChange}){
-  return React.createElement("div",{style:{marginBottom:12,border:"1px solid "+(on?"#2c5c4c":"#222"),background:on?"#0c1614":"#0e0e0e",padding:"11px 12px"}},
+  return React.createElement("div",{style:{marginBottom:12,border:"1px solid "+(on?"#2a5a7a":"#222"),background:on?"#0b1620":"#0e0e0e",padding:"11px 12px"}},
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,cursor:"pointer"},onClick:()=>onChange(!on)},
       React.createElement("div",null,
-        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",color:on?"#4ea88a":"#888"}},"WH\u0100NAU CLASS"),
+        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",color:on?"#7cc4f0":"#888"}},"WH\u0100NAU CLASS"),
         React.createElement("div",{style:{fontSize:8,letterSpacing:"0.06em",color:"#555",lineHeight:1.6,marginTop:2}},
-          "Free and open to everyone \u2014 members and the public.")
+          "Free Community Event.")
       ),
-      React.createElement("div",{style:{flexShrink:0,width:38,height:21,borderRadius:11,background:on?"#4ea88a":"#2a2a2a",position:"relative",transition:"background .15s"}},
-        React.createElement("div",{style:{position:"absolute",top:2,left:on?19:2,width:17,height:17,borderRadius:9,background:on?"#04120e":"#666",transition:"left .15s"}})
+      React.createElement("div",{style:{flexShrink:0,width:38,height:21,borderRadius:11,background:on?"#7cc4f0":"#2a2a2a",position:"relative",transition:"background .15s"}},
+        React.createElement("div",{style:{position:"absolute",top:2,left:on?19:2,width:17,height:17,borderRadius:9,background:on?"#04121c":"#666",transition:"left .15s"}})
       )
-    ),
-    on&&React.createElement("div",{style:{fontSize:8,letterSpacing:"0.06em",color:"#4ea88a",lineHeight:1.7,marginTop:9,borderTop:"1px solid #1c3a30",paddingTop:8}},
-      "Counts for nothing: no weekly HIIT or Strength allowance, no concession credit, no classes attended, no milestones. Shown with a * in the app and the widget.")
+    )
   );
 }
 function NewClassForm({admDK,defaultDow,onCreate,showToast,classBriefs,saveClassBriefs}){
@@ -8810,6 +8827,10 @@ function App(){
   const [profTab,setProfTab]=useState("details");
   const [cropSrc,setCropSrc]=useState(null);
   const [myWellness,setMyWellness]=useState([]);
+  // Every wellness session this member has ever booked. myWellness above is
+  // forward-only (it drives UPCOMING WELLNESS), so it cannot answer "how many
+  // have I booked" — a member who has been coming for a year would read 0.
+  const [myWellnessAll,setMyWellnessAll]=useState(0);
   const [statCounts,setStatCounts]=useState({classes:0,wellness:0});
   const nowMY2=(()=>{const n=new Date();return`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`;})();
   const [statMonth,setStatMonth]=useState(nowMY2);
@@ -8863,6 +8884,7 @@ function App(){
   const isMaster=session?.email===ADMIN_EMAIL;
   const [mFlags,setMFlags]=useState({wk:true,welladm:true,sc:true,aibuild:true});
   const [concCheckins,setConcCheckins]=useState(0);
+  const [myCommunity,setMyCommunity]=useState(0);
   const [myAllBks,setMyAllBks]=useState([]);
   // The admin's correction to this member's headline counts, so MY BOOKINGS
   // shows the same two numbers the admin sees on their profile. Display only:
@@ -9024,12 +9046,14 @@ function App(){
     if(!session){setConcCheckins(0);setMyAttended(0);setConcBase(0);setMyAllBks([]);setMyStatsAdj({booked:0,attended:0});return;}
     let cancelled=false;
     (async()=>{
-      const [all,base,adj]=await Promise.all([
+      const [all,base,adj,wellAll]=await Promise.all([
         sbGet("bookings",`email=eq.${encodeURIComponent(session.email)}&select=id,date_key,checked_in,excused,whanau`),
         sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__CONCESSION__"+session.email)}&select=content`),
-        sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__STATS_ADJ__"+session.email)}&select=content`)
+        sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__STATS_ADJ__"+session.email)}&select=content`),
+        sbGet("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&select=date_key`)
       ]);
       if(cancelled)return;
+      setMyWellnessAll((wellAll||[]).length);
       if(adj&&adj.length&&adj[0].content){
         try{const a=JSON.parse(adj[0].content);
           setMyStatsAdj({booked:parseInt(a.booked,10)||0,attended:parseInt(a.attended,10)||0});
@@ -9038,6 +9062,9 @@ function App(){
       const rows=all||[];
       setMyAllBks(rows);
       setConcCheckins(rows.filter(r=>r.checked_in&&!r.excused&&!isWhanauBk(r)).length);
+      // Community events: Whanau classes actually turned up to. Counted here and
+      // nowhere else — it is a separate ledger, not part of CLASSES ATTENDED.
+      setMyCommunity(rows.filter(r=>r.checked_in&&isWhanauBk(r)).length);
       // What the member sees as CLASSES ATTENDED, and what the admin's profile
       // shows: simply whether they checked in. The concession figure above is a
       // different question and deliberately stays separate.
@@ -9784,10 +9811,11 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
               React.createElement("div",{style:{display:"flex",flexDirection:"column",minWidth:72}},
                 React.createElement("div",{className:"c-time",style:{minWidth:"unset"}},fmt12(time)),
                 (slotNames[`${selDK}:${time}`]||getDayClassName(selDK,time))&&React.createElement("div",{style:{fontSize:7,letterSpacing:"0.12em",color:"#1d9bf0",fontWeight:600,marginTop:1,fontFamily:"'DM Sans',sans-serif"}},
-                (slotNames[`${selDK}:${time}`]||getDayClassName(selDK,time))+(whanau?" *":"")),
-              // The * is the marker; this line says what it means, because a lone
-              // asterisk on a booking screen is a mystery rather than an invitation.
-              whanau&&React.createElement("div",{style:{fontSize:7,letterSpacing:"0.12em",color:"#4ea88a",fontWeight:600,marginTop:1,fontFamily:"'DM Sans',sans-serif"}},"FREE \u00b7 WH\u0100NAU")
+                slotNames[`${selDK}:${time}`]||getDayClassName(selDK,time)),
+              // The class name stays Team 365 blue; the event line sits beneath it
+              // in a lighter tint of the same blue, so it reads as a label on that
+              // class rather than as a second class.
+              whanau&&React.createElement("div",{style:{fontSize:7,letterSpacing:"0.12em",color:"#7cc4f0",fontWeight:600,marginTop:1,fontFamily:"'DM Sans',sans-serif"}},"WH\u0100NAU EVENT")
               ),
               React.createElement("div",{className:"c-mid"},
                 React.createElement("div",{className:`c-bars${userBkd?" cb-mine":""}`},Array.from({length:maxSp}).map((_,i)=>React.createElement("div",{key:i,className:`c-bar${i<taken?" ct":""}`}))),
@@ -9850,6 +9878,18 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         React.createElement("div",{className:"adm-stat"},
           React.createElement("div",{className:"adm-stat-num"},myUpcoming.length),
           React.createElement("div",{className:"adm-stat-lbl"},"UPCOMING")
+        ),
+        // A separate ledger. Whanau classes stay out of CLASSES BOOKED and
+        // CLASSES ATTENDED on purpose; this is where they are counted instead.
+        React.createElement("div",{className:"adm-stat"},
+          React.createElement("div",{className:"adm-stat-num",style:{color:"#7cc4f0"}},myCommunity),
+          React.createElement("div",{className:"adm-stat-lbl"},"COMMUNITY EVENTS")
+        ),
+        // Sauna + cold plunge, all-time booked. Wellness has no check-in, so
+        // "booked" is the only figure that is a fact rather than an inference.
+        showWellness&&React.createElement("div",{className:"adm-stat"},
+          React.createElement("div",{className:"adm-stat-num"},myWellnessAll),
+          React.createElement("div",{className:"adm-stat-lbl"},"WELLNESS")
         )
       ),
       React.createElement("button",{onClick:()=>setMyClsCol(c=>!c),style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",border:"none",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",marginBottom:10}},React.createElement("span",null,"UPCOMING CLASSES"),React.createElement("span",{style:{fontSize:11,transform:myClsCol?"rotate(-90deg)":"none",transition:"transform .15s"}},"▾")),
