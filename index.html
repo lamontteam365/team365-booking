@@ -1170,9 +1170,13 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
         total:counted.length,
         upcoming:counted.filter(r=>r.date_key>=today).length
       });
-      // A class that has been and gone with no check-in is a no-show. A free
-      // community class is not chased up as one.
-      setNoShows(counted.filter(r=>r.date_key<today&&!r.checked_in)
+      // A class that has been and gone with no check-in. Built from ROWS, not
+      // from `counted`: a Whanau event still needs to be correctable when
+      // somebody trained and the kiosk never saw them. Filtering them out here
+      // left no way to fix one at all. They are labelled in the list, and the
+      // NO-SHOWS figure above still counts paid classes only — a free event is
+      // not a no-show anyone gets chased about.
+      setNoShows(rows.filter(r=>r.date_key<today&&!r.checked_in)
                      .sort((a,b)=>a.date_key<b.date_key?1:-1));
     })();
   },[]);
@@ -1344,14 +1348,14 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
           React.createElement("div",{className:"adm-stat-lbl"},"TOTAL")
         ),
         React.createElement("div",{className:"adm-stat"},
-          React.createElement("div",{className:"adm-stat-num",style:{color:noShows.filter(n=>!n.excused).length>0?"#e06040":"#fff"}},noShows.filter(n=>!n.excused).length),
+          React.createElement("div",{className:"adm-stat-num",style:{color:noShows.filter(n=>!n.excused&&!isWhanauBk(n)).length>0?"#e06040":"#fff"}},noShows.filter(n=>!n.excused&&!isWhanauBk(n)).length),
           React.createElement("div",{className:"adm-stat-lbl"},"NO-SHOWS")
         ),
         // Same two figures the member sees on their own screen, computed the same
         // way, so the two screens cannot tell them different numbers.
         React.createElement("div",{className:"adm-stat"},
           React.createElement("div",{className:"adm-stat-num"},communityCount),
-          React.createElement("div",{className:"adm-stat-lbl"},"COMMUNITY EVENTS")
+          React.createElement("div",{className:"adm-stat-lbl"},"WH\u0100NAU EVENT")
         ),
         // Hidden when the wellness section itself is switched off, so the admin
         // screen does not show a number for a thing the studio is not running.
@@ -1453,7 +1457,9 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
                 (()=>{const d=new Date(n.date_key+"T12:00:00");return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()]+" "+d.getDate()+" "+MONTHS[d.getMonth()];})()
                 +(n.time?" \u00b7 "+fmt12(n.time):"")),
               React.createElement("div",{style:{fontSize:9,letterSpacing:"0.1em",color:n.excused?"#1d9bf0":"#e06040",fontWeight:600,marginTop:2}},
-                n.excused?"EXCUSED":"DID NOT ATTEND")
+                n.excused?"EXCUSED":"DID NOT ATTEND"),
+              // So it is obvious which ledger marking this attended will move.
+              isWhanauBk(n)&&React.createElement("div",{style:{fontSize:9,letterSpacing:"0.1em",color:"#7cc4f0",fontWeight:600,marginTop:2}},"WH\u0100NAU EVENT")
             ),
             React.createElement("div",{style:{display:"flex",gap:6,flexShrink:0}},
               // They were here — the kiosk just never saw them.
@@ -1463,10 +1469,14 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
                   setNsBusy(p=>({...p,[n.id]:true}));
                   const ok=await setBookingCheckedIn(n,true);
                   if(ok){
-                    // It is no longer a no-show, so it leaves this list and the
-                    // counts above recompute from the corrected record.
+                    // It is no longer a no-show, so it leaves this list. The +1
+                    // has to go to the ledger this booking actually belongs to:
+                    // a Whanau event moves the WHANAU EVENT box and must never touch
+                    // CLASSES ATTENDED, which is the whole point of keeping them
+                    // apart. Adding it blindly to checkins was wrong twice over.
                     setNoShows(prev=>prev.filter(x=>x.id!==n.id));
-                    setConcInfo(ci=>ci?{...ci,checkins:(ci.checkins||0)+1}:ci);
+                    if(isWhanauBk(n))setCommunityCount(c=>c+1);
+                    else setConcInfo(ci=>ci?{...ci,checkins:(ci.checkins||0)+1}:ci);
                   }
                   setNsBusy(p=>({...p,[n.id]:false}));
                 },
@@ -9888,7 +9898,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         // CLASSES ATTENDED on purpose; this is where they are counted instead.
         React.createElement("div",{className:"adm-stat"},
           React.createElement("div",{className:"adm-stat-num"},myCommunity),
-          React.createElement("div",{className:"adm-stat-lbl"},"COMMUNITY EVENTS")
+          React.createElement("div",{className:"adm-stat-lbl"},"WH\u0100NAU EVENT")
         ),
         // Sauna + cold plunge, all-time booked. Wellness has no check-in, so
         // "booked" is the only figure that is a fact rather than an inference.
@@ -9920,7 +9930,11 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
             React.createElement("div",null,
               React.createElement("div",{className:"my-date"},`${dayLbl.toUpperCase()} · ${dateStr(d).toUpperCase()}`),
               React.createElement("div",{className:"my-time"},fmt12(bk.time)),
-              React.createElement("div",{className:"my-sess"},clsName)
+              React.createElement("div",{className:"my-sess"},clsName),
+              // Same label as the booking screen. Read through the resolver
+              // rather than off bk.whanau, so a class switched to Wh\u0101nau after
+              // this booking was made still shows as free here.
+              isWhanauClass(bk.date_key,bk.time)&&React.createElement("div",{style:{fontSize:8,letterSpacing:"0.14em",color:"#7cc4f0",fontWeight:600,marginTop:2,fontFamily:"'DM Sans',sans-serif"}},"WH\u0100NAU EVENT")
             ),
             React.createElement("button",{className:"my-x",onClick:()=>handleCancel(bk.time,bk.date_key)},"Cancel")
           ));
