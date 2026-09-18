@@ -871,6 +871,20 @@ const MONTHS_FULL=["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUG
 const mondayOf=d=>{const x=new Date(d);x.setHours(0,0,0,0);const day=x.getDay();x.setDate(x.getDate()-(day===0?6:day-1));return x;};
 const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
 const toDS=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+// Is this booking still ahead of you? Four screens used to ask this by comparing
+// DATES ONLY, so a 6am class sat in MY BOOKINGS and in the admin counters until
+// midnight. It uses the same rule the booking screen already uses to grey a
+// class out (start time plus PAST_GRACE_MIN), so the two never disagree.
+function bookingUpcoming(b){
+  if(!b||!b.date_key)return false;
+  const today=toDS(new Date());
+  if(b.date_key>today)return true;
+  if(b.date_key<today)return false;
+  const parts=String(b.time||"").split(":");
+  const h=parseInt(parts[0])||0, m=parseInt(parts[1])||0;
+  const now=new Date();
+  return (h*60+m+PAST_GRACE_MIN) >= (now.getHours()*60+now.getMinutes());
+}
 const isToday=d=>toDS(d)===toDS(new Date());
 const isPastD=d=>toDS(d)<toDS(new Date());
 const fmt12=t=>{const[h,m]=t.split(":").map(Number);return`${h%12||12}:${String(m).padStart(2,"0")}${h<12?"am":"pm"}`;};
@@ -1118,7 +1132,7 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
   // holds no past dates, so it always read 0.
   const rawAttended=(concInfo&&concInfo.checkins)||0;
   const upcomingBks=concInfo?concInfo.upcoming
-    :bookings.filter(b=>b.email===member.email&&b.date_key>=toDS(new Date())).length;
+    :bookings.filter(b=>b.email===member.email&&bookingUpcoming(b)).length;
   const rawTotal=concInfo?concInfo.total:rawAttended+upcomingBks;
   // What the admin sees. Never below zero, so an offset left from a larger
   // history cannot show a negative count.
@@ -1182,7 +1196,11 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
         checkins:counted.filter(r=>r.checked_in).length,
         baseline:b,
         total:counted.length,
-        upcoming:counted.filter(r=>r.date_key>=today).length
+        // Same rule as everywhere else. This branch is what a CONCESSION
+        // member's profile uses; the branch below it already used
+        // bookingUpcoming, so leaving this one on dates alone made the very
+        // same card read differently depending on the membership type.
+        upcoming:counted.filter(bookingUpcoming).length
       });
       // A class that has been and gone with no check-in. Built from ROWS, not
       // from `counted`: a Whanau event still needs to be correctable when
@@ -1922,7 +1940,7 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,w
       setWellBks(prev=>[...prev.filter(b=>!(b.date_key===selDK&&b.time===time)),{email:fresh[0].email,name:"",date_key:selDK,time}]);
       showToast("Just taken — pick another time");setBusy(p=>({...p,[lk]:false}));return;
     }
-    const newBk={email:session.email,name:session.name,date_key:selDK,time};
+    const newBk={email:session.email,name:session.name,date_key:selDK,time,created_at:Date.now()};
     setWellBks(prev=>[...prev,newBk]);
     const ok=await sbPost("wellness_bookings",newBk);
     if(!ok){setWellBks(prev=>prev.filter(b=>!(b.date_key===selDK&&b.time===time)));showToast("Booking failed — try again");}
@@ -3192,10 +3210,10 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
     :React.createElement(React.Fragment,null,
       React.createElement("div",{className:"adm-stats-row"},
         React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},visMembers.length),React.createElement("div",{className:"adm-stat-lbl"},"MEMBERS")),
-        React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},bookings.filter(b=>b.date_key>=toDS(new Date())).length),React.createElement("div",{className:"adm-stat-lbl"},"UPCOMING BKS"))
+        React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},bookings.filter(bookingUpcoming).length),React.createElement("div",{className:"adm-stat-lbl"},"UPCOMING BKS"))
       ),
       visMembers.map((mb,i)=>{
-        const mbBks=bookings.filter(b=>b.email===mb.email&&b.date_key>=toDS(new Date())).length;
+        const mbBks=bookings.filter(b=>b.email===mb.email&&bookingUpcoming(b)).length;
         const joinDate=fmtJoinDate(mb.joined_at);
         const lapsed=lapsedDays(mb);
         return React.createElement("div",{key:i,className:"adm-member-card",style:lapsed?{borderColor:"#e06040"}:undefined,onClick:()=>openMemberProfile(mb)},
@@ -9462,7 +9480,7 @@ function App(){
   // the same ingredients in a different order, so a brief written for the style
   // stays true every week and needs no per-class upkeep.
   const briefFor=(dk,time)=>classBriefs[(getDayClassName(dk,time)||"").toUpperCase()]||"";
-  const myUpcoming=session?bookings.filter(b=>b.email===session.email&&b.date_key>=toDS(new Date())).sort((a,b)=>a.date_key.localeCompare(b.date_key)||a.time.localeCompare(b.time)):[];
+  const myUpcoming=session?bookings.filter(b=>b.email===session.email&&bookingUpcoming(b)).sort((a,b)=>a.date_key.localeCompare(b.date_key)||a.time.localeCompare(b.time)):[];
   function showToast(msg){setToast({msg,show:true});setTimeout(()=>setToast(t=>({...t,show:false})),2200);}
   async function handleAuth(){
     const{name,email,phone,password}=authForm;const em=email.toLowerCase().trim();
@@ -9554,7 +9572,7 @@ function App(){
         }
       }
     }
-    const newBk={email:session.email,name:session.name,date_key:selDK,time,session_type:sessionType,whanau};
+    const newBk={email:session.email,name:session.name,date_key:selDK,time,session_type:sessionType,whanau,created_at:Date.now()};
     setBookings(prev=>[...prev,newBk]);
     const ok=await sbPost("bookings",newBk);
     if(!ok){setBookings(prev=>prev.filter(b=>!(b.email===session.email&&b.date_key===selDK&&b.time===time)));showToast("Booking failed — try again");}
@@ -9590,7 +9608,7 @@ function App(){
         if(!isAdmin&&isConcession){if(concBudget<=0){skipped.push(d);continue;}}
         else if(!isAdmin&&typeLimit!==null&&weeklyClassCount(session.email,sessionType,dk)>=typeLimit){skipped.push(d);continue;}
       }
-      const newBk={email:session.email,name:session.name,date_key:dk,time,session_type:sessionType,whanau};
+      const newBk={email:session.email,name:session.name,date_key:dk,time,session_type:sessionType,whanau,created_at:Date.now()};
       const ok=await sbPost("bookings",newBk);
       if(ok){added.push(newBk);if(!whanau&&!isAdmin&&isConcession)concBudget--;}else skipped.push(d);
     }
