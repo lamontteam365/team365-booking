@@ -1006,7 +1006,7 @@ function ImageCropper({imageSrc,onSave,onCancel}){
   );
 }
 // ── Member Profile Overlay (Admin) ────────────────────────────────────────────
-function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,isMaster,mfPasteAI,selfEmail,canManageWk,setBookingExcused,setBookingCheckedIn,wellnessOn}){
+function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,isMaster,mfPasteAI,selfEmail,canManageWk,setBookingExcused,setBookingCheckedIn,wellnessOn,remindersOn,confirmationsOn}){
   const joinDate=fmtJoinDate(member.joined_at);
   const PARQ_LABELS=["Heart condition","Chest pain during activity","Chest pain at rest","Dizziness/loss of consciousness","Bone or joint problem","Blood pressure medication","Other reason to avoid activity"];
   const PARQ_KEYS=["parq_heart","parq_chest_activity","parq_chest_rest","parq_dizziness","parq_joint","parq_blood_pressure","parq_other"];
@@ -1453,13 +1453,19 @@ function MemberProfileOverlay({member,bookings,onClose,currentUserIsAdmin,mfWk,i
           {k:"confirmations",col:"email_confirmations",label:"Booking confirmations",hint:"When they book a class"}
         ].map(function(row){
           const on=emPrefs[row.k];
+          // Paused for everyone in Admin -> Functions. The saved value stays
+          // visible and untouched; it simply cannot be changed, and says so,
+          // rather than letting an admin set something that has no effect.
+          const globalOn=(row.k==="reminders"?remindersOn:confirmationsOn)!==false;
           return React.createElement("div",{key:row.k,style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"8px 0"}},
             React.createElement("div",null,
               React.createElement("div",{style:{fontSize:13,color:"#fff",letterSpacing:"0.02em"}},row.label),
-              React.createElement("div",{style:{fontSize:10,color:"#555",marginTop:2}},row.hint)
+              React.createElement("div",{style:{fontSize:10,color:"#555",marginTop:2}},row.hint),
+              !globalOn&&React.createElement("div",{style:{fontSize:9,color:"#1d9bf0",letterSpacing:"0.08em",marginTop:3,fontWeight:600}},"PAUSED FOR EVERYONE")
             ),
-            React.createElement("button",{disabled:emBusy===row.k,
-              style:{background:on?"#fff":"#222",color:on?"#000":"#555",border:"1px solid "+(on?"#fff":"#333"),borderRadius:0,padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0},
+            React.createElement("button",{disabled:emBusy===row.k||!globalOn,
+              title:globalOn?"":"Switched off for everyone in Admin → Functions",
+              style:{background:!globalOn?"#181818":(on?"#fff":"#222"),color:!globalOn?"#444":(on?"#000":"#555"),border:"1px solid "+(!globalOn?"#282828":(on?"#fff":"#333")),borderRadius:0,padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:globalOn?"pointer":"not-allowed",fontFamily:"'DM Sans',sans-serif",flexShrink:0},
               onClick:async()=>{
                 const next=!on;
                 setEmBusy(row.k);
@@ -2541,7 +2547,7 @@ function TierLimitsEditor({tierOverrides,saveTierOverrides,showToast}){
   );
 }
 
-function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail}){
+function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail}){
   const [expandedTier,setExpandedTier]=useState(null);
   const [admDate,setAdmDate]=useState(new Date());
   const [expanded,setExpanded]=useState({});
@@ -3188,7 +3194,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   // Program access via mFlags.wk / mFlags.wkAdminHide above. Master always has access.
   const canScBuild=isMaster||(mFlags.sc!==false&&!(mFlags.scAdminHide||[]).includes(selfEmail));
   return React.createElement("div",{className:"adm-wrap"},
-    selectedMember&&React.createElement(MemberProfileOverlay,{member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin,mfWk:mFlags.wk,isMaster,mfPasteAI:mFlags.pasteAI,selfEmail,setBookingExcused,setBookingCheckedIn,wellnessOn:wellnessEnabled,canManageWk:(isMaster||(mFlags.wk!==false&&!(mFlags.wkAdminHide||[]).includes(selfEmail)))}),
+    selectedMember&&React.createElement(MemberProfileOverlay,{member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin,mfWk:mFlags.wk,isMaster,mfPasteAI:mFlags.pasteAI,selfEmail,setBookingExcused,setBookingCheckedIn,wellnessOn:wellnessEnabled,remindersOn:remindersEnabled,confirmationsOn:confirmationsEnabled,canManageWk:(isMaster||(mFlags.wk!==false&&!(mFlags.wkAdminHide||[]).includes(selfEmail)))}),
     React.createElement("div",{className:"adm-title"},"ADMIN"),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"0 0 6px"}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
@@ -3953,7 +3959,33 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
           React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"ON = members & admins see only the Notice Board")
         ),
         React.createElement("button",{onClick:()=>saveMFlag("maint",!mFlags.maint),style:{background:mFlags.maint?"#c98a1e":"#222",color:mFlags.maint?"#000":"#555",border:"1px solid "+(mFlags.maint?"#c98a1e":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},mFlags.maint?"ON":"OFF")
-      )
+      ),
+      // ── Master email switches ────────────────────────────────────────────
+      //  One switch per email, governing EVERYONE. Off is a hard stop, not a
+      //  default: a member whose own switch is ON still receives nothing while
+      //  this is off. Their setting is never written to, so switching back on
+      //  resumes with every member exactly as they left themselves.
+      //
+      //  This button is only the visible half. The reminder is fired by a
+      //  pg_cron job that never opens this app, so the gate that actually
+      //  stops the email lives in the class-reminders and booking-confirm edge
+      //  functions, which read these same two feature_flags columns with the
+      //  service role. Changing this UI alone would have shown OFF on screen
+      //  while the emails kept going out every night.
+      React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,margin:"22px 0 10px"}},"EMAILS · EVERYONE"),
+      [
+        {key:"reminders",title:"CLASS REMINDERS",hint:"The night before a booked class",on:remindersEnabled,save:saveRemindersSetting},
+        {key:"confirmations",title:"BOOKING CONFIRMATIONS",hint:"When they book a class",on:confirmationsEnabled,save:saveConfirmationsSetting}
+      ].map(e=>React.createElement("div",{key:e.key,style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(e.on?"#222":"#1d9bf0"),padding:"11px 14px",marginBottom:10}},
+        React.createElement("div",{style:{paddingRight:10}},
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},e.title),
+          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},e.hint),
+          React.createElement("div",{style:{fontSize:9,color:e.on?"#555":"#1d9bf0",marginTop:3,letterSpacing:"0.04em",fontWeight:e.on?400:600,lineHeight:1.5}},
+            e.on?"Sending — each member’s own switch decides":"PAUSED — nobody receives this, whatever their own switch says")
+        ),
+        React.createElement("button",{onClick:async()=>{const next=!e.on;await e.save(next);showToast(next?"Switched back on ✓":"Paused for everyone");},
+          style:{background:e.on?"#fff":"#222",color:e.on?"#000":"#1d9bf0",border:"1px solid "+(e.on?"#fff":"#1d9bf0"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},e.on?"ON":"OFF")
+      ))
     ),
   admSeg==="onboarding"&&React.createElement(OnboardingView,{showToast}),
   admSeg==="coaching"&&(isMaster||!mFlags.dt)&&React.createElement(CoachingView,{showToast})
@@ -9177,6 +9209,14 @@ function App(){
   const [classesEnabled,setClassesEnabled]=useState(true);
   const [strengthEnabled,setStrengthEnabled]=useState(true);
   const [calendarEnabled,setCalendarEnabled]=useState(true);
+  // Master email switches (Admin -> FUNCTIONS). These govern every email of
+  // that kind for everyone; the per-member switches keep their own values and
+  // resume untouched when these go back on. Default true so a failed or slow
+  // config read never silently stops the emails - the real gate is in the
+  // class-reminders / booking-confirm edge functions, which read the same two
+  // feature_flags columns with the service role.
+  const [remindersEnabled,setRemindersEnabled]=useState(true);
+  const [confirmationsEnabled,setConfirmationsEnabled]=useState(true);
   const [dowNames,setDowNames]=useState({1:"RISE UP",2:"STRENGTH LOWER",3:"ASCEND",4:"STRENGTH UPPER",5:"ELEVATE",6:"SUMMIT"});
   // Recurring per-slot names: keyed by "dow:time" (e.g. "4:19:15"), applies every week for that weekday+time.
   const [dowSlotNames,setDowSlotNames]=useState({});
@@ -9299,6 +9339,8 @@ function App(){
         setClassesEnabled(ffData[0].classes_enabled!==false);
         setStrengthEnabled(ffData[0].strength_enabled!==false);
         setCalendarEnabled(ffData[0].calendar_enabled!==false);
+        setRemindersEnabled(ffData[0].reminders_enabled!==false);
+        setConfirmationsEnabled(ffData[0].confirmations_enabled!==false);
       }
       const dnData=await sbGet("coaching_notes","class_name=eq.__DOW_NAMES__&select=content");
       if(dnData&&dnData.length){try{const dn=JSON.parse(dnData[0].content);setDowNames(p=>({...p,...dn}));}catch{}}
@@ -9766,6 +9808,17 @@ function App(){
   async function saveCalendarSetting(enabled){
     await sbPatch("feature_flags","id=eq.1",{calendar_enabled:enabled});
     setCalendarEnabled(enabled);
+  }
+  // Turning either of these off pauses that email for EVERYONE, overriding each
+  // member's own switch. Nothing about a member's saved preference is touched,
+  // so switching it back on resumes exactly where it left off.
+  async function saveRemindersSetting(enabled){
+    await sbPatch("feature_flags","id=eq.1",{reminders_enabled:enabled});
+    setRemindersEnabled(enabled);
+  }
+  async function saveConfirmationsSetting(enabled){
+    await sbPatch("feature_flags","id=eq.1",{confirmations_enabled:enabled});
+    setConfirmationsEnabled(enabled);
   }
   async function saveStrengthSetting(enabled){
     await sbPatch("feature_flags","id=eq.1",{strength_enabled:enabled});
@@ -10300,7 +10353,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       effWkSub==="routines"&&showRoutines&&React.createElement(RoutinesView,{session,ttl:wkTitles.rt,isAdmin})
     ),
     effTab==="progress"&&acc("progress")&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,myAllBks,myStatsAdj,saveMilestoneConfig,memberData,dowNames}),
-    effTab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:""}),
+    effTab==="admin"&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:""}),
     ),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
@@ -10376,13 +10429,15 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
           {k:"confirmations",col:"email_confirmations",label:"Booking confirmations",hint:"When you book a class"}
         ].map(function(row){
           const on=myEmPrefs[row.k];
+          const globalOn=(row.k==="reminders"?remindersEnabled:confirmationsEnabled)!==false;
           return React.createElement("div",{key:row.k,style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"9px 0"}},
             React.createElement("div",null,
               React.createElement("div",{style:{fontSize:14,color:"#fff",fontWeight:300,letterSpacing:"0.02em"}},row.label),
-              React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.06em",marginTop:3}},row.hint)
+              React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.06em",marginTop:3}},row.hint),
+              !globalOn&&React.createElement("div",{style:{fontSize:9,color:"#1d9bf0",letterSpacing:"0.08em",marginTop:4,fontWeight:600}},"PAUSED — NOBODY IS GETTING THESE RIGHT NOW")
             ),
-            React.createElement("button",{type:"button",disabled:myEmBusy===row.k,
-              style:{background:on?"#fff":"#0e0e0e",color:on?"#000":"#555",border:"1px solid "+(on?"#fff":"#2a2a2a"),borderRadius:0,padding:"7px 20px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0},
+            React.createElement("button",{type:"button",disabled:myEmBusy===row.k||!globalOn,
+              style:{background:!globalOn?"#141414":(on?"#fff":"#0e0e0e"),color:!globalOn?"#444":(on?"#000":"#555"),border:"1px solid "+(!globalOn?"#242424":(on?"#fff":"#2a2a2a")),borderRadius:0,padding:"7px 20px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:globalOn?"pointer":"not-allowed",fontFamily:"'DM Sans',sans-serif",flexShrink:0},
               onClick:async()=>{
                 const next=!on;
                 setMyEmBusy(row.k);
@@ -10399,6 +10454,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
           );
         }),
         React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.06em",lineHeight:1.6,marginTop:4,marginBottom:4}},"Turning these off never affects your bookings."),
+        (remindersEnabled===false||confirmationsEnabled===false)&&React.createElement("div",{style:{fontSize:10,color:"#1d9bf0",letterSpacing:"0.06em",lineHeight:1.6,marginBottom:4}},"These emails are paused for everyone at the moment. Your own setting is saved and will apply again as soon as they’re switched back on."),
         classesEnabled&&React.createElement(React.Fragment,null,
           React.createElement("button",{onClick:()=>setProfFriendCol(c=>!c),
             style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",border:"none",borderRadius:0,padding:"12px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.18em",cursor:"pointer",marginTop:22,marginBottom:profFriendCol?4:12}},
