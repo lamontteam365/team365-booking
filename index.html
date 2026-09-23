@@ -3266,7 +3266,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
           mb.phone&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",null,mb.phone)),
           isConcessionActive(mb)&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",{style:{color:"#1d9bf0",fontWeight:700,letterSpacing:"0.1em"}},"CONCESSION")),
           trainingLabel(mb)&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",{style:{color:"#1d9bf0",fontWeight:700,letterSpacing:"0.1em"}},trainingLabel(mb).toUpperCase())),
-          subMap[String(mb.email||"").toLowerCase()]&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",{style:{color:"#1d9bf0",fontWeight:700,letterSpacing:"0.1em"}},"SUBSCRIBER"+(subMap[String(mb.email||"").toLowerCase()].status==="suspended"?" · SUSPENDED":""))),
+          subMap[String(mb.email||"").toLowerCase()]&&React.createElement("div",{className:"adm-mc-detail"},React.createElement("span",{style:{color:"#1d9bf0",fontWeight:700,letterSpacing:"0.1em"}},"SUBSCRIBER"+(subMap[String(mb.email||"").toLowerCase()].status==="suspended"?" · SUSPENDED":subMap[String(mb.email||"").toLowerCase()].status==="pending"?" · AWAITING APPROVAL":""))),
           mb.membership_type&&React.createElement("div",{className:"adm-mc-detail",style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}},
             React.createElement("span",{style:{color:"#1d9bf0"}},mb.membership_type),
             mb.expiry_date&&(()=>{
@@ -4015,20 +4015,21 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
           style:{background:e.on?"#fff":"#222",color:e.on?"#000":"#1d9bf0",border:"1px solid "+(e.on?"#fff":"#1d9bf0"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},e.on?"ON":"OFF")
       ))
     ),
-  admSeg==="onboarding"&&React.createElement(OnboardingView,{showToast}),
+  admSeg==="onboarding"&&React.createElement(OnboardingView,{showToast,isMaster}),
   admSeg==="coaching"&&(isMaster||!mFlags.dt)&&React.createElement(CoachingView,{showToast,restricted:!isMaster,selfEmail})
   );
 }
 // ── Onboarding View ──────────────────────────────────────────────────────────
 // Generic editable step list — used for both Onboarding Process and Member Journey
 // storageKey: key in coaching_notes table  defaultSteps: fallback if nothing saved  toastMsg: save confirmation
-function StepListEditor({storageKey,defaultSteps,toastMsg,showToast}){
+function StepListEditor({storageKey,defaultSteps,toastMsg,showToast,loadFn,saveFn,addLabel,bodyRows,bodyPlaceholder,titlePlaceholder}){
   const [steps,setSteps]=useState([]);
   const [editing,setEditing]=useState(false);
   const [draft,setDraft]=useState([]);
   const [saving,setSaving]=useState(false);
   const [loaded,setLoaded]=useState(false);
   useEffect(()=>{
+    if(loadFn){loadFn().then(v=>{setSteps(Array.isArray(v)?v:defaultSteps);setLoaded(true);});return;}
     sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(storageKey)}&select=content`)
       .then(data=>{
         if(data&&data.length&&data[0].content){
@@ -4042,6 +4043,8 @@ function StepListEditor({storageKey,defaultSteps,toastMsg,showToast}){
   },[storageKey]);
   async function save(){
     setSaving(true);
+    if(saveFn){const ok=await saveFn(draft.map(s=>({title:s.title||"",body:s.body||""})));setSaving(false);
+      if(ok){setSteps(draft.map(s=>({...s})));setEditing(false);showToast(toastMsg||"Saved ✓");}else showToast("Could not save — try again");return;}
     const json=JSON.stringify(draft);
     const existing=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(storageKey)}&select=class_name`);
     if(existing&&existing.length){await sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(storageKey)}`,{content:json,updated_at:Date.now()});}
@@ -4062,14 +4065,14 @@ function StepListEditor({storageKey,defaultSteps,toastMsg,showToast}){
       draft.map((s,i)=>React.createElement("div",{key:i,style:{background:"#141414",border:"1px solid #1e1e1e",borderRadius:0,padding:"12px",marginBottom:10}},
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:8}},
           React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#1d9bf0",lineHeight:1,minWidth:20}},(i+1).toString()),
-          React.createElement("input",{value:s.title,onChange:e=>updateDraft(i,"title",e.target.value),placeholder:"Step title",
+          React.createElement("input",{value:s.title,onChange:e=>updateDraft(i,"title",e.target.value),placeholder:titlePlaceholder||"Step title",
             style:{flex:1,background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:0,color:"#ccc",fontSize:12,padding:"6px 10px",fontFamily:"'DM Sans',sans-serif",outline:"none",letterSpacing:"0.06em"}}),
           React.createElement("button",{onClick:()=>removeStep(i),style:{background:"none",border:"1px solid #2a2a2a",borderRadius:0,padding:"3px 8px",color:"#555",fontSize:11,cursor:"pointer",flexShrink:0}},"✕")
         ),
-        React.createElement("textarea",{value:s.body,onChange:e=>updateDraft(i,"body",e.target.value),placeholder:"Notes (optional)",rows:2,
+        React.createElement("textarea",{value:s.body,onChange:e=>updateDraft(i,"body",e.target.value),placeholder:bodyPlaceholder||"Notes (optional)",rows:bodyRows||2,
           style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:0,color:"#888",fontSize:12,padding:"8px 10px",fontFamily:"'DM Sans',sans-serif",lineHeight:1.6,resize:"vertical",boxSizing:"border-box",outline:"none"}})
       )),
-      React.createElement("button",{onClick:addStep,style:{width:"100%",background:"none",border:"1px dashed #2a2a2a",borderRadius:0,padding:"10px",color:"#444",fontSize:10,letterSpacing:"0.12em",cursor:"pointer",marginTop:4}},"+ ADD STEP")
+      React.createElement("button",{onClick:addStep,style:{width:"100%",background:"none",border:"1px dashed #2a2a2a",borderRadius:0,padding:"10px",color:"#444",fontSize:10,letterSpacing:"0.12em",cursor:"pointer",marginTop:4}},addLabel||"+ ADD STEP")
     );
   }
   return React.createElement("div",null,
@@ -4416,7 +4419,7 @@ function StudioLocationEditor({showToast}){
   );
 }
 
-function OnboardingView({showToast}){
+function OnboardingView({showToast,isMaster}){
   const [openPanel,setOpenPanel]=useState(null);
   const [titles,setTitles]=useState({});
   useEffect(()=>{
@@ -4471,6 +4474,16 @@ function OnboardingView({showToast}){
         desc:"Sends the health screening form tagged as a 10-class concession card. On submit they're set up with Classes access and a card that bypasses weekly caps.",
         btnLabel:"SEND CONCESSION FORM"
       })
+    ),
+    isMaster&&React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#1d9bf0",fontWeight:600,margin:"26px 0 12px"}},"SUBSCRIBERS · MASTER ONLY"),
+    isMaster&&React.createElement(OnboardingPanel,{id:"subprocess",title:"SUBSCRIBER ONBOARDING PROCESS",openPanel,setOpenPanel,titles,onSaveTitle},
+      React.createElement(SubscriberProcessPanel,{showToast})
+    ),
+    isMaster&&React.createElement(OnboardingPanel,{id:"subagreement",title:"SUBSCRIBER AGREEMENT",openPanel,setOpenPanel,titles,onSaveTitle},
+      React.createElement(SubscriberAgreementPanel,{showToast})
+    ),
+    isMaster&&React.createElement(OnboardingPanel,{id:"subinvite",title:"SEND SUBSCRIBER MEMBERSHIP",openPanel,setOpenPanel,titles,onSaveTitle},
+      React.createElement(SendSubscriberForm,{showToast})
     )
   );
 }
@@ -9321,6 +9334,7 @@ function SubscriberProfileOverlay({member,sub,onClose,showToast,onChanged}){
   const [contact,setContact]=useState(sub.contact_name||"");
   const [notes,setNotes]=useState(sub.notes||"");
   const [status,setStatus]=useState(sub.status||"active");
+  const [justApproved,setJustApproved]=useState(false);
   const [saving,setSaving]=useState(false);
   const [pwBusy,setPwBusy]=useState(false);
   const [pwMsg,setPwMsg]=useState("");
@@ -9361,7 +9375,7 @@ function SubscriberProfileOverlay({member,sub,onClose,showToast,onChanged}){
         member.photo?React.createElement("img",{src:member.photo,className:"mp-avatar",alt:""}):React.createElement("div",{className:"mp-avatar-init"},initials(member.name||"?")),
         React.createElement("div",null,
           React.createElement("div",{className:"mp-name"},(member.name||"").toUpperCase()),
-          React.createElement("div",{className:"mp-meta",style:{color:"#1d9bf0"}},"SUBSCRIBER"+(status==="suspended"?" · PAUSED":"")),
+          React.createElement("div",{className:"mp-meta",style:{color:"#1d9bf0"}},"SUBSCRIBER"+(status==="suspended"?" · PAUSED":status==="pending"?" · AWAITING APPROVAL":"")),
           React.createElement("div",{className:"mp-meta"},`Since ${fmtJoinDate(member.joined_at)}`)
         )
       ),
@@ -9377,6 +9391,7 @@ function SubscriberProfileOverlay({member,sub,onClose,showToast,onChanged}){
       React.createElement("textarea",{value:notes,onChange:e=>setNotes(e.target.value),rows:3,style:{...SUB_INP,resize:"vertical"}}),
       React.createElement("button",{onClick:saveDetails,disabled:saving,style:{background:"#1d9bf0",border:"none",color:"#fff",padding:"7px 16px",fontSize:10,letterSpacing:"0.1em",fontWeight:600,cursor:"pointer",marginBottom:6}},saving?"SAVING...":"SAVE"),
       React.createElement("div",{className:"mp-section"},"ACCESS"),
+      (status==="pending"||justApproved)?React.createElement(SubscriberApproveBox,{member,showToast,onApproved:()=>{setJustApproved(true);setStatus("active");if(onChanged)onChanged();}}):
       React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(status==="active"?"#1d3a5a":"#5a2018"),padding:"11px 14px",marginBottom:6}},
         React.createElement("div",null,
           React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"SUBSCRIPTION"),
@@ -9385,11 +9400,222 @@ function SubscriberProfileOverlay({member,sub,onClose,showToast,onChanged}){
         React.createElement("button",{onClick:()=>setSubStatus(status==="active"?"suspended":"active"),style:{background:status==="active"?"#fff":"#222",color:status==="active"?"#000":"#e06040",border:"1px solid "+(status==="active"?"#fff":"#5a2018"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},status==="active"?"ACTIVE":"PAUSED")
       ),
       React.createElement(DetailsVisibilityPanel,{email:member.email}),
+      React.createElement(SubscriberAgreementDetails,{sub}),
       React.createElement("div",{className:"mp-section"},"ADMIN CONTROLS"),
       React.createElement("button",{onClick:resetPw,disabled:pwBusy,style:{...SUB_BTN,border:"1px solid #2a3a4a",color:"#4a8aaa"}},pwBusy?"RESETTING...":"RESET PASSWORD"),
       pwMsg&&React.createElement("div",{style:{fontSize:10,color:"#4aaa88",letterSpacing:"0.04em",marginBottom:8,lineHeight:1.6}},pwMsg),
       React.createElement("button",{onClick:removeSubscriber,style:{...SUB_BTN,border:"1px solid #3a1008",color:"#8a2515"}},"REMOVE SUBSCRIBER ACCESS")
     )
+  );
+}
+
+// ── Subscriber onboarding (Master only) ─────────────────────────────────────
+// Prices, process steps and the Subscriber Agreement live in master_settings, so the
+// form a gym fills in (subscribe.html) always shows what is saved here.
+const SUB_FN_URL=`${SB_URL}/functions/v1/subscriber-onboarding`;
+const SUB_PRICING_DEFAULT={price12:119,price6:149,extraDiscountPct:15,gstLabel:"+ GST",inviteExpiryDays:30};
+async function msGet(key){
+  const r=await sbGet("master_settings",`key=eq.${encodeURIComponent(key)}&select=value`);
+  return (r&&r.length)?r[0].value:null;
+}
+async function msSet(key,value){
+  const ex=await sbGet("master_settings",`key=eq.${encodeURIComponent(key)}&select=key`);
+  return (ex&&ex.length)
+    ?await sbPatch("master_settings",`key=eq.${encodeURIComponent(key)}`,{value,updated_at:new Date().toISOString()})
+    :await sbPost("master_settings",{key,value});
+}
+async function callSubFn(payload){
+  try{
+    const r=await fetch(SUB_FN_URL,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${AUTH_TOKEN||SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    return await r.json().catch(()=>({ok:false,error:"bad_response"}));
+  }catch(e){return {ok:false,error:"network"};}
+}
+const subMoney=n=>"$"+(Math.round((Number(n)||0)*100)/100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,",");
+function subQuote(p,term,n){
+  const first=Number(term===12?p.price12:p.price6)||0;
+  const disc=Math.max(0,Math.min(100,Number(p.extraDiscountPct)||0));
+  const extra=Math.round(first*(1-disc/100)*100)/100;
+  const week=Math.round((first+extra*Math.max(0,n-1))*100)/100;
+  return {first,extra,week,month:Math.round(week*52/12*100)/100};
+}
+function SubscriberPricingEditor({showToast}){
+  const [p,setP]=useState(null);
+  const [saved,setSaved]=useState(null);
+  const [saving,setSaving]=useState(false);
+  useEffect(()=>{msGet("sub_pricing").then(v=>{const x={...SUB_PRICING_DEFAULT,...(v&&typeof v==="object"?v:{})};setP(x);setSaved(x);});},[]);
+  if(!p)return React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"10px 0"}},"LOADING...");
+  const dirty=JSON.stringify(p)!==JSON.stringify(saved);
+  const L={display:"block",fontSize:9,letterSpacing:"0.16em",color:"#555",fontWeight:600,marginBottom:5};
+  const I={width:"100%",background:"#0e0e0e",border:"1px solid #333",borderRadius:0,padding:"9px 10px",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:14,outline:"none",boxSizing:"border-box"};
+  const num=(k,label,suffix)=>React.createElement("div",{style:{flex:1,minWidth:0}},
+    React.createElement("label",{style:L},label),
+    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+      React.createElement("input",{type:"number",inputMode:"decimal",min:0,step:"any",value:p[k],onChange:e=>setP(o=>({...o,[k]:e.target.value})),style:I}),
+      suffix&&React.createElement("span",{style:{fontSize:10,color:"#555",whiteSpace:"nowrap"}},suffix)));
+  async function save(){
+    const out={price12:Number(p.price12),price6:Number(p.price6),extraDiscountPct:Number(p.extraDiscountPct),
+      gstLabel:String(p.gstLabel||"").trim()||"+ GST",inviteExpiryDays:Math.max(1,Math.round(Number(p.inviteExpiryDays)||30))};
+    if(!(out.price12>0)||!(out.price6>0)){showToast("Enter both weekly prices");return;}
+    if(!(out.extraDiscountPct>=0&&out.extraDiscountPct<=100)){showToast("Discount must be 0–100%");return;}
+    setSaving(true);const ok=await msSet("sub_pricing",out);setSaving(false);
+    if(ok){setP(out);setSaved(out);showToast("Subscriber prices saved ✓");}else showToast("Could not save — try again");
+  }
+  const cur={...p,price12:Number(p.price12)||0,price6:Number(p.price6)||0};
+  const row=(n)=>{const a=subQuote(cur,12,n),b=subQuote(cur,6,n);
+    return React.createElement("tr",{key:n},
+      React.createElement("td",{style:{padding:"5px 0",color:"#888"}},n+" location"+(n>1?"s":"")),
+      React.createElement("td",{style:{padding:"5px 0",textAlign:"right",color:"#ccc"}},subMoney(a.week)),
+      React.createElement("td",{style:{padding:"5px 0",textAlign:"right",color:"#ccc"}},subMoney(b.week)));};
+  return React.createElement("div",{style:{marginBottom:18}},
+    React.createElement("div",{style:{fontSize:10,letterSpacing:"0.06em",color:"#555",lineHeight:1.7,marginBottom:12}},
+      "Prices per location, per week. The Subscriber form always shows the prices saved here, and the agreement and invoice totals are worked out from them when the gym submits."),
+    React.createElement("div",{style:{display:"flex",gap:10,marginBottom:12}},num("price12","12 MONTHS · $/WEEK"),num("price6","6 MONTHS · $/WEEK")),
+    React.createElement("div",{style:{display:"flex",gap:10,marginBottom:12}},num("extraDiscountPct","EACH EXTRA LOCATION","% OFF"),
+      React.createElement("div",{style:{flex:1,minWidth:0}},React.createElement("label",{style:L},"GST LABEL"),
+        React.createElement("input",{value:p.gstLabel,onChange:e=>setP(o=>({...o,gstLabel:e.target.value})),style:I}))),
+    React.createElement("div",{style:{display:"flex",gap:10,marginBottom:14}},num("inviteExpiryDays","FORM LINK EXPIRES AFTER","DAYS"),React.createElement("div",{style:{flex:1}})),
+    React.createElement("div",{style:{background:"#0a0a0a",border:"1px solid #1a1a1a",padding:"10px 12px",marginBottom:12}},
+      React.createElement("div",{style:{fontSize:9,letterSpacing:"0.16em",color:"#1d9bf0",fontWeight:600,marginBottom:6}},"WHAT THE GYM PAYS PER WEEK "+(p.gstLabel||"")),
+      React.createElement("table",{style:{width:"100%",fontSize:11,borderCollapse:"collapse"}},
+        React.createElement("thead",null,React.createElement("tr",null,
+          React.createElement("th",{style:{textAlign:"left",fontWeight:600,color:"#555",fontSize:9,letterSpacing:"0.1em"}},""),
+          React.createElement("th",{style:{textAlign:"right",fontWeight:600,color:"#555",fontSize:9,letterSpacing:"0.1em"}},"12 MONTHS"),
+          React.createElement("th",{style:{textAlign:"right",fontWeight:600,color:"#555",fontSize:9,letterSpacing:"0.1em"}},"6 MONTHS"))),
+        React.createElement("tbody",null,[1,2,3].map(row))),
+      React.createElement("div",{style:{fontSize:9,color:"#444",marginTop:6,lineHeight:1.5}},"Invoiced monthly: weekly total × 52 ÷ 12.")),
+    React.createElement("button",{disabled:saving||!dirty,onClick:save,
+      style:{width:"100%",background:dirty?"#fff":"#111",color:dirty?"#000":"#333",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.16em",padding:12,cursor:dirty?"pointer":"not-allowed"}},
+      saving?"SAVING…":"SAVE PRICES")
+  );
+}
+const SUB_PROCESS_DEFAULT=[
+  {title:"SEND SUBSCRIBER MEMBERSHIP",body:"Onboarding → Send Subscriber Membership. Enter the gym's email and tap Send. They receive a branded email with a personal link to the Subscriber form. The link works once, only for that email, and expires after 30 days."},
+  {title:"GYM COMPLETES THE FORM",body:"Business details, number of locations and their addresses, main contact, 6 or 12 month term, and the Subscriber Agreement signed by an authorised person. The form shows the current prices from this panel and works out their weekly and monthly total."},
+  {title:"AGREEMENT PDF",body:"On submit, the signed Subscriber Agreement PDF is emailed to the gym and to Team 365. Their account is created as AWAITING APPROVAL."},
+  {title:"REVIEW AND APPROVE",body:"Open Admin → Members → the gym (SUBSCRIBER · AWAITING APPROVAL). Check the details and tap APPROVE & SEND LOGIN. This activates the subscription and emails their login details."},
+  {title:"INVOICE",body:"Send the first monthly invoice. Invoices are monthly in advance, payable within 7 days. Pause the subscription from their profile if an invoice is more than 14 days overdue."},
+  {title:"ACCESS",body:"Details only, read only: workouts, Coaching Notes, Workout Details, Play and Workout Image. No Library Details and no editing. Hide workouts from their profile (Workout Visibility) or pause them at any time."},
+];
+function SubscriberProcessPanel({showToast}){
+  return React.createElement("div",null,
+    React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.12em",color:"#fff",marginBottom:10}},"PRICES"),
+    React.createElement(SubscriberPricingEditor,{showToast}),
+    React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.12em",color:"#fff",margin:"6px 0 4px",paddingTop:14,borderTop:"1px solid #1a1a1a"}},"HOW IT WORKS"),
+    React.createElement(StepListEditor,{storageKey:"sub_process",defaultSteps:SUB_PROCESS_DEFAULT,toastMsg:"Subscriber process saved ✓",showToast,
+      loadFn:()=>msGet("sub_process"),saveFn:v=>msSet("sub_process",v)})
+  );
+}
+function SubscriberAgreementPanel({showToast}){
+  return React.createElement("div",null,
+    React.createElement("div",{style:{fontSize:10,letterSpacing:"0.04em",color:"#555",lineHeight:1.7,marginBottom:12}},
+      "The clauses the gym reads and signs on the Subscriber form. Changes apply to forms submitted from now on — agreements already signed are kept exactly as signed. These words are filled in automatically: ",
+      ["{BUSINESS_NAME}","{WEEKLY_TOTAL}","{MONTHLY_TOTAL}","{LOCATION_COUNT}","{TERM}"].map((t,i)=>React.createElement("span",{key:t,style:{color:"#1d9bf0",fontFamily:"monospace",fontSize:10}},(i?" ":"")+t)),
+      React.createElement("div",{style:{marginTop:6,color:"#444"}},"This is a plain-English draft. Have it checked by a lawyer before relying on it.")),
+    React.createElement(StepListEditor,{storageKey:"sub_agreement",defaultSteps:[],toastMsg:"Subscriber Agreement saved ✓",showToast,
+      loadFn:()=>msGet("sub_agreement"),saveFn:v=>msSet("sub_agreement",v),addLabel:"+ ADD CLAUSE",bodyRows:5,bodyPlaceholder:"Clause text",titlePlaceholder:"Clause title, e.g. 15. NOTICES"})
+  );
+}
+const SUB_INVITE_ERRORS={invalid_email:"Enter a valid email address.",existing_member:"That email already has a Team 365 account. Open their profile and use GRANT SUBSCRIBER ACCESS instead.",
+  forbidden:"Only the Master Admin can send this. Please log out and back in, then try again.",mail_not_configured:"Email isn't set up for sending. Please contact support.",network:"Couldn't connect. Check your connection and try again."};
+function SendSubscriberForm({showToast}){
+  const [email,setEmail]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [msg,setMsg]=useState(null);
+  const [invites,setInvites]=useState(null);
+  async function loadInvites(){
+    const r=await sbGet("subscriber_invites","select=token,email,created_at,expires_at,used_at&order=created_at.desc&limit=15");
+    setInvites(r||[]);
+  }
+  useEffect(()=>{loadInvites();},[]);
+  async function send(to){
+    const em=String(to||"").trim().toLowerCase();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){setMsg({err:true,text:SUB_INVITE_ERRORS.invalid_email});return;}
+    setBusy(true);setMsg(null);
+    const j=await callSubFn({action:"invite",email:em});
+    setBusy(false);
+    if(j&&j.ok){setMsg({err:false,text:`Sent to ${em}. The link expires in ${j.expiresInDays||30} days.`});setEmail("");showToast("Subscriber form sent ✓");loadInvites();}
+    else setMsg({err:true,text:SUB_INVITE_ERRORS[j&&j.error]||("Could not send"+(j&&j.error?" ("+j.error+")":"")+". Please try again.")});
+  }
+  async function cancel(inv){
+    if(!window.confirm("Cancel the form link sent to "+inv.email+"?\n\nThe link will stop working."))return;
+    const ok=await sbDelete("subscriber_invites",`token=eq.${encodeURIComponent(inv.token)}`);
+    showToast(ok?"Link cancelled":"Could not cancel — try again");loadInvites();
+  }
+  const fmt=d=>{try{return new Date(d).toLocaleDateString("en-NZ",{day:"numeric",month:"short"});}catch{return "";}};
+  const state=inv=>inv.used_at?{t:"SUBMITTED",c:"#4aaa66"}:(new Date(inv.expires_at).getTime()<Date.now()?{t:"EXPIRED",c:"#666"}:{t:"WAITING",c:"#1d9bf0"});
+  return React.createElement("div",null,
+    React.createElement("div",{style:{fontSize:10,letterSpacing:"0.04em",color:"#555",lineHeight:1.7,marginBottom:12}},
+      "Enter the gym's email. They get a personal link to the Subscriber form with your current prices and the Subscriber Agreement. When they submit, you'll get an email and they appear in Members as AWAITING APPROVAL."),
+    React.createElement("input",{type:"email",value:email,placeholder:"gym@example.com",onChange:e=>setEmail(e.target.value),onKeyDown:e=>{if(e.key==="Enter")send(email);},
+      style:{width:"100%",background:"#0e0e0e",border:"1px solid #333",borderRadius:0,padding:"11px 12px",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:14,outline:"none",boxSizing:"border-box",marginBottom:10}}),
+    React.createElement("button",{onClick:()=>send(email),disabled:busy,
+      style:{width:"100%",background:"#fff",color:"#000",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.16em",padding:13,cursor:"pointer"}},busy?"SENDING…":"SEND SUBSCRIBER MEMBERSHIP"),
+    msg&&React.createElement("div",{style:{fontSize:11,color:msg.err?"#e06040":"#4aaa88",marginTop:10,lineHeight:1.6}},msg.text),
+    invites&&invites.length>0&&React.createElement("div",{style:{marginTop:18}},
+      React.createElement("div",{style:{fontSize:9,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:8}},"RECENTLY SENT"),
+      invites.map(inv=>{const s=state(inv);
+        return React.createElement("div",{key:inv.token,style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"8px 0",borderBottom:"1px solid #141414"}},
+          React.createElement("div",{style:{minWidth:0}},
+            React.createElement("div",{style:{fontSize:12,color:"#ccc",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},inv.email),
+            React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.06em",marginTop:2}},"Sent "+fmt(inv.created_at)+(inv.used_at?" · submitted "+fmt(inv.used_at):""))),
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,flexShrink:0}},
+            React.createElement("span",{style:{fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:s.c}},s.t),
+            s.t==="WAITING"&&React.createElement("button",{onClick:()=>cancel(inv),title:"Cancel link",style:{background:"none",border:"1px solid #2a2a2a",color:"#555",fontSize:9,padding:"3px 7px",cursor:"pointer"}},"CANCEL"),
+            s.t==="EXPIRED"&&React.createElement("button",{onClick:()=>send(inv.email),disabled:busy,style:{background:"none",border:"1px solid #1d3a5a",color:"#1d9bf0",fontSize:9,padding:"3px 7px",cursor:"pointer"}},"SEND AGAIN")));
+      }))
+  );
+}
+// What the gym signed up to — shown on the Subscriber profile.
+function SubscriberAgreementDetails({sub}){
+  const [showText,setShowText]=useState(false);
+  if(!sub||!sub.signed_at)return null;
+  const g=sub.gst_label||"+ GST";
+  const locs=Array.isArray(sub.locations)?sub.locations:[];
+  const row=(l,v)=>React.createElement("div",{className:"mp-row"},React.createElement("div",{className:"mp-label"},l),React.createElement("div",{className:"mp-value",style:{textAlign:"right"}},v||"—"));
+  let signed="";try{signed=new Date(sub.signed_at).toLocaleDateString("en-NZ",{day:"numeric",month:"short",year:"numeric"});}catch{}
+  return React.createElement(React.Fragment,null,
+    React.createElement("div",{className:"mp-section"},"SUBSCRIPTION AGREEMENT"),
+    sub.trading_name&&row("Trading name",sub.trading_name),
+    sub.nzbn&&row("NZBN",sub.nzbn),
+    row("Contact",[sub.contact_name,sub.contact_role].filter(Boolean).join(" · ")),
+    row("Contact phone",sub.contact_phone),
+    locs.map((l,i)=>React.createElement(React.Fragment,{key:i},row("Location "+(i+1),l))),
+    row("Plan",(sub.term_months||"—")+" months"),
+    row("First location",subMoney(sub.price_week_first)+" / wk "+g),
+    (sub.location_count||0)>1&&row("Each extra ("+(sub.discount_pct||0)+"% off)",subMoney(sub.price_week_additional)+" / wk "+g),
+    row("Weekly total",subMoney(sub.total_week)+" "+g),
+    row("Monthly invoice",subMoney(sub.total_month)+" "+g),
+    row("Signed by",[sub.signatory_name,sub.signatory_position].filter(Boolean).join(", ")),
+    row("Signed",signed),
+    sub.signature&&React.createElement("div",{style:{background:"#fff",padding:6,margin:"8px 0",display:"inline-block"}},React.createElement("img",{src:sub.signature,alt:"Signature",style:{display:"block",maxWidth:220,height:"auto"}})),
+    Array.isArray(sub.agreement)&&sub.agreement.length>0&&React.createElement("div",null,
+      React.createElement("button",{onClick:()=>setShowText(v=>!v),style:{background:"none",border:"1px solid #2a2a2a",color:"#aaa",fontSize:10,letterSpacing:"0.1em",padding:"6px 12px",cursor:"pointer",margin:"6px 0 10px"}},showText?"HIDE AGREEMENT TEXT":"VIEW SIGNED AGREEMENT"),
+      showText&&React.createElement("div",{style:{background:"#0a0a0a",border:"1px solid #1a1a1a",padding:"10px 12px",marginBottom:10}},
+        sub.agreement.map((c,i)=>React.createElement("div",{key:i,style:{marginBottom:10}},
+          React.createElement("div",{style:{fontSize:10,fontWeight:600,letterSpacing:"0.1em",color:"#ccc",marginBottom:3}},c.title),
+          React.createElement("div",{style:{fontSize:11,color:"#777",lineHeight:1.6,whiteSpace:"pre-wrap"}},c.body)))))
+  );
+}
+function SubscriberApproveBox({member,onApproved,showToast}){
+  const [busy,setBusy]=useState(false);
+  const [res,setRes]=useState(null);
+  async function approve(){
+    if(!window.confirm("Approve "+(member.name||member.email)+"?\n\nThis activates their subscription and emails their login to "+member.email+"."))return;
+    setBusy(true);
+    const j=await callSubFn({action:"approve",email:String(member.email||"").toLowerCase()});
+    setBusy(false);
+    if(j&&j.ok){setRes(j);showToast(j.emailed?"Approved — login emailed ✓":"Approved ✓");if(onApproved)onApproved();}
+    else setRes({ok:false,error:j&&j.error});
+  }
+  if(res&&res.ok)return React.createElement("div",{style:{background:"#0e1a12",border:"1px solid #1f4a2a",padding:"12px 14px",marginBottom:8,fontSize:12,color:"#ccc",lineHeight:1.7}},
+    React.createElement("div",{style:{color:"#4aaa66",fontWeight:600,marginBottom:4}},res.emailed?"Approved. Their login has been emailed.":"Approved, but the email didn't send — give them these details:"),
+    React.createElement("div",null,"Email: ",React.createElement("b",{style:{color:"#fff"}},member.email)),
+    React.createElement("div",null,"Temporary password: ",React.createElement("b",{style:{color:"#fff",fontFamily:"monospace",letterSpacing:"0.1em"}},res.tempPw||"—")));
+  return React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1d3a5a",padding:"12px 14px",marginBottom:8}},
+    React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"AWAITING APPROVAL"),
+    React.createElement("div",{style:{fontSize:10,color:"#666",margin:"3px 0 10px",lineHeight:1.6}},"Check the agreement below. Approving activates the subscription and emails their login. Remember to send the first invoice."),
+    React.createElement("button",{onClick:approve,disabled:busy,style:{width:"100%",background:"#1d9bf0",border:"none",color:"#fff",padding:"11px",fontSize:11,letterSpacing:"0.14em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},busy?"APPROVING…":"APPROVE & SEND LOGIN"),
+    res&&!res.ok&&React.createElement("div",{style:{fontSize:10,color:"#e06040",marginTop:8}},"Could not approve"+(res.error?" ("+res.error+")":"")+". Please try again.")
   );
 }
 
@@ -10637,7 +10863,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       React.createElement("div",{className:"adm-title"},"DETAILS"),
       subDetailsOn
         ?React.createElement(CoachingView,{showToast,restricted:true,selfEmail:session.email})
-        :React.createElement("div",{className:"no-bk"},subRow&&subRow.status==="suspended"?"YOUR SUBSCRIPTION IS PAUSED — PLEASE CONTACT TEAM 365":"DETAILS IS CURRENTLY UNAVAILABLE")
+        :React.createElement("div",{className:"no-bk"},subRow&&subRow.status==="suspended"?"YOUR SUBSCRIPTION IS PAUSED — PLEASE CONTACT TEAM 365":subRow&&subRow.status==="pending"?"YOUR SUBSCRIPTION IS AWAITING APPROVAL — TEAM 365 WILL BE IN TOUCH":"DETAILS IS CURRENTLY UNAVAILABLE")
     ),
     effTab==="admin"&&isAdmin&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:""}),
     ),
