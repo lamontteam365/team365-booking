@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#080808"/>
+<meta name="robots" content="noindex"/>
+<title>Team 365 · Subscriber Membership</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Syncopate:wght@700&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#080808;min-height:100vh}
+body{font-family:'DM Sans',sans-serif;color:#fff;padding:0}
+.hero{background-image:linear-gradient(rgba(8,8,8,0.72),rgba(8,8,8,0.88)),url("https://raw.githubusercontent.com/lamontteam365/team365-booking/main/images/671a9a90865c3673c895b473f6d1feed.jpg");background-size:cover;background-position:center top;padding:36px 28px 28px;text-align:center;display:flex;flex-direction:column;align-items:center;border-bottom:1px solid #1a1a1a}
+.hero-circle{width:88px;height:88px;border-radius:50%;border:2px solid #333;background:#111;overflow:hidden;margin-bottom:16px;display:flex;align-items:center;justify-content:center}
+.hero-circle img{width:100%;height:100%;object-fit:cover}
+.hero-name{font-family:'Syncopate',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.18em;color:#fff;margin-bottom:5px}
+.hero-tag{font-family:'Syncopate',sans-serif;font-size:6px;font-weight:700;letter-spacing:0.2em;color:#555;margin-bottom:14px}
+.hero-badge{font-size:9px;letter-spacing:0.18em;color:#1d9bf0;background:#0a1a2a;border:1px solid #1d3a5a;border-radius:3px;padding:4px 14px}
+.wrap{max-width:480px;margin:0 auto;padding:32px 20px 60px}
+.form-title{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:0.12em;color:#fff;margin-bottom:6px}
+.form-sub{font-size:11px;letter-spacing:0.1em;color:#777;font-weight:500;margin-bottom:10px}
+.intro{font-size:12px;color:#888;line-height:1.7;font-weight:300;margin-bottom:8px}
+.part-header{margin:36px 0 20px}
+.part-num{font-size:9px;letter-spacing:0.22em;color:#555;font-weight:600;margin-bottom:6px}
+.part-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.12em;color:#fff;margin-bottom:4px}
+.part-sub{font-size:10px;letter-spacing:0.12em;color:#555;font-weight:500}
+.fl{display:block;font-size:10px;letter-spacing:0.16em;color:#bbb;font-weight:600;margin-bottom:7px;margin-top:14px}
+.fl .opt{color:#555;font-weight:500}
+.fi{width:100%;background:#0e0e0e;border:1px solid #2a2a2a;color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:300;padding:13px 15px;outline:none;border-radius:3px;transition:border-color .2s;-webkit-appearance:none}
+.fi:focus{border-color:#555}
+.fi::placeholder{color:#333}
+.fi[readonly]{color:#888;background:#0b0b0b}
+.loc-row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+.loc-num{font-family:'Bebas Neue',sans-serif;font-size:16px;color:#555;width:18px;text-align:center;flex-shrink:0}
+.loc-del{background:none;border:1px solid #222;color:#555;border-radius:3px;width:40px;height:46px;cursor:pointer;font-size:16px;flex-shrink:0}
+.loc-del:hover{color:#e06040;border-color:#4a2a2a}
+.add-btn{width:100%;background:#0e0e0e;border:1px dashed #2a2a2a;color:#888;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.14em;padding:12px;border-radius:3px;cursor:pointer;margin-top:2px}
+.add-btn:hover{color:#fff;border-color:#555}
+.plan-card{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:8px;padding:14px;margin-bottom:8px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:12px}
+.plan-card:hover{border-color:#333}
+.plan-card.sel{border-color:#fff;background:#111}
+.plan-body{flex:1}
+.plan-name{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.08em;color:#fff}
+.plan-desc{font-size:10px;color:#666;letter-spacing:0.06em;margin-top:2px}
+.plan-price{font-family:'Bebas Neue',sans-serif;font-size:22px;color:#777;letter-spacing:0.04em;text-align:right}
+.plan-card.sel .plan-price{color:#fff}
+.plan-per{font-size:8px;color:#555;letter-spacing:0.1em;text-align:right}
+.radio-dot{width:16px;height:16px;border-radius:50%;border:1px solid #333;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.plan-card.sel .radio-dot{border-color:#fff}
+.radio-inner{width:8px;height:8px;border-radius:50%;background:transparent}
+.plan-card.sel .radio-inner{background:#fff}
+.note{font-size:10px;color:#555;letter-spacing:0.04em;line-height:1.6;margin:6px 0 16px}
+.summary-box{background:#111;border:1px solid #222;border-radius:8px;padding:16px;margin-top:12px}
+.summary-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #1a1a1a;gap:10px}
+.summary-row:last-child{border-bottom:none}
+.summary-lbl{font-size:10px;letter-spacing:0.1em;color:#666;font-weight:500}
+.summary-val{font-size:11px;color:#ccc;font-weight:500;text-align:right}
+.summary-total{font-family:'Bebas Neue',sans-serif;font-size:22px;color:#fff;letter-spacing:0.06em}
+.summary-total-lbl{font-size:10px;letter-spacing:0.12em;color:#888;font-weight:600}
+.decl-box{background:#0e0e0e;border:1px solid #1e1e1e;border-radius:6px;padding:14px;margin-bottom:8px}
+.decl-title{font-size:10px;letter-spacing:0.14em;color:#bbb;font-weight:600;margin-bottom:6px}
+.decl-text{font-size:11px;color:#888;line-height:1.8;font-weight:300;white-space:pre-wrap}
+#agreement{max-height:460px;overflow-y:auto;border:1px solid #161616;border-radius:6px;padding:8px;background:#0a0a0a}
+.agree{display:flex;gap:12px;align-items:flex-start;background:#0e0e0e;border:1px solid #2a2a2a;border-radius:6px;padding:14px;margin-top:14px;cursor:pointer}
+.agree input{width:18px;height:18px;margin-top:2px;accent-color:#fff;flex-shrink:0;cursor:pointer}
+.agree span{font-size:12px;color:#ccc;line-height:1.6}
+.sig-wrap{background:#0e0e0e;border:1px solid #2a2a2a;border-radius:6px;overflow:hidden;position:relative}
+.sig-canvas{display:block;width:100%;height:160px;cursor:crosshair;touch-action:none}
+.sig-clear{position:absolute;top:8px;right:10px;background:none;border:none;color:#444;font-size:10px;letter-spacing:0.12em;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500}
+.sig-clear:hover{color:#aaa}
+.sig-hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:9px;letter-spacing:0.14em;color:#2a2a2a;font-weight:500;white-space:nowrap;pointer-events:none}
+.submit-btn{width:100%;background:#fff;color:#000;border:none;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.18em;padding:20px;cursor:pointer;border-radius:3px;margin-top:24px;transition:background .15s}
+.submit-btn:hover:not(:disabled){background:#ddd}
+.submit-btn:disabled{background:#111;color:#333;cursor:not-allowed}
+.err-msg{font-size:12px;color:#e06040;letter-spacing:0.04em;margin-top:14px;line-height:1.6}
+.success-page{text-align:center;padding:60px 20px;max-width:480px;margin:0 auto}
+.success-icon{font-family:'Bebas Neue',sans-serif;font-size:72px;color:#fff;margin-bottom:8px}
+.success-title{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:0.12em;color:#fff;margin-bottom:16px}
+.success-body{font-size:14px;color:#777;line-height:1.8;font-weight:300;margin-bottom:24px}
+.loading{text-align:center;padding:80px 20px;font-size:11px;letter-spacing:0.2em;color:#555}
+select.fi{cursor:pointer}
+@media(max-width:380px){.wrap{padding:28px 16px 50px}}
+</style>
+</head>
+<body>
+<div id="root"><div class="loading">LOADING…</div></div>
+<script>
+const SB_URL="https://xczwmexavysvljmobbgv.supabase.co";
+const SB_KEY="sb_publishable_tujGGhPRUimflq1-IFzuvA_Crw6knMO";
+const FN_URL=SB_URL+"/functions/v1/subscriber-onboarding";
+const TOKEN=new URLSearchParams(location.search).get("t")||"";
+
+let EMAIL="",PRICING={price12:119,price6:149,extraDiscountPct:15,gstLabel:"+ GST"},AGREEMENT=[];
+let term=12,locations=[""],sigCanvas,sigCtx,drawing=false,hasSig=false,submitting=false;
+
+const esc=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const r2=n=>Math.round(n*100)/100;
+const money=n=>"$"+r2(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,",");
+const val=id=>{const el=document.getElementById(id);return el?el.value.trim():"";};
+
+async function callFn(payload){
+  const res=await fetch(FN_URL,{method:"POST",headers:{"Content-Type":"application/json",apikey:SB_KEY,Authorization:"Bearer "+SB_KEY},body:JSON.stringify(payload)});
+  let j={};try{j=await res.json();}catch(e){}
+  return j;
+}
+
+// Same maths as the server (the server re-calculates; these numbers are for display)
+function quote(){
+  const first=Number(term===12?PRICING.price12:PRICING.price6)||0;
+  const disc=Math.max(0,Math.min(100,Number(PRICING.extraDiscountPct)||0));
+  const extra=r2(first*(1-disc/100));
+  const n=Math.max(1,filledLocations().length);
+  const week=r2(first+extra*(n-1));
+  return {first,extra,disc,n,week,month:r2(week*52/12),gst:String(PRICING.gstLabel||"+ GST")};
+}
+function filledLocations(){return locations.map(s=>String(s||"").trim()).filter(Boolean);}
+function fillText(body){
+  const q=quote();
+  const v={BUSINESS_NAME:val("f-business")||"[Business name]",TERM:String(term),LOCATION_COUNT:String(q.n),
+    WEEKLY_TOTAL:money(q.week)+" "+q.gst,MONTHLY_TOTAL:money(q.month)+" "+q.gst};
+  return String(body||"").replace(/\{(BUSINESS_NAME|WEEKLY_TOTAL|MONTHLY_TOTAL|LOCATION_COUNT|TERM)\}/g,(m,k)=>v[k]);
+}
+
+function renderMessage(icon,title,body){
+  document.getElementById("root").innerHTML=`${heroHtml()}
+  <div class="success-page"><div class="success-icon">${icon}</div><div class="success-title">${esc(title)}</div>
+  <div class="success-body">${body}</div></div>`;
+}
+function heroHtml(){
+  return `<div class="hero">
+    <div class="hero-circle"><img src="https://raw.githubusercontent.com/lamontteam365/team365-booking/main/icon-192.png" onerror="this.style.display='none'" alt="Team 365"/></div>
+    <div class="hero-name">LAMONT TEAM 365</div>
+    <div class="hero-tag">EVERYDAY. ALL YEAR ROUND.</div>
+    <div class="hero-badge">SUBSCRIBER MEMBERSHIP</div>
+  </div>`;
+}
+const CONTACT_LINE=`If you think this is a mistake, please contact Team 365 at <a href="mailto:lamont.team365@gmail.com" style="color:#1d9bf0;text-decoration:none">lamont.team365@gmail.com</a>.`;
+function renderLinkError(code){
+  if(code==="used")return renderMessage("✓","FORM ALREADY SUBMITTED","This Subscriber Membership link has already been used. Team 365 will be in touch with your login once your subscription is approved.<br><br>"+CONTACT_LINE);
+  if(code==="expired")return renderMessage("!","LINK EXPIRED","This Subscriber Membership link has expired. Please ask Team 365 to send you a new one.<br><br>"+CONTACT_LINE);
+  if(code==="existing_member")return renderMessage("!","ALREADY REGISTERED","This email already has a Team 365 account.<br><br>"+CONTACT_LINE);
+  if(code==="network")return renderMessage("!","CAN'T CONNECT","We couldn't load your form. Please check your connection and refresh the page.");
+  return renderMessage("!","LINK NOT VALID","This Subscriber Membership link isn't valid. Please use the link from your email exactly as sent.<br><br>"+CONTACT_LINE);
+}
+
+function renderForm(){
+  const P12=Number(PRICING.price12)||0,P6=Number(PRICING.price6)||0,D=Number(PRICING.extraDiscountPct)||0,G=esc(PRICING.gstLabel||"+ GST");
+  document.getElementById("root").innerHTML=`${heroHtml()}
+  <div class="wrap">
+    <div class="form-title">Subscriber Membership</div>
+    <div class="form-sub">TEAM 365 WORKOUTS FOR YOUR GYM</div>
+    <div class="intro">Press play and run a complete, coached Team 365 class: timers, demonstrations on screen and three levels for every exercise. Your instructors get the Coaching Notes and Workout Details for every session.</div>
+
+    <div class="part-header"><div class="part-num">SECTION 01</div><div class="part-title">Your Business</div><div class="part-sub">THE BUSINESS SIGNING UP</div></div>
+    <label class="fl">EMAIL (YOUR LOGIN)</label>
+    <input class="fi" id="f-email" value="${esc(EMAIL)}" readonly/>
+    <label class="fl">BUSINESS NAME *</label>
+    <input class="fi" id="f-business" placeholder="Legal business name" maxlength="200"/>
+    <label class="fl">TRADING NAME <span class="opt">(IF DIFFERENT)</span></label>
+    <input class="fi" id="f-trading" placeholder="Gym name members know" maxlength="200"/>
+    <label class="fl">NZBN <span class="opt">(OPTIONAL)</span></label>
+    <input class="fi" id="f-nzbn" placeholder="13 digits" maxlength="40" inputmode="numeric"/>
+
+    <div class="part-header"><div class="part-num">SECTION 02</div><div class="part-title">Locations</div><div class="part-sub">EACH GYM LOCATION THAT WILL RUN TEAM 365 CLASSES</div></div>
+    <div id="loc-list"></div>
+    <button type="button" class="add-btn" onclick="addLocation()">+ ADD ANOTHER LOCATION</button>
+    <div class="note">Every additional location is ${D}% off the full weekly price.</div>
+
+    <div class="part-header"><div class="part-num">SECTION 03</div><div class="part-title">Main Contact</div><div class="part-sub">WHO WE TALK TO ABOUT YOUR SUBSCRIPTION</div></div>
+    <label class="fl">CONTACT NAME *</label>
+    <input class="fi" id="f-contact" placeholder="Full name" maxlength="200"/>
+    <label class="fl">ROLE <span class="opt">(OPTIONAL)</span></label>
+    <input class="fi" id="f-role" placeholder="e.g. Owner, Gym Manager" maxlength="200"/>
+    <label class="fl">PHONE *</label>
+    <input class="fi" id="f-phone" type="tel" placeholder="021 000 0000" maxlength="40"/>
+
+    <div class="part-header"><div class="part-num">SECTION 04</div><div class="part-title">Your Plan</div><div class="part-sub">PRICE PER LOCATION · INVOICED MONTHLY</div></div>
+    <div class="plan-card" data-term="12" onclick="selectTerm(12)">
+      <div class="radio-dot"><div class="radio-inner"></div></div>
+      <div class="plan-body"><div class="plan-name">12 MONTHS</div><div class="plan-desc">Best value · fixed term</div></div>
+      <div><div class="plan-price">${money(P12)}</div><div class="plan-per">PER WEEK ${G}</div></div>
+    </div>
+    <div class="plan-card" data-term="6" onclick="selectTerm(6)">
+      <div class="radio-dot"><div class="radio-inner"></div></div>
+      <div class="plan-body"><div class="plan-name">6 MONTHS</div><div class="plan-desc">Shorter fixed term</div></div>
+      <div><div class="plan-price">${money(P6)}</div><div class="plan-per">PER WEEK ${G}</div></div>
+    </div>
+    <div class="summary-box" id="summary"></div>
+
+    <div class="part-header"><div class="part-num">SECTION 05</div><div class="part-title">Subscriber Agreement</div><div class="part-sub">PLEASE READ BEFORE SIGNING</div></div>
+    <div id="agreement"></div>
+    <label class="agree"><input type="checkbox" id="f-agree"/><span>I have read and agree to the Team 365 Subscriber Agreement on behalf of the business named above.</span></label>
+
+    <div class="part-header"><div class="part-num">SECTION 06</div><div class="part-title">Sign</div><div class="part-sub">AN AUTHORISED PERSON SIGNS FOR THE BUSINESS</div></div>
+    <label class="fl">PRINTED NAME *</label>
+    <input class="fi" id="f-signatory" placeholder="Full name" maxlength="200"/>
+    <label class="fl">POSITION *</label>
+    <input class="fi" id="f-position" placeholder="e.g. Director, Owner" maxlength="200"/>
+    <label class="fl">SIGNATURE *</label>
+    <div class="sig-wrap">
+      <canvas class="sig-canvas" id="sig-canvas"></canvas>
+      <button type="button" class="sig-clear" onclick="clearSig()">CLEAR</button>
+      <div class="sig-hint">SIGN HERE</div>
+    </div>
+
+    <button class="submit-btn" id="submit-btn" onclick="submitForm()">SUBMIT SUBSCRIBER MEMBERSHIP</button>
+    <div class="err-msg" id="err"></div>
+  </div>`;
+  renderLocations();
+  selectTerm(term);
+  document.getElementById("f-business").addEventListener("input",renderAgreement);
+  initCanvas();
+}
+
+function renderLocations(){
+  const box=document.getElementById("loc-list");
+  box.innerHTML=locations.map((l,i)=>`<div class="loc-row">
+    <div class="loc-num">${i+1}</div>
+    <input class="fi" data-loc="${i}" placeholder="${i===0?"Location address *":"Address of location "+(i+1)}" value="${esc(l)}" maxlength="300"/>
+    ${locations.length>1?`<button type="button" class="loc-del" title="Remove" onclick="removeLocation(${i})">✕</button>`:""}
+  </div>`).join("");
+  box.querySelectorAll("input[data-loc]").forEach(inp=>inp.addEventListener("input",e=>{
+    locations[Number(e.target.dataset.loc)]=e.target.value;renderSummary();renderAgreement();
+  }));
+  renderSummary();renderAgreement();
+}
+function addLocation(){if(locations.length>=50)return;locations.push("");renderLocations();
+  const ins=document.querySelectorAll("input[data-loc]");ins[ins.length-1].focus();}
+function removeLocation(i){locations.splice(i,1);if(!locations.length)locations=[""];renderLocations();}
+function selectTerm(t){
+  term=t;
+  document.querySelectorAll(".plan-card").forEach(c=>c.classList.toggle("sel",Number(c.dataset.term)===t));
+  renderSummary();renderAgreement();
+}
+function renderSummary(){
+  const q=quote(),el=document.getElementById("summary");if(!el)return;
+  el.innerHTML=`
+    <div class="summary-row"><span class="summary-lbl">PLAN</span><span class="summary-val">${term} MONTHS</span></div>
+    <div class="summary-row"><span class="summary-lbl">FIRST LOCATION</span><span class="summary-val">${money(q.first)} / week</span></div>
+    ${q.n>1?`<div class="summary-row"><span class="summary-lbl">${q.n-1} ADDITIONAL LOCATION${q.n>2?"S":""} (${q.disc}% OFF)</span><span class="summary-val">${q.n-1} × ${money(q.extra)} / week</span></div>`:""}
+    <div class="summary-row"><span class="summary-total-lbl">PER WEEK</span><span class="summary-total">${money(q.week)} <span style="font-size:13px;color:#888">${esc(q.gst)}</span></span></div>
+    <div class="summary-row"><span class="summary-lbl">ABOUT PER MONTH · INVOICED MONTHLY</span><span class="summary-val">${money(q.month)} ${esc(q.gst)}</span></div>`;
+}
+function renderAgreement(){
+  const el=document.getElementById("agreement");if(!el)return;
+  el.innerHTML=(AGREEMENT||[]).map(s=>`<div class="decl-box"><div class="decl-title">${esc(s.title)}</div><div class="decl-text">${esc(fillText(s.body))}</div></div>`).join("")
+    ||`<div class="decl-box"><div class="decl-text">The Subscriber Agreement could not be loaded. Please refresh the page.</div></div>`;
+}
+
+// ── Signature ─────────────────────────────────────────────────────────────
+function initCanvas(){
+  sigCanvas=document.getElementById("sig-canvas");if(!sigCanvas)return;
+  sigCtx=sigCanvas.getContext("2d");
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  sigCanvas.width=sigCanvas.offsetWidth*dpr;sigCanvas.height=sigCanvas.offsetHeight*dpr;
+  sigCtx.scale(dpr,dpr);
+  sigCtx.strokeStyle="#ffffff";sigCtx.lineWidth=2;sigCtx.lineCap="round";sigCtx.lineJoin="round";
+  const hint=()=>{const h=document.querySelector(".sig-hint");if(h)h.style.display="none";};
+  function gp(e){const r=sigCanvas.getBoundingClientRect();const s=e.touches?e.touches[0]:e;return{x:s.clientX-r.left,y:s.clientY-r.top};}
+  const start=e=>{drawing=true;const p=gp(e);sigCtx.beginPath();sigCtx.moveTo(p.x,p.y);hasSig=true;hint();};
+  const move=e=>{if(!drawing)return;const p=gp(e);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();sigCtx.beginPath();sigCtx.moveTo(p.x,p.y);};
+  sigCanvas.addEventListener("mousedown",start);
+  sigCanvas.addEventListener("mousemove",move);
+  sigCanvas.addEventListener("mouseup",()=>{drawing=false;});
+  sigCanvas.addEventListener("mouseleave",()=>{drawing=false;});
+  sigCanvas.addEventListener("touchstart",e=>{e.preventDefault();start(e);},{passive:false});
+  sigCanvas.addEventListener("touchmove",e=>{e.preventDefault();move(e);},{passive:false});
+  sigCanvas.addEventListener("touchend",()=>{drawing=false;});
+}
+function clearSig(){
+  if(sigCtx)sigCtx.clearRect(0,0,sigCanvas.width,sigCanvas.height);
+  hasSig=false;const h=document.querySelector(".sig-hint");if(h)h.style.display="block";
+}
+// Black ink on white, scaled down to keep it small
+function getSigData(){
+  const scale=Math.min(1,600/sigCanvas.width);
+  const w=Math.round(sigCanvas.width*scale),h=Math.round(sigCanvas.height*scale);
+  const tmp=document.createElement("canvas");tmp.width=w;tmp.height=h;
+  const tc=tmp.getContext("2d");tc.drawImage(sigCanvas,0,0,w,h);
+  const src=tc.getImageData(0,0,w,h);
+  const off=document.createElement("canvas");off.width=w;off.height=h;
+  const oc=off.getContext("2d");oc.fillStyle="#ffffff";oc.fillRect(0,0,w,h);
+  const out=oc.getImageData(0,0,w,h);
+  for(let i=0;i<src.data.length;i+=4){
+    if(src.data[i+3]>10&&(src.data[i]>50||src.data[i+1]>50||src.data[i+2]>50)){out.data[i]=0;out.data[i+1]=0;out.data[i+2]=0;out.data[i+3]=255;}
+  }
+  oc.putImageData(out,0,0);
+  return off.toDataURL("image/png");
+}
+
+// ── PDF ───────────────────────────────────────────────────────────────────
+function generatePDF(d){
+  if(!window.jspdf||!window.jspdf.jsPDF)return "";
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:"portrait",unit:"mm",format:"a4",compress:true});
+  const W=210,pad=20;let y=20;
+  const need=h=>{if(y+h>275){doc.addPage();y=20;}};
+  doc.setTextColor(0,0,0);doc.setFontSize(24);doc.setFont("helvetica","bold");
+  doc.text("LAMONT TEAM 365",pad,y);y+=7;
+  doc.setFontSize(7.5);doc.setFont("helvetica","normal");doc.setTextColor(130,130,130);
+  doc.text("EVERYDAY. ALL YEAR ROUND.",pad,y);y+=5;
+  doc.setTextColor(170,170,170);doc.text("New Brighton · Christchurch 8061",pad,y);y+=10;
+  doc.setDrawColor(200,200,200);doc.line(pad,y,W-pad,y);y+=8;
+  doc.setFontSize(14);doc.setFont("helvetica","bold");doc.setTextColor(0,0,0);
+  doc.text("SUBSCRIBER AGREEMENT",pad,y);y+=7;
+  doc.setFontSize(8);doc.setFont("helvetica","normal");doc.setTextColor(120,120,120);
+  doc.text(`Date: ${d.date}`,pad,y);y+=10;
+  function head(title){need(14);doc.setFillColor(235,235,235);doc.rect(pad,y,W-pad*2,6,"F");
+    doc.setTextColor(0,0,0);doc.setFontSize(8);doc.setFont("helvetica","bold");doc.text(title,pad+2,y+4);y+=10;}
+  function sec(title,rows){
+    head(title);
+    rows.forEach(([lbl,v])=>{
+      const lines=doc.splitTextToSize(String(v||"-"),W-pad*2-70);
+      need(lines.length*4+2);
+      doc.setFont("helvetica","normal");doc.setTextColor(100,100,100);doc.setFontSize(7);doc.text(lbl,pad+2,y);
+      doc.setTextColor(0,0,0);doc.setFontSize(8);doc.text(lines,pad+68,y);y+=Math.max(6,lines.length*4+2);
+    });
+    y+=4;
+  }
+  sec("SUBSCRIBER",[["Business Name",d.business],["Trading Name",d.trading],["NZBN",d.nzbn],["Email (login)",d.email],
+    ["Contact",d.contact+(d.role?" · "+d.role:"")],["Phone",d.phone]]);
+  sec("LOCATIONS",d.locations.map((l,i)=>["Location "+(i+1),l]));
+  const q=d.q;
+  const feeRows=[["Plan",`${d.term} months (fixed term)`],["First Location",`${money(q.first)} per week ${q.gst}`]];
+  if(q.n>1)feeRows.push([`Additional Locations (${q.disc}% off)`,`${q.n-1} x ${money(q.extra)} per week ${q.gst}`]);
+  feeRows.push(["Total Per Week",`${money(q.week)} ${q.gst}`],["About Per Month",`${money(q.month)} ${q.gst}`],["Invoicing","Monthly in advance"]);
+  sec("PLAN & FEES",feeRows);
+  head("TERMS");
+  d.agreement.forEach(s=>{
+    const lines=doc.splitTextToSize(s.body,W-pad*2-4);
+    need(6+lines.length*3.6);
+    doc.setFont("helvetica","bold");doc.setFontSize(7.5);doc.setTextColor(0,0,0);doc.text(String(s.title||""),pad+2,y);y+=4;
+    doc.setFont("helvetica","normal");doc.setFontSize(7);doc.setTextColor(60,60,60);
+    lines.forEach(ln=>{need(4);doc.text(ln,pad+2,y);y+=3.6;});
+    y+=3;
+  });
+  need(52);y+=2;
+  head("SIGNED FOR THE SUBSCRIBER");
+  if(d.signature){try{doc.addImage(d.signature,"PNG",pad,y,80,25);}catch(e){}y+=28;}
+  doc.setFontSize(7);doc.setFont("helvetica","normal");doc.setTextColor(100,100,100);
+  doc.text(`Printed name: ${d.signatory}`,pad,y);y+=5;
+  doc.text(`Position: ${d.position}`,pad,y);y+=5;
+  doc.text(`For: ${d.business}`,pad,y);y+=5;
+  doc.text(`Date: ${d.date}`,pad,y);
+  const pages=doc.getNumberOfPages();
+  for(let i=1;i<=pages;i++){doc.setPage(i);doc.setFontSize(6);doc.setTextColor(180,180,180);
+    doc.text("Lamont Team 365 · New Brighton · Christchurch 8061 · www.lamontcollective.com",W/2,287,{align:"center"});}
+  return doc.output("datauristring").split(",")[1]||"";
+}
+
+// ── Submit ────────────────────────────────────────────────────────────────
+const ERRORS={incomplete:"Please complete all required fields.",signature:"Please sign again — the signature couldn't be read.",
+  used:"This link has already been used.",expired:"This link has expired. Please ask Team 365 for a new one.",
+  invalid:"This link isn't valid.",existing_member:"This email already has a Team 365 account. Please contact Team 365."};
+async function submitForm(){
+  if(submitting)return;
+  const err=document.getElementById("err");err.textContent="";
+  const f={business_name:val("f-business"),trading_name:val("f-trading"),nzbn:val("f-nzbn"),
+    contact_name:val("f-contact"),contact_role:val("f-role"),contact_phone:val("f-phone"),
+    term,locations:filledLocations(),signatory_name:val("f-signatory"),signatory_position:val("f-position"),
+    agree:document.getElementById("f-agree").checked};
+  const missing=[];
+  if(!f.business_name)missing.push("business name");
+  if(!f.locations.length)missing.push("at least one location address");
+  if(!f.contact_name)missing.push("contact name");
+  if(!f.contact_phone)missing.push("phone");
+  if(!f.signatory_name)missing.push("printed name");
+  if(!f.signatory_position)missing.push("position");
+  if(!hasSig)missing.push("signature");
+  if(missing.length){err.textContent="Please add: "+missing.join(", ")+".";return;}
+  if(!f.agree){err.textContent="Please tick the box to agree to the Subscriber Agreement.";return;}
+  f.signature=getSigData();
+  const btn=document.getElementById("submit-btn");submitting=true;btn.disabled=true;btn.textContent="SUBMITTING…";
+  let pdf="";
+  try{
+    const q=quote();
+    pdf=generatePDF({...f,business:f.business_name,trading:f.trading_name,contact:f.contact_name,role:f.contact_role,phone:f.contact_phone,
+      signatory:f.signatory_name,position:f.signatory_position,email:EMAIL,q,
+      date:new Date().toLocaleDateString("en-NZ",{day:"numeric",month:"long",year:"numeric"}),
+      agreement:(AGREEMENT||[]).map(s=>({title:s.title,body:fillText(s.body)}))});
+  }catch(e){pdf="";}
+  try{
+    const r=await callFn({action:"register",token:TOKEN,form:f,pdfBase64:pdf});
+    if(r&&r.ok){
+      renderMessage("✓","THANK YOU",`We've received the Subscriber Membership for <b style="color:#fff">${esc(f.business_name)}</b>.<br><br>
+        A copy of your signed Subscriber Agreement has been emailed to ${esc(EMAIL)}.<br><br>
+        Team 365 will review your details and email your login once your subscription is approved. Your first invoice will follow.`);
+      window.scrollTo(0,0);return;
+    }
+    err.textContent=ERRORS[r&&r.error]||"Something went wrong. Please try again, or contact Team 365.";
+  }catch(e){err.textContent="We couldn't reach Team 365. Please check your connection and try again.";}
+  submitting=false;btn.disabled=false;btn.textContent="SUBMIT SUBSCRIBER MEMBERSHIP";
+}
+
+(async function start(){
+  if(!/^[a-f0-9]{32,}$/i.test(TOKEN))return renderLinkError("invalid");
+  try{
+    const r=await callFn({action:"info",token:TOKEN});
+    if(!r||!r.ok)return renderLinkError(r&&r.error);
+    EMAIL=r.email||"";PRICING={...PRICING,...(r.pricing||{})};AGREEMENT=Array.isArray(r.agreement)?r.agreement:[];
+    renderForm();
+  }catch(e){renderLinkError("network");}
+})();
+</script>
+</body>
+</html>
