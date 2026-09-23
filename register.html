@@ -6,6 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="theme-color" content="#080808"/>
 <title>Team 365 · Health Screening Form</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Syncopate:wght@700&display=swap" rel="stylesheet"/>
 <style>
@@ -116,6 +117,71 @@ async function sendWelcomeEmailViaScript(to, firstName, tempPassword) {
     await fetch(APPS_SCRIPT_URL + "?" + params.toString(), {method:"GET",mode:"no-cors"});
   } catch(e) {}
 }
+// The signed form is emailed as a PDF (member + Team 365). The signature itself is never stored.
+function getSigData(){
+  const off=document.createElement("canvas");
+  off.width=sigCanvas.width;off.height=sigCanvas.height;
+  const oc=off.getContext("2d");
+  oc.fillStyle="#ffffff";oc.fillRect(0,0,off.width,off.height);
+  const orig=sigCtx.getImageData(0,0,sigCanvas.width,sigCanvas.height);
+  const out=oc.getImageData(0,0,off.width,off.height);
+  for(let i=0;i<orig.data.length;i+=4){
+    if(orig.data[i+3]>10&&(orig.data[i]>50||orig.data[i+1]>50||orig.data[i+2]>50)){
+      out.data[i]=0;out.data[i+1]=0;out.data[i+2]=0;out.data[i+3]=255;
+    }
+  }
+  oc.putImageData(out,0,0);
+  return off.toDataURL("image/png",0.9);
+}
+function generateHealthPDF(d){
+  if(!window.jspdf||!window.jspdf.jsPDF)return "";
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:"portrait",unit:"mm",format:"a4",compress:true});
+  const W=210,pad=20;let y=20;
+  doc.setTextColor(0,0,0);doc.setFontSize(24);doc.setFont("helvetica","bold");
+  doc.text("LAMONT TEAM 365",pad,y);y+=7;
+  doc.setFontSize(7.5);doc.setFont("helvetica","normal");doc.setTextColor(130,130,130);
+  doc.text("EVERYDAY. ALL YEAR ROUND.",pad,y);y+=5;
+  doc.setTextColor(170,170,170);doc.text("New Brighton · Christchurch 8061",pad,y);y+=10;
+  doc.setDrawColor(200,200,200);doc.line(pad,y,W-pad,y);y+=8;
+  doc.setFontSize(14);doc.setFont("helvetica","bold");doc.setTextColor(0,0,0);
+  doc.text("HEALTH SCREENING FORM",pad,y);y+=7;
+  doc.setFontSize(8);doc.setFont("helvetica","normal");doc.setTextColor(120,120,120);
+  doc.text(`Date: ${d.date}`,pad,y);y+=10;
+  function head(t){if(y>250){doc.addPage();y=20;}doc.setFillColor(235,235,235);doc.rect(pad,y,W-pad*2,6,"F");doc.setTextColor(0,0,0);doc.setFontSize(8);doc.setFont("helvetica","bold");doc.text(t,pad+2,y+4);y+=10;}
+  function row(l,v){
+    const lines=doc.splitTextToSize(String(v||"-"),W-pad*2-70);
+    if(y+lines.length*4>275){doc.addPage();y=20;}
+    doc.setFont("helvetica","normal");doc.setTextColor(100,100,100);doc.setFontSize(7);doc.text(l,pad+2,y);
+    doc.setTextColor(0,0,0);doc.setFontSize(8);doc.text(lines,pad+68,y);y+=Math.max(6,lines.length*4+2);
+  }
+  function para(t){doc.setFont("helvetica","normal");doc.setFontSize(7);doc.setTextColor(60,60,60);const l=doc.splitTextToSize(t,W-pad*2-4);if(y+l.length*4>275){doc.addPage();y=20;}doc.text(l,pad+2,y);y+=l.length*4+3;}
+  head("MEMBER DETAILS");
+  [["Full Name",d.name],["Date of Birth",d.dob],["Email",d.email],["Phone",d.phone],["Emergency Contact",d.eName],["Emergency Phone",d.ePhone]].forEach(r=>row(r[0],r[1]));y+=4;
+  head("HEALTH SCREENING (PAR-Q)");
+  PARQ.forEach((q,i)=>{para((i+1)+". "+q);row("Answer",d.parq[i]);});
+  row("Medical conditions",d.medCond||"None");row("Medications",d.meds||"None");row("Fitness level",d.fitnessLevel);y+=4;
+  head("DECLARATIONS");
+  para("HEALTH & MEDICAL DECLARATION: I confirm that the information provided is accurate to the best of my knowledge. I agree to inform Team 365 of any changes to my health or medical status. I acknowledge that physical activity carries inherent risks, and I participate at my own risk.");
+  row("Response",d.healthDeclaration==="Yes"?"I AGREE":"I DO NOT AGREE");
+  para("MEDIA & PROMOTIONAL USE: I grant permission for Team 365 to capture and use photographs and video footage of me during training sessions for promotional, marketing, and social media purposes.");
+  row("Response",d.mediaConsent==="Yes"?"I AGREE":"I DO NOT AGREE");y+=4;
+  if(y>220){doc.addPage();y=20;}
+  head("SIGNATURE");
+  if(d.signature){try{doc.addImage(d.signature,"PNG",pad,y,80,25);}catch(e){}y+=28;}
+  doc.setFontSize(7);doc.setFont("helvetica","normal");doc.setTextColor(100,100,100);
+  doc.text(`Signed: ${d.name}`,pad,y);y+=5;doc.text(`Date: ${d.date}`,pad,y);
+  doc.setFontSize(6);doc.setTextColor(180,180,180);
+  doc.text("Lamont Team 365 · New Brighton · Christchurch 8061 · www.lamontcollective.com",W/2,285,{align:"center"});
+  return doc.output("datauristring");
+}
+async function emailHealthPDF(email,name,pdfUri){
+  if(!pdfUri)return false;
+  try{
+    const r=await fetch(`${SB_URL}/functions/v1/health-form-email`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({email,name,pdfBase64:pdfUri.split(",")[1]||""})});
+    const j=await r.json().catch(()=>({}));return !!(j&&j.ok);
+  }catch(e){return false;}
+}
 async function logHealthToSheets(data) {
   try {
     const params = new URLSearchParams({action:"logHealth",...data});
@@ -213,7 +279,7 @@ async function handleSubmit(){
   if(!hasSig){errEl.textContent="Please sign the form.";return;}
   const btn = document.getElementById("submit-btn");
   btn.disabled=true; btn.textContent="SUBMITTING...";
-  const sigData = sigCanvas.toDataURL("image/png",0.7);
+  const sigData = getSigData(); // for the PDF only — not stored
   const regDate = today();
   const name = `${firstName} ${lastName}`;
   const regData = {
@@ -232,7 +298,6 @@ async function handleSubmit(){
     fitness_level:       fitnessLevel,
     health_declaration:  healthDeclaration,
     media_consent:       mediaConsent,
-    signature:           sigData,
     registration_date:   regDate
   };
   const healthData = {
@@ -260,6 +325,10 @@ async function handleSubmit(){
     // New health-screening signups get the welcome email + Notice Board/Workouts access (created server-side).
     if(!isExisting) sendWelcomeEmailViaScript(email, firstName, tempPw);
     logHealthToSheets(healthData);
+    btn.textContent="EMAILING YOUR COPY...";
+    let pdfUri="";
+    try{pdfUri=generateHealthPDF({name,email,phone,dob,eName,ePhone,parq:PARQ.map((_,i)=>parqAnswers[i]||""),medCond,meds,fitnessLevel,healthDeclaration,mediaConsent,signature:sigData,date:regDate});}catch(e){pdfUri="";}
+    await emailHealthPDF(email,name,pdfUri);
   }
   if(!ok){
     errEl.textContent="Something went wrong. Please try again.";
