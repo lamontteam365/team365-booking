@@ -9587,7 +9587,6 @@ function SubscriberAgreementDetails({sub,hideHeading}){
     row("Monthly invoice",subMoney(sub.total_month)+" "+g),
     row("Signed by",[sub.signatory_name,sub.signatory_position].filter(Boolean).join(", ")),
     row("Signed",signed),
-    sub.signature&&React.createElement("div",{style:{background:"#fff",padding:6,margin:"8px 0",display:"inline-block"}},React.createElement("img",{src:sub.signature,alt:"Signature",style:{display:"block",maxWidth:220,height:"auto"}})),
     Array.isArray(sub.agreement)&&sub.agreement.length>0&&React.createElement("div",null,
       React.createElement("button",{onClick:()=>setShowText(v=>!v),style:{background:"none",border:"1px solid #2a2a2a",color:"#aaa",fontSize:10,letterSpacing:"0.1em",padding:"6px 12px",cursor:"pointer",margin:"6px 0 10px"}},showText?"HIDE AGREEMENT TEXT":"VIEW SIGNED AGREEMENT"),
       showText&&React.createElement("div",{style:{background:"#0a0a0a",border:"1px solid #1a1a1a",padding:"10px 12px",marginBottom:10}},
@@ -9598,16 +9597,21 @@ function SubscriberAgreementDetails({sub,hideHeading}){
 }
 // The subscriber's own profile: what they agreed to, read only.
 function SubscriberProfileSummary({sub}){
+  const [open,setOpen]=useState(false);
   if(!sub)return null;
   const st=sub.status==="active"?"Active":sub.status==="suspended"?"Paused":sub.status==="pending"?"Awaiting approval":(sub.status||"\u2014");
   const stCol=sub.status==="active"?"#4aaa66":sub.status==="suspended"?"#e06040":"#1d9bf0";
   const row=(l,v,col)=>React.createElement("div",{className:"mp-row"},React.createElement("div",{className:"mp-label"},l),React.createElement("div",{className:"mp-value",style:{textAlign:"right",...(col?{color:col,fontWeight:600,letterSpacing:"0.06em"}:{})}},v||"\u2014"));
   return React.createElement("div",{"data-sub-summary":"1"},
-    React.createElement("div",{className:"prof-section"},"YOUR SUBSCRIPTION"),
-    React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.06em",lineHeight:1.6,marginBottom:6}},"What you agreed to. To change any of this, please contact Team 365."),
-    row("Business name",sub.business_name),
-    row("Status",st.toUpperCase(),stCol),
-    React.createElement(SubscriberAgreementDetails,{sub,hideHeading:true})
+    React.createElement("button",{type:"button",onClick:()=>setOpen(o=>!o),
+      style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",border:"none",borderRadius:0,padding:"12px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.18em",cursor:"pointer",marginTop:22,marginBottom:open?4:12}},
+      React.createElement("span",null,"YOUR SUBSCRIPTION"),
+      React.createElement("span",{style:{fontSize:11,transform:open?"none":"rotate(-90deg)",transition:"transform .15s"}},"\u25be")),
+    open&&React.createElement("div",{style:{marginBottom:8}},
+      React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.06em",lineHeight:1.6,margin:"6px 0"}},"What you agreed to. To change any of this, please contact Team 365."),
+      row("Business name",sub.business_name),
+      row("Status",st.toUpperCase(),stCol),
+      React.createElement(SubscriberAgreementDetails,{sub,hideHeading:true}))
   );
 }
 function SubscriberApproveBox({member,onApproved,showToast}){
