@@ -9566,7 +9566,7 @@ function SendSubscriberForm({showToast}){
   );
 }
 // What the gym signed up to — shown on the Subscriber profile.
-function SubscriberAgreementDetails({sub}){
+function SubscriberAgreementDetails({sub,hideHeading}){
   const [showText,setShowText]=useState(false);
   if(!sub||!sub.signed_at)return null;
   const g=sub.gst_label||"+ GST";
@@ -9574,7 +9574,7 @@ function SubscriberAgreementDetails({sub}){
   const row=(l,v)=>React.createElement("div",{className:"mp-row"},React.createElement("div",{className:"mp-label"},l),React.createElement("div",{className:"mp-value",style:{textAlign:"right"}},v||"—"));
   let signed="";try{signed=new Date(sub.signed_at).toLocaleDateString("en-NZ",{day:"numeric",month:"short",year:"numeric"});}catch{}
   return React.createElement(React.Fragment,null,
-    React.createElement("div",{className:"mp-section"},"SUBSCRIPTION AGREEMENT"),
+    !hideHeading&&React.createElement("div",{className:"mp-section"},"SUBSCRIPTION AGREEMENT"),
     sub.trading_name&&row("Trading name",sub.trading_name),
     sub.nzbn&&row("NZBN",sub.nzbn),
     row("Contact",[sub.contact_name,sub.contact_role].filter(Boolean).join(" · ")),
@@ -9594,6 +9594,20 @@ function SubscriberAgreementDetails({sub}){
         sub.agreement.map((c,i)=>React.createElement("div",{key:i,style:{marginBottom:10}},
           React.createElement("div",{style:{fontSize:10,fontWeight:600,letterSpacing:"0.1em",color:"#ccc",marginBottom:3}},c.title),
           React.createElement("div",{style:{fontSize:11,color:"#777",lineHeight:1.6,whiteSpace:"pre-wrap"}},c.body)))))
+  );
+}
+// The subscriber's own profile: what they agreed to, read only.
+function SubscriberProfileSummary({sub}){
+  if(!sub)return null;
+  const st=sub.status==="active"?"Active":sub.status==="suspended"?"Paused":sub.status==="pending"?"Awaiting approval":(sub.status||"\u2014");
+  const stCol=sub.status==="active"?"#4aaa66":sub.status==="suspended"?"#e06040":"#1d9bf0";
+  const row=(l,v,col)=>React.createElement("div",{className:"mp-row"},React.createElement("div",{className:"mp-label"},l),React.createElement("div",{className:"mp-value",style:{textAlign:"right",...(col?{color:col,fontWeight:600,letterSpacing:"0.06em"}:{})}},v||"\u2014"));
+  return React.createElement("div",{"data-sub-summary":"1"},
+    React.createElement("div",{className:"prof-section"},"YOUR SUBSCRIPTION"),
+    React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.06em",lineHeight:1.6,marginBottom:6}},"What you agreed to. To change any of this, please contact Team 365."),
+    row("Business name",sub.business_name),
+    row("Status",st.toUpperCase(),stCol),
+    React.createElement(SubscriberAgreementDetails,{sub,hideHeading:true})
   );
 }
 function SubscriberApproveBox({member,onApproved,showToast}){
@@ -10909,8 +10923,8 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         React.createElement("input",{className:"fi",type:"email",value:profForm.email,autoComplete:"email",readOnly:isSubscriber,onChange:e=>{setProfForm(f=>({...f,email:e.target.value}));setProfErr("");setProfOk("");}}),
         React.createElement("label",{className:"fl"},"PHONE NUMBER"),
         React.createElement("input",{className:"fi",type:"tel",value:profForm.phone,autoComplete:"tel",onChange:e=>{setProfForm(f=>({...f,phone:e.target.value}));setProfErr("");setProfOk("");}}),
-        React.createElement("label",{className:"fl"},"GENDER"),
-        memberData?.gender
+        !isSubscriber&&React.createElement("label",{className:"fl"},"GENDER"),
+        !isSubscriber&&(memberData?.gender
           ?React.createElement("div",{style:{marginBottom:14}},
               React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1a1a1a",borderRadius:0,padding:"10px 12px",fontSize:14,fontWeight:300,color:"#1d9bf0",letterSpacing:"0.04em"}},memberData.gender),
               React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.06em",marginTop:4}},"To change this, please contact Team 365.")
@@ -10922,11 +10936,12 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
                   style:{flex:1,background:profForm.gender===g?"#0a1a2a":"#0e0e0e",border:"1px solid "+(profForm.gender===g?"#1d9bf0":"#2a2a2a"),color:profForm.gender===g?"#1d9bf0":"#aaa",fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:300,padding:"10px 12px",borderRadius:0,cursor:"pointer",letterSpacing:"0.04em"}},g)
                 )),
               React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.06em",marginTop:4}},"Choose carefully — once saved, only Team 365 can change this.")
-            ),
+            )),
         memberData?.membership_type&&React.createElement("div",{style:{marginBottom:14}},
           React.createElement("label",{className:"fl"},"MEMBERSHIP TYPE"),
           React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1a1a1a",borderRadius:0,padding:"10px 12px",fontSize:14,fontWeight:300,color:"#1d9bf0",letterSpacing:"0.04em"}},memberData.membership_type)
         ),
+        !isSubscriber&&React.createElement(React.Fragment,null,
         React.createElement("div",{className:"prof-section"},"EMERGENCY CONTACT"),
         React.createElement("label",{className:"fl"},"CONTACT NAME"),
         React.createElement("input",{className:"fi",placeholder:"Emergency contact name",value:profForm.emergencyName||"",onChange:e=>{setProfForm(f=>({...f,emergencyName:e.target.value}));setProfErr("");setProfOk("");}}),
@@ -10975,7 +10990,9 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
           !profFriendCol&&React.createElement(BringAFriend,{
             email:session.email,showToast,unlimited:isMaster,
             widgetUrl:"https://team365-booking.vercel.app/WIDGET.HTML"})
+        )
         ),
+        isSubscriber&&React.createElement(SubscriberProfileSummary,{sub:subRow}),
         React.createElement("div",{className:"prof-section"},"CHANGE PASSWORD"),
         React.createElement("label",{className:"fl"},"NEW PASSWORD"),
         React.createElement("input",{className:"fi",type:"password",placeholder:"Leave blank to keep current",value:profForm.newPw,onChange:e=>{setProfForm(f=>({...f,newPw:e.target.value}));setProfErr("");setProfOk("");}}),
