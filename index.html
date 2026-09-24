@@ -9794,9 +9794,12 @@ function ChallengeView({session,showToast}){
   // never touched by a deletion, but a challenge that has been removed stops
   // appearing in their app.
   const known={};list.forEach(x=>{known[x.start]=true;});
-  const pastKeys=Object.keys(log).filter(k=>k&&k!==cfg.start&&known[k]).sort().reverse();
   const inChallenge=chEnrolled(cfg,session.email);
   const showCurrent=!notSet&&inChallenge;
+  // Everything else they have a record of, as long as the studio still lists it.
+  // The live challenge is never in here: if they are in it, it is the block
+  // above; if they are not, it is not theirs to read.
+  const pastKeys=Object.keys(log).filter(k=>k&&k!==cfg.start&&known[k]).sort().reverse();
   // Closed until the member opens it. Landing on the tab should show where they
   // are, not a whole day's form they did not ask for.
   const openNow=openKey||"";
@@ -9804,10 +9807,9 @@ function ChallengeView({session,showToast}){
     React.createElement("div",{className:"well-hdr",style:{marginBottom:16,padding:0}},
       React.createElement("div",{className:"well-title"},"CHALLENGE")
     ),
-    (!showCurrent&&!pastKeys.length)
-      ? React.createElement("div",{style:{fontSize:12,color:"#555",letterSpacing:"0.04em",lineHeight:1.9,textAlign:"center",padding:"40px 20px"}},
-          notSet?"No challenge is running yet.\nYour coach will set one up here.":"You are not in the current challenge.")
-      : React.createElement(React.Fragment,null,
+    !showCurrent&&React.createElement("div",{style:{fontSize:12,color:"#555",letterSpacing:"0.04em",lineHeight:1.9,textAlign:"center",padding:pastKeys.length?"18px 20px 22px":"40px 20px"}},
+      notSet||finished?"Team 365 is currently not running any Challenges.":"You are not in the current challenge."),
+    React.createElement(React.Fragment,null,
           showCurrent&&React.createElement(ChallengeBlock,{
             title:(cfg.name||"CHALLENGE").toUpperCase(),
             sub:(pending?"STARTS ":"STARTED ")+chFmtStart(myStart),
