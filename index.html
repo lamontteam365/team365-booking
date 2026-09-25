@@ -9843,24 +9843,48 @@ function ChallengeDayCard({cfg,day,entry}){
 // A challenge, as one collapsible block. The current one and every finished one
 // are the same shape, so the member's history sits in the same place they log
 // today rather than somewhere separate.
-// The name with its catchphrase under it on the left; the date on the right,
-// centred top to bottom. No catchphrase, no second line.
+// The name and the date along the top; the catchphrase on its own line under
+// them, across the full width. No catchphrase, no second line.
+// The catchphrase always sits on one line: when it is too long for the space
+// beside the date, its type steps down until it fits (never below 6px).
+function chFitLine(el){
+  if(!el)return;
+  let size=9;el.style.fontSize=size+"px";el.style.letterSpacing="0.1em";
+  if(el.scrollWidth<=el.clientWidth+0.5)return;
+  el.style.letterSpacing="0.05em";
+  while(el.scrollWidth>el.clientWidth+0.5&&size>6){size=Math.round((size-0.25)*100)/100;el.style.fontSize=size+"px";}
+}
 function ChallengeBlock({title,subtitle,tagline,sub,open,onToggle,head,children}){
   const tag=String(tagline||"").trim();
   const st=String(subtitle||"").trim();
+  const tagRef=useRef(null);
+  useEffect(()=>{
+    const fit=()=>chFitLine(tagRef.current);
+    fit();
+    // Fonts arriving late change the width, as does turning the phone.
+    const t=setTimeout(fit,300);
+    if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit).catch(()=>{});
+    window.addEventListener("resize",fit);
+    return ()=>{clearTimeout(t);window.removeEventListener("resize",fit);};
+  },[tag,sub]);
   return React.createElement("div",{style:{marginBottom:10}},
+    // Two rows: the name, the date and the arrow along the top; the
+    // catchphrase underneath across the full width of the button, so it has
+    // the whole line to itself and stays on one line.
     React.createElement("div",{onClick:onToggle,"data-chbar":"1",
-      style:{width:"100%",boxSizing:"border-box",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:"#fff",color:"#000",border:"1px solid #fff",borderRadius:0,padding:"11px 14px",cursor:"pointer",userSelect:"none"}},
-      React.createElement("div",{style:{flex:1,minWidth:0}},
-        // The name, with its subtitle after it in smaller type on the same line.
-        // If both don't fit on one line, the subtitle drops under the name.
-        React.createElement("div",{"data-chname":"1",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.12em",lineHeight:1.15,display:"flex",flexWrap:"wrap",alignItems:"baseline",columnGap:8}},
-          React.createElement("span",{style:{whiteSpace:"nowrap"}},title),
-          st&&React.createElement("span",{"data-chsubtitle":"1",style:{fontSize:11,letterSpacing:"0.14em",color:"#555",whiteSpace:"nowrap"}},st.toUpperCase())),
-        tag&&React.createElement("div",{"data-chtagline":"1",style:{fontSize:9,letterSpacing:"0.1em",color:"#555",fontWeight:600,marginTop:3}},tag.toUpperCase())
+      style:{width:"100%",boxSizing:"border-box",background:"#fff",color:"#000",border:"1px solid #fff",borderRadius:0,padding:"11px 14px",cursor:"pointer",userSelect:"none"}},
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}},
+        React.createElement("div",{style:{flex:1,minWidth:0}},
+          // The name, with its subtitle after it in smaller type on the same line.
+          // If both don't fit on one line, the subtitle drops under the name.
+          React.createElement("div",{"data-chname":"1",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.12em",lineHeight:1.15,display:"flex",flexWrap:"wrap",alignItems:"baseline",columnGap:8}},
+            React.createElement("span",{style:{whiteSpace:"nowrap"}},title),
+            st&&React.createElement("span",{"data-chsubtitle":"1",style:{fontSize:11,letterSpacing:"0.14em",color:"#555",whiteSpace:"nowrap"}},st.toUpperCase()))
+        ),
+        sub&&React.createElement("div",{"data-chdate":"1",style:{alignSelf:"center",fontSize:9,letterSpacing:"0.1em",color:"#555",fontWeight:600,whiteSpace:"nowrap",flexShrink:0}},sub),
+        React.createElement("span",{style:{fontSize:11,flexShrink:0,transform:open?"none":"rotate(-90deg)",transition:"transform .15s"}},"\u25be")
       ),
-      sub&&React.createElement("div",{"data-chdate":"1",style:{alignSelf:"center",fontSize:9,letterSpacing:"0.1em",color:"#555",fontWeight:600,whiteSpace:"nowrap",flexShrink:0}},sub),
-      React.createElement("span",{style:{fontSize:11,flexShrink:0,transform:open?"none":"rotate(-90deg)",transition:"transform .15s"}},"\u25be")
+      tag&&React.createElement("div",{"data-chtagline":"1",ref:tagRef,style:{fontSize:9,letterSpacing:"0.1em",color:"#555",fontWeight:600,marginTop:3,whiteSpace:"nowrap",overflow:"hidden"}},tag.toUpperCase())
     ),
     // Where the member is, always visible: the bar is closed until they open it,
     // but the day count, the streak, the progress and the theme are the point of
@@ -10297,8 +10321,9 @@ function ChallengeView({session,showToast,viewOnly,embedded}){
       React.createElement("div",{style:{fontSize:14,color:(formEntry.ref||"").trim()?"#fff":"#555",lineHeight:1.5}},
         (formEntry.ref||"").trim()||"—")
     ),
-    React.createElement("button",{onClick:()=>setEditing(true),
-      style:{width:"100%",background:"transparent",color:"#1d9bf0",border:"1px solid #1d3a5a",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.16em",padding:"13px",cursor:"pointer",marginTop:18}},
+    // Styled like the TODAY'S JOURNAL button.
+    React.createElement("button",{"data-chedit":"1",onClick:()=>setEditing(true),
+      style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",background:"#1d9bf0",color:"#fff",border:"1px solid #1d9bf0",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.16em",lineHeight:1.1,padding:"9px 34px",cursor:"pointer",marginTop:18}},
       openDay===curDay?"EDIT TODAY":"EDIT DAY "+openDay)
   );
   // A day read back with no way to change it: a past challenge, or this one
@@ -10401,12 +10426,14 @@ function ChallengeView({session,showToast,viewOnly,embedded}){
     :null
     )
   );
-  const dayPanel=(showForm||showRead)&&React.createElement("div",{id:"ch-day",style:{marginTop:20}},
-    React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:"#0a1a2a",border:"1px solid #1d3a5a",borderRadius:0,padding:"10px 13px",marginBottom:4}},
-      React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.12em",color:"#1d9bf0",lineHeight:1}},
-        (showForm&&formEntry?"EDITING DAY ":"DAY ")+openDay+(openDay===curDay?" · TODAY":"")),
-      React.createElement("span",{onClick:()=>{setEditing(false);setOpenDay(null);},
-        style:{fontSize:9,letterSpacing:"0.14em",color:"#777",fontWeight:600,cursor:"pointer",flexShrink:0}},"CLOSE")
+  // The heading of an open day is the TODAY'S JOURNAL button itself — same
+  // blue, same type, same words — so tapping it changes nothing but what
+  // opens underneath. Tapping it again closes the day.
+  const dayPanel=(showForm||showRead)&&React.createElement("div",{id:"ch-day",style:{marginTop:22}},
+    React.createElement("div",{"data-chdayhdr":"1",onClick:()=>{setEditing(false);setOpenDay(null);},
+      style:{position:"relative",width:"100%",boxSizing:"border-box",display:"flex",alignItems:"center",justifyContent:"center",background:"#1d9bf0",color:"#fff",border:"1px solid #1d9bf0",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.16em",lineHeight:1.1,padding:"9px 34px",cursor:"pointer",marginBottom:4,userSelect:"none"}},
+      openDay===curDay?"TODAY'S JOURNAL":"DAY "+openDay+" JOURNAL",
+      React.createElement("span",{style:{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontFamily:"inherit",fontSize:11,letterSpacing:"0.14em",color:"#fff",opacity:0.85}},"CLOSE")
     ),
     showForm?dayForm:dayRead
   );
