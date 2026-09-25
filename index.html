@@ -9102,11 +9102,28 @@ const CH_DEFAULT_LINES=[
   "CONSISTENCY BUILDS WHAT MOTIVATION STARTS.",
   "LOOK HOW FAR YOU'VE COME. KEEP GOING."
 ];
+// What counts as each movement, shown under COMMITMENT JOURNEY in the
+// challenge details (Sam, 25 Sep 2026). A saved movement with no description
+// takes its default here by id.
+const CH_MOVE_DESC={
+  cardio:"Running, walking, cycling, swimming, sport or any activity that gets your heart rate up.",
+  strength:"Weights, resistance work, functional training, Pilates, bodyweight or conditioning.",
+  recovery:"Sauna, cold plunge, stretching, mobility, breathwork or other intentional recovery."
+};
 const CH_DEFAULT_MOVEMENT=[
-  {id:"cardio",label:"CARDIO",note:"Minimum 30 minutes"},
-  {id:"strength",label:"STRENGTH",note:"Minimum 30 minutes"},
-  {id:"recovery",label:"RECOVERY",note:"Minimum 30 minutes"}
+  {id:"cardio",label:"CARDIO",note:"Minimum 30 minutes",desc:CH_MOVE_DESC.cardio},
+  {id:"strength",label:"STRENGTH",note:"Minimum 30 minutes",desc:CH_MOVE_DESC.strength},
+  {id:"recovery",label:"RECOVERY",note:"Minimum 30 minutes",desc:CH_MOVE_DESC.recovery}
 ];
+// Up to four movements. The fourth only exists once it has a name.
+// Up to six movements. The first three are the challenge; the rest are added by
+// typing a name into the empty row, and a row left without a name isn't kept.
+const CH_MOVE_SLOTS=6;
+function chNewMoveId(list){let n=4;while((list||[]).some(x=>x&&x.id==="move"+n))n++;return "move"+n;}
+// The rows to show in Admin: every movement, then one empty row to add the
+// next, until there are six.
+function chMoveRows(list){const m=list||[];const last=m[m.length-1];const extra=m.length<CH_MOVE_SLOTS&&(!last||String(last.label||"").trim())?1:0;return m.length+extra;}
+const CH_MOVE4_ID="move4";
 // Not a rating. Three different experiences of the same day, deliberately not
 // ordered best to worst — someone who had to push is not "less determined"
 // than someone who felt strong. Rendered as equal buttons, no colour hierarchy,
@@ -9127,13 +9144,40 @@ const CH_DETERMINATION=[
 ];
 // The same idea for intake: an observation the member makes about their own
 // day, in neutral words. Never "poor" or "bad", and never scored.
-const CH_INTAKE=[
-  {id:"low",label:"Needed improvement"},
-  {id:"on",label:"On track"},
-  {id:"strong",label:"Strong"}
+// Nutrition and hydration each have their own words (Sam, 25 Sep 2026). The
+// ids are shared and never change, so every day already saved reads back in
+// the new wording and the strips and totals count exactly as before.
+const CH_INTAKE_N=[
+  {id:"low",label:"I made some good choices"},
+  {id:"on",label:"I stayed on track"},
+  {id:"strong",label:"I met my target"}
 ];
+const CH_INTAKE_H=[
+  {id:"low",label:"I drank plenty of water"},
+  {id:"on",label:"I stayed on track"},
+  {id:"strong",label:"I met my target"}
+];
+const CH_INTAKE=CH_INTAKE_N;
+// The target each one is measured against, in small type beside its heading.
+const CH_INTAKE_N_NOTE="Your daily nutrition target";
+const CH_INTAKE_H_NOTE="3L of water daily";
+// The INTAKE words are config, editable in Admin: each one's heading, the
+// target beside it, and its three options. The ids (low/on/strong) never
+// change, so rewording never changes what a saved day means.
+const CH_DEFAULT_INTAKE={
+  n:{label:"NUTRITION",note:CH_INTAKE_N_NOTE,opts:CH_INTAKE_N.map(o=>o.label)},
+  h:{label:"HYDRATION",note:CH_INTAKE_H_NOTE,opts:CH_INTAKE_H.map(o=>o.label)}
+};
+const CH_INTAKE_IDS=["low","on","strong"];
+function chIntakeOf(cfg,k){
+  const d=CH_DEFAULT_INTAKE[k];
+  const x=cfg&&cfg.intake&&typeof cfg.intake==="object"&&cfg.intake[k]&&typeof cfg.intake[k]==="object"?cfg.intake[k]:{};
+  const opts=Array.isArray(x.opts)?x.opts:[];
+  return {label:String(x.label||"").trim()||d.label,note:x.note!=null?String(x.note):d.note,
+    opts:CH_INTAKE_IDS.map((id,i)=>({id,label:String(opts[i]||"").trim()||d.opts[i]}))};
+}
 const chDetLabel=id=>{const f=CH_DETERMINATION.find(o=>o.id===id);return f?f.label:"—";};
-const chIntakeLabel=id=>{const f=CH_INTAKE.find(o=>o.id===id);return f?f.label:"—";};
+const chIntakeLabel=(id,opts)=>{const f=(opts||CH_INTAKE).find(o=>o.id===id);return f?f.label:"—";};
 // Three tones of one colour, so a run of days reads as a pattern rather than a
 // row of grades. No red, no green, nothing that says right or wrong.
 const CH_INTAKE_TONE={low:"rgba(29,155,240,0.22)",on:"rgba(29,155,240,0.55)",strong:"rgba(29,155,240,1)"};
@@ -9247,6 +9291,88 @@ const CH_DEFAULT_REF_EG=[
   "Starting again every Monday.",
   "Same as today."
 ];
+// Lines in capitals on their own read as small headings in the member view.
+// Sam's words, 25 Sep 2026. {N} is the length of the challenge. Kept in
+// sections so Admin can edit each one on its own: the title, the details, one
+// heading and text per section, and the closing lines.
+const CH_DEFAULT_ABOUT={
+  title:["{N} : 365","THE {N}-DAY PURSUIT","365 AVAILABLE. {N} CHOSEN. MAKE THEM COUNT."],
+  details:"You have 365 days ahead of you. For the next {N}, the focus is yours. Your choices. Your commitment. Your consistency. Your determination.",
+  sections:[
+    {h:"NOURISHMENT JOURNEY",t:"Get after your nutrition and hydration goals."},
+    {h:"COMMITMENT JOURNEY",t:"Complete any 2 of 3: cardio, strength and recovery. At least 30 minutes each.",move:true},
+    {h:"CONSISTENCY & DETERMINATION",t:"Choose the response that best reflects how your day really went."},
+    {h:"BIGGEST WIN & REFLECTION",t:"Capture your biggest win and answer the day's reflection question."},
+    {h:"EACH WEEK",t:"A new theme and a thought to let grow throughout the week."},
+    {h:"MISSED A DAY?",t:"Tap the day on your grid and fill it in. You can go back to any day up to today, plus one week after the challenge ends."},
+    {h:"THE END OR A NEW BEGINNING",t:"Look back at what you chose to do with your {N}. Your commitment. Your consistency. Your determination. Your patterns. Your wins. Your words."}
+  ],
+  closing:["{N}:365","{N} CHOSEN. 365 AVAILABLE.","THE PURSUIT IS YOURS."]
+};
+// The about content in sections, whatever shape it was saved in. A version
+// saved as one block of text (the first build of this) is read back into
+// sections: capitals-only blocks are the title and the closing, a block with
+// no heading is the details, and the rest are heading + text.
+function chAboutOf(cfg){
+  const a=cfg&&cfg.about;
+  const clean=o=>({title:(Array.isArray(o.title)?o.title:[]).map(x=>String(x||"")).concat(["","",""]).slice(0,3),
+    details:String(o.details||""),
+    sections:(Array.isArray(o.sections)?o.sections:[]).filter(x=>x&&typeof x==="object").map(x=>({h:String(x.h||""),t:String(x.t||""),move:x.move===true})),
+    closing:(Array.isArray(o.closing)?o.closing:[]).map(x=>String(x||""))});
+  // The COMMITMENT JOURNEY section lists the movements under it. One saved
+  // before that existed is found by its heading.
+  const flag=o=>{if(!o.sections.some(x=>x.move)){const i=o.sections.findIndex(x=>x.h.trim().toUpperCase()==="COMMITMENT JOURNEY");if(i>=0)o.sections[i].move=true;}return o;};
+  if(a&&typeof a==="object"&&!Array.isArray(a))return flag(clean(a));
+  if(typeof a!=="string")return flag(clean(CH_DEFAULT_ABOUT));
+  const caps=t=>!!t&&t===t.toUpperCase();
+  const blocks=a.split(/\n\s*\n/).map(b=>b.split("\n").map(l=>l.trim()).filter(Boolean)).filter(b=>b.length);
+  const o={title:[],details:"",sections:[],closing:[]};
+  blocks.forEach((b,i)=>{
+    if(b.every(caps)){if(i===0&&!o.title.length)o.title=b.slice(0,3);else o.closing=b;return;}
+    let k=0;while(k<b.length&&caps(b[k]))k++;
+    if(k===0&&!o.details)o.details=b.join(" ");
+    else o.sections.push({h:b.slice(0,k).join(" "),t:b.slice(k).join(" ")});
+  });
+  return flag(clean(o));
+}
+// ── The weekly challenge ─────────────────────────────────────────────────────
+// Once a week, complete one of the member's own Timed Exercises (Workouts →
+// TIMED EXERCISES). The member ticks it, and can say which one. Config lives on
+// the challenge (`weekly`), the ticks on the member's bucket (`weekly`, keyed
+// by week number). On by default.
+const CH_WEEKLY_TEXT="Complete 1 of your TIMED EXERCISES in the WORKOUTS tab this week.";
+const CH_WEEKLY_HOW="Each week, tap that week's box when it's done and enter your time.";
+function chWeeklyOf(cfg){
+  const w=cfg&&cfg.weekly&&typeof cfg.weekly==="object"?cfg.weekly:{};
+  return {on:w.on!==false,title:String(w.title||"").trim()||"WEEKLY CHALLENGE",
+    text:w.text!=null&&String(w.text).trim()?String(w.text):CH_WEEKLY_TEXT,
+    // The "how it works" line under it in the challenge details. Blank hides it.
+    how:w.how!=null?String(w.how):CH_WEEKLY_HOW,
+    weeks:(Array.isArray(w.weeks)?w.weeks:[]).map(x=>String(x||""))};
+}
+// The challenge's weeks follow its themes: four weeks for 30 days, the last one
+// running to the end.
+function chWeekCount(cfg){const n=Math.max(1,(cfg.themes||[]).length);return Math.max(1,Math.min(n,Math.ceil((cfg.days||1)/7)));}
+function chWeekOfDay(cfg,day){return Math.min(chWeekCount(cfg),Math.max(1,Math.ceil(day/7)));}
+function chWeekRange(cfg,w){const n=chWeekCount(cfg);const a=(w-1)*7+1;return [a,w===n?cfg.days:Math.min(cfg.days,w*7)];}
+function chWeekText(cfg,w){const x=chWeeklyOf(cfg);return (x.weeks[w-1]||"").trim()||x.text;}
+// Weekly times are minutes and seconds, "MM:SS". Digits are typed and the ":"
+// goes in by itself: 842 -> 8:42 while typing, 08:42 once saved.
+function chMinsTyping(v){const d=String(v||"").replace(/\D/g,"").slice(0,4);return d.length>2?d.slice(0,-2)+":"+d.slice(-2):d;}
+function chMinsFmt(v){
+  const t=String(v||"").trim();if(!t)return "";
+  let m,s2;
+  if(t.indexOf(":")>=0){const p=t.split(":");m=p[0].replace(/\D/g,"");s2=(p[1]||"").replace(/\D/g,"");}
+  else{const d=t.replace(/\D/g,"");if(!d)return "";if(d.length<=2){m=d;s2="0";}else{m=d.slice(0,-2);s2=d.slice(-2);}}
+  const pad=x=>{x=String(parseInt(x||"0",10)||0);return x.length<2?"0"+x:x;};
+  return pad(m)+":"+pad(s2).slice(-2);
+}
+// Every Timed Exercise starts "Team 365 …", so the drop-down leaves that off.
+function chExName(t){return String(t||"").replace(/^\s*team\s*365\s*/i,"").trim()||String(t||"");}
+function chWeeklyDone(b){const o=b&&b.weekly&&typeof b.weekly==="object"?b.weekly:{};return Object.keys(o).filter(k=>o[k]&&o[k].done).length;}
+function chAboutEmpty(o){
+  return !o.title.some(x=>x.trim())&&!o.details.trim()&&!o.sections.some(x=>x.h.trim()||x.t.trim())&&!o.closing.some(x=>x.trim());
+}
 const CH_DEFAULT_CFG={
   name:"CHALLENGE",days:30,start:"",
   movement:CH_DEFAULT_MOVEMENT,movementRequired:2,
@@ -9259,15 +9385,23 @@ const CH_DEFAULT_CFG={
   // everyone sees it; once the list has been saved it is authoritative.
   members:null,
   closing:"YOU CAN.",
-  closingSub:"EVERY DAY. ALL YEAR ROUND."
+  closingSub:"EVERY DAY. ALL YEAR ROUND.",
+  // What the challenge is, behind a button above the day box that starts
+  // closed. Both editable in Admin; "{N}" is the length. Blank hides it.
+  aboutTitle:"THE {N} DAY PURSUIT DETAILS",
+  about:CH_DEFAULT_ABOUT
 };
 function chCfgFrom(raw){
   let o={};
   if(raw){try{o=JSON.parse(raw)||{};}catch{o={};}}
   const c={...CH_DEFAULT_CFG,...o};
   c.days=Math.min(365,Math.max(1,parseInt(c.days)||30));
+  // An extra movement (a fourth one) only exists while it has a real name. One
+  // saved with its name cleared used to come back as "MOVE4"; it is dropped.
+  const named=x=>{const l=String(x.label||"").trim();return CH_MOVE_DESC[String(x.id)]!==undefined||(!!l&&l.toUpperCase()!==String(x.id).toUpperCase());};
   c.movement=(Array.isArray(c.movement)&&c.movement.length?c.movement:CH_DEFAULT_MOVEMENT)
-    .filter(x=>x&&x.id).map(x=>({id:String(x.id),label:String(x.label||x.id).toUpperCase(),note:String(x.note||"")}));
+    .filter(x=>x&&x.id&&named(x)).map(x=>({id:String(x.id),label:String(x.label||x.id).toUpperCase(),note:String(x.note||""),
+      desc:x.desc!=null?String(x.desc):(CH_MOVE_DESC[String(x.id)]||"")}));
   c.movementRequired=Math.min(c.movement.length,Math.max(1,parseInt(c.movementRequired)||2));
   // An empty bank is never what anyone meant, so it falls back rather than
   // handing the member thirty days of the same fallback question.
@@ -9299,7 +9433,45 @@ function chListFrom(rawList,rawOne){
   if(rawList){try{const p=JSON.parse(rawList);if(Array.isArray(p))a=p;}catch{a=null;}}
   if(a===null){const one=rawOne?chCfgFrom(rawOne):null;a=one&&one.start?[one]:[];}
   return a.map(x=>chCfgFrom(typeof x==="string"?x:JSON.stringify(x)))
-          .filter(c=>c.start).sort((p,q)=>p.start<q.start?-1:p.start>q.start?1:0);
+          .filter(c=>c.start)
+          // Every challenge carries an id. One saved before ids existed is named
+          // after its start date, which is already unique on the list.
+          .map(c=>({...c,id:c.id?String(c.id):"ch_"+c.start}))
+          .sort((p,q)=>p.start<q.start?-1:p.start>q.start?1:0);
+}
+// A new challenge's id: time plus a random suffix, checked against every id in
+// use. A time-only id let two challenges created together collide.
+function chNewId(list){
+  let id;
+  do{id="ch_"+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+  while((list||[]).some(c=>c&&c.id===id));
+  return id;
+}
+// Challenges taken off the studio's list with REMOVE CHALLENGE — KEEP ENTRIES.
+// Members who logged anything in one keep it in their history, read-only.
+const CH_ARCHIVE_KEY="__CHALLENGES_ARCHIVE__";
+function chIsList(content){
+  if(content==null||content==="")return true;
+  try{return Array.isArray(JSON.parse(content));}catch{return false;}
+}
+// Completion wording is stored with "{N}" where the length goes, so it follows
+// the challenge length. Shown and typed with the real number.
+function chShowN(t,days){const n=parseInt(days,10);return String(t||"").replace(/\{N\}/g,n>=1?String(n):"30");}
+function chKeepN(v,days){const n=parseInt(days,10);v=String(v||"").replace(/\n/g," ").toUpperCase();return n>=1?v.replace(new RegExp("(^|[^0-9])"+n+"(?=[ -]?DAY)","g"),"$1{N}"):v;}
+// Why a challenge can't be saved, or "" when it can. The clash is checked
+// first, so the message always names the challenge the dates run over.
+function chDraftProblem(d,others,archive,floor,isNew){
+  if(!d.start)return "Pick a start date.";
+  const end=chEndDS(d);
+  const clash=(others||[]).find(c=>c.start<=end&&chEndDS(c)>=d.start);
+  if(clash)return "These dates run over "+(clash.name||"CHALLENGE").toUpperCase()+" ("+chFmtRange(clash.start,clash.days)+"). Two challenges cannot run at once.";
+  // Members' entries are filed by start date, so a new challenge on the same
+  // date as a removed one would pick up that challenge's entries.
+  const arc=(archive||[]).find(c=>c.start===d.start&&c.id!==d.id);
+  if(arc)return "Members still have "+(arc.name||"CHALLENGE").toUpperCase()+", which started on this date, and their entries are filed under it. Pick another start date, or delete that one under REMOVED — KEPT FOR MEMBERS.";
+  if(isNew&&floor&&d.start<floor)return "A new challenge can't start before "+chFmtStart(floor)+".";
+  if(!(d.themes||[]).length||(d.themes||[]).some(t=>!String(t||"").trim()))return "Every week in the JOURNEY needs a theme.";
+  return "";
 }
 // Which challenge the member screen is on: the one running today, or else the
 // next one due to start, or else the most recent finished one so its completion
@@ -9317,13 +9489,19 @@ function chActive(list,ds){
 // written again, which makes it the one place the themes, the questions and the
 // examples cannot be deleted from — so it is also what a brand new challenge is
 // seeded from when the list has been emptied.
+// ok:false means the setup could not be read, or a stored list is not a list.
+// Nothing may be written from a load like that: an empty-looking list saved
+// back over the real one would wipe every challenge.
 async function chLoadSetup(){
-  const [a,b]=await Promise.all([
-    sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(CH_LIST_KEY)}&select=content`),
-    sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(CH_CFG_KEY)}&select=content`)
-  ]);
-  const raw=b&&b.length?b[0].content:"";
-  return {list:chListFrom(a&&a.length?a[0].content:"",raw),legacy:raw?chCfgFrom(raw):null};
+  const [a,b,c]=await Promise.all([chRead(CH_LIST_KEY),chRead(CH_CFG_KEY),chRead(CH_ARCHIVE_KEY)]);
+  const corrupt=(a.ok&&a.exists&&!chIsList(a.content))||(c.ok&&c.exists&&!chIsList(c.content));
+  const ok=a.ok&&b.ok&&c.ok&&!corrupt;
+  const raw=b.content||"";
+  return {ok,corrupt,
+    list:ok?chListFrom(a.exists?(a.content||"[]"):"",raw):[],
+    archive:ok&&c.exists?chListFrom(c.content||"[]",""):[],
+    legacy:raw?chCfgFrom(raw):null,
+    listExists:a.exists,archiveExists:c.exists};
 }
 async function chLoadList(){
   return (await chLoadSetup()).list;
@@ -9331,11 +9509,81 @@ async function chLoadList(){
 async function chLoadCfg(){
   return chActive(await chLoadList(),toDS(new Date()))||chCfgFrom("");
 }
-async function chPersist(key,obj){
-  const q="class_name=eq."+encodeURIComponent(key);
-  const ex=await sbGet("coaching_notes",q+"&select=class_name");
-  if(ex&&ex.length)return await sbPatch("coaching_notes",q,{content:JSON.stringify(obj),updated_at:Date.now()});
-  return await sbPost("coaching_notes",{class_name:key,content:JSON.stringify(obj),updated_at:Date.now()});
+// A read that can tell "no row" from "could not read".
+async function chRead(key){
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/coaching_notes?class_name=eq.${encodeURIComponent(key)}&select=content`,{headers:SB_HDR});
+    if(!r.ok)return {ok:false,exists:false,content:null};
+    const j=await r.json();
+    return {ok:true,exists:!!(j&&j.length),content:j&&j.length?j[0].content:null};
+  }catch{return {ok:false,exists:false,content:null};}
+}
+// A write that reports whether it landed. The rows come back with the write,
+// so a PATCH that row-level security quietly blocks (0 rows, still a 2xx) is a
+// failure here rather than looking like a save.
+async function chWrite(key,obj,exists){
+  const content=typeof obj==="string"?obj:JSON.stringify(obj);
+  try{
+    const r=exists
+      ?await fetch(`${SB_URL}/rest/v1/coaching_notes?class_name=eq.${encodeURIComponent(key)}`,{method:"PATCH",headers:{...SB_HDR,"Prefer":"return=representation"},body:JSON.stringify({content,updated_at:Date.now()})})
+      :await fetch(`${SB_URL}/rest/v1/coaching_notes`,{method:"POST",headers:{...SB_HDR,"Prefer":"return=representation"},body:JSON.stringify({class_name:key,content,updated_at:Date.now()})});
+    if(!r.ok)return false;
+    const j=await r.json().catch(()=>null);
+    return Array.isArray(j)&&j.length>0;
+  }catch{return false;}
+}
+async function chDeleteRow(key){
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/coaching_notes?class_name=eq.${encodeURIComponent(key)}`,{method:"DELETE",headers:{...SB_HDR,"Prefer":"return=representation"}});
+    if(!r.ok)return false;
+    const j=await r.json().catch(()=>null);
+    return Array.isArray(j)&&j.length>0;
+  }catch{return false;}
+}
+function chParseLog(content){
+  if(!content)return {};
+  try{const o=JSON.parse(content);return o&&typeof o==="object"&&!Array.isArray(o)?o:{};}catch{return {};}
+}
+// DELETE CHALLENGE AND ALL ENTRIES. Reads every member record, takes the
+// bucket for this start date out of each, PATCHes the records that still hold
+// other challenges and deletes the ones left empty. Each record is re-read
+// just before it is changed, so a day a member saves meanwhile is not lost.
+// Reports how many members were cleared and how many failed.
+async function chDeleteEntries(start){
+  const rows=[];
+  try{
+    for(let off=0;;off+=500){
+      const r=await fetch(`${SB_URL}/rest/v1/coaching_notes?class_name=like.${encodeURIComponent("__CHLOG__*")}&select=class_name,content&order=id.asc&limit=500&offset=${off}`,{headers:SB_HDR});
+      if(!r.ok)return {ok:false,members:0,failed:0};
+      const j=await r.json();
+      if(!Array.isArray(j))return {ok:false,members:0,failed:0};
+      rows.push(...j);
+      if(j.length<500)break;
+    }
+  }catch{return {ok:false,members:0,failed:0};}
+  let members=0,failed=0;
+  for(const row of rows){
+    if(!row||typeof row.class_name!=="string"||row.class_name.indexOf("__CHLOG__")!==0)continue;
+    if(!Object.prototype.hasOwnProperty.call(chParseLog(row.content),start))continue;
+    const cur=await chRead(row.class_name);
+    if(!cur.ok){failed++;continue;}
+    const log=chParseLog(cur.content);
+    if(!Object.prototype.hasOwnProperty.call(log,start)){members++;continue;}
+    delete log[start];
+    const ok=Object.keys(log).length?await chWrite(row.class_name,log,true):await chDeleteRow(row.class_name);
+    if(ok)members++;else failed++;
+  }
+  return {ok:failed===0,members,failed};
+}
+// The ON/OFF switch, read back after it is saved: a write that was blocked
+// must not look like the switch moved.
+async function chFlagIs(enabled){
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/feature_flags?id=eq.1&select=challenge_enabled`,{headers:SB_HDR});
+    if(!r.ok)return false;
+    const j=await r.json();
+    return Array.isArray(j)&&j.length===1&&j[0].challenge_enabled===(enabled===true);
+  }catch{return false;}
 }
 // Day 1 IS the configured start date, and everyone is on the same day.
 // Midday anchors so a daylight-saving shift can never move a day boundary.
@@ -9384,7 +9632,8 @@ function chStreak(entries,today){
 function chBucket(log,start){
   const b=(log&&start&&log[start])||{};
   return {entries:b.entries||{},start:b.start||"",name:b.name||"",days:parseInt(b.days)||0,
-    movement:Array.isArray(b.movement)?b.movement:null,movementRequired:parseInt(b.movementRequired)||0};
+    movement:Array.isArray(b.movement)?b.movement:null,movementRequired:parseInt(b.movementRequired)||0,
+    weekly:b.weekly&&typeof b.weekly==="object"&&!Array.isArray(b.weekly)?b.weekly:{}};
 }
 function chMergeBucket(log,start,b){
   const out={entries:b.entries};
@@ -9394,6 +9643,8 @@ function chMergeBucket(log,start,b){
   // Stamped so a finished challenge still reads by the rules it was run under.
   if(b.movement&&b.movement.length)out.movement=b.movement;
   if(b.movementRequired)out.movementRequired=b.movementRequired;
+  // The weekly challenge ticks ride along with the day entries.
+  if(b.weekly&&Object.keys(b.weekly).length)out.weekly=b.weekly;
   return {...(log||{}),[start]:out};
 }
 // The studio runs challenges from a Monday, so the global start date is chosen
@@ -9415,6 +9666,13 @@ function chFmtRange(startDS,days){
   const f=d=>d.getDate()+" "+MONTHS[d.getMonth()].toUpperCase();
   return f(a)+" \u2013 "+f(b)+" "+b.getFullYear();
 }
+// Short form for the right-hand side of the challenge bar: "MON 21 SEP".
+function chFmtDay(ds){
+  if(!ds)return "";
+  const d=new Date(ds+"T12:00:00");
+  if(isNaN(d.getTime()))return ds;
+  return ["SUN","MON","TUE","WED","THU","FRI","SAT"][d.getDay()]+" "+d.getDate()+" "+MONTHS[d.getMonth()].toUpperCase();
+}
 function chFmtStart(ds){
   if(!ds)return "";
   const d=new Date(ds+"T12:00:00");
@@ -9430,7 +9688,13 @@ const chMoveMet=(cfg,e)=>chMoveCount(cfg,e)>=cfg.movementRequired;
 // A finished challenge's own config: its name, its length and the movement list
 // it was actually run under, all stamped into the record as it was written.
 // Anything a record predates falls back to the challenge running now.
-function chCfgOfBucket(cfg,bucket){
+// A member only ever sees challenges still on the studio's list (or kept for
+// them in REMOVED), so that challenge's CURRENT setup is passed in as `own` and
+// always wins — its name, length and movement. The copy stamped on the record is
+// only the fallback. Without this, a challenge removed and re-created on the same
+// start date went on showing members the old name.
+function chCfgOfBucket(cfg,bucket,own){
+  if(own)return own;
   const days=bucket.days||Math.max.apply(null,Object.keys(bucket.entries||{}).map(x=>parseInt(x)||0).concat([1]));
   return {...cfg,
     name:bucket.name||cfg.name,
@@ -9474,25 +9738,34 @@ function chScrollToDay(){
   },60);
 }
 const chBlueHdr=(txt,tight)=>React.createElement("div",{style:{fontSize:10,letterSpacing:"0.22em",color:"#1d9bf0",fontWeight:600,margin:tight?"14px 0 10px":"26px 0 12px"}},txt);
-function ChallengeTick({on,label,note,onClick,disabled}){
+// The width of the movement-name column, so every note ("Minimum 30 minutes")
+// starts in the same place on every row whatever the movements are called.
+function chLabelStack(movement){return (movement||[]).some(m=>String(m.label||"").length>12);}
+function chLabelW(movement){const n=Math.max(4,...(movement||[]).map(m=>String(m.label||"").length));return Math.min(160,n*9+20);}
+function ChallengeTick({on,label,note,onClick,disabled,labelW,stack}){
   return React.createElement("div",{
     onClick:disabled?undefined:onClick,
     style:{display:"flex",alignItems:"center",gap:12,padding:"11px 13px",background:"#141414",border:"1px solid "+(on?"#1d3a5a":"#888"),borderRadius:0,marginBottom:7,cursor:disabled?"default":"pointer",opacity:disabled?0.55:1,transition:"border-color .15s"}
   },
     React.createElement("div",{style:{width:22,height:22,flexShrink:0,border:"1px solid "+(on?"#1d9bf0":"#333"),background:on?"#0a1a2a":"transparent",color:"#1d9bf0",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center"}},on?"✓":""),
-    React.createElement("div",{style:{flex:1,minWidth:0,display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}},
-      React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.1em",color:on?"#fff":"#bbb",lineHeight:1.2}},label),
-      note&&React.createElement("span",{style:{fontSize:9,letterSpacing:"0.1em",color:"#666"}},note)
+    // Names in a column so every note starts in the same place. When a name is
+    // too long for that (STRENGTH & CONDITIONING), every note sits under its
+    // name instead, so they still line up.
+    React.createElement("div",{style:{flex:1,minWidth:0,display:"flex",flexDirection:stack?"column":"row",alignItems:stack?"flex-start":"baseline",gap:stack?2:8}},
+      React.createElement("span",{"data-movelabel":"1",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.1em",color:on?"#fff":"#bbb",lineHeight:1.2,minWidth:stack?0:(labelW||90),flexShrink:0,whiteSpace:stack?"normal":"nowrap"}},label),
+      note&&React.createElement("span",{"data-movenote":"1",style:{fontSize:9,letterSpacing:"0.1em",color:"#666",minWidth:0}},note)
     )
   );
 }
 // Equal-weight option row, used for determination and for both intake
 // observations. No option is styled as the desirable one.
-function ChallengeChoice({options,value,onChange,disabled,compact}){
+// With `tones`, a chosen option takes the colour that option has in the
+// NOURISHMENT JOURNEY strip, so what a member taps is what they will see there.
+function ChallengeChoice({options,value,onChange,disabled,compact,tones}){
   return React.createElement("div",null,
     options.map(o=>React.createElement("button",{key:o.id,disabled,
       onClick:()=>onChange(value===o.id?"":o.id),
-      style:{width:"100%",textAlign:"left",background:value===o.id?"#0a1a2a":"#141414",color:value===o.id?"#fff":"#999",border:"1px solid "+(value===o.id?"#1d9bf0":"#888"),borderRadius:0,fontFamily:"'DM Sans',sans-serif",fontSize:compact?11:12,letterSpacing:compact?"0.02em":"0.04em",fontWeight:500,lineHeight:1.35,padding:compact?"10px 9px":"12px 13px",marginBottom:compact?6:7,cursor:disabled?"default":"pointer"}},o.label))
+      "data-opt":o.id,style:{width:"100%",textAlign:"left",background:value===o.id?((tones&&tones[o.id])||"#0a1a2a"):"#141414",color:value===o.id?"#fff":"#999",border:"1px solid "+(value===o.id?"#1d9bf0":"#888"),borderRadius:0,fontFamily:"'DM Sans',sans-serif",fontSize:compact?11:12,letterSpacing:compact?"0.02em":"0.04em",fontWeight:500,lineHeight:1.35,padding:compact?"10px 9px":"12px 13px",marginBottom:compact?6:7,cursor:disabled?"default":"pointer"}},o.label))
   );
 }
 // The heading is the status. Once a section is answered it turns Team 365 blue
@@ -9510,7 +9783,7 @@ function ChallengeCommitRow({label,n,of,last}){
   return React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:last?"none":"1px solid #1e1e1e"}},
     // Fixed columns either side, so all three bars start and finish on the
     // same two lines however long the movement is called.
-    React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",color:"#bbb",flexShrink:0,lineHeight:1,width:76,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}},label),
+    React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",color:"#bbb",flexShrink:0,lineHeight:1.1,width:92,overflowWrap:"break-word"}},label),
     React.createElement("div",{style:{flex:1,minWidth:20,height:6,background:"#2a2a2a",borderRadius:0,overflow:"hidden"}},
       React.createElement("div",{style:{height:"100%",width:pct+"%",background:"#1d9bf0",transition:"width .3s"}})
     ),
@@ -9520,20 +9793,23 @@ function ChallengeCommitRow({label,n,of,last}){
 }
 // A run of days in three tones of one colour. Shows the shape of a habit
 // without putting a number or a grade on any of it.
-function ChallengeIntakeStrip({title,days,values}){
+function ChallengeIntakeStrip({title,days,values,opts}){
+  const O=opts||CH_INTAKE;
   return React.createElement("div",{style:{marginBottom:14}},
     React.createElement("div",{style:{fontSize:9,letterSpacing:"0.18em",color:"#777",fontWeight:600,marginBottom:6}},title),
     React.createElement("div",{style:{display:"flex",gap:2,flexWrap:"wrap"}},
       Array.from({length:days},(_,i)=>{
         const v=values[String(i+1)];
-        return React.createElement("div",{key:i,title:"Day "+(i+1)+(v?" · "+chIntakeLabel(v):""),
+        return React.createElement("div",{key:i,title:"Day "+(i+1)+(v?" · "+chIntakeLabel(v,O):""),
           style:{flex:"1 1 6px",minWidth:6,height:16,background:v?CH_INTAKE_TONE[v]:"#161616",border:"1px solid "+(v?"transparent":"#202020")}});
       })
     ),
-    React.createElement("div",{style:{display:"flex",gap:12,marginTop:6}},
-      CH_INTAKE.map(o=>React.createElement("div",{key:o.id,style:{display:"flex",alignItems:"center",gap:4}},
-        React.createElement("div",{style:{width:8,height:8,background:CH_INTAKE_TONE[o.id]}}),
-        React.createElement("span",{style:{fontSize:8,letterSpacing:"0.06em",color:"#666"}},o.label)
+    // Three equal columns, so the key under NUTRITION and the key under
+    // HYDRATION line up box for box.
+    React.createElement("div",{"data-chlegend":"1",style:{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:"4px 8px",marginTop:6}},
+      O.map(o=>React.createElement("div",{key:o.id,"data-chlegend-item":o.id,style:{display:"flex",alignItems:"flex-start",gap:4,minWidth:0}},
+        React.createElement("div",{style:{width:8,height:8,flexShrink:0,marginTop:1,background:CH_INTAKE_TONE[o.id]}}),
+        React.createElement("span",{style:{fontSize:8,letterSpacing:"0.06em",color:"#666",lineHeight:1.3}},o.label)
       ))
     )
   );
@@ -9556,7 +9832,7 @@ function ChallengeDayCard({cfg,day,entry}){
       met&&React.createElement("span",{style:{fontSize:8,letterSpacing:"0.12em",fontWeight:700,color:"#1d9bf0"}},"COMMITMENT MET")
     ),
     (entry.n||entry.h)&&React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#777",marginBottom:8,lineHeight:1.6}},
-      [entry.n?"NUTRITION — "+chIntakeLabel(entry.n):null,entry.h?"HYDRATION — "+chIntakeLabel(entry.h):null].filter(Boolean).join("   ·   ")),
+      [entry.n?chIntakeOf(cfg,"n").label+" — "+chIntakeLabel(entry.n,chIntakeOf(cfg,"n").opts):null,entry.h?chIntakeOf(cfg,"h").label+" — "+chIntakeLabel(entry.h,chIntakeOf(cfg,"h").opts):null].filter(Boolean).join("   ·   ")),
     (entry.win||"").trim()&&React.createElement("div",{style:{fontSize:13,color:"#eee",lineHeight:1.55,marginBottom:(entry.ref||"").trim()?9:0}},entry.win.trim()),
     (entry.ref||"").trim()&&React.createElement(React.Fragment,null,
       React.createElement("div",{style:{fontSize:9,letterSpacing:"0.08em",color:"#666",lineHeight:1.5}},entry.rq||CH_FALLBACK_Q),
@@ -9567,14 +9843,23 @@ function ChallengeDayCard({cfg,day,entry}){
 // A challenge, as one collapsible block. The current one and every finished one
 // are the same shape, so the member's history sits in the same place they log
 // today rather than somewhere separate.
-function ChallengeBlock({title,sub,open,onToggle,head,children}){
+// The name with its catchphrase under it on the left; the date on the right,
+// centred top to bottom. No catchphrase, no second line.
+function ChallengeBlock({title,subtitle,tagline,sub,open,onToggle,head,children}){
+  const tag=String(tagline||"").trim();
+  const st=String(subtitle||"").trim();
   return React.createElement("div",{style:{marginBottom:10}},
-    React.createElement("div",{onClick:onToggle,
-      style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:"#fff",color:"#000",border:"1px solid #fff",borderRadius:0,padding:"11px 14px",cursor:"pointer",userSelect:"none"}},
-      React.createElement("div",{style:{minWidth:0}},
-        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.12em",lineHeight:1.15}},title),
-        sub&&React.createElement("div",{style:{fontSize:9,letterSpacing:"0.1em",color:"#555",marginTop:3}},sub)
+    React.createElement("div",{onClick:onToggle,"data-chbar":"1",
+      style:{width:"100%",boxSizing:"border-box",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:"#fff",color:"#000",border:"1px solid #fff",borderRadius:0,padding:"11px 14px",cursor:"pointer",userSelect:"none"}},
+      React.createElement("div",{style:{flex:1,minWidth:0}},
+        // The name, with its subtitle after it in smaller type on the same line.
+        // If both don't fit on one line, the subtitle drops under the name.
+        React.createElement("div",{"data-chname":"1",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.12em",lineHeight:1.15,display:"flex",flexWrap:"wrap",alignItems:"baseline",columnGap:8}},
+          React.createElement("span",{style:{whiteSpace:"nowrap"}},title),
+          st&&React.createElement("span",{"data-chsubtitle":"1",style:{fontSize:11,letterSpacing:"0.14em",color:"#555",whiteSpace:"nowrap"}},st.toUpperCase())),
+        tag&&React.createElement("div",{"data-chtagline":"1",style:{fontSize:9,letterSpacing:"0.1em",color:"#555",fontWeight:600,marginTop:3}},tag.toUpperCase())
       ),
+      sub&&React.createElement("div",{"data-chdate":"1",style:{alignSelf:"center",fontSize:9,letterSpacing:"0.1em",color:"#555",fontWeight:600,whiteSpace:"nowrap",flexShrink:0}},sub),
       React.createElement("span",{style:{fontSize:11,flexShrink:0,transform:open?"none":"rotate(-90deg)",transition:"transform .15s"}},"\u25be")
     ),
     // Where the member is, always visible: the bar is closed until they open it,
@@ -9592,7 +9877,7 @@ function ChallengeBlock({title,sub,open,onToggle,head,children}){
 //
 // Their own Day 1 and Day N answers sit together above the closing line, so the
 // member reads themselves arrive at it rather than being told it.
-function ChallengeComplete({cfg,entries,showRecord,onToggleRecord,openDay,onOpenDay,dayBelow,note,editable}){
+function ChallengeComplete({cfg,entries,showRecord,onToggleRecord,openDay,onOpenDay,dayBelow,note,editable,weeklyDone}){
   const totals=chTotals(cfg,entries);
   const pct=cfg.days?Math.round((totals.completed/cfg.days)*100):0;
   const nutByDay={},hydByDay={};
@@ -9614,7 +9899,10 @@ function ChallengeComplete({cfg,entries,showRecord,onToggleRecord,openDay,onOpen
         cfg.movement.map((m,i)=>React.createElement(ChallengeCommitRow,{key:m.id,label:m.label,
           n:totals.mov[m.id]||0,of:cfg.days,last:i===cfg.movement.length-1}))
       ):null,
-      null
+      // The weekly challenge, counted back like the movements.
+      chWeeklyOf(cfg).on&&weeklyDone!=null?React.createElement("div",{"data-chweekly-total":"1",style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",paddingTop:10,marginTop:4,borderTop:"1px solid #1e1e1e"}},
+        React.createElement("span",{style:{fontSize:9,letterSpacing:"0.18em",color:"#777",fontWeight:600}},chWeeklyOf(cfg).title),
+        React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:17,color:"#fff"}},weeklyDone+" OF "+chWeekCount(cfg)+" WEEKS")):null
     ),
     React.createElement("div",{style:{background:"#141414",border:"1px solid #888",borderRadius:0,padding:"14px 15px",marginTop:12}},
       React.createElement("div",{style:{paddingBottom:9,borderBottom:"1px solid #1e1e1e"}},
@@ -9634,12 +9922,12 @@ function ChallengeComplete({cfg,entries,showRecord,onToggleRecord,openDay,onOpen
     ),
     // Patterns, not scores. Deliberately outside the pillar card.
     React.createElement("div",{style:{marginTop:22}},
-      React.createElement(ChallengeIntakeStrip,{title:"NUTRITION OVER "+cfg.days+" DAYS",days:cfg.days,values:nutByDay}),
-      React.createElement(ChallengeIntakeStrip,{title:"HYDRATION OVER "+cfg.days+" DAYS",days:cfg.days,values:hydByDay})
+      React.createElement(ChallengeIntakeStrip,{title:chIntakeOf(cfg,"n").label+" OVER "+cfg.days+" DAYS",days:cfg.days,values:nutByDay,opts:chIntakeOf(cfg,"n").opts}),
+      React.createElement(ChallengeIntakeStrip,{title:chIntakeOf(cfg,"h").label+" OVER "+cfg.days+" DAYS",days:cfg.days,values:hydByDay,opts:chIntakeOf(cfg,"h").opts})
     ),
     React.createElement("div",{style:{textAlign:"center",padding:"30px 0 26px",borderTop:"1px solid #141414",borderBottom:"1px solid #141414",marginTop:24}},
-      React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:30,letterSpacing:"0.16em",color:"#fff",lineHeight:1.2}},cfg.closing||"YOU CAN."),
-      React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:"0.16em",color:"#1d9bf0",marginTop:6}},cfg.closingSub||"EVERY DAY. ALL YEAR ROUND.")
+      React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:30,letterSpacing:"0.16em",color:"#fff",lineHeight:1.2}},chShowN(cfg.closing,cfg.days)||"YOU CAN."),
+      React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:"0.16em",color:"#1d9bf0",marginTop:6}},chShowN(cfg.closingSub,cfg.days)||"EVERY DAY. ALL YEAR ROUND.")
     ),
     React.createElement("div",{onClick:onToggleRecord,
       style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginTop:20,marginBottom:showRecord?12:0}},
@@ -9668,7 +9956,71 @@ function ChallengeComplete({cfg,entries,showRecord,onToggleRecord,openDay,onOpen
     )
   );
 }
-function ChallengeView({session,showToast}){
+// What the challenge is about. A button above the day box that starts closed;
+// its name and its words come from the challenge setup.
+function ChallengeAbout({cfg}){
+  const [open,setOpen]=useState(false);
+  const N=cfg.days;
+  const title=chShowN(cfg.aboutTitle,N).trim();
+  const a=chAboutOf(cfg);
+  if(!title||chAboutEmpty(a))return null;
+  const sh=t=>chShowN(t,N).trim();
+  const tl=a.title.map(sh),cl=[a.closing[0]||"",a.closing[1]||"",a.closing.slice(2).map(sh).filter(Boolean).join(" ")].map(sh);
+  const bebas={fontFamily:"'Bebas Neue',sans-serif",lineHeight:1,color:"#fff"};
+  const rule={borderTop:"1px solid #242424"};
+  const body={fontSize:12.5,color:"#bbb",letterSpacing:"0.01em",lineHeight:1.6};
+  const secs=a.sections.filter(x=>sh(x.h)||sh(x.t)||x.move);
+  // The weekly challenge, from its own settings, sits after COMMITMENT
+  // JOURNEY (or after the last section if there isn't one).
+  const wkc=chWeeklyOf(cfg);
+  const weeklySec=wkc.on&&React.createElement("div",{key:"weekly","data-chabout-section":wkc.title,"data-chabout-weekly":"1",style:{...rule,padding:"13px 0 14px"}},
+    React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.12em",color:"#1d9bf0",lineHeight:1.1,marginBottom:5}},wkc.title),
+    React.createElement("div",{style:body},sh(wkc.text)),
+    sh(wkc.how)&&React.createElement("div",{"data-chabout-weekly-how":"1",style:{...body,fontSize:11.5,color:"#999",marginTop:4,lineHeight:1.5}},sh(wkc.how)));
+  const moveAt=secs.findIndex(x=>x.move);
+  return React.createElement("div",{"data-chabout":"1",style:{marginBottom:12}},
+    // A solid Team 365 blue button, slim so it sits with the rest of the screen.
+    React.createElement("button",{type:"button","data-chabout-btn":"1",onClick:()=>setOpen(v=>!v),
+      style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",background:"#1d9bf0",color:"#fff",border:"1px solid #1d9bf0",borderRadius:0,padding:"9px 34px",cursor:"pointer",userSelect:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.16em",lineHeight:1.1}},
+      React.createElement("span",null,title.toUpperCase()),
+      React.createElement("span",{style:{position:"absolute",right:13,top:"50%",fontSize:11,transform:open?"translateY(-50%)":"translateY(-50%) rotate(-90deg)",transition:"transform .15s"}},"▾")
+    ),
+    // One column, each part divided by a hairline: title, details, each
+    // section, closing. Headings in the same type as the rest of the tab.
+    open&&React.createElement("div",{"data-chabout-body":"1",style:{background:"#141414",border:"1px solid #888",borderTop:"none",borderRadius:0,padding:"0 16px"}},
+      tl.some(Boolean)&&React.createElement("div",{"data-chabout-title":"1",style:{textAlign:"center",padding:"18px 0 16px"}},
+        tl[0]&&React.createElement("div",{"data-chabout-big":"1",style:{...bebas,fontSize:26,letterSpacing:"0.14em"}},tl[0]),
+        tl[1]&&React.createElement("div",{"data-chabout-name":"1",style:{...bebas,fontSize:15,letterSpacing:"0.18em",marginTop:3}},tl[1]),
+        tl[2]&&React.createElement("div",{"data-chabout-sub":"1",style:{fontSize:8,letterSpacing:"0.2em",color:"#1d9bf0",fontWeight:600,marginTop:7,lineHeight:1.5}},tl[2])
+      ),
+      sh(a.details)&&React.createElement("div",{"data-chabout-details":"1",style:{...rule,...body,color:"#ddd",padding:"14px 0"}},sh(a.details)),
+      secs.map((x,i)=>React.createElement(React.Fragment,{key:i},React.createElement("div",{"data-chabout-section":sh(x.h),style:{...rule,padding:"13px 0 14px"}},
+        sh(x.h)&&React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.12em",color:"#1d9bf0",lineHeight:1.1,marginBottom:5}},sh(x.h)),
+        sh(x.t)&&React.createElement("div",{style:body},sh(x.t)),
+        // COMMITMENT JOURNEY lists each movement the member can tick, with
+        // what counts as it.
+        x.move&&(cfg.movement||[]).length>0&&React.createElement("div",{"data-chabout-moves":"1",style:{marginTop:10}},
+          cfg.movement.map((m,j)=>React.createElement("div",{key:m.id,"data-chabout-move":m.id,style:{borderLeft:"2px solid #1d3a5a",padding:"1px 0 1px 10px",marginTop:j?9:0}},
+            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",color:"#fff",lineHeight:1.2}},m.label),
+            sh(m.desc)&&React.createElement("div",{style:{...body,fontSize:11.5,color:"#999",marginTop:2,lineHeight:1.5}},sh(m.desc)))))
+      ),(i===moveAt||(moveAt<0&&i===secs.length-1))?weeklySec:null)),
+      !secs.length&&weeklySec,
+      // The closing is set exactly like the title: big line, then the line
+      // under it, then the small blue line.
+      cl.some(Boolean)&&React.createElement("div",{"data-chabout-closing":"1",style:{...rule,textAlign:"center",padding:"18px 0 18px"}},
+        cl.map((l,j)=>!l?null:j===0
+          ?React.createElement("div",{key:j,style:{...bebas,fontSize:26,letterSpacing:"0.14em"}},l)
+          :j===1
+          ?React.createElement("div",{key:j,style:{...bebas,fontSize:15,letterSpacing:"0.18em",marginTop:3}},l)
+          :React.createElement("div",{key:j,style:{fontSize:8,letterSpacing:"0.2em",color:"#1d9bf0",fontWeight:600,marginTop:7,lineHeight:1.5}},l)))
+    )
+  );
+}
+// viewOnly: the coach's copy on a member's profile — exactly what the member
+// sees, from the member's own record, with nothing that can write to it.
+// embedded: no CHALLENGE title and no page padding, to sit inside the profile.
+function ChallengeView({session,showToast,viewOnly,embedded}){
+  const wrapStyle=embedded?{padding:"4px 0 6px"}:{padding:"14px 16px 80px"};
   const [cfg,setCfg]=useState(null);
   // Every challenge the studio has configured. A member only sees the ones that
   // are still on that list, so removing one in Admin removes it from their app
@@ -9686,6 +10038,17 @@ function ChallengeView({session,showToast}){
   // catch-up window without overriding the member the moment they close it.
   const [showRecord,setShowRecord]=useState(null);
   const [openKey,setOpenKey]=useState(null);
+  // Challenges removed in Admin but kept for members who took part in them.
+  const [archive,setArchive]=useState([]);
+  // The challenge list or this member's record couldn't be read. Shown as that,
+  // not as "no challenge", so nobody thinks their record has gone.
+  const [loadErr,setLoadErr]=useState(false);
+  // The member's own Timed Exercises (Workouts), to say which one they did
+  // for the weekly challenge. Null until read; a failed read just hides the choice.
+  const [timed,setTimed]=useState(null);
+  const [weekSel,setWeekSel]=useState(null);
+  const [wkTime,setWkTime]=useState({});
+  const [wkOpen,setWkOpen]=useState(false);
   const key=chLogKey(session.email);
   useEffect(()=>{load();},[session.email]);
   useEffect(()=>{
@@ -9697,21 +10060,30 @@ function ChallengeView({session,showToast}){
     ?{c:{...(e.c||{})},n:e.n||"",h:e.h||"",cs:e.cs||"",d:e.d||"",win:e.win||"",ref:e.ref||""}
     :{c:{},n:"",h:"",cs:"",d:"",win:"",ref:""};
   async function load(){
-    setLoading(true);
-    const [l,r]=await Promise.all([
-      chLoadList(),
-      sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(key)}&select=content`)
-    ]);
+    setLoading(true);setLoadErr(false);
+    const [S,r]=await Promise.all([chLoadSetup(),chRead(key)]);
+    if(!S.ok||!r.ok){setLoadErr(true);setLoading(false);return;}
+    const l=S.list;
     const c=chActive(l,toDS(new Date()))||chCfgFrom("");
-    let o={};
-    if(r&&r.length&&r[0].content){try{o=JSON.parse(r[0].content)||{};}catch{o={};}}
+    const o=chParseLog(r.content);
     const dnum=chDayNum(chStartFor(c,chBucket(o,c.start)),toDS(new Date()));
     const cur=Math.min(Math.max(dnum,1),c.days);
-    setCfg(c);setList(l);setLog(o);
+    setCfg(c);setList(l);setArchive(S.archive);setLog(o);setWeekSel(null);
     setDraft(draftFrom(chBucket(o,c.start).entries[String(cur)]));
+    sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__RT__"+session.email)}&select=content`).then(d=>{
+      let arr=[];if(d&&d.length&&d[0].content){try{const x=JSON.parse(d[0].content);arr=Array.isArray(x)?x:(x&&x.routines)||[];}catch{arr=[];}}
+      setTimed((arr||[]).filter(r=>r&&!r.hidden&&String(r.title||"").trim()).map(r=>({id:String(r.id||r.title),title:String(r.title).trim()})));
+    }).catch(()=>setTimed([]));
     setEditing(false);setOpenDay(null);setShowRecord(null);setLoading(false);
   }
-  if(loading||!cfg)return React.createElement("div",{className:"well-wrap",style:{padding:"14px 16px 80px"}},
+  if(!loading&&loadErr)return React.createElement("div",{className:"well-wrap",style:wrapStyle},
+    React.createElement("div",{className:"well-hdr",style:{marginBottom:16,padding:0}},
+      React.createElement("div",{className:"well-title"},"CHALLENGE")),
+    React.createElement("div",{style:{fontSize:12,color:"#555",letterSpacing:"0.04em",lineHeight:1.9,textAlign:"center",padding:"40px 20px 18px"}},"Couldn't load the challenge."),
+    React.createElement("button",{onClick:load,
+      style:{width:"100%",background:"#fff",color:"#000",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",padding:"12px",cursor:"pointer"}},"TRY AGAIN")
+  );
+  if(loading||!cfg)return React.createElement("div",{className:"well-wrap",style:wrapStyle},
     React.createElement("div",{style:{fontSize:11,color:"#555",letterSpacing:"0.1em",padding:"30px 0",textAlign:"center"}},"LOADING...")
   );
   // Bucketed by the GLOBAL start, because that is which challenge this is.
@@ -9728,7 +10100,7 @@ function ChallengeView({session,showToast}){
   const CH_GRACE=7;
   const inGrace=finished&&dayNum<=cfg.days+CH_GRACE;
   const graceEnd=chEndDS({start:cfg.start,days:cfg.days+CH_GRACE});
-  const canEdit=running||inGrace;
+  const canEdit=!viewOnly&&(running||inGrace);
   const curDay=Math.min(Math.max(dayNum,1),cfg.days);
   const entries=chBucket(log,cfg.start).entries;
   const totals=chTotals(cfg,entries);
@@ -9749,12 +10121,16 @@ function ChallengeView({session,showToast}){
   async function writeBucket(mutate,okMsg){
     if(saving)return;
     setSaving(true);
-    const r=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(key)}&select=content`);
-    let o={};
-    if(r&&r.length&&r[0].content){try{o=JSON.parse(r[0].content)||{};}catch{o={};}}
-    const nb=mutate(chBucket(o,cfg.start));
-    const next=chMergeBucket(o,cfg.start,nb);
-    const ok=await chPersist(key,next);
+    // A record that couldn't be read is never written: saving one day over an
+    // unread record would replace every other day and every past challenge.
+    const r=await chRead(key);
+    let ok=false,next=null;
+    if(r.ok){
+      const o=chParseLog(r.content);
+      const nb=mutate(chBucket(o,cfg.start));
+      next=chMergeBucket(o,cfg.start,nb);
+      ok=await chWrite(key,next,r.exists);
+    }
     if(ok){setLog(next);setEditing(false);if(okMsg&&showToast)showToast(okMsg);}
     else if(showToast)showToast("COULDN'T SAVE — TRY AGAIN");
     setSaving(false);
@@ -9774,8 +10150,10 @@ function ChallengeView({session,showToast}){
       };
       // The movement list is stamped in beside the name and length, so a
       // finished challenge still reads by the rules it was actually run under.
-      return {...b,name:b.name||cfg.name||"CHALLENGE",days:b.days||cfg.days,
-        movement:b.movement||cfg.movement,movementRequired:b.movementRequired||cfg.movementRequired,
+      // Every save re-stamps them from the challenge as it is set up now, so a
+      // record never goes on carrying a name the challenge no longer has.
+      return {...b,name:cfg.name||b.name||"CHALLENGE",days:cfg.days||b.days,
+        movement:cfg.movement||b.movement,movementRequired:cfg.movementRequired||b.movementRequired,
         entries:{...b.entries,[String(formDay)]:entry}};
     },formEntry?"DAY "+formDay+" UPDATED":"DAY "+formDay+" COMPLETE");
   }
@@ -9793,18 +10171,23 @@ function ChallengeView({session,showToast}){
   // Only challenges the studio still has on the list. A member's own record is
   // never touched by a deletion, but a challenge that has been removed stops
   // appearing in their app.
-  const known={};list.forEach(x=>{known[x.start]=true;});
+  // A challenge removed with KEEP ENTRIES stays in the history of anyone who
+  // logged something in it — finished and read-only, opening onto its own
+  // completion screen. One removed with DELETE is gone from everywhere.
+  const known={};list.forEach(x=>{known[x.start]=x;});
+  const kept={};archive.forEach(x=>{if(!known[x.start])kept[x.start]=x;});
   const inChallenge=chEnrolled(cfg,session.email);
   const showCurrent=!notSet&&inChallenge;
   // Everything else they have a record of, as long as the studio still lists it.
   // The live challenge is never in here: if they are in it, it is the block
   // above; if they are not, it is not theirs to read.
-  const pastKeys=Object.keys(log).filter(k=>k&&k!==cfg.start&&known[k]).sort().reverse();
+  const hasEntries=k=>Object.keys(chBucket(log,k).entries).length>0;
+  const pastKeys=Object.keys(log).filter(k=>k&&k!==cfg.start&&(known[k]||(kept[k]&&hasEntries(k)))).sort().reverse();
   // Closed until the member opens it. Landing on the tab should show where they
   // are, not a whole day's form they did not ask for.
   const openNow=openKey||"";
-  const renderShell=(body,head)=>React.createElement("div",{className:"well-wrap",style:{padding:"14px 16px 80px"}},
-    React.createElement("div",{className:"well-hdr",style:{marginBottom:16,padding:0}},
+  const renderShell=(body,head)=>React.createElement("div",{className:"well-wrap","data-chview-only":viewOnly?"1":undefined,style:wrapStyle},
+    !embedded&&React.createElement("div",{className:"well-hdr",style:{marginBottom:16,padding:0}},
       React.createElement("div",{className:"well-title"},"CHALLENGE")
     ),
     !showCurrent&&React.createElement("div",{style:{fontSize:12,color:"#555",letterSpacing:"0.04em",lineHeight:1.9,textAlign:"center",padding:pastKeys.length?"18px 20px 22px":"40px 20px"}},
@@ -9812,16 +10195,22 @@ function ChallengeView({session,showToast}){
     React.createElement(React.Fragment,null,
           showCurrent&&React.createElement(ChallengeBlock,{
             title:(cfg.name||"CHALLENGE").toUpperCase(),
-            sub:(pending?"STARTS ":"STARTED ")+chFmtStart(myStart),
+            subtitle:cfg.subtitle,
+            tagline:cfg.tagline,
+            sub:finished?chFmtRange(myStart,cfg.days):(pending?"STARTS ":"STARTED ")+chFmtDay(myStart),
             head,open:openNow===cfg.start,onToggle:()=>{setShowRecord(null);setOpenDay(null);setOpenKey(openNow===cfg.start?"":cfg.start);}},body),
           ...pastKeys.map(k=>{
             const pb=chBucket(log,k);
-            const pcfg=chCfgOfBucket(cfg,pb);
+            // The challenge as it is set up now; the record's own copy only
+            // stands in if the setup somehow can't be found.
+            const pcfg=chCfgOfBucket(cfg,pb,known[k]||kept[k]);
             return React.createElement(ChallengeBlock,{key:k,
-              title:(pb.name||"CHALLENGE").toUpperCase(),
+              title:(pcfg.name||pb.name||"CHALLENGE").toUpperCase(),
+              subtitle:pcfg.subtitle,
+              tagline:pcfg.tagline,
               sub:chFmtRange(k,pcfg.days),
               open:openNow===k,onToggle:()=>{setShowRecord(null);setOpenDay(null);setOpenKey(openNow===k?"":k);}},
-              openNow===k?React.createElement(ChallengeComplete,{cfg:pcfg,entries:pb.entries,
+              openNow===k?React.createElement(ChallengeComplete,{cfg:pcfg,entries:pb.entries,weeklyDone:chWeeklyDone(pb),
                 showRecord:!!showRecord,onToggleRecord:()=>setShowRecord(!showRecord),
                 openDay,onOpenDay:d=>{setOpenDay(d);if(d!==null)chScrollToDay();},
                 dayBelow:readCard(pcfg,pb.entries)}):null);
@@ -9839,20 +10228,26 @@ function ChallengeView({session,showToast}){
     // separate questions rather than one long form.
     React.createElement(ChallengeGroup,{style:{marginTop:0}},
       chSectionHdr("INTAKE",null,!!(draft.n&&draft.h),true),
-      React.createElement("div",{style:{display:"flex",gap:8,alignItems:"flex-start"}},
-        React.createElement("div",{style:{flex:1,minWidth:0}},
-          React.createElement("div",{style:{fontSize:9,letterSpacing:"0.16em",color:"#777",fontWeight:600,marginBottom:8}},"NUTRITION"),
-          React.createElement(ChallengeChoice,{options:CH_INTAKE,value:draft.n,compact:true,onChange:v=>setDraft(p=>({...p,n:v}))})
+      // One above the other, each heading with its target beside it in
+      // smaller type.
+      React.createElement("div",null,
+        React.createElement("div",{"data-chintake":"n",style:{marginBottom:6}},
+          React.createElement("div",{style:{display:"flex",alignItems:"baseline",flexWrap:"wrap",gap:"2px 8px",marginBottom:8}},
+            React.createElement("span",{style:{fontSize:9,letterSpacing:"0.16em",color:"#777",fontWeight:600}},chIntakeOf(cfg,"n").label),
+            chIntakeOf(cfg,"n").note&&React.createElement("span",{"data-chintake-note":"n",style:{fontSize:8,letterSpacing:"0.06em",color:"#555"}},chIntakeOf(cfg,"n").note)),
+          React.createElement(ChallengeChoice,{options:chIntakeOf(cfg,"n").opts,value:draft.n,compact:true,tones:CH_INTAKE_TONE,onChange:v=>setDraft(p=>({...p,n:v}))})
         ),
-        React.createElement("div",{style:{flex:1,minWidth:0}},
-          React.createElement("div",{style:{fontSize:9,letterSpacing:"0.16em",color:"#777",fontWeight:600,marginBottom:8}},"HYDRATION"),
-          React.createElement(ChallengeChoice,{options:CH_INTAKE,value:draft.h,compact:true,onChange:v=>setDraft(p=>({...p,h:v}))})
+        React.createElement("div",{"data-chintake":"h",style:{marginTop:8}},
+          React.createElement("div",{style:{display:"flex",alignItems:"baseline",flexWrap:"wrap",gap:"2px 8px",marginBottom:8}},
+            React.createElement("span",{style:{fontSize:9,letterSpacing:"0.16em",color:"#777",fontWeight:600}},chIntakeOf(cfg,"h").label),
+            chIntakeOf(cfg,"h").note&&React.createElement("span",{"data-chintake-note":"h",style:{fontSize:8,letterSpacing:"0.06em",color:"#555"}},chIntakeOf(cfg,"h").note)),
+          React.createElement(ChallengeChoice,{options:chIntakeOf(cfg,"h").opts,value:draft.h,compact:true,tones:CH_INTAKE_TONE,onChange:v=>setDraft(p=>({...p,h:v}))})
         )
       )
     ),
     React.createElement(ChallengeGroup,null,
       chSectionHdr("COMMITMENT",`ANY ${cfg.movementRequired} OF ${cfg.movement.length}`,draftMet,true),
-      cfg.movement.map(m=>React.createElement(ChallengeTick,{key:m.id,on:!!draft.c[m.id],label:m.label,note:m.note,
+      cfg.movement.map(m=>React.createElement(ChallengeTick,{key:m.id,on:!!draft.c[m.id],label:m.label,note:m.note,labelW:chLabelW(cfg.movement),stack:chLabelStack(cfg.movement),
         onClick:()=>setDraft(p=>({...p,c:{...p.c,[m.id]:!p.c[m.id]}}))}))
     ),
     React.createElement(ChallengeGroup,null,
@@ -9885,7 +10280,7 @@ function ChallengeView({session,showToast}){
   const dayRead=formEntry&&React.createElement(React.Fragment,null,
     React.createElement(ChallengeGroup,{style:{marginTop:0}},
       chSectionHdr("COMMITMENT",`ANY ${cfg.movementRequired} OF ${cfg.movement.length}`,chMoveMet(cfg,formEntry),true),
-      cfg.movement.map(m=>React.createElement(ChallengeTick,{key:m.id,on:chDone(formEntry,m.id),label:m.label,note:m.note,disabled:true}))
+      cfg.movement.map(m=>React.createElement(ChallengeTick,{key:m.id,on:chDone(formEntry,m.id),label:m.label,note:m.note,labelW:chLabelW(cfg.movement),stack:chLabelStack(cfg.movement),disabled:true}))
     ),
     React.createElement(ChallengeGroup,null,
       chSectionHdr("CONSISTENCY",null,!!formEntry.cs,true),
@@ -9912,15 +10307,80 @@ function ChallengeView({session,showToast}){
     ?React.createElement("div",{id:"ch-day",style:{marginTop:14}},
       React.createElement(ChallengeDayCard,{cfg:c,day:openDay,entry:ents[String(openDay)]}))
     :null;
+  // ── The weekly challenge card ──────────────────────────────────────────────
+  // One column per week: WEEK n above its box; in the box, a drop-down of the
+  // member's Timed Exercises (the one chosen stays showing), the tick, and
+  // their time. Past weeks can still be filled in; future weeks are dimmed.
+  const wk=chWeeklyOf(cfg);
+  const wkCount=chWeekCount(cfg);
+  const wkNow=chWeekOfDay(cfg,Math.min(Math.max(dayNum,1),cfg.days));
+  const wkLog=chBucket(log,cfg.start).weekly;
+  function setWeek(w,patch,msg){
+    writeBucket(b=>{
+      const cur={...(b.weekly||{})};
+      cur[String(w)]={...(cur[String(w)]||{}),...patch,ts:(cur[String(w)]&&cur[String(w)].ts)||Date.now()};
+      return {...b,name:cfg.name||b.name,days:cfg.days||b.days,movement:cfg.movement||b.movement,movementRequired:cfg.movementRequired||b.movementRequired,weekly:cur};
+    },msg);
+  }
+  function saveTime(w){
+    const e=wkLog[String(w)]||{};
+    const raw=wkTime[w];
+    if(raw==null)return;
+    const v=chMinsFmt(raw);
+    setWkTime(p=>{const n={...p};delete n[w];return n;});
+    if(v===(e.time||""))return;
+    setWeek(w,v?{done:true,time:v}:{time:""},v?"WEEK "+w+" TIME SAVED":"WEEK "+w+" TIME CLEARED");
+  }
+  const weeklyCard=wk.on&&(running||inGrace)&&React.createElement(React.Fragment,null,
+    chBlueHdr(wk.title),
+    React.createElement("div",{"data-chweekly":"1","data-done":wkLog[String(wkNow)]&&wkLog[String(wkNow)].done?"1":"0",style:{background:"#141414",border:"1px solid "+(wkLog[String(wkNow)]&&wkLog[String(wkNow)].done?"#1d9bf0":"#888"),borderRadius:0,padding:"13px 13px 14px"}},
+      React.createElement("div",{"data-chweekly-text":"1",style:{fontSize:12.5,color:"#6e6e6e",letterSpacing:"0.01em",lineHeight:1.6,marginBottom:12,padding:"0 2px"}},chShowN(chWeekText(cfg,wkNow),cfg.days)),
+      React.createElement("div",{"data-chweekly-weeks":"1",style:{display:"grid",gridTemplateColumns:"repeat("+wkCount+",minmax(0,1fr))",gap:6}},
+        Array.from({length:wkCount},(_,i)=>{
+          const w=i+1,e=wkLog[String(w)]||null,done=!!(e&&e.done),can=!viewOnly&&w<=wkNow&&!saving,open=w<=wkNow;
+          const tv=wkTime[w]!=null?wkTime[w]:((e&&e.time)||"");
+          const small={fontFamily:"'DM Sans',sans-serif",fontSize:9,letterSpacing:"0.04em"};
+          return React.createElement("div",{key:w,"data-chweekly-col":w,style:{minWidth:0,opacity:open?1:0.4}},
+            // WEEK n, above the box, in the same small type.
+            React.createElement("div",{"data-chweekly-label":w,style:{...small,fontSize:8,letterSpacing:"0.08em",fontWeight:600,textAlign:"center",color:done?"#7cc4f0":w===wkNow?"#fff":"#777",marginBottom:4}},"WEEK "+w),
+            React.createElement("div",{"data-chweekly-pill":w,"data-done":done?"1":"0",
+              style:{background:done?"#0a1a2a":"#141414",border:"1px solid "+(done?"#1d9bf0":w===wkNow?"#888":"#333"),borderRadius:0,padding:"5px 4px 6px",textAlign:"center"}},
+              // The exercise: a drop-down; what's chosen stays showing.
+              timed&&timed.length>0
+                ?React.createElement("select",{"data-f":"weekly-ex-"+w,value:(e&&e.ex)||"",disabled:!can,
+                    onChange:ev=>{const v=ev.target.value;setWeek(w,v?{done:true,ex:v}:{ex:""},v?"WEEK "+w+": "+chExName(v).toUpperCase():"SAVED");},
+                    // Dark list with white names (a white list with white names can't be read), all in capitals, no rule under it.
+                    style:{...small,width:"100%",minWidth:0,background:"transparent",colorScheme:"dark",color:e&&e.ex?"#fff":"#777",textTransform:"uppercase",border:"none",borderRadius:0,
+                      padding:"2px 0 4px",textAlign:"center",textAlignLast:"center",WebkitAppearance:"none",MozAppearance:"none",appearance:"none",cursor:can?"pointer":"default",outline:"none",textOverflow:"ellipsis"}},
+                  React.createElement("option",{value:"",style:{background:"#141414",color:"#999"}},"EXERCISE ▾"),
+                  ...timed.map(r=>React.createElement("option",{key:r.id,value:r.title,style:{background:"#141414",color:"#fff"}},chExName(r.title).toUpperCase())),
+                  // A choice saved before an exercise was renamed or hidden still shows.
+                  e&&e.ex&&!timed.some(r=>r.title===e.ex)?React.createElement("option",{value:e.ex,style:{background:"#141414",color:"#fff"}},chExName(e.ex).toUpperCase()):null)
+                :React.createElement("div",{style:{...small,color:"#555",padding:"2px 0 4px"}},"—"),
+              // The tick.
+              React.createElement("div",{"data-chweekly-tick":w,role:"button",onClick:()=>{if(can)setWeek(w,{done:!done},done?"WEEK "+w+" UNTICKED":"WEEK "+w+" CHALLENGE COMPLETE");},
+                style:{width:20,height:20,margin:"7px auto 6px",border:"1px solid "+(done?"#1d9bf0":"#555"),background:done?"#1d9bf0":"transparent",color:"#fff",fontSize:12,lineHeight:"20px",textAlign:"center",cursor:can?"pointer":"default"}},done?"✓":""),
+              // Their time, where the dash was. Saves when they leave the box.
+              // Minutes and seconds: 00:00 until they type, then "min" after it.
+              React.createElement("div",{"data-chweekly-timebox":w,style:{display:"flex",alignItems:"center",justifyContent:"center",gap:3,background:"#0e0e0e",border:"1px solid #2a2a2a",padding:"3px 3px"}},
+                React.createElement("input",{"data-f":"weekly-time-"+w,value:tv,placeholder:"00:00",maxLength:5,disabled:!can,inputMode:"numeric",
+                  onChange:ev=>{const v=chMinsTyping(ev.target.value);setWkTime(p=>({...p,[w]:v}));},
+                  onBlur:()=>saveTime(w),onKeyDown:ev=>{if(ev.key==="Enter"){ev.preventDefault();ev.target.blur();}},
+                  style:{...small,fontSize:10,width:"3.6em",minWidth:0,background:"transparent",color:"#fff",border:"none",borderRadius:0,padding:"1px 0",textAlign:"right",outline:"none"}}),
+                React.createElement("span",{"data-chweekly-min":w,style:{...small,fontSize:9,color:tv?"#bbb":"#555",flexShrink:0}},"min"))
+            ));
+        }))
+    ));
   const dayGrid=React.createElement(React.Fragment,null,
     chBlueHdr("DAILY REFLECTION"),
+    React.createElement("div",{"data-chbox":"reflection","data-done":running&&entries[String(curDay)]&&String(entries[String(curDay)].win||"").trim()&&String(entries[String(curDay)].ref||"").trim()?"1":"0",style:{background:"#141414",border:"1px solid "+(running&&entries[String(curDay)]&&String(entries[String(curDay)].win||"").trim()&&String(entries[String(curDay)].ref||"").trim()?"#1d9bf0":"#888"),borderRadius:0,padding:"14px 13px 14px"}},
     React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(42px,1fr))",gap:5}},
       Array.from({length:cfg.days},(_,i)=>{
         // Every day that has already happened can be opened, filled in or
         // changed — during the challenge and for a week after it. A day that
         // has passed with nothing in it is marked quietly, never as a failure.
         const d=i+1,done=!!entries[String(d)],isToday=running&&d===curDay,future=d>dayNum;
-        const open=openDay===d,canOpen=canEdit&&!future,missed=canOpen&&!done&&!isToday;
+        const open=openDay===d,canOpen=viewOnly?done:canEdit&&!future,missed=!done&&!isToday&&!future&&(viewOnly?(running||inGrace):canOpen);
         return React.createElement("div",{key:d,title:"Day "+d,
           onClick:()=>{if(!canOpen)return;const next=open?null:d;setEditing(false);setOpenDay(next);if(next!==null)chScrollToDay();},
           style:{background:done?"#0a1a2a":"#141414",
@@ -9932,11 +10392,14 @@ function ChallengeView({session,showToast}){
         );
       })
     ),
-    running?React.createElement("div",{style:{fontSize:9,letterSpacing:"0.1em",color:"#555",textAlign:"center",marginTop:12}},
+    viewOnly?React.createElement("div",{style:{fontSize:9,letterSpacing:"0.1em",color:"#555",textAlign:"center",marginTop:12}},
+      "TAP A TICKED DAY TO READ IT")
+    :running?React.createElement("div",{style:{fontSize:9,letterSpacing:"0.1em",color:"#555",textAlign:"center",marginTop:12}},
       "TAP ANY DAY UP TO TODAY TO FILL IT IN OR CHANGE IT")
     :inGrace?React.createElement("div",{style:{fontSize:9,letterSpacing:"0.1em",color:"#1d9bf0",fontWeight:600,textAlign:"center",marginTop:12,lineHeight:1.7}},
       "YOU CAN STILL FILL IN A DAY YOU MISSED UNTIL "+chFmtStart(graceEnd).toUpperCase())
     :null
+    )
   );
   const dayPanel=(showForm||showRead)&&React.createElement("div",{id:"ch-day",style:{marginTop:20}},
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:"#0a1a2a",border:"1px solid #1d3a5a",borderRadius:0,padding:"10px 13px",marginBottom:4}},
@@ -9951,16 +10414,29 @@ function ChallengeView({session,showToast}){
     // While there is still time to fill a day in, the record opens itself —
     // the deadline is no use to anyone behind a closed toggle.
     const recOpen=showRecord===null?inGrace:showRecord;
-    return renderShell(React.createElement(ChallengeComplete,{cfg,entries,
+    return renderShell(React.createElement(ChallengeComplete,{cfg,entries,weeklyDone:chWeeklyDone(chBucket(log,cfg.start)),
       showRecord:recOpen,onToggleRecord:()=>setShowRecord(!recOpen),
       openDay,onOpenDay:d=>{setEditing(false);setOpenDay(d);if(d!==null)chScrollToDay();},
-      editable:inGrace,
-      dayBelow:inGrace?dayPanel:readCard(cfg,entries),
-      note:inGrace?React.createElement("div",{style:{fontSize:9,letterSpacing:"0.1em",color:"#1d9bf0",fontWeight:600,textAlign:"center",marginTop:12,lineHeight:1.7}},
-        "YOU CAN STILL FILL IN A DAY YOU MISSED UNTIL "+chFmtStart(graceEnd).toUpperCase()):null}));
+      editable:inGrace&&!viewOnly,
+      dayBelow:inGrace&&!viewOnly?dayPanel:readCard(cfg,entries),
+      note:inGrace?React.createElement(React.Fragment,null,
+        React.createElement("div",{style:{fontSize:9,letterSpacing:"0.1em",color:"#1d9bf0",fontWeight:600,textAlign:"center",marginTop:12,lineHeight:1.7}},
+          "YOU CAN STILL FILL IN A DAY YOU MISSED UNTIL "+chFmtStart(graceEnd).toUpperCase()),
+        weeklyCard||null):null}));
   }
+  // A box's border turns blue once what it asks for is done: today saved,
+  // today's intake, today's commitment, today's win and reflection, this week.
+  const tE=running?entries[String(curDay)]||null:null;
+  const doneB=on=>"1px solid "+(on?"#1d9bf0":"#888");
+  const doneToday=!!tE;
+  const doneIntake=!!(tE&&tE.n&&tE.h);
+  const doneCommit=!!(tE&&chMoveMet(cfg,tE));
+  const doneReflect=!!(tE&&String(tE.win||"").trim()&&String(tE.ref||"").trim());
   return renderShell(React.createElement(React.Fragment,null,
-      React.createElement("div",{style:{background:"#141414",border:"1px solid #888",borderRadius:0,padding:"14px 15px",marginBottom:12}},
+      React.createElement(ChallengeAbout,{key:cfg.start,cfg}),
+      // The day box has a title like every other box.
+      chBlueHdr("YOUR PROGRESS",true),
+      React.createElement("div",{"data-chbox":"progress","data-done":doneToday?"1":"0",style:{background:"#141414",border:doneB(doneToday),borderRadius:0,padding:"14px 15px",marginBottom:0}},
         React.createElement("div",{style:{display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:10,marginBottom:9}},
           React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:10,minWidth:0,flexWrap:"wrap"}},
             React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:"0.08em",color:"#fff",lineHeight:1}},
@@ -9969,7 +10445,7 @@ function ChallengeView({session,showToast}){
             // own, so the two numbers that describe "where am I" read together.
             !pending&&streak>0&&React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.1em",color:"#1d9bf0",lineHeight:1}},streak+" DAY STREAK")
           ),
-          React.createElement("div",{style:{fontSize:10,letterSpacing:"0.12em",color:"#1d9bf0",fontWeight:600,flexShrink:0}},dayPct+"%")
+          React.createElement("div",{style:{fontSize:10,letterSpacing:"0.12em",color:"#1d9bf0",fontWeight:600,flexShrink:0}},dayPct+"% COMPLETED")
         ),
         // How far through the challenge they are — Day 30 of 30 reads 100%.
         React.createElement(ChallengeBar,{pct:dayPct}),
@@ -9979,24 +10455,30 @@ function ChallengeView({session,showToast}){
         !pending&&weekLine&&React.createElement("div",{style:{fontSize:9,letterSpacing:"0.1em",color:"#6e6e6e",fontWeight:600,marginTop:5,lineHeight:1.5}},weekLine),
         pending&&React.createElement("div",{style:{fontSize:10,letterSpacing:"0.12em",color:"#777",marginTop:10}},"STARTS "+chFmtStart(myStart))
       ),
+      weeklyCard,
       completed>0&&React.createElement(React.Fragment,null,
-        chBlueHdr("NOURISHMENT JOURNEY",true),
-        React.createElement(ChallengeIntakeStrip,{title:"NUTRITION",days:cfg.days,values:nutByDay}),
-        React.createElement(ChallengeIntakeStrip,{title:"HYDRATION",days:cfg.days,values:hydByDay})
+        chBlueHdr("NOURISHMENT JOURNEY",!weeklyCard),
+        // Boxed like COMMITMENT JOURNEY, so each journey reads as its own panel.
+        React.createElement("div",{"data-chbox":"nourishment","data-done":doneIntake?"1":"0",style:{background:"#141414",border:doneB(doneIntake),borderRadius:0,padding:"14px 15px 2px"}},
+          React.createElement(ChallengeIntakeStrip,{title:chIntakeOf(cfg,"n").label,days:cfg.days,values:nutByDay,opts:chIntakeOf(cfg,"n").opts}),
+          React.createElement(ChallengeIntakeStrip,{title:chIntakeOf(cfg,"h").label,days:cfg.days,values:hydByDay,opts:chIntakeOf(cfg,"h").opts}))
       ),
       completed>0&&React.createElement(React.Fragment,null,
         chBlueHdr("COMMITMENT JOURNEY"),
-        React.createElement("div",{style:{background:"#141414",border:"1px solid #888",borderRadius:0,padding:"2px 15px"}},
+        React.createElement("div",{"data-chbox":"commitment","data-done":doneCommit?"1":"0",style:{background:"#141414",border:doneB(doneCommit),borderRadius:0,padding:"2px 15px"}},
           cfg.movement.map((m,i)=>React.createElement(ChallengeCommitRow,{key:m.id,label:m.label,
             n:totals.mov[m.id]||0,of:Math.min(Math.max(dayNum,1),cfg.days),last:i===cfg.movement.length-1}))
         )
       ),
       dayGrid,
       dayPanel,
+      // The coach reads a day back; nothing opens as a form.
+      viewOnly?readCard(cfg,entries):null,
       // The way into today, kept at the foot of the screen.
-      running&&openDay!==curDay&&React.createElement("button",{onClick:()=>{setEditing(false);setOpenDay(curDay);chScrollToDay();},
-        style:{width:"100%",background:"transparent",color:"#1d9bf0",border:"1px solid #1d3a5a",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.16em",padding:"13px",cursor:"pointer",marginTop:22}},
-        todayEntry?"TODAY":"COMPLETE TODAY")
+      // Styled like THE 30 DAY PURSUIT DETAILS button.
+      running&&!viewOnly&&openDay!==curDay&&React.createElement("button",{"data-chtoday":"1",onClick:()=>{setEditing(false);setOpenDay(curDay);chScrollToDay();},
+        style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",background:"#1d9bf0",color:"#fff",border:"1px solid #1d9bf0",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.16em",lineHeight:1.1,padding:"9px 34px",cursor:"pointer",marginTop:22}},
+        "TODAY'S JOURNAL")
   ));
 }
 // ── Challenge setup (admin) ───────────────────────────────────────────────────
@@ -10011,36 +10493,59 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
   const CH_NEW="__new__";
   const [open,setOpen]=useState(!!alwaysOpen);
   const [loaded,setLoaded]=useState(false);
+  // Set when the challenge list couldn't be read. Nothing can be edited until it
+  // loads properly, so a half-read list can never be saved over the real one.
+  const [loadErr,setLoadErr]=useState("");
   const [list,setList]=useState([]);
+  // REMOVED — KEPT FOR MEMBERS.
+  const [archive,setArchive]=useState([]);
   const [sel,setSel]=useState("");
   const [selStart,setSelStart]=useState("");
   const [f,setF]=useState(CH_DEFAULT_CFG);
   const [saving,setSaving]=useState(false);
   const [roll,setRoll]=useState([]);
   const [showRoll,setShowRoll]=useState(false);
+  const [showJourney,setShowJourney]=useState(false);
+  const [showQs,setShowQs]=useState(false);
+  const [showAbout,setShowAbout]=useState(false);
+  const [showIntake,setShowIntake]=useState(false);
+  const [showWeekly,setShowWeekly]=useState(false);
+  // Every destructive button takes two taps. Only one can be armed at a time.
   const [armDel,setArmDel]=useState(false);
+  const [armAll,setArmAll]=useState(false);
+  const [armArc,setArmArc]=useState("");
   // The original single-config record. Never written to, so it is the one copy
   // of the themes and questions that deleting challenges cannot reach.
   const [legacy,setLegacy]=useState(null);
+  async function load(){
+    setLoadErr("");setLoaded(false);
+    const [setup,m,sb]=await Promise.all([
+      chLoadSetup(),
+      sbGet("members_public","select=email,name&order=name.asc"),
+      sbGet("subscribers","select=email")
+    ]);
+    if(!setup.ok){
+      setLoadErr(setup.corrupt
+        ?"The saved challenge list couldn't be read, so nothing can be changed here until it's fixed."
+        :"Couldn't load challenges — check your connection.");
+      setLoaded(true);return;
+    }
+    const isSub={};
+    (sb||[]).forEach(x=>{if(x&&x.email)isSub[String(x.email).toLowerCase()]=true;});
+    setList(setup.list);setArchive(setup.archive);setLegacy(setup.legacy);
+    setRoll((m||[]).filter(x=>x&&x.email&&!isSub[String(x.email).toLowerCase()]));
+    setLoaded(true);
+  }
   useEffect(()=>{
     if(!open||loaded)return;
-    (async()=>{
-      const [setup,m,sb]=await Promise.all([
-        chLoadSetup(),
-        sbGet("members_public","select=email,name&order=name.asc"),
-        sbGet("subscribers","select=email")
-      ]);
-      const isSub={};
-      (sb||[]).forEach(x=>{if(x&&x.email)isSub[String(x.email).toLowerCase()]=true;});
-      setList(setup.list);setLegacy(setup.legacy);
-      setRoll((m||[]).filter(x=>x&&x.email&&!isSub[String(x.email).toLowerCase()]));
-      setLoaded(true);
-    })();
+    load();
   },[open]);
   const today=toDS(new Date());
   const statusOf=c=>c.start>today?"UPCOMING":(chEndDS(c)>=today?"RUNNING":"FINISHED");
   const newest=list.length?list[list.length-1]:null;
-  function openChallenge(c){setSel(c.start);setSelStart(c.start);setF(c);setShowRoll(false);setArmDel(false);}
+  const disarm=()=>{setArmDel(false);setArmAll(false);setArmArc("");};
+  function openChallenge(c){setSel(c.start);setSelStart(c.start);setF(c);setShowRoll(false);setShowJourney(false);setShowQs(false);setShowAbout(false);setShowIntake(false);setShowWeekly(false);disarm();}
+  function closeForm(){setSel("");setSelStart("");disarm();}
   function startNew(){
     // Themes, questions, examples and movement carry over from the last
     // challenge — that is content, not settings. The dates and who is in it
@@ -10048,11 +10553,14 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
     // Content comes from the last challenge, or failing that from the original
     // record. Starting from the bare defaults would hand the member a challenge
     // with no themes and no questions, which is how the 23 Sep one went out.
+    // The catchphrase belongs to one challenge, so a new one starts without it.
     const base={...(newest||legacy||CH_DEFAULT_CFG)};
-    setF({...base,start:newest?chNextDS(chEndDS(newest)):"",members:[]});
-    setSel(CH_NEW);setSelStart("");setShowRoll(false);setArmDel(false);
+    setF({...base,id:chNewId(list.concat(archive)),tagline:"",start:newest?chNextDS(chEndDS(newest)):"",members:[]});
+    setSel(CH_NEW);setSelStart("");setShowRoll(false);setShowJourney(false);setShowQs(false);setShowAbout(false);setShowIntake(false);setShowWeekly(false);disarm();
   }
-  const inList=()=>f.members===null||f.members===undefined?roll.map(m=>m.email):f.members;
+  // Only people on the roll count, so a stale name (a subscriber an older
+  // config still carries) never inflates "n OF m".
+  const inList=()=>{const on={};roll.forEach(m=>{on[m.email]=true;});return f.members===null||f.members===undefined?roll.map(m=>m.email):f.members.filter(e=>on[e]);};
   const toggleMember=em=>setF(p=>{
     const cur=p.members===null||p.members===undefined?roll.map(m=>m.email):p.members.slice();
     const i=cur.indexOf(em);
@@ -10060,32 +10568,93 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
     return {...p,members:cur};
   });
   const setMov=(i,k,v)=>setF(p=>{const a=(p.movement||CH_DEFAULT_MOVEMENT).map(x=>({...x}));a[i]={...a[i],[k]:v};return {...p,movement:a};});
-  async function save(){
+  // Why this form can't be saved, checked against what is on screen. save()
+  // checks again against a fresh read.
+  const floorOf=l=>{const n=l.length?l[l.length-1]:null;return n?chNextDS(chEndDS(n)):"";};
+  function problemWith(l,arc){
     const clean=chCfgFrom(JSON.stringify(f));
-    if(!clean.start){if(showToast)showToast("PICK A START DATE");return;}
+    const others=l.filter(c=>c.start!==selStart&&c.id!==f.id);
+    return chDraftProblem({...clean,id:f.id,themes:f.themes||[]},others,arc,floorOf(others),sel===CH_NEW);
+  }
+  // Every write re-reads the setup first and is checked to have landed.
+  async function save(){
+    if(saving)return;
+    const early=problemWith(list,archive);
+    if(early){if(showToast)showToast(early.toUpperCase());return;}
+    setSaving(true);
+    const S=await chLoadSetup();
+    if(!S.ok){setSaving(false);if(showToast)showToast("COULDN'T SAVE — CHECK YOUR CONNECTION");return;}
+    const clean=chCfgFrom(JSON.stringify(f));
     const allowed={};roll.forEach(m=>{allowed[m.email]=true;});
     if(Array.isArray(clean.members))clean.members=clean.members.filter(e=>allowed[e]);
-    const rest=list.filter(c=>c.start!==selStart&&c.start!==clean.start);
-    const end=chEndDS(clean);
-    const clash=rest.find(c=>c.start<=end&&chEndDS(c)>=clean.start);
-    if(clash){if(showToast)showToast("DATES OVERLAP "+(clash.name||"CHALLENGE").toUpperCase());return;}
-    setSaving(true);
+    const isNew=sel===CH_NEW;
+    const inUse=S.list.concat(S.archive);
+    if(!clean.id||(isNew&&inUse.some(c=>c.id===clean.id)))clean.id=chNewId(inUse);
+    const rest=S.list.filter(c=>c.start!==selStart&&c.id!==clean.id);
+    const problem=chDraftProblem({...clean,themes:f.themes||[]},rest,S.archive,floorOf(rest),isNew);
+    if(problem){setSaving(false);setList(S.list);setArchive(S.archive);if(showToast)showToast(problem.toUpperCase());return;}
     const next=rest.concat([clean]).sort((p,q)=>p.start<q.start?-1:1);
-    const ok=await chPersist(CH_LIST_KEY,next);
-    if(ok){setList(next);setF(clean);setSel(clean.start);setSelStart(clean.start);}
+    const ok=await chWrite(CH_LIST_KEY,next,S.listExists);
+    if(ok){setList(next);setArchive(S.archive);setF(clean);setSel(clean.start);setSelStart(clean.start);}
     setSaving(false);
-    if(showToast)showToast(ok?"CHALLENGE SAVED":"COULDN'T SAVE");
+    if(showToast)showToast(ok?"CHALLENGE SAVED":"COULDN'T SAVE — TRY AGAIN");
   }
-  // Removing a challenge removes the setup, not the record. Every member's
-  // entries stay where they are, bucketed by start date, and still read back.
+  // REMOVE CHALLENGE — KEEP ENTRIES. The challenge leaves the list and moves to
+  // REMOVED — KEPT FOR MEMBERS; anyone who logged something in it keeps it in
+  // their history, read-only. The archive is written FIRST and the list second,
+  // so a failure between the two leaves the challenge in both places, never in
+  // neither.
   async function removeChallenge(){
-    if(!armDel){setArmDel(true);return;}
+    if(saving)return;
+    if(!armDel){disarm();setArmDel(true);return;}
     setSaving(true);
-    const next=list.filter(c=>c.start!==selStart);
-    const ok=await chPersist(CH_LIST_KEY,next);
-    if(ok){setList(next);setSel("");setSelStart("");setArmDel(false);}
+    const S=await chLoadSetup();
+    if(!S.ok){setSaving(false);setArmDel(false);if(showToast)showToast("COULDN'T REMOVE — CHECK YOUR CONNECTION");return;}
+    const orig=S.list.find(c=>c.start===selStart);
+    if(!orig){setSaving(false);closeForm();setList(S.list);setArchive(S.archive);return;}
+    const arc=S.archive.filter(c=>c.start!==orig.start&&c.id!==orig.id).concat([orig]).sort((p,q)=>p.start<q.start?-1:1);
+    if(!(await chWrite(CH_ARCHIVE_KEY,arc,S.archiveExists))){setSaving(false);setArmDel(false);if(showToast)showToast("COULDN'T REMOVE — TRY AGAIN");return;}
+    const next=S.list.filter(c=>c.start!==orig.start);
+    const ok=await chWrite(CH_LIST_KEY,next,S.listExists);
     setSaving(false);
-    if(showToast)showToast(ok?"CHALLENGE REMOVED":"COULDN'T SAVE");
+    setArchive(arc);
+    if(!ok){setArmDel(false);if(showToast)showToast("COULDN'T REMOVE — TRY AGAIN");return;}
+    setList(next);closeForm();
+    if(showToast)showToast("CHALLENGE REMOVED — MEMBERS KEEP IT IN THEIR HISTORY");
+  }
+  // DELETE CHALLENGE AND ALL ENTRIES. Every member's entries go first; the
+  // challenge only comes off the list and out of REMOVED once they have all
+  // gone, so if any member's record fails, the challenge is still here to retry.
+  async function deleteEverywhere(start){
+    setSaving(true);
+    const res=await chDeleteEntries(start);
+    if(!res.ok){
+      setSaving(false);disarm();
+      if(showToast)showToast(res.failed
+        ?"COULDN'T CLEAR "+res.failed+" MEMBER"+(res.failed===1?"":"S")+" — THE CHALLENGE IS STILL HERE, TRY AGAIN"
+        :"COULDN'T DELETE — CHECK YOUR CONNECTION");
+      return false;
+    }
+    const S=await chLoadSetup();
+    if(!S.ok){setSaving(false);disarm();if(showToast)showToast("ENTRIES DELETED, BUT THE CHALLENGE COULDN'T BE REMOVED — TRY AGAIN");return false;}
+    let ok=true,L=S.list,A=S.archive;
+    if(L.some(c=>c.start===start)){L=L.filter(c=>c.start!==start);ok=await chWrite(CH_LIST_KEY,L,S.listExists);}
+    if(ok&&A.some(c=>c.start===start)){A=A.filter(c=>c.start!==start);ok=await chWrite(CH_ARCHIVE_KEY,A,S.archiveExists);}
+    setSaving(false);disarm();
+    if(!ok){if(showToast)showToast("ENTRIES DELETED, BUT THE CHALLENGE COULDN'T BE REMOVED — TRY AGAIN");const R=await chLoadSetup();if(R.ok){setList(R.list);setArchive(R.archive);}return false;}
+    setList(L);setArchive(A);
+    if(showToast)showToast("CHALLENGE DELETED — "+res.members+" MEMBER"+(res.members===1?"":"S")+" CLEARED");
+    return true;
+  }
+  async function deleteAll(){
+    if(saving)return;
+    if(!armAll){disarm();setArmAll(true);return;}
+    if(await deleteEverywhere(selStart))closeForm();
+  }
+  async function deleteArchived(c){
+    if(saving)return;
+    if(armArc!==c.start){disarm();setArmArc(c.start);return;}
+    await deleteEverywhere(c.start);
   }
   const fld=(label,keyName,type,ph)=>React.createElement(React.Fragment,null,
     React.createElement("label",{className:"fl",style:{marginTop:10}},label),
@@ -10094,19 +10663,205 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
   );
   const sub=t=>React.createElement("div",{style:{fontSize:9,letterSpacing:"0.2em",color:"#555",fontWeight:600,margin:"18px 0 2px",borderTop:"1px solid #1a1a1a",paddingTop:16}},t);
   // The same sub-heading, but it opens and closes what sits under it.
-  const subTog=(t,openNow,onTog,right)=>React.createElement("div",{onClick:onTog,
-    style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,fontSize:9,letterSpacing:"0.2em",color:"#555",fontWeight:600,margin:"18px 0 2px",borderTop:"1px solid #1a1a1a",paddingTop:16,cursor:"pointer",userSelect:"none"}},
-    React.createElement("span",null,t),
-    React.createElement("span",{style:{display:"flex",alignItems:"center",gap:8}},
-      right?React.createElement("span",{style:{fontSize:9,letterSpacing:"0.12em",color:"#1d9bf0"}},right):null,
-      React.createElement("span",{style:{fontSize:11,letterSpacing:0,color:"#555",transform:openNow?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
+  // A button that opens and closes the part under it (WHO IS IN THIS
+  // CHALLENGE, INTAKE, ABOUT THIS CHALLENGE, JOURNEY).
+  const subTog=(t,openNow,onTog,right)=>React.createElement("button",{type:"button",onClick:onTog,"data-chsubtog":t,
+    style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:openNow?"#0a1a2a":"#0e0e0e",color:"#1d9bf0",border:"1px solid #1d3a5a",borderRadius:0,padding:"11px 13px",marginTop:14,cursor:"pointer",userSelect:"none",textAlign:"left"}},
+    React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",lineHeight:1.1,whiteSpace:"nowrap",flexShrink:0}},t),
+    React.createElement("span",{style:{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:8,minWidth:0,flex:1}},
+      right?React.createElement("span",{style:{fontFamily:"'DM Sans',sans-serif",fontSize:9,letterSpacing:"0.1em",color:"#7cc4f0",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},right):null,
+      React.createElement("span",{style:{fontSize:11,letterSpacing:0,color:"#1d9bf0",flexShrink:0,transform:openNow?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
     )
   );
+  // Every JOURNEY box is the same size: two lines tall, same padding, same type.
+  const jbox={display:"block",width:"100%",boxSizing:"border-box",height:54,background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:0,color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:12,letterSpacing:"0.06em",lineHeight:1.5,padding:"8px 10px",resize:"none",overflow:"hidden",outline:"none",margin:0};
+  const jlbl=t=>React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#777",fontWeight:600,margin:"0 0 5px"}},t);
+  const noNL=v=>String(v||"").replace(/\n/g," ");
+  function weeklyEditor(days){
+    const w=chWeeklyOf(f);
+    const one=v=>String(v||"").replace(/\s*\n\s*/g," ");
+    const put=patch=>setF(p=>{const c=chWeeklyOf(p);return {...p,weekly:{on:c.on,title:c.title,text:c.text,how:c.how,weeks:c.weeks,...patch}};});
+    const n=chWeekCount({...f,days});
+    const onBtn=(v,t)=>React.createElement("button",{type:"button","data-chweekly-on":v?"1":"0",onClick:()=>put({on:v}),
+      style:{flex:1,background:w.on===v?"#1d9bf0":"transparent",color:w.on===v?"#fff":"#777",border:"1px solid "+(w.on===v?"#1d9bf0":"#2a2a2a"),borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.14em",padding:"9px",cursor:"pointer"}},t);
+    return React.createElement("div",{"data-chweekly-editor":"1",style:{border:"1px solid #2a2a2a",background:"#0b0b0b",padding:"10px 11px 12px",marginTop:8}},
+      React.createElement("div",{style:{display:"flex",gap:6,marginBottom:10}},onBtn(true,"ON"),onBtn(false,"OFF")),
+      jlbl("NAME"),
+      React.createElement("input",{"data-f":"weekly-title",value:w.title,onChange:e=>put({title:one(e.target.value).toUpperCase()}),style:{...jbox,height:"auto",fontWeight:600,marginBottom:8}}),
+      jlbl("WHAT TO DO — EVERY WEEK"),
+      React.createElement("textarea",{"data-f":"weekly-text",rows:2,value:w.text,onChange:e=>put({text:one(e.target.value)}),style:{...jbox,color:"#ddd",letterSpacing:"0.02em",marginBottom:4}}),
+      React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#555",marginTop:8,lineHeight:1.7}},
+        "Members pick which Timed Exercise they did, tick the week and enter their time. It shows on their challenge under the day box, on the completion screen, and on their profile in Admin. The line about it in the challenge details is edited under ABOUT THIS CHALLENGE."));
+  }
+  function intakeEditor(){
+    const cur={n:chIntakeOf(f,"n"),h:chIntakeOf(f,"h")};
+    const one=v=>String(v||"").replace(/\s*\n\s*/g," ");
+    const put=(k,patch)=>setF(p=>{
+      const base={n:chIntakeOf(p,"n"),h:chIntakeOf(p,"h")};
+      const store=x=>({label:x.label,note:x.note,opts:x.opts.map(o=>o.label)});
+      const next={n:store(base.n),h:store(base.h)};
+      next[k]={...next[k],...patch};
+      return {...p,intake:next};
+    });
+    const part=(k,title)=>React.createElement("div",{"data-chintake-edit":k,style:{border:"1px solid #2a2a2a",background:"#0b0b0b",padding:"10px 11px 12px",marginTop:10}},
+      React.createElement("div",{style:{fontSize:9,letterSpacing:"0.2em",color:"#1d9bf0",fontWeight:600,marginBottom:8}},title),
+      jlbl("HEADING"),
+      React.createElement("input",{"data-f":"intake-"+k+"-label",value:cur[k].label,onChange:e=>put(k,{label:one(e.target.value).toUpperCase()}),style:{...jbox,height:"auto",fontWeight:600,marginBottom:8}}),
+      jlbl("SMALL TEXT BESIDE IT"),
+      React.createElement("input",{"data-f":"intake-"+k+"-note",value:cur[k].note,onChange:e=>put(k,{note:one(e.target.value)}),style:{...jbox,height:"auto",marginBottom:8}}),
+      ...cur[k].opts.map((o,i)=>React.createElement("div",{key:o.id,style:{marginBottom:6}},
+        jlbl("OPTION "+(i+1)+(i===0?" — DARKEST SQUARE":i===2?" — BRIGHTEST SQUARE":"")),
+        React.createElement("input",{"data-f":"intake-"+k+"-opt-"+(i+1),value:o.label,
+          onChange:e=>{const v=one(e.target.value);put(k,{opts:cur[k].opts.map((x,j)=>j===i?v:x.label)});},
+          style:{...jbox,height:"auto",borderLeft:"4px solid "+CH_INTAKE_TONE[o.id]}}))));
+    return React.createElement("div",{"data-chintake-editor":"1",style:{marginTop:4}},
+      part("n","NUTRITION"),part("h","HYDRATION"),
+      React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#555",marginTop:8,lineHeight:1.7}},
+        "Each option keeps its colour in the NOURISHMENT JOURNEY squares. Days already logged read back in the new words. A blank option uses the original wording."));
+  }
+  function aboutEditor(days){
+    const a=chAboutOf(f);
+    const put=next=>setF(p=>({...p,about:next}));
+    const one=v=>String(v||"").replace(/\s*\n\s*/g," ");
+    const setTitle=(i,v)=>{const t=a.title.slice();t[i]=one(v).toUpperCase();put({...a,title:t});};
+    const setClose=(i,v)=>{const c=[a.closing[0]||"",a.closing[1]||"",a.closing.slice(2).join(" ")];c[i]=one(v).toUpperCase();put({...a,closing:c});};
+    const setSec=(i,k,v)=>put({...a,sections:a.sections.map((x,j)=>j===i?{...x,[k]:k==="h"?one(v).toUpperCase():one(v)}:x)});
+    const sect=(label,kids,extra)=>React.createElement("div",{"data-chabout-part":label,style:{border:"1px solid #2a2a2a",background:"#0b0b0b",padding:"10px 11px 12px",marginTop:10}},
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:8}},
+        React.createElement("span",{style:{fontSize:9,letterSpacing:"0.2em",color:"#1d9bf0",fontWeight:600}},label),extra||null),
+      kids);
+    const small=t=>React.createElement("div",{style:{fontSize:9,letterSpacing:"0.12em",color:"#555",fontWeight:600,margin:"8px 0 4px"}},t);
+    // COMMITMENT JOURNEY's sub-sections ARE the movements members tick: the
+    // title is the tick's name and the text says what counts. Sub-section 4 is
+    // optional; giving it a title adds a fourth thing to tick, clearing the
+    // title takes it away again.
+    const moves=(f.movement||CH_DEFAULT_MOVEMENT).map(m=>({...m,desc:m.desc!=null?m.desc:(CH_MOVE_DESC[m.id]||"")}));
+    const setMoves=m=>setF(p=>({...p,movement:m}));
+    const setMoveTitle=(k,v)=>{
+      const t=one(v).toUpperCase(),m=moves.map(x=>({...x}));
+      if(k<m.length)m[k].label=t;
+      else if(t.trim())m.push({id:chNewMoveId(m),label:t,note:"Minimum 30 minutes",desc:""});
+      setMoves(m);
+    };
+    const setMoveDesc=(k,v)=>{if(k>=moves.length)return;const m=moves.map(x=>({...x}));m[k].desc=one(v);setMoves(m);};
+    const weeklyAboutPart=()=>{const w=chWeeklyOf(f);const putW=patch=>setF(p=>{const c=chWeeklyOf(p);return {...p,weekly:{on:c.on,title:c.title,text:c.text,how:c.how,weeks:c.weeks,...patch}};});
+      return sect(w.title,React.createElement(React.Fragment,null,
+        React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#555",lineHeight:1.7,marginBottom:6}},"The name and what to do come from WEEKLY CHALLENGE above. This is the line under them here:"),
+        small("HOW IT WORKS"),
+        React.createElement("textarea",{"data-f":"weekly-how",rows:2,value:w.how,placeholder:"Leave blank to leave this line out",onChange:e=>putW({how:one(e.target.value)}),style:{...jbox,color:"#ddd",letterSpacing:"0.02em"}})));};
+    const moveSubs=()=>React.createElement("div",{"data-chabout-subs":"1",style:{marginTop:12,paddingTop:4,borderTop:"1px solid #1a1a1a"}},
+      Array.from({length:Math.max(3,chMoveRows(moves))},(_,k)=>{
+        const mv=moves[k]||null;
+        return React.createElement("div",{key:k,"data-chmove-slot":k+1,style:{borderLeft:"2px solid #1d3a5a",padding:"0 0 2px 10px",marginTop:10}},
+          small("SUB-SECTION "+(k+1)+(k>=3?" — OPTIONAL":"")),
+          React.createElement("input",{"data-f":"move-title-"+(k+1),value:mv?mv.label:"",placeholder:k>=3?"ADD ANOTHER (OPTIONAL)":"TITLE",
+            onChange:e=>setMoveTitle(k,e.target.value),style:{...jbox,height:"auto",fontWeight:600}}),
+          React.createElement("textarea",{"data-f":"move-desc-"+(k+1),rows:2,value:mv?mv.desc:"",disabled:!mv,
+            placeholder:mv?"What counts as this":"Give it a title first",
+            onChange:e=>setMoveDesc(k,e.target.value),style:{...jbox,color:"#ddd",letterSpacing:"0.02em",marginTop:6,opacity:mv?1:0.5}}),
+          k>=3&&React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#555",marginTop:5,lineHeight:1.7}},
+            "Give this a title and members can tick it too. Leave it empty and it isn't shown."));
+      }),
+      React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#555",marginTop:10,lineHeight:1.7}},
+        "The titles are what members tick each day. If you add or remove one, check the text above still says the right “any "+(f.movementRequired||2)+" of…”."));
+    return React.createElement("div",{"data-chabout-edit":"1",style:{marginTop:8}},
+      jlbl("BUTTON NAME"),
+      React.createElement("input",{className:"fi","data-f":"aboutTitle",value:chShowN(f.aboutTitle,days),placeholder:"THE "+days+" DAY PURSUIT DETAILS",
+        onChange:e=>{const v=chKeepN(e.target.value,days);setF(p=>({...p,aboutTitle:v}));},style:{marginBottom:2}}),
+      sect("TITLE",React.createElement(React.Fragment,null,
+        small("BIG LINE"),
+        React.createElement("input",{"data-f":"about-title-1",value:a.title[0],placeholder:"{N} : 365",onChange:e=>setTitle(0,e.target.value),style:{...jbox,height:"auto"}}),
+        small("NAME"),
+        React.createElement("input",{"data-f":"about-title-2",value:a.title[1],placeholder:"THE {N}-DAY PURSUIT",onChange:e=>setTitle(1,e.target.value),style:{...jbox,height:"auto"}}),
+        small("SUBTITLE"),
+        React.createElement("textarea",{"data-f":"about-title-3",rows:2,value:a.title[2],placeholder:"365 AVAILABLE. {N} CHOSEN. MAKE THEM COUNT.",onChange:e=>setTitle(2,e.target.value),style:jbox}))),
+      sect("DETAILS",React.createElement("textarea",{"data-f":"about-details",rows:3,value:a.details,
+        onChange:e=>put({...a,details:one(e.target.value)}),style:{...jbox,height:100,overflow:"auto",color:"#ddd",letterSpacing:"0.02em"}})),
+      ...a.sections.flatMap((x,i)=>[sect("SECTION "+(i+1),React.createElement(React.Fragment,null,
+        small("HEADING"),
+        React.createElement("input",{"data-f":"about-h-"+(i+1),value:x.h,placeholder:"HEADING",onChange:e=>setSec(i,"h",e.target.value),style:{...jbox,height:"auto",fontWeight:600}}),
+        small("TEXT"),
+        React.createElement("textarea",{"data-f":"about-t-"+(i+1),rows:2,value:x.t,onChange:e=>setSec(i,"t",e.target.value),style:{...jbox,color:"#ddd",letterSpacing:"0.02em"}}),
+        x.move?moveSubs():null),
+        React.createElement("span",{"data-chabout-rm":i+1,onClick:()=>put({...a,sections:a.sections.filter((_,j)=>j!==i)}),
+          style:{fontSize:9,letterSpacing:"0.14em",color:"#777",fontWeight:600,cursor:"pointer"}},"REMOVE")),
+        // The weekly challenge's part of the details sits after COMMITMENT JOURNEY.
+        x.move&&chWeeklyOf(f).on?weeklyAboutPart():null]),
+      React.createElement("button",{type:"button","data-chabout-add":"1",onClick:()=>put({...a,sections:a.sections.concat([{h:"",t:""}])}),
+        style:{width:"100%",background:"transparent",color:"#1d9bf0",border:"1px solid #1d3a5a",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.14em",padding:"9px",cursor:"pointer",marginTop:10}},"+ ADD SECTION"),
+      // Set like the TITLE, so the three boxes match what members see.
+      sect("CLOSING",React.createElement(React.Fragment,null,
+        small("BIG LINE"),
+        React.createElement("input",{"data-f":"about-close-1",value:a.closing[0]||"",placeholder:"{N}:365",onChange:e=>setClose(0,e.target.value),style:{...jbox,height:"auto"}}),
+        small("LINE UNDER IT"),
+        React.createElement("input",{"data-f":"about-close-2",value:a.closing[1]||"",placeholder:"{N} CHOSEN. 365 AVAILABLE.",onChange:e=>setClose(1,e.target.value),style:{...jbox,height:"auto"}}),
+        small("LAST LINE (SMALL, BLUE)"),
+        React.createElement("input",{"data-f":"about-close-3",value:a.closing.slice(2).join(" "),placeholder:"THE PURSUIT IS YOURS.",onChange:e=>setClose(2,e.target.value),style:{...jbox,height:"auto"}}))),
+      React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#555",marginTop:8,lineHeight:1.7}},
+        "{N} is the number of days, so the wording follows the length. A section left empty isn't shown. Clear the button name to hide the whole thing.")
+    );
+  }
+  function journey(days){
+    const themes=f.themes||[];
+    const lines=f.lines||[];
+    const refl=f.reflections||[];
+    const setTheme=(i,v)=>setF(p=>({...p,themes:(p.themes||[]).map((x,j)=>j===i?noNL(v).toUpperCase():x)}));
+    const setLine=(i,v)=>setF(p=>{const L=(p.themes||[]).map((_,j)=>(p.lines||[])[j]||"");L[i]=noNL(v).toUpperCase();return {...p,lines:L};});
+    const setRefl=(i,v)=>setF(p=>{const r=p.reflections||[];const n=Math.max(days,r.length);const a=Array.from({length:n},(_,j)=>r[j]||"");a[i]=noNL(v);return {...p,reflections:a};});
+    return React.createElement("div",{"data-chjourney-edit":"1",style:{marginTop:8}},
+      // Each week's theme and the line under it. The last week runs to the end.
+      themes.map((t,i)=>{
+        const a=i*7+1,b=i===themes.length-1?days:Math.min(days,i*7+7);
+        if(a>days)return null;
+        return React.createElement("div",{key:i,"data-chweek":i+1,style:{padding:"8px 0 10px",borderBottom:"1px solid #1a1a1a"}},
+          jlbl("WEEK "+(i+1)+" · DAYS "+a+"–"+b),
+          React.createElement("textarea",{"data-f":"theme-"+(i+1),rows:2,value:t||"",placeholder:"THEME",
+            onChange:e=>setTheme(i,e.target.value),style:{...jbox,fontWeight:600,marginBottom:6,borderColor:String(t||"").trim()?"#2a2a2a":"#5a1d1d"}}),
+          React.createElement("textarea",{"data-f":"line-"+(i+1),rows:2,value:lines[i]||"",placeholder:"LINE UNDER THE THEME",
+            onChange:e=>setLine(i,e.target.value),style:{...jbox,color:"#bbb"}})
+        );
+      }),
+      // Biggest Win, and one Reflection question a day. A day already answered
+      // keeps the question it was answered under (rq), so rewording one never
+      // changes what a member wrote.
+      React.createElement("div",{"data-chq-toggle":"1",onClick:()=>setShowQs(v=>!v),
+        style:{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#1d9bf0",color:"#000",borderRadius:0,padding:"11px 14px",margin:"12px 0 10px",cursor:"pointer",userSelect:"none"}},
+        React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.12em"}},"BIGGEST WIN & REFLECTION QUESTIONS"),
+        React.createElement("span",{style:{fontSize:11,transform:showQs?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
+      ),
+      showQs&&React.createElement("div",{"data-chq":"1",style:{padding:"4px 0 10px",borderBottom:"1px solid #1a1a1a"}},
+        jlbl("BIGGEST WIN — ASKED EVERY DAY"),
+        React.createElement("textarea",{"data-f":"qWin",rows:2,value:f.qWin||"",placeholder:CH_DEFAULT_CFG.qWin,
+          onChange:e=>{const v=noNL(e.target.value);setF(p=>({...p,qWin:v}));},style:{...jbox,marginBottom:14}}),
+        jlbl("REFLECTION — ONE QUESTION A DAY"),
+        Array.from({length:Math.max(1,days)},(_,i)=>React.createElement("div",{key:i,style:{marginBottom:6}},
+          React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,margin:"0 0 3px"}},"DAY "+(i+1)),
+          React.createElement("textarea",{"data-f":"refl-"+(i+1),rows:2,value:refl[i]||"",placeholder:CH_FALLBACK_Q,
+            onChange:e=>setRefl(i,e.target.value),style:{...jbox,color:"#ddd"}})
+        )),
+        React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#555",marginTop:4,lineHeight:1.7}},
+          "A blank day asks “"+CH_FALLBACK_Q+"” Days members have already answered keep the question they answered.")
+      ),
+      // The closing words on the completion screen. "{N}" is the length.
+      React.createElement("div",{"data-chclosing-edit":"1",style:{padding:"10px 0 10px",borderBottom:"1px solid #1a1a1a"}},
+        jlbl("WHEN THE CHALLENGE IS COMPLETE"),
+        React.createElement("textarea",{"data-f":"closing",rows:2,value:chShowN(f.closing,days),placeholder:"YOU CAN.",
+          onChange:e=>{const v=chKeepN(e.target.value,days);setF(p=>({...p,closing:v}));},style:{...jbox,fontWeight:600,marginBottom:6}}),
+        React.createElement("textarea",{"data-f":"closingSub",rows:2,value:chShowN(f.closingSub,days),placeholder:"EVERY DAY. ALL YEAR ROUND.",
+          onChange:e=>{const v=chKeepN(e.target.value,days);setF(p=>({...p,closingSub:v}));},style:{...jbox,color:"#bbb"}}),
+        React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#555",marginTop:5,lineHeight:1.7}},
+          "If the wording includes the number of days, it follows the length when that changes.")
+      ),
+      React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#555",marginTop:8,lineHeight:1.7}},
+        (sel===CH_NEW?"":"Changes show to members as soon as you save. ")+"The journey, the questions and the closing words carry over to your next challenge.")
+    );
+  }
   function setupForm(existing){
     const days=chCfgFrom(JSON.stringify(f)).days;
     const others=list.filter(c=>c.start!==selStart);
     const minStart=newest?chNextDS(chEndDS(newest)):"";
     const clash=f.start?others.find(c=>c.start<=chEndDS({start:f.start,days})&&chEndDS(c)>=f.start):null;
+    const problem=problemWith(list,archive);
     const endDS=(()=>{
       if(!f.start)return "";
       const d=new Date(f.start+"T12:00:00");
@@ -10116,6 +10871,14 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
     })();
     return React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1a1a1a",borderTop:"none",borderRadius:0,padding:"4px 16px 16px",marginBottom:8}},
       fld("CHALLENGE NAME","name","text","30 Day Challenge"),
+      // Shown after the name on the members' challenge button, in smaller type.
+      React.createElement("label",{className:"fl",style:{marginTop:10}},"SUBTITLE"),
+      React.createElement("input",{className:"fi","data-f":"subtitle",value:f.subtitle||"",placeholder:"After the name on the members' challenge button",
+        onChange:e=>{const v=e.target.value.toUpperCase();setF(p=>({...p,subtitle:v}));}}),
+      // Shown under the name on the members' challenge button.
+      React.createElement("label",{className:"fl",style:{marginTop:10}},"CATCHPHRASE"),
+      React.createElement("input",{className:"fi","data-f":"tagline",value:f.tagline||"",placeholder:"Under the name on the members' challenge button",
+        onChange:e=>{const v=e.target.value.toUpperCase();setF(p=>({...p,tagline:v}));}}),
       React.createElement("label",{className:"fl",style:{marginTop:10}},"START DATE — EVERYONE"),
       React.createElement("input",{className:"fi",type:"date",value:f.start||"",
         min:existing?undefined:(minStart||undefined),
@@ -10123,17 +10886,31 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
       clash?React.createElement("div",{style:{fontSize:10,letterSpacing:"0.06em",color:"#e0625f",marginTop:-6,marginBottom:6,lineHeight:1.7}},
         "These dates run over "+(clash.name||"CHALLENGE").toUpperCase()+" ("+chFmtRange(clash.start,clash.days)+"). Two challenges cannot run at once.")
       :React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#555",marginTop:-6,marginBottom:6,lineHeight:1.7}},
-        "Any day of the week. Sets the start date for every member at once \u2014 a member can be given their own later start on their profile."),
+        "Any day of the week. Sets the start date for every member at once — a member can be given their own later start on their profile."),
       fld("NUMBER OF DAYS","days","number","30"),
       endDS&&React.createElement("div",{style:{fontSize:10,letterSpacing:"0.08em",color:"#1d9bf0",marginTop:-4,marginBottom:6}},"ENDS "+endDS.toUpperCase()),
       sub("MOVEMENT"),
-      (f.movement||CH_DEFAULT_MOVEMENT).map((m,i)=>React.createElement("div",{key:m.id,style:{display:"flex",gap:6,marginTop:8}},
-        React.createElement("input",{className:"fi",style:{flex:1.1,marginBottom:0},value:m.label,onChange:e=>setMov(i,"label",e.target.value)}),
-        React.createElement("input",{className:"fi",style:{flex:1,marginBottom:0},value:m.note,placeholder:"note",onChange:e=>setMov(i,"note",e.target.value)})
-      )),
+      // Every movement, then an empty row to add another (up to six). A row
+      // with no name is not kept and members never see it.
+      Array.from({length:chMoveRows(f.movement||CH_DEFAULT_MOVEMENT)},(_,i)=>{
+        const list=f.movement||CH_DEFAULT_MOVEMENT,m=list[i]||null;
+        const setAt=(k,v)=>setF(p=>{const a=(p.movement||CH_DEFAULT_MOVEMENT).map(x=>({...x}));
+          if(i<a.length)a[i]={...a[i],[k]:v};
+          else if(String(v).trim())a.push({id:chNewMoveId(a),label:k==="label"?v:"",note:k==="note"?v:"Minimum 30 minutes",desc:""});
+          return {...p,movement:a};});
+        return React.createElement("div",{key:"mv-"+i,"data-chmove-row":i+1,style:{display:"flex",gap:6,marginTop:8,alignItems:"stretch"}},
+          React.createElement("input",{className:"fi","data-f":"move-label-"+(i+1),style:{flex:1.1,marginBottom:0,minWidth:0},value:m?m.label:"",
+            placeholder:i>=3?"ADD ANOTHER":"NAME",onChange:e=>setAt("label",e.target.value)}),
+          React.createElement("input",{className:"fi","data-f":"move-note-"+(i+1),style:{flex:1,marginBottom:0,minWidth:0},value:m?m.note:"",placeholder:"note",
+            onChange:e=>setAt("note",e.target.value)}),
+          i>=3&&m&&React.createElement("button",{type:"button","data-chmove-rm":m.id,onClick:()=>setF(p=>({...p,movement:(p.movement||CH_DEFAULT_MOVEMENT).filter((_,j)=>j!==i)})),
+            style:{flexShrink:0,background:"transparent",color:"#e0625f",border:"1px solid #5a1d1d",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.12em",padding:"0 12px",cursor:"pointer"}},"REMOVE"));
+      }),
+      React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#555",marginTop:6,lineHeight:1.7}},
+        "Type a name in the empty row to add another movement members can tick (up to six). A row left empty isn't shown."),
       fld("HOW MANY REQUIRED FOR THE DAY","movementRequired","number","2"),
       React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#555",marginTop:-6,marginBottom:6,lineHeight:1.7}},
-        `Any ${chCfgFrom(JSON.stringify(f)).movementRequired} of ${(f.movement||CH_DEFAULT_MOVEMENT).length} earns the day. Nutrition and hydration are observations and do not affect this.`),
+        `Any ${chCfgFrom(JSON.stringify(f)).movementRequired} of ${chCfgFrom(JSON.stringify(f)).movement.length} earns the day. Nutrition and hydration are observations and do not affect this.`),
       subTog("WHO IS IN THIS CHALLENGE",showRoll,()=>setShowRoll(v=>!v),roll.length?inList().length+" OF "+roll.length:null),
       showRoll&&React.createElement("div",{style:{fontSize:10,color:"#777",letterSpacing:"0.04em",lineHeight:1.7,margin:"6px 0 8px"}},
         roll.length===0?"No members found."
@@ -10155,22 +10932,36 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
         React.createElement("button",{onClick:()=>setF(p=>({...p,members:[]})),
           style:{flex:1,background:"transparent",color:"#777",border:"1px solid #2a2a2a",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.12em",padding:"9px",cursor:"pointer"}},"CLEAR ALL")
       ),
-      sub("JOURNEY"),
-      React.createElement("div",{style:{fontSize:10,color:"#777",letterSpacing:"0.04em",lineHeight:1.8,marginTop:6}},
-        `${(f.themes||[]).length} weekly themes · ${(f.reflections||[]).length} reflection questions`),
-      (f.themes||[]).map((t,i)=>React.createElement("div",{key:i,style:{marginTop:7}},
-        React.createElement("div",{style:{fontSize:10,letterSpacing:"0.14em",color:"#7cc4f0",fontWeight:600}},`WEEK ${i+1} · ${t}`),
-        (f.lines||[])[i]?React.createElement("div",{style:{fontSize:9,letterSpacing:"0.08em",color:"#666",marginTop:2}},(f.lines||[])[i]):null
-      )),
-      React.createElement("button",{onClick:save,disabled:saving,
+      // The button above the day box that explains the challenge, edited in
+      // the same sections the member sees: title, details, each section,
+      // closing. {N} is shown as stored so 365 and "30 minutes" never move.
+      // The words on the INTAKE part of a member's day.
+      subTog("INTAKE",showIntake,()=>setShowIntake(v=>!v),chIntakeOf(f,"n").label+" · "+chIntakeOf(f,"h").label),
+      showIntake&&intakeEditor(),
+      // The weekly Timed Exercise challenge.
+      subTog("WEEKLY CHALLENGE",showWeekly,()=>setShowWeekly(v=>!v),chWeeklyOf(f).on?"ON":"OFF"),
+      showWeekly&&weeklyEditor(days),
+      subTog("ABOUT THIS CHALLENGE",showAbout,()=>setShowAbout(v=>!v),chShowN(f.aboutTitle,days)||null),
+      showAbout&&aboutEditor(days),
+      subTog("JOURNEY",showJourney,()=>setShowJourney(v=>!v),`${(f.themes||[]).length} WEEKS · ${days} QUESTIONS`),
+      showJourney&&journey(days),
+      problem&&!clash?React.createElement("div",{"data-chproblem":"1",style:{fontSize:10,letterSpacing:"0.06em",color:"#e0625f",marginTop:14,lineHeight:1.7}},problem):null,
+      React.createElement("button",{onClick:save,disabled:saving,"data-chsavecfg":"1",
         style:{width:"100%",background:saving?"#222":"#fff",color:saving?"#555":"#000",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.16em",padding:"14px",cursor:saving?"default":"pointer",marginTop:18}},
         saving?"SAVING...":(existing?"SAVE CHALLENGE":"CREATE CHALLENGE")),
-      existing?React.createElement("button",{onClick:removeChallenge,disabled:saving,
-        style:{width:"100%",background:"transparent",color:armDel?"#e0625f":"#555",border:"1px solid "+(armDel?"#5a1d1d":"#2a2a2a"),borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.14em",padding:"11px",cursor:"pointer",marginTop:8}},
-        armDel?"TAP AGAIN TO REMOVE":"REMOVE CHALLENGE"):null,
-      React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#555",marginTop:10,lineHeight:1.7}},
-        existing?"Removing a challenge takes it out of members' apps as well. Nothing they logged is deleted \u2014 it comes back if the challenge is created again on the same dates."
-        :"A challenge set up for a later date stays hidden from members until it starts.")
+      existing?React.createElement(React.Fragment,null,
+        React.createElement("button",{onClick:removeChallenge,disabled:saving,"data-chremove":"1",
+          style:{width:"100%",background:"transparent",color:armDel?"#fff":"#888",border:"1px solid "+(armDel?"#666":"#2a2a2a"),borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.14em",padding:"11px",cursor:"pointer",marginTop:14}},
+          armDel?"TAP AGAIN TO REMOVE — KEEP ENTRIES":"REMOVE CHALLENGE — KEEP ENTRIES"),
+        React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#555",marginTop:6,lineHeight:1.7}},
+          "Takes it off this list and moves it to REMOVED below. Members who logged anything in it keep it in their history to look back on."),
+        React.createElement("button",{onClick:deleteAll,disabled:saving,"data-chdelete":"1",
+          style:{width:"100%",background:armAll?"#5a1d1d":"transparent",color:armAll?"#fff":"#e0625f",border:"1px solid "+(armAll?"#e0625f":"#5a1d1d"),borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.14em",padding:"11px",cursor:"pointer",marginTop:12}},
+          saving&&armAll?"DELETING...":armAll?"TAP AGAIN TO DELETE EVERYTHING":"DELETE CHALLENGE AND ALL ENTRIES"),
+        React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#555",marginTop:6,lineHeight:1.7}},
+          "Deletes the challenge and every member's entries for it, from everywhere. This can't be undone.")
+      ):React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#555",marginTop:10,lineHeight:1.7}},
+        "A challenge set up for a later date stays hidden from members until it starts.")
     );
   }
   return React.createElement(React.Fragment,null,
@@ -10187,6 +10978,10 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
       React.createElement("span",{style:{fontSize:11,color:"#555",transform:open?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
     ),
     open&&(!loaded?React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.08em",marginBottom:10}},"LOADING...")
+    :loadErr?React.createElement("div",{"data-chloaderr":"1",style:{marginBottom:10}},
+      React.createElement("div",{style:{fontSize:11,color:"#e0625f",letterSpacing:"0.04em",lineHeight:1.7,marginBottom:10}},loadErr),
+      React.createElement("button",{onClick:load,
+        style:{background:"transparent",color:"#1d9bf0",border:"1px solid #1d3a5a",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.16em",padding:"10px 18px",cursor:"pointer"}},"TRY AGAIN"))
     :React.createElement(React.Fragment,null,
       // Newest first, because the one being worked on is almost always the
       // latest. A finished challenge stays here so its dates and who was in it
@@ -10194,7 +10989,7 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
       ...list.slice().reverse().map(c=>{
         const st=statusOf(c),isOpen=sel===c.start;
         return React.createElement(React.Fragment,{key:c.start},
-          React.createElement("div",{onClick:()=>isOpen?setSel(""):openChallenge(c),
+          React.createElement("div",{onClick:()=>isOpen?closeForm():openChallenge(c),
             style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:"#0e0e0e",border:"1px solid "+(st==="RUNNING"?"#1d3a5a":"#222"),borderRadius:0,padding:"12px 14px",marginBottom:isOpen?0:6,cursor:"pointer",userSelect:"none"}},
             React.createElement("div",{style:{minWidth:0}},
               React.createElement("div",{style:{fontSize:12,fontWeight:600,letterSpacing:"0.1em",color:"#fff"}},(c.name||"CHALLENGE").toUpperCase()),
@@ -10210,54 +11005,75 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
       }),
       sel===CH_NEW?React.createElement(React.Fragment,null,
         React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:"#0e0e0e",border:"1px solid #1d3a5a",borderRadius:0,padding:"12px 14px",cursor:"pointer",userSelect:"none"},
-          onClick:()=>setSel("")},
+          onClick:closeForm},
           React.createElement("div",{style:{fontSize:12,fontWeight:600,letterSpacing:"0.1em",color:"#fff"}},"NEW CHALLENGE"),
           React.createElement("span",{style:{fontSize:11,color:"#555"}},"▾")
         ),
         setupForm(false)
-      ):React.createElement("button",{onClick:startNew,
+      ):React.createElement("button",{onClick:startNew,"data-chnew":"1",
         style:{width:"100%",background:"transparent",color:"#1d9bf0",border:"1px solid #1d3a5a",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.16em",padding:"13px",cursor:"pointer",marginTop:list.length?4:0,marginBottom:8}},"+ NEW CHALLENGE"),
       !list.length&&sel!==CH_NEW&&React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.06em",lineHeight:1.8,marginBottom:8}},
-        "No challenge has been created yet.")
+        "No challenge has been created yet."),
+      // Removed with KEEP ENTRIES. Still in the history of every member who took
+      // part; DELETE takes it, and all of their entries for it, from everywhere.
+      archive.length>0&&React.createElement("div",{"data-charchive":"1",style:{marginTop:22}},
+        React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:6}},"REMOVED — KEPT FOR MEMBERS"),
+        React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.04em",lineHeight:1.7,marginBottom:10}},
+          "Members who took part still see these in their history. Delete one to remove it and every member's entries for it, from everywhere."),
+        ...archive.slice().reverse().map(c=>React.createElement("div",{key:c.start,"data-charc":c.start,
+          style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:"#0e0e0e",border:"1px solid #222",borderRadius:0,padding:"11px 14px",marginBottom:6}},
+          React.createElement("div",{style:{minWidth:0}},
+            React.createElement("div",{style:{fontSize:12,fontWeight:600,letterSpacing:"0.1em",color:"#bbb"}},(c.name||"CHALLENGE").toUpperCase()),
+            React.createElement("div",{style:{fontSize:10,color:"#555",marginTop:3,letterSpacing:"0.06em"}},chFmtRange(c.start,c.days))
+          ),
+          React.createElement("button",{"data-charcdel":c.start,disabled:saving,onClick:()=>deleteArchived(c),
+            style:{flexShrink:0,background:armArc===c.start?"#5a1d1d":"transparent",color:armArc===c.start?"#fff":"#e0625f",border:"1px solid "+(armArc===c.start?"#e0625f":"#5a1d1d"),borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.12em",padding:"8px 12px",cursor:"pointer"}},
+            saving&&armArc===c.start?"DELETING...":armArc===c.start?"TAP AGAIN TO DELETE":"DELETE")
+        ))
+      )
     ))
   );
 }
+// The coach's view of one member, on their profile: exactly the member's own
+// CHALLENGE screen, read from their record and unable to change it. Under it,
+// the one thing only a coach sets — a later personal start for someone who
+// joined late.
 function MemberChallengeAdmin({member}){
   const [col,setCol]=useState(true);
-  const [loading,setLoading]=useState(false);
-  const [loadedOnce,setLoadedOnce]=useState(false);
   const [cfg,setCfg]=useState(null);
-  const [log,setLog]=useState({});
+  const [bk,setBk]=useState(null);
   const [startDraft,setStartDraft]=useState("");
   const [savingStart,setSavingStart]=useState(false);
-  useEffect(()=>{
-    if(col||loadedOnce)return;
-    (async()=>{
-      setLoading(true);
-      const [c,r]=await Promise.all([
-        chLoadCfg(),
-        sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(chLogKey(member.email))}&select=content`)
-      ]);
-      let o={};
-      if(r&&r.length&&r[0].content){try{o=JSON.parse(r[0].content)||{};}catch{o={};}}
-      setCfg(c);setLog(o);setStartDraft(chBucket(o,c.start).start||"");setLoadedOnce(true);setLoading(false);
-    })();
-  },[col]);
+  const [startMsg,setStartMsg]=useState("");
+  // Bumped after a start date is saved, so the member view reloads.
+  const [viewKey,setViewKey]=useState(0);
+  async function loadStart(){
+    const [S,r]=await Promise.all([chLoadSetup(),chRead(chLogKey(member.email))]);
+    if(!S.ok||!r.ok){setCfg(null);return;}
+    const c=chActive(S.list,toDS(new Date()))||chCfgFrom("");
+    const b=chBucket(chParseLog(r.content),c.start);
+    setCfg(c);setBk(b);setStartDraft(b.start||"");
+  }
+  useEffect(()=>{if(!col)loadStart();},[col]);
   // Writes only this member's start date onto their own record, leaving their
-  // entries and every other challenge in the record untouched.
+  // entries, the rest of this challenge's record and every other challenge in
+  // it untouched. The record is re-read first and never written if it can't be.
   async function saveMemberStart(ds){
     if(savingStart||!cfg||!cfg.start)return;
-    setSavingStart(true);
+    setSavingStart(true);setStartMsg("");
     const key=chLogKey(member.email);
-    const r=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(key)}&select=content`);
-    let o={};
-    if(r&&r.length&&r[0].content){try{o=JSON.parse(r[0].content)||{};}catch{o={};}}
-    const b=chBucket(o,cfg.start);
-    const nb={entries:b.entries};
-    if((ds||"").trim())nb.start=ds.trim();
-    const next={...o,[cfg.start]:nb};
-    if(await chPersist(key,next)){setLog(next);setStartDraft(ds||"");}
+    const r=await chRead(key);
+    let ok=false;
+    if(r.ok){
+      const o=chParseLog(r.content);
+      const prev=o[cfg.start]&&typeof o[cfg.start]==="object"?o[cfg.start]:{};
+      const nb={...prev,entries:prev.entries||{}};
+      if((ds||"").trim())nb.start=ds.trim();else delete nb.start;
+      ok=await chWrite(key,{...o,[cfg.start]:nb},r.exists);
+    }
     setSavingStart(false);
+    if(!ok){setStartMsg("COULDN'T SAVE — TRY AGAIN");return;}
+    await loadStart();setViewKey(k=>k+1);
   }
   const hdr=React.createElement("div",{onClick:()=>setCol(c=>!c),
     style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginTop:16,marginBottom:col?0:10}},
@@ -10265,75 +11081,29 @@ function MemberChallengeAdmin({member}){
     React.createElement("span",{style:{fontSize:11,transform:col?"rotate(-90deg)":"none",transition:"transform .15s"}},"▾")
   );
   if(col)return hdr;
-  if(loading||!cfg)return React.createElement(React.Fragment,null,hdr,
-    React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.08em",marginBottom:10}},"LOADING..."));
-  if(!cfg.start)return React.createElement(React.Fragment,null,hdr,
-    React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.06em",marginBottom:10,lineHeight:1.7}},"No challenge is running."));
-  const bk=chBucket(log,cfg.start);
-  const myStart=chStartFor(cfg,bk);
-  const dayNum=chDayNum(myStart,toDS(new Date()));
-  const curDay=Math.min(Math.max(dayNum,1),cfg.days);
-  const entries=bk.entries;
-  const totals=chTotals(cfg,entries);
-  const completed=totals.completed;
-  const streak=dayNum<1?0:chStreak(entries,Math.min(dayNum,cfg.days));
-  const pct=cfg.days?Math.round((completed/cfg.days)*100):0;
-  const nutByDay={},hydByDay={};
-  Object.keys(entries).forEach(k=>{if(entries[k].n)nutByDay[k]=entries[k].n;if(entries[k].h)hydByDay[k]=entries[k].h;});
-  const days=Object.keys(entries).map(k=>parseInt(k)).filter(n=>!isNaN(n)).sort((a,z)=>z-a);
+  const myStart=cfg&&cfg.start?chStartFor(cfg,bk):"";
   return React.createElement(React.Fragment,null,hdr,
-    React.createElement("div",{className:"mp-row"},
-      React.createElement("span",{className:"mp-label"},"CHALLENGE"),
-      React.createElement("span",{className:"mp-value"},(cfg.name||"CHALLENGE")+" · "+(dayNum<1?"not started":dayNum>cfg.days?"finished":`Day ${curDay} of ${cfg.days}`))
-    ),
-    React.createElement("div",{className:"adm-stats-row tight",style:{margin:"12px 0 4px"}},
-      React.createElement("div",{className:"adm-stat"},
-        React.createElement("div",{className:"adm-stat-num"},completed),
-        React.createElement("div",{className:"adm-stat-lbl"},"COMPLETED")),
-      React.createElement("div",{className:"adm-stat"},
-        React.createElement("div",{className:"adm-stat-num"},streak),
-        React.createElement("div",{className:"adm-stat-lbl"},"STREAK")),
-      React.createElement("div",{className:"adm-stat"},
-        React.createElement("div",{className:"adm-stat-num"},pct+"%"),
-        React.createElement("div",{className:"adm-stat-lbl"},"PROGRESS"))
-    ),
-    React.createElement("div",{style:{marginTop:10,marginBottom:4}},React.createElement(ChallengeBar,{pct})),
-    // An individual start date, for someone who joins the challenge late. Blank
-    // means they follow the studio-wide date like everyone else.
-    React.createElement("div",{className:"mp-row"},
-      React.createElement("span",{className:"mp-label"},"START DATE"),
-      React.createElement("span",{className:"mp-value"},myStart===cfg.start?chFmtStart(cfg.start)+" (everyone)":chFmtStart(myStart)+" (their own)")),
-    React.createElement("div",{style:{display:"flex",gap:6,alignItems:"center",padding:"8px 0 2px"}},
-      React.createElement("input",{className:"fi",type:"date",style:{marginBottom:0,flex:1,fontSize:13,padding:"9px 10px"},value:bk.start||"",
-        onChange:e=>setStartDraft(e.target.value)}),
-      React.createElement("button",{onClick:()=>saveMemberStart(startDraft),disabled:savingStart,
-        style:{background:"#fff",color:"#000",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.12em",padding:"10px 14px",cursor:"pointer"}},savingStart?"...":"SET"),
-      bk.start&&React.createElement("button",{onClick:()=>saveMemberStart(""),disabled:savingStart,
-        style:{background:"transparent",color:"#777",border:"1px solid #2a2a2a",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.12em",padding:"10px 12px",cursor:"pointer"}},"CLEAR")
-    ),
-    React.createElement("div",{className:"mp-section",style:{marginTop:18}},"PILLARS"),
-    React.createElement("div",{className:"mp-row"},
-      React.createElement("span",{className:"mp-label"},"COMMITMENT"),
-      React.createElement("span",{className:"mp-value"},totals.moveDays+" of "+cfg.days+" days")),
-    React.createElement("div",{className:"mp-row"},
-      React.createElement("span",{className:"mp-label"},"CONSISTENCY"),
-      React.createElement("span",{className:"mp-value"},
-        CH_CONSISTENCY.map(o=>`${totals.con[o.id]||0} ${o.id==="did"?"as planned":o.id==="adapted"?"adapted":"fell short"}`).join(" \u00b7 "))),
-    // The determination spread, not a score. Reading it tells the coach how the
-    // member is getting through the work, which a single number never could.
-    React.createElement("div",{className:"mp-row"},
-      React.createElement("span",{className:"mp-label"},"DETERMINATION"),
-      React.createElement("span",{className:"mp-value"},
-        CH_DETERMINATION.map(o=>`${totals.det[o.id]||0} ${o.id==="push"?"pushed through":o.id==="on"?"got on with it":"felt strong"}`).join(" · "))),
-    // Patterns the coach can open a conversation with — never a nutrition score.
-    React.createElement("div",{className:"mp-section",style:{marginTop:18}},"INTAKE PATTERNS"),
-    React.createElement(ChallengeIntakeStrip,{title:"NUTRITION",days:cfg.days,values:nutByDay}),
-    React.createElement(ChallengeIntakeStrip,{title:"HYDRATION",days:cfg.days,values:hydByDay}),
-    React.createElement("div",{className:"mp-section",style:{marginTop:18}},"WINS & REFLECTIONS"),
-    days.length===0?React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.06em",lineHeight:1.7,paddingBottom:8}},"No days completed yet.")
-    :days.map(d=>React.createElement(ChallengeDayCard,{key:d,cfg,day:d,entry:entries[String(d)]}))
+    React.createElement("div",{"data-chcoach-note":"1",style:{fontSize:9,letterSpacing:"0.12em",color:"#555",fontWeight:600,marginBottom:10,lineHeight:1.6}},
+      "WHAT "+String(member.name||member.email).toUpperCase()+" SEES — VIEW ONLY"),
+    React.createElement(ChallengeView,{key:viewKey,session:{email:member.email},viewOnly:true,embedded:true}),
+    // An individual start date, for someone who joins the challenge late.
+    // Blank means they follow the studio-wide date like everyone else.
+    cfg&&cfg.start&&React.createElement("div",{"data-chcoach-start":"1",style:{borderTop:"1px solid #1a1a1a",marginTop:14,paddingTop:12}},
+      React.createElement("div",{className:"mp-row"},
+        React.createElement("span",{className:"mp-label"},"START DATE"),
+        React.createElement("span",{className:"mp-value"},myStart===cfg.start?chFmtStart(cfg.start)+" (everyone)":chFmtStart(myStart)+" (their own)")),
+      React.createElement("div",{style:{display:"flex",gap:6,alignItems:"center",padding:"8px 0 2px"}},
+        React.createElement("input",{className:"fi",type:"date",style:{marginBottom:0,flex:1,fontSize:13,padding:"9px 10px"},value:startDraft,
+          onChange:e=>setStartDraft(e.target.value)}),
+        React.createElement("button",{onClick:()=>saveMemberStart(startDraft),disabled:savingStart,
+          style:{background:"#fff",color:"#000",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.12em",padding:"10px 14px",cursor:"pointer"}},savingStart?"...":"SET"),
+        bk&&bk.start&&React.createElement("button",{onClick:()=>saveMemberStart(""),disabled:savingStart,
+          style:{background:"transparent",color:"#777",border:"1px solid #2a2a2a",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.12em",padding:"10px 12px",cursor:"pointer"}},"CLEAR")
+      ),
+      startMsg&&React.createElement("div",{style:{fontSize:9,letterSpacing:"0.08em",color:"#e0625f",fontWeight:600,marginTop:4}},startMsg))
   );
 }
+// ── end Challenge ─────────────────────────────────────────────────────────────
 function RoutinesView({session,ttl,isAdmin}){
   const [routines,setRoutines]=useState([]);
   const [logs,setLogs]=useState({});
@@ -11644,6 +12414,7 @@ function App(){
   }
   async function saveChallengeSetting(enabled){
     await sbPatch("feature_flags","id=eq.1",{challenge_enabled:enabled});
+    if(!(await chFlagIs(enabled))){showToast("COULDN'T SAVE — TRY AGAIN");return;}
     setChallengeEnabled(enabled);
   }
   function getDayClassName(dateKey,time){
