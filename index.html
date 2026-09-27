@@ -9512,6 +9512,22 @@ async function chLoadSetup(){
 async function chLoadList(){
   return (await chLoadSetup()).list;
 }
+// Whether a member gets the CHALLENGE tab at all (with the switch in SECTIONS
+// on): they are in the challenge the app is showing now, or they have a past
+// challenge to look back on. Same rules ChallengeView uses to decide what to
+// show, so the tab is never there with nothing in it. true / false, or null if
+// it couldn't be read (then the tab shows, as it always used to).
+async function chMemberHasTab(email){
+  const [S,r]=await Promise.all([chLoadSetup(),chRead(chLogKey(email))]);
+  if(!S.ok||!r.ok)return null;
+  const cfg=chActive(S.list,toDS(new Date()));
+  if(cfg&&cfg.start&&chEnrolled(cfg,email))return true;
+  const log=chParseLog(r.content);
+  const known={};S.list.forEach(x=>{known[x.start]=x;});
+  const kept={};S.archive.forEach(x=>{if(!known[x.start])kept[x.start]=x;});
+  const cur=cfg&&cfg.start?cfg.start:"";
+  return Object.keys(log).some(k=>k&&k!==cur&&(known[k]||(kept[k]&&Object.keys(chBucket(log,k).entries).length>0)));
+}
 async function chLoadCfg(){
   return chActive(await chLoadList(),toDS(new Date()))||chCfgFrom("");
 }
@@ -11898,6 +11914,8 @@ function App(){
   const [strengthEnabled,setStrengthEnabled]=useState(true);
   const [calendarEnabled,setCalendarEnabled]=useState(true);
   const [challengeEnabled,setChallengeEnabled]=useState(false);
+  // Whether THIS member has the CHALLENGE tab: "loading", true, false, or null (couldn't tell).
+  const [chTab,setChTab]=useState("loading");
   // Master email switches (Admin -> FUNCTIONS). These govern every email of
   // that kind for everyone; the per-member switches keep their own values and
   // resume untouched when these go back on. Default true so a failed or slow
@@ -12157,7 +12175,9 @@ function App(){
   const showStrength=strengthEnabled&&acc("strength");
   const showPT=workoutsEnabled;
   const showRoutines=routinesEnabled;
-  const showChallenge=challengeEnabled;
+  // The switch in SECTIONS turns Challenge off for everyone. With it on, the tab
+  // shows only for a member who is in the challenge or has a past one.
+  const showChallenge=challengeEnabled&&(chTab===true||chTab===null);
   // Subscriber: a separate level from members and admins. Admin always wins.
   const isSubscriber=!isAdmin&&!!subRow;
   const subDetailsOn=isSubscriber&&subRow.status==="active"&&subDetailsFlag;
@@ -12179,7 +12199,14 @@ function App(){
   const effWkSub=wkOpts.some(o=>o.id===wkSub)?wkSub:(wkOpts[0]&&wkOpts[0].id);
   const renderSeg=(opts,cur,set)=>opts.length<=1?null:React.createElement("div",{className:"sp-toggle seg-nav",style:{marginTop:16,marginBottom:16,paddingLeft:20,paddingRight:20}},opts.map(o=>React.createElement("button",{key:o.id,className:`sp-toggle-btn${cur===o.id?" spta":""}`,style:{border:"1px solid #fff"},onClick:()=>set(o.id)},o.label)));
   // If the current tab isn't available to this member, snap to the first available one.
-  useEffect(()=>{if(ready&&TAB_ORDER.length&&!TAB_ORDER.includes(tab))setTab(TAB_ORDER[0]);},[memberAccess,classesEnabled,strengthEnabled,wellnessEnabled,workoutsEnabled,challengeEnabled,ready]);
+  useEffect(()=>{if(ready&&TAB_ORDER.length&&!TAB_ORDER.includes(tab)&&!(tab==="challenge"&&challengeEnabled&&chTab==="loading"))setTab(TAB_ORDER[0]);},[memberAccess,classesEnabled,strengthEnabled,wellnessEnabled,workoutsEnabled,challengeEnabled,chTab,ready]);
+  useEffect(()=>{
+    const em=session&&session.email;
+    if(!challengeEnabled||!em){setChTab("loading");return;}
+    let live=true;
+    chMemberHasTab(em).then(v=>{if(live)setChTab(v);}).catch(()=>{if(live)setChTab(null);});
+    return ()=>{live=false;};
+  },[challengeEnabled,session&&session.email]);
   function handleTouchStart(e){touchStartX.current=e.touches[0].clientX;touchStartY.current=e.touches[0].clientY;}
   function handleTouchEnd(e){
     if(touchStartX.current===null)return;
