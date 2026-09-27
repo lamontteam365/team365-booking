@@ -9345,7 +9345,13 @@ const CH_WEEKLY_HOW="Each week, tap that week's box when it's done and enter you
 function chWeeklyOf(cfg){
   const w=cfg&&cfg.weekly&&typeof cfg.weekly==="object"?cfg.weekly:{};
   return {on:w.on!==false,title:String(w.title||"").trim()||"WEEKLY CHALLENGE",
-    text:w.text!=null&&String(w.text).trim()?String(w.text):CH_WEEKLY_TEXT,
+    // WORKOUT SELECTION. On (the default): members pick one of their Timed
+    // Exercises from a drop-down. Off: they type what they did instead. Either
+    // way it is kept as that week's `ex`.
+    pick:w.pick!==false,
+    // WHAT TO DO. Left blank, it stays blank; only a challenge that has never
+    // had one gets the default.
+    text:w.text!=null?String(w.text):CH_WEEKLY_TEXT,
     // The "how it works" line under it in the challenge details. Blank hides it.
     how:w.how!=null?String(w.how):CH_WEEKLY_HOW,
     weeks:(Array.isArray(w.weeks)?w.weeks:[]).map(x=>String(x||""))};
@@ -9854,9 +9860,8 @@ function chFitLine(el){
   el.style.letterSpacing="0.05em";
   while(el.scrollWidth>el.clientWidth+0.5&&size>6){size=Math.round((size-0.25)*100)/100;el.style.fontSize=size+"px";}
 }
-function ChallengeBlock({title,subtitle,tagline,sub,open,onToggle,head,children}){
+function ChallengeBlock({title,tagline,sub,open,onToggle,head,children}){
   const tag=String(tagline||"").trim();
-  const st=String(subtitle||"").trim();
   const tagRef=useRef(null);
   useEffect(()=>{
     const fit=()=>chFitLine(tagRef.current);
@@ -9868,29 +9873,28 @@ function ChallengeBlock({title,subtitle,tagline,sub,open,onToggle,head,children}
     return ()=>{clearTimeout(t);window.removeEventListener("resize",fit);};
   },[tag,sub]);
   return React.createElement("div",{style:{marginBottom:10}},
-    // Two rows: the name, the date and the arrow along the top; the
-    // catchphrase underneath across the full width of the button, so it has
-    // the whole line to itself and stays on one line.
+    // The name with the catchphrase after it, centred; if both don't fit on
+    // one line the catchphrase drops under the name, still centred, and steps
+    // its type down (chFitLine) only if it can't fit a line on its own. The
+    // arrow sits on the right. The subtitle is on the challenge details button
+    // and the start date is the first line inside, once the button is opened.
     React.createElement("div",{onClick:onToggle,"data-chbar":"1",
-      style:{width:"100%",boxSizing:"border-box",background:"#fff",color:"#000",border:"1px solid #fff",borderRadius:0,padding:"11px 14px",cursor:"pointer",userSelect:"none"}},
-      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}},
-        React.createElement("div",{style:{flex:1,minWidth:0}},
-          // The name, with its subtitle after it in smaller type on the same line.
-          // If both don't fit on one line, the subtitle drops under the name.
-          React.createElement("div",{"data-chname":"1",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.12em",lineHeight:1.15,display:"flex",flexWrap:"wrap",alignItems:"baseline",columnGap:8}},
-            React.createElement("span",{style:{whiteSpace:"nowrap"}},title),
-            st&&React.createElement("span",{"data-chsubtitle":"1",style:{fontSize:11,letterSpacing:"0.14em",color:"#555",whiteSpace:"nowrap"}},st.toUpperCase()))
-        ),
-        sub&&React.createElement("div",{"data-chdate":"1",style:{alignSelf:"center",fontSize:9,letterSpacing:"0.1em",color:"#555",fontWeight:600,whiteSpace:"nowrap",flexShrink:0}},sub),
-        React.createElement("span",{style:{fontSize:11,flexShrink:0,transform:open?"none":"rotate(-90deg)",transition:"transform .15s"}},"\u25be")
+      style:{position:"relative",width:"100%",boxSizing:"border-box",background:"#fff",color:"#000",border:"1px solid #fff",borderRadius:0,padding:"12px 20px",cursor:"pointer",userSelect:"none"}},
+      React.createElement("div",{"data-chtop":"1",style:{display:"flex",flexWrap:"wrap",justifyContent:"center",alignItems:"baseline",columnGap:8,rowGap:2,textAlign:"center"}},
+        React.createElement("span",{"data-chname":"1",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.12em",lineHeight:1.15,whiteSpace:"nowrap"}},title),
+        tag&&React.createElement("span",{"data-chtagline":"1",ref:tagRef,style:{fontSize:9,letterSpacing:"0.1em",color:"#555",fontWeight:600,lineHeight:1.3,whiteSpace:"nowrap",overflow:"hidden",minWidth:0,maxWidth:"100%"}},tag.toUpperCase())
       ),
-      tag&&React.createElement("div",{"data-chtagline":"1",ref:tagRef,style:{fontSize:9,letterSpacing:"0.1em",color:"#555",fontWeight:600,marginTop:3,whiteSpace:"nowrap",overflow:"hidden"}},tag.toUpperCase())
+      React.createElement("span",{style:{position:"absolute",right:7,top:"50%",fontSize:11,lineHeight:1,transform:open?"translateY(-50%)":"translateY(-50%) rotate(-90deg)",transition:"transform .15s"}},"\u25be")
     ),
     // Where the member is, always visible: the bar is closed until they open it,
     // but the day count, the streak, the progress and the theme are the point of
     // glancing at this tab at all.
     head?React.createElement("div",{style:{paddingTop:12}},head):null,
-    open&&React.createElement("div",{style:{paddingTop:head?4:12}},children)
+    // The start date (or the dates, once finished) is the first line inside,
+    // in the same blue as YOUR PROGRESS and the other headings.
+    open&&React.createElement("div",{style:{paddingTop:head?4:12}},
+      sub?React.createElement("div",{"data-chdate":"1",style:{fontSize:10,letterSpacing:"0.22em",color:"#1d9bf0",fontWeight:600,margin:"2px 0 10px"}},sub):null,
+      children)
   );
 }
 // ── The completion screen ─────────────────────────────────────────────────────
@@ -9997,17 +10001,27 @@ function ChallengeAbout({cfg}){
   // The weekly challenge, from its own settings, sits after COMMITMENT
   // JOURNEY (or after the last section if there isn't one).
   const wkc=chWeeklyOf(cfg);
-  const weeklySec=wkc.on&&React.createElement("div",{key:"weekly","data-chabout-section":wkc.title,"data-chabout-weekly":"1",style:{...rule,padding:"13px 0 14px"}},
+  // WHAT TO DO is not repeated here: it belongs on the member's WEEKLY
+  // CHALLENGE box, where they tick and enter their time. The details show the
+  // name and the how-it-works line (edited under ABOUT THIS CHALLENGE); with
+  // that line blank there is nothing to say, so the part is left out.
+  const weeklySec=wkc.on&&String(sh(wkc.how)||"").trim()&&React.createElement("div",{key:"weekly","data-chabout-section":wkc.title,"data-chabout-weekly":"1",style:{...rule,padding:"13px 0 14px"}},
     React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.12em",color:"#1d9bf0",lineHeight:1.1,marginBottom:5}},wkc.title),
-    React.createElement("div",{style:body},sh(wkc.text)),
-    sh(wkc.how)&&React.createElement("div",{"data-chabout-weekly-how":"1",style:{...body,fontSize:11.5,color:"#999",marginTop:4,lineHeight:1.5}},sh(wkc.how)));
+    React.createElement("div",{"data-chabout-weekly-how":"1",style:body},sh(wkc.how)));
   const moveAt=secs.findIndex(x=>x.move);
   return React.createElement("div",{"data-chabout":"1",style:{marginBottom:12}},
-    // A solid Team 365 blue button, slim so it sits with the rest of the screen.
+    // Set like the boxes under it: the same dark box and grey border, the name
+    // in blue Bebas on the left and the arrow on the right, as on the white
+    // challenge button. Opening it continues the same box downwards.
     React.createElement("button",{type:"button","data-chabout-btn":"1",onClick:()=>setOpen(v=>!v),
-      style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",background:"#1d9bf0",color:"#fff",border:"1px solid #1d9bf0",borderRadius:0,padding:"9px 34px",cursor:"pointer",userSelect:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.16em",lineHeight:1.1}},
-      React.createElement("span",null,title.toUpperCase()),
-      React.createElement("span",{style:{position:"absolute",right:13,top:"50%",fontSize:11,transform:open?"translateY(-50%)":"translateY(-50%) rotate(-90deg)",transition:"transform .15s"}},"▾")
+      style:{width:"100%",boxSizing:"border-box",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:"#141414",color:"#1d9bf0",border:"1px solid #888",borderRadius:0,padding:"11px 15px",cursor:"pointer",userSelect:"none",textAlign:"left",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",lineHeight:1.1}},
+      // The button name with the challenge's subtitle after it, in the small
+      // type the subtitle had on the home button. Drops under the name if both
+      // don't fit on one line.
+      React.createElement("span",{"data-chabout-name-row":"1",style:{minWidth:0,display:"flex",flexWrap:"wrap",alignItems:"baseline",columnGap:8,rowGap:2}},
+        React.createElement("span",null,title.toUpperCase()),
+        String(cfg.subtitle||"").trim()?React.createElement("span",{"data-chsubtitle":"1",style:{fontFamily:"'DM Sans',sans-serif",fontSize:9,letterSpacing:"0.1em",color:"#999",fontWeight:600,lineHeight:1.2}},String(cfg.subtitle).trim().toUpperCase()):null),
+      React.createElement("span",{style:{fontSize:11,letterSpacing:0,color:"#1d9bf0",flexShrink:0,transform:open?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
     ),
     // One column, each part divided by a hairline: title, details, each
     // section, closing. Headings in the same type as the rest of the tab.
@@ -10072,6 +10086,9 @@ function ChallengeView({session,showToast,viewOnly,embedded}){
   const [timed,setTimed]=useState(null);
   const [weekSel,setWeekSel]=useState(null);
   const [wkTime,setWkTime]=useState({});
+  // What a member is typing as their own weekly challenge (WORKOUT SELECTION
+  // off), until they leave the box.
+  const [wkText,setWkText]=useState({});
   const [wkOpen,setWkOpen]=useState(false);
   const key=chLogKey(session.email);
   useEffect(()=>{load();},[session.email]);
@@ -10219,7 +10236,6 @@ function ChallengeView({session,showToast,viewOnly,embedded}){
     React.createElement(React.Fragment,null,
           showCurrent&&React.createElement(ChallengeBlock,{
             title:(cfg.name||"CHALLENGE").toUpperCase(),
-            subtitle:cfg.subtitle,
             tagline:cfg.tagline,
             sub:finished?chFmtRange(myStart,cfg.days):(pending?"STARTS ":"STARTED ")+chFmtDay(myStart),
             head,open:openNow===cfg.start,onToggle:()=>{setShowRecord(null);setOpenDay(null);setOpenKey(openNow===cfg.start?"":cfg.start);}},body),
@@ -10230,7 +10246,6 @@ function ChallengeView({session,showToast,viewOnly,embedded}){
             const pcfg=chCfgOfBucket(cfg,pb,known[k]||kept[k]);
             return React.createElement(ChallengeBlock,{key:k,
               title:(pcfg.name||pb.name||"CHALLENGE").toUpperCase(),
-              subtitle:pcfg.subtitle,
               tagline:pcfg.tagline,
               sub:chFmtRange(k,pcfg.days),
               open:openNow===k,onToggle:()=>{setShowRecord(null);setOpenDay(null);setOpenKey(openNow===k?"":k);}},
@@ -10356,10 +10371,21 @@ function ChallengeView({session,showToast,viewOnly,embedded}){
     if(v===(e.time||""))return;
     setWeek(w,v?{done:true,time:v}:{time:""},v?"WEEK "+w+" TIME SAVED":"WEEK "+w+" TIME CLEARED");
   }
+  // Their own weekly challenge, typed in (WORKOUT SELECTION off). Kept as the
+  // week's `ex`, like a chosen exercise, and saving it ticks the week the same way.
+  function saveOwn(w){
+    const e=wkLog[String(w)]||{};
+    const raw=wkText[w];
+    if(raw==null)return;
+    const v=String(raw).replace(/\s+/g," ").trim();
+    setWkText(p=>{const n={...p};delete n[w];return n;});
+    if(v===(e.ex||""))return;
+    setWeek(w,v?{done:true,ex:v}:{ex:""},v?"WEEK "+w+" SAVED":"WEEK "+w+" CLEARED");
+  }
   const weeklyCard=wk.on&&(running||inGrace)&&React.createElement(React.Fragment,null,
     chBlueHdr(wk.title),
     React.createElement("div",{"data-chweekly":"1","data-done":wkLog[String(wkNow)]&&wkLog[String(wkNow)].done?"1":"0",style:{background:"#141414",border:"1px solid "+(wkLog[String(wkNow)]&&wkLog[String(wkNow)].done?"#1d9bf0":"#888"),borderRadius:0,padding:"13px 13px 14px"}},
-      React.createElement("div",{"data-chweekly-text":"1",style:{fontSize:12.5,color:"#6e6e6e",letterSpacing:"0.01em",lineHeight:1.6,marginBottom:12,padding:"0 2px"}},chShowN(chWeekText(cfg,wkNow),cfg.days)),
+      String(chWeekText(cfg,wkNow)||"").trim()?React.createElement("div",{"data-chweekly-text":"1",style:{fontSize:12.5,color:"#6e6e6e",letterSpacing:"0.01em",lineHeight:1.6,marginBottom:12,padding:"0 2px"}},chShowN(chWeekText(cfg,wkNow),cfg.days)):null,
       React.createElement("div",{"data-chweekly-weeks":"1",style:{display:"grid",gridTemplateColumns:"repeat("+wkCount+",minmax(0,1fr))",gap:6}},
         Array.from({length:wkCount},(_,i)=>{
           const w=i+1,e=wkLog[String(w)]||null,done=!!(e&&e.done),can=!viewOnly&&w<=wkNow&&!saving,open=w<=wkNow;
@@ -10370,8 +10396,18 @@ function ChallengeView({session,showToast,viewOnly,embedded}){
             React.createElement("div",{"data-chweekly-label":w,style:{...small,fontSize:8,letterSpacing:"0.08em",fontWeight:600,textAlign:"center",color:done?"#7cc4f0":w===wkNow?"#fff":"#777",marginBottom:4}},"WEEK "+w),
             React.createElement("div",{"data-chweekly-pill":w,"data-done":done?"1":"0",
               style:{background:done?"#0a1a2a":"#141414",border:"1px solid "+(done?"#1d9bf0":w===wkNow?"#888":"#333"),borderRadius:0,padding:"5px 4px 6px",textAlign:"center"}},
+              // WORKOUT SELECTION off: a text box for their own weekly challenge.
+              !wk.pick
+                ?React.createElement("textarea",{"data-f":"weekly-own-"+w,rows:2,maxLength:80,disabled:!can,
+                    // Grows with what they write, so none of it is hidden.
+                    ref:el=>{if(el){el.style.height="auto";el.style.height=Math.max(el.scrollHeight+2,32)+"px";}},
+                    value:wkText[w]!=null?wkText[w]:((e&&e.ex)||""),placeholder:viewOnly||!open?"—":"WHAT DID YOU DO?",
+                    onChange:ev=>{const v=ev.target.value.replace(/\n/g," ");setWkText(p=>({...p,[w]:v}));},
+                    onBlur:()=>saveOwn(w),onKeyDown:ev=>{if(ev.key==="Enter"){ev.preventDefault();ev.target.blur();}},
+                    style:{...small,display:"block",width:"100%",boxSizing:"border-box",minWidth:0,background:"#0e0e0e",color:"#fff",border:"1px solid #2a2a2a",borderRadius:0,
+                      padding:"3px 3px",textAlign:"center",lineHeight:1.35,resize:"none",overflow:"hidden",outline:"none",margin:0}})
               // The exercise: a drop-down; what's chosen stays showing.
-              timed&&timed.length>0
+              :timed&&timed.length>0
                 ?React.createElement("select",{"data-f":"weekly-ex-"+w,value:(e&&e.ex)||"",disabled:!can,
                     onChange:ev=>{const v=ev.target.value;setWeek(w,v?{done:true,ex:v}:{ex:""},v?"WEEK "+w+": "+chExName(v).toUpperCase():"SAVED");},
                     // Dark list with white names (a white list with white names can't be read), all in capitals, no rule under it.
@@ -10482,9 +10518,8 @@ function ChallengeView({session,showToast,viewOnly,embedded}){
         !pending&&weekLine&&React.createElement("div",{style:{fontSize:9,letterSpacing:"0.1em",color:"#6e6e6e",fontWeight:600,marginTop:5,lineHeight:1.5}},weekLine),
         pending&&React.createElement("div",{style:{fontSize:10,letterSpacing:"0.12em",color:"#777",marginTop:10}},"STARTS "+chFmtStart(myStart))
       ),
-      weeklyCard,
       completed>0&&React.createElement(React.Fragment,null,
-        chBlueHdr("NOURISHMENT JOURNEY",!weeklyCard),
+        chBlueHdr("NOURISHMENT JOURNEY",true),
         // Boxed like COMMITMENT JOURNEY, so each journey reads as its own panel.
         React.createElement("div",{"data-chbox":"nourishment","data-done":doneIntake?"1":"0",style:{background:"#141414",border:doneB(doneIntake),borderRadius:0,padding:"14px 15px 2px"}},
           React.createElement(ChallengeIntakeStrip,{title:chIntakeOf(cfg,"n").label,days:cfg.days,values:nutByDay,opts:chIntakeOf(cfg,"n").opts}),
@@ -10497,12 +10532,14 @@ function ChallengeView({session,showToast,viewOnly,embedded}){
             n:totals.mov[m.id]||0,of:Math.min(Math.max(dayNum,1),cfg.days),last:i===cfg.movement.length-1}))
         )
       ),
+      // The weekly challenge sits directly under COMMITMENT JOURNEY.
+      weeklyCard,
       dayGrid,
       dayPanel,
       // The coach reads a day back; nothing opens as a form.
       viewOnly?readCard(cfg,entries):null,
       // The way into today, kept at the foot of the screen.
-      // Styled like THE 30 DAY PURSUIT DETAILS button.
+      // Solid Team 365 blue, like the open day's heading.
       running&&!viewOnly&&openDay!==curDay&&React.createElement("button",{"data-chtoday":"1",onClick:()=>{setEditing(false);setOpenDay(curDay);chScrollToDay();},
         style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",background:"#1d9bf0",color:"#fff",border:"1px solid #1d9bf0",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.16em",lineHeight:1.1,padding:"9px 34px",cursor:"pointer",marginTop:22}},
         "TODAY'S JOURNAL")
@@ -10534,6 +10571,10 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
   const [showRoll,setShowRoll]=useState(false);
   const [showJourney,setShowJourney]=useState(false);
   const [showQs,setShowQs]=useState(false);
+  // Inside JOURNEY: which weeks are open, and the two question drop-downs.
+  const [openWeeks,setOpenWeeks]=useState({});
+  const [showQWin,setShowQWin]=useState(false);
+  const [showQRefl,setShowQRefl]=useState(false);
   const [showAbout,setShowAbout]=useState(false);
   const [showIntake,setShowIntake]=useState(false);
   const [showWeekly,setShowWeekly]=useState(false);
@@ -10612,6 +10653,9 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
     const S=await chLoadSetup();
     if(!S.ok){setSaving(false);if(showToast)showToast("COULDN'T SAVE — CHECK YOUR CONNECTION");return;}
     const clean=chCfgFrom(JSON.stringify(f));
+    // Intake is kept exactly as typed while editing; the ends are tidied here.
+    if(clean.intake&&typeof clean.intake==="object")["n","h"].forEach(k=>{const x=clean.intake[k];if(!x||typeof x!=="object")return;
+      clean.intake[k]={...x,label:String(x.label==null?"":x.label).trim(),note:String(x.note==null?"":x.note).trim(),opts:(Array.isArray(x.opts)?x.opts:[]).map(o=>String(o==null?"":o).trim())};});
     const allowed={};roll.forEach(m=>{allowed[m.email]=true;});
     if(Array.isArray(clean.members))clean.members=clean.members.filter(e=>allowed[e]);
     const isNew=sel===CH_NEW;
@@ -10707,7 +10751,7 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
   function weeklyEditor(days){
     const w=chWeeklyOf(f);
     const one=v=>String(v||"").replace(/\s*\n\s*/g," ");
-    const put=patch=>setF(p=>{const c=chWeeklyOf(p);return {...p,weekly:{on:c.on,title:c.title,text:c.text,how:c.how,weeks:c.weeks,...patch}};});
+    const put=patch=>setF(p=>{const c=chWeeklyOf(p);return {...p,weekly:{on:c.on,pick:c.pick,title:c.title,text:c.text,how:c.how,weeks:c.weeks,...patch}};});
     const n=chWeekCount({...f,days});
     const onBtn=(v,t)=>React.createElement("button",{type:"button","data-chweekly-on":v?"1":"0",onClick:()=>put({on:v}),
       style:{flex:1,background:w.on===v?"#1d9bf0":"transparent",color:w.on===v?"#fff":"#777",border:"1px solid "+(w.on===v?"#1d9bf0":"#2a2a2a"),borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.14em",padding:"9px",cursor:"pointer"}},t);
@@ -10716,30 +10760,44 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
       jlbl("NAME"),
       React.createElement("input",{"data-f":"weekly-title",value:w.title,onChange:e=>put({title:one(e.target.value).toUpperCase()}),style:{...jbox,height:"auto",fontWeight:600,marginBottom:8}}),
       jlbl("WHAT TO DO — EVERY WEEK"),
-      React.createElement("textarea",{"data-f":"weekly-text",rows:2,value:w.text,onChange:e=>put({text:one(e.target.value)}),style:{...jbox,color:"#ddd",letterSpacing:"0.02em",marginBottom:4}}),
+      React.createElement("textarea",{"data-f":"weekly-text",rows:2,value:w.text,placeholder:"Leave blank to show nothing",onChange:e=>put({text:one(e.target.value)}),style:{...jbox,color:"#ddd",letterSpacing:"0.02em",marginBottom:4}}),
+      jlbl("WORKOUT SELECTION"),
+      React.createElement("div",{"data-chweekly-pickrow":"1",style:{display:"flex",gap:6,marginBottom:4}},
+        [[true,"ON"],[false,"OFF"]].map(([v,t])=>React.createElement("button",{key:t,type:"button","data-chweekly-pick":v?"1":"0",onClick:()=>put({pick:v}),
+          style:{flex:1,background:w.pick===v?"#1d9bf0":"transparent",color:w.pick===v?"#fff":"#777",border:"1px solid "+(w.pick===v?"#1d9bf0":"#2a2a2a"),borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.14em",padding:"9px",cursor:"pointer"}},t))),
       React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#555",marginTop:8,lineHeight:1.7}},
-        "Members pick which Timed Exercise they did, tick the week and enter their time. It shows on their challenge under the day box, on the completion screen, and on their profile in Admin. The line about it in the challenge details is edited under ABOUT THIS CHALLENGE."));
+        (w.pick?"Members pick which Timed Exercise they did":"Members type their own weekly challenge")+", tick the week and enter their time. WHAT TO DO shows only in the WEEKLY CHALLENGE box on their challenge (under COMMITMENT JOURNEY), not in the challenge details; leave it blank to show nothing. The weeks ticked also show on the completion screen and on their profile in Admin. The line about it in the challenge details is edited under ABOUT THIS CHALLENGE."));
   }
   function intakeEditor(){
-    const cur={n:chIntakeOf(f,"n"),h:chIntakeOf(f,"h")};
+    // The boxes hold exactly what has been typed, spaces included. (They used to
+    // be read back through chIntakeOf, which trims, so a space vanished the
+    // moment it was typed.) A blank box shows the original wording as its
+    // placeholder, and the member's screen falls back to it; save tidies.
+    const rawOf=(p,k)=>{
+      const d=chIntakeOf(null,k);
+      const x=p&&p.intake&&typeof p.intake==="object"&&p.intake[k]&&typeof p.intake[k]==="object"?p.intake[k]:null;
+      const o=x&&Array.isArray(x.opts)?x.opts:null;
+      return {label:x&&x.label!=null?String(x.label):d.label,note:x&&x.note!=null?String(x.note):d.note,
+        opts:d.opts.map((y,i)=>({id:y.id,label:o&&o[i]!=null?String(o[i]):y.label,dflt:y.label})),dflt:d.label};
+    };
+    const cur={n:rawOf(f,"n"),h:rawOf(f,"h")};
     const one=v=>String(v||"").replace(/\s*\n\s*/g," ");
     const put=(k,patch)=>setF(p=>{
-      const base={n:chIntakeOf(p,"n"),h:chIntakeOf(p,"h")};
       const store=x=>({label:x.label,note:x.note,opts:x.opts.map(o=>o.label)});
-      const next={n:store(base.n),h:store(base.h)};
-      next[k]={...next[k],...patch};
+      const next={n:store(rawOf(p,"n")),h:store(rawOf(p,"h"))};
+      next[k]={...next[k],...(typeof patch==="function"?patch(next[k]):patch)};
       return {...p,intake:next};
     });
     const part=(k,title)=>React.createElement("div",{"data-chintake-edit":k,style:{border:"1px solid #2a2a2a",background:"#0b0b0b",padding:"10px 11px 12px",marginTop:10}},
       React.createElement("div",{style:{fontSize:9,letterSpacing:"0.2em",color:"#1d9bf0",fontWeight:600,marginBottom:8}},title),
       jlbl("HEADING"),
-      React.createElement("input",{"data-f":"intake-"+k+"-label",value:cur[k].label,onChange:e=>put(k,{label:one(e.target.value).toUpperCase()}),style:{...jbox,height:"auto",fontWeight:600,marginBottom:8}}),
+      React.createElement("input",{"data-f":"intake-"+k+"-label",value:cur[k].label,placeholder:cur[k].dflt,onChange:e=>put(k,{label:one(e.target.value).toUpperCase()}),style:{...jbox,height:"auto",fontWeight:600,marginBottom:8}}),
       jlbl("SMALL TEXT BESIDE IT"),
       React.createElement("input",{"data-f":"intake-"+k+"-note",value:cur[k].note,onChange:e=>put(k,{note:one(e.target.value)}),style:{...jbox,height:"auto",marginBottom:8}}),
       ...cur[k].opts.map((o,i)=>React.createElement("div",{key:o.id,style:{marginBottom:6}},
         jlbl("OPTION "+(i+1)+(i===0?" — DARKEST SQUARE":i===2?" — BRIGHTEST SQUARE":"")),
-        React.createElement("input",{"data-f":"intake-"+k+"-opt-"+(i+1),value:o.label,
-          onChange:e=>{const v=one(e.target.value);put(k,{opts:cur[k].opts.map((x,j)=>j===i?v:x.label)});},
+        React.createElement("input",{"data-f":"intake-"+k+"-opt-"+(i+1),value:o.label,placeholder:o.dflt,
+          onChange:e=>{const v=one(e.target.value);put(k,x=>({opts:x.opts.map((y,j)=>j===i?v:y)}));},
           style:{...jbox,height:"auto",borderLeft:"4px solid "+CH_INTAKE_TONE[o.id]}}))));
     return React.createElement("div",{"data-chintake-editor":"1",style:{marginTop:4}},
       part("n","NUTRITION"),part("h","HYDRATION"),
@@ -10748,6 +10806,10 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
   }
   function aboutEditor(days){
     const a=chAboutOf(f);
+    // Every text box here grows to show all its text, and can be dragged
+    // taller from its corner. It never shrinks under a size you dragged it to.
+    const tbox={...jbox,height:"auto",minHeight:54,resize:"vertical",overflow:"auto"};
+    const grow=el=>{if(!el)return;const need=el.scrollHeight+2;if(el.offsetHeight<need)el.style.height=need+"px";};
     const put=next=>setF(p=>({...p,about:next}));
     const one=v=>String(v||"").replace(/\s*\n\s*/g," ");
     const setTitle=(i,v)=>{const t=a.title.slice();t[i]=one(v).toUpperCase();put({...a,title:t});};
@@ -10771,11 +10833,11 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
       setMoves(m);
     };
     const setMoveDesc=(k,v)=>{if(k>=moves.length)return;const m=moves.map(x=>({...x}));m[k].desc=one(v);setMoves(m);};
-    const weeklyAboutPart=()=>{const w=chWeeklyOf(f);const putW=patch=>setF(p=>{const c=chWeeklyOf(p);return {...p,weekly:{on:c.on,title:c.title,text:c.text,how:c.how,weeks:c.weeks,...patch}};});
+    const weeklyAboutPart=()=>{const w=chWeeklyOf(f);const putW=patch=>setF(p=>{const c=chWeeklyOf(p);return {...p,weekly:{on:c.on,pick:c.pick,title:c.title,text:c.text,how:c.how,weeks:c.weeks,...patch}};});
       return sect(w.title,React.createElement(React.Fragment,null,
         React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#555",lineHeight:1.7,marginBottom:6}},"The name and what to do come from WEEKLY CHALLENGE above. This is the line under them here:"),
         small("HOW IT WORKS"),
-        React.createElement("textarea",{"data-f":"weekly-how",rows:2,value:w.how,placeholder:"Leave blank to leave this line out",onChange:e=>putW({how:one(e.target.value)}),style:{...jbox,color:"#ddd",letterSpacing:"0.02em"}})));};
+        React.createElement("textarea",{ref:grow,"data-f":"weekly-how",rows:2,value:w.how,placeholder:"Leave blank to leave this line out",onChange:e=>putW({how:one(e.target.value)}),style:{...tbox,color:"#ddd",letterSpacing:"0.02em"}})));};
     const moveSubs=()=>React.createElement("div",{"data-chabout-subs":"1",style:{marginTop:12,paddingTop:4,borderTop:"1px solid #1a1a1a"}},
       Array.from({length:Math.max(3,chMoveRows(moves))},(_,k)=>{
         const mv=moves[k]||null;
@@ -10783,9 +10845,9 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
           small("SUB-SECTION "+(k+1)+(k>=3?" — OPTIONAL":"")),
           React.createElement("input",{"data-f":"move-title-"+(k+1),value:mv?mv.label:"",placeholder:k>=3?"ADD ANOTHER (OPTIONAL)":"TITLE",
             onChange:e=>setMoveTitle(k,e.target.value),style:{...jbox,height:"auto",fontWeight:600}}),
-          React.createElement("textarea",{"data-f":"move-desc-"+(k+1),rows:2,value:mv?mv.desc:"",disabled:!mv,
+          React.createElement("textarea",{ref:grow,"data-f":"move-desc-"+(k+1),rows:2,value:mv?mv.desc:"",disabled:!mv,
             placeholder:mv?"What counts as this":"Give it a title first",
-            onChange:e=>setMoveDesc(k,e.target.value),style:{...jbox,color:"#ddd",letterSpacing:"0.02em",marginTop:6,opacity:mv?1:0.5}}),
+            onChange:e=>setMoveDesc(k,e.target.value),style:{...tbox,color:"#ddd",letterSpacing:"0.02em",marginTop:6,opacity:mv?1:0.5}}),
           k>=3&&React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#555",marginTop:5,lineHeight:1.7}},
             "Give this a title and members can tick it too. Leave it empty and it isn't shown."));
       }),
@@ -10795,20 +10857,24 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
       jlbl("BUTTON NAME"),
       React.createElement("input",{className:"fi","data-f":"aboutTitle",value:chShowN(f.aboutTitle,days),placeholder:"THE "+days+" DAY PURSUIT DETAILS",
         onChange:e=>{const v=chKeepN(e.target.value,days);setF(p=>({...p,aboutTitle:v}));},style:{marginBottom:2}}),
+      // Shown after the button name on the members' challenge details button.
+      jlbl("BUTTON SUBTITLE"),
+      React.createElement("input",{className:"fi","data-f":"subtitle",value:f.subtitle||"",placeholder:"After the button name, in smaller type",
+        onChange:e=>{const v=e.target.value.toUpperCase();setF(p=>({...p,subtitle:v}));},style:{marginBottom:2}}),
       sect("TITLE",React.createElement(React.Fragment,null,
         small("BIG LINE"),
         React.createElement("input",{"data-f":"about-title-1",value:a.title[0],placeholder:"{N} : 365",onChange:e=>setTitle(0,e.target.value),style:{...jbox,height:"auto"}}),
         small("NAME"),
         React.createElement("input",{"data-f":"about-title-2",value:a.title[1],placeholder:"THE {N}-DAY PURSUIT",onChange:e=>setTitle(1,e.target.value),style:{...jbox,height:"auto"}}),
         small("SUBTITLE"),
-        React.createElement("textarea",{"data-f":"about-title-3",rows:2,value:a.title[2],placeholder:"365 AVAILABLE. {N} CHOSEN. MAKE THEM COUNT.",onChange:e=>setTitle(2,e.target.value),style:jbox}))),
-      sect("DETAILS",React.createElement("textarea",{"data-f":"about-details",rows:3,value:a.details,
-        onChange:e=>put({...a,details:one(e.target.value)}),style:{...jbox,height:100,overflow:"auto",color:"#ddd",letterSpacing:"0.02em"}})),
+        React.createElement("textarea",{ref:grow,"data-f":"about-title-3",rows:2,value:a.title[2],placeholder:"365 AVAILABLE. {N} CHOSEN. MAKE THEM COUNT.",onChange:e=>setTitle(2,e.target.value),style:tbox}))),
+      sect("DETAILS",React.createElement("textarea",{ref:grow,"data-f":"about-details",rows:3,value:a.details,
+        onChange:e=>put({...a,details:one(e.target.value)}),style:{...tbox,minHeight:100,color:"#ddd",letterSpacing:"0.02em"}})),
       ...a.sections.flatMap((x,i)=>[sect("SECTION "+(i+1),React.createElement(React.Fragment,null,
         small("HEADING"),
         React.createElement("input",{"data-f":"about-h-"+(i+1),value:x.h,placeholder:"HEADING",onChange:e=>setSec(i,"h",e.target.value),style:{...jbox,height:"auto",fontWeight:600}}),
         small("TEXT"),
-        React.createElement("textarea",{"data-f":"about-t-"+(i+1),rows:2,value:x.t,onChange:e=>setSec(i,"t",e.target.value),style:{...jbox,color:"#ddd",letterSpacing:"0.02em"}}),
+        React.createElement("textarea",{ref:grow,"data-f":"about-t-"+(i+1),rows:2,value:x.t,onChange:e=>setSec(i,"t",e.target.value),style:{...tbox,color:"#ddd",letterSpacing:"0.02em"}}),
         x.move?moveSubs():null),
         React.createElement("span",{"data-chabout-rm":i+1,onClick:()=>put({...a,sections:a.sections.filter((_,j)=>j!==i)}),
           style:{fontSize:9,letterSpacing:"0.14em",color:"#777",fontWeight:600,cursor:"pointer"}},"REMOVE")),
@@ -10834,18 +10900,32 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
     const refl=f.reflections||[];
     const setTheme=(i,v)=>setF(p=>({...p,themes:(p.themes||[]).map((x,j)=>j===i?noNL(v).toUpperCase():x)}));
     const setLine=(i,v)=>setF(p=>{const L=(p.themes||[]).map((_,j)=>(p.lines||[])[j]||"");L[i]=noNL(v).toUpperCase();return {...p,lines:L};});
+    const winEg=f.winExamples||[];
+    const setWinEg=(i,v)=>setF(p=>{const r=p.winExamples||[];const n=Math.max(days,r.length);const a=Array.from({length:n},(_,j)=>r[j]||"");a[i]=noNL(v);return {...p,winExamples:a};});
     const setRefl=(i,v)=>setF(p=>{const r=p.reflections||[];const n=Math.max(days,r.length);const a=Array.from({length:n},(_,j)=>r[j]||"");a[i]=noNL(v);return {...p,reflections:a};});
+    // A collapsible bar inside JOURNEY: smaller than the section buttons, the
+    // name on the left, a short summary and the arrow on the right. A red
+    // border when something inside it still needs filling in.
+    const miniTog=(key,t,openNow,onTog,right,warn)=>React.createElement("button",{type:"button",onClick:onTog,"data-chmini":key,
+      style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:openNow?"#0a1a2a":"#0e0e0e",border:"1px solid "+(warn?"#5a1d1d":openNow?"#1d3a5a":"#2a2a2a"),borderRadius:0,padding:"9px 11px",marginTop:6,cursor:"pointer",userSelect:"none",textAlign:"left"}},
+      React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.14em",lineHeight:1.1,color:warn?"#e0625f":"#ddd",whiteSpace:"nowrap",flexShrink:0}},t),
+      React.createElement("span",{style:{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:8,minWidth:0,flex:1}},
+        right?React.createElement("span",{style:{fontFamily:"'DM Sans',sans-serif",fontSize:9,letterSpacing:"0.1em",color:warn?"#e0625f":"#7cc4f0",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},right):null,
+        React.createElement("span",{style:{fontSize:11,letterSpacing:0,color:"#1d9bf0",flexShrink:0,transform:openNow?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")));
     return React.createElement("div",{"data-chjourney-edit":"1",style:{marginTop:8}},
-      // Each week's theme and the line under it. The last week runs to the end.
+      // Each week's theme and the line under it, each week behind its own
+      // button. The last week runs to the end.
       themes.map((t,i)=>{
         const a=i*7+1,b=i===themes.length-1?days:Math.min(days,i*7+7);
         if(a>days)return null;
-        return React.createElement("div",{key:i,"data-chweek":i+1,style:{padding:"8px 0 10px",borderBottom:"1px solid #1a1a1a"}},
-          jlbl("WEEK "+(i+1)+" · DAYS "+a+"–"+b),
+        const wkOpen=!!openWeeks[i+1],blank=!String(t||"").trim();
+        return React.createElement("div",{key:i,"data-chweek":i+1},
+          miniTog("week-"+(i+1),"WEEK "+(i+1)+" · DAYS "+a+"–"+b,wkOpen,()=>setOpenWeeks(o=>({...o,[i+1]:!o[i+1]})),blank?"NEEDS A THEME":String(t),blank),
+          wkOpen&&React.createElement("div",{"data-chweek-body":i+1,style:{padding:"8px 0 10px"}},
           React.createElement("textarea",{"data-f":"theme-"+(i+1),rows:2,value:t||"",placeholder:"THEME",
             onChange:e=>setTheme(i,e.target.value),style:{...jbox,fontWeight:600,marginBottom:6,borderColor:String(t||"").trim()?"#2a2a2a":"#5a1d1d"}}),
           React.createElement("textarea",{"data-f":"line-"+(i+1),rows:2,value:lines[i]||"",placeholder:"LINE UNDER THE THEME",
-            onChange:e=>setLine(i,e.target.value),style:{...jbox,color:"#bbb"}})
+            onChange:e=>setLine(i,e.target.value),style:{...jbox,color:"#bbb"}}))
         );
       }),
       // Biggest Win, and one Reflection question a day. A day already answered
@@ -10856,18 +10936,32 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
         React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.12em"}},"BIGGEST WIN & REFLECTION QUESTIONS"),
         React.createElement("span",{style:{fontSize:11,transform:showQs?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
       ),
-      showQs&&React.createElement("div",{"data-chq":"1",style:{padding:"4px 0 10px",borderBottom:"1px solid #1a1a1a"}},
-        jlbl("BIGGEST WIN — ASKED EVERY DAY"),
-        React.createElement("textarea",{"data-f":"qWin",rows:2,value:f.qWin||"",placeholder:CH_DEFAULT_CFG.qWin,
-          onChange:e=>{const v=noNL(e.target.value);setF(p=>({...p,qWin:v}));},style:{...jbox,marginBottom:14}}),
-        jlbl("REFLECTION — ONE QUESTION A DAY"),
+      showQs&&React.createElement("div",{"data-chq":"1",style:{padding:"0 0 10px",borderBottom:"1px solid #1a1a1a"}},
+        // Two drop-downs: the one Biggest Win question, and the day-by-day
+        // Reflection questions.
+        miniTog("qwin","BIGGEST WIN",showQWin,()=>setShowQWin(v=>!v),"QUESTION · "+Math.max(1,days)+" EXAMPLES"),
+        showQWin&&React.createElement("div",{"data-chq-win":"1",style:{padding:"8px 0 4px"}},
+          jlbl("THE QUESTION"),
+          React.createElement("textarea",{"data-f":"qWin",rows:2,value:f.qWin||"",placeholder:CH_DEFAULT_CFG.qWin,
+            onChange:e=>{const v=noNL(e.target.value);setF(p=>({...p,qWin:v}));},style:{...jbox,marginBottom:14}}),
+          // The example answer shown in grey in the member's answer box, one
+          // for each day. An example only: it is never saved as their answer.
+          jlbl("ANSWER EXAMPLES — ONE A DAY"),
+          Array.from({length:Math.max(1,days)},(_,i)=>React.createElement("div",{key:i,style:{marginBottom:6}},
+            React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,margin:"0 0 3px"}},"DAY "+(i+1)),
+            React.createElement("textarea",{"data-f":"winEg-"+(i+1),rows:2,value:winEg[i]||"",placeholder:"One line is enough",
+              onChange:e=>setWinEg(i,e.target.value),style:{...jbox,color:"#ddd"}}))),
+          React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#555",marginTop:4,lineHeight:1.7}},
+            "Each day's example shows in grey in the Biggest Win box on that day. It is only an example, never saved as a member's answer. A blank day shows “One line is enough”.")),
+        miniTog("qrefl","REFLECTION",showQRefl,()=>setShowQRefl(v=>!v),"ONE QUESTION A DAY · "+Math.max(1,days)+" DAYS"),
+        showQRefl&&React.createElement("div",{"data-chq-refl":"1",style:{padding:"8px 0 0"}},
         Array.from({length:Math.max(1,days)},(_,i)=>React.createElement("div",{key:i,style:{marginBottom:6}},
           React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,margin:"0 0 3px"}},"DAY "+(i+1)),
           React.createElement("textarea",{"data-f":"refl-"+(i+1),rows:2,value:refl[i]||"",placeholder:CH_FALLBACK_Q,
             onChange:e=>setRefl(i,e.target.value),style:{...jbox,color:"#ddd"}})
         )),
         React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em",color:"#555",marginTop:4,lineHeight:1.7}},
-          "A blank day asks “"+CH_FALLBACK_Q+"” Days members have already answered keep the question they answered.")
+          "A blank day asks “"+CH_FALLBACK_Q+"” Days members have already answered keep the question they answered."))
       ),
       // The closing words on the completion screen. "{N}" is the length.
       React.createElement("div",{"data-chclosing-edit":"1",style:{padding:"10px 0 10px",borderBottom:"1px solid #1a1a1a"}},
@@ -10898,10 +10992,6 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
     })();
     return React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1a1a1a",borderTop:"none",borderRadius:0,padding:"4px 16px 16px",marginBottom:8}},
       fld("CHALLENGE NAME","name","text","30 Day Challenge"),
-      // Shown after the name on the members' challenge button, in smaller type.
-      React.createElement("label",{className:"fl",style:{marginTop:10}},"SUBTITLE"),
-      React.createElement("input",{className:"fi","data-f":"subtitle",value:f.subtitle||"",placeholder:"After the name on the members' challenge button",
-        onChange:e=>{const v=e.target.value.toUpperCase();setF(p=>({...p,subtitle:v}));}}),
       // Shown under the name on the members' challenge button.
       React.createElement("label",{className:"fl",style:{marginTop:10}},"CATCHPHRASE"),
       React.createElement("input",{className:"fi","data-f":"tagline",value:f.tagline||"",placeholder:"Under the name on the members' challenge button",
@@ -10962,14 +11052,15 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
       // The button above the day box that explains the challenge, edited in
       // the same sections the member sees: title, details, each section,
       // closing. {N} is shown as stored so 365 and "30 minutes" never move.
+      // Directly under WHO IS IN THIS CHALLENGE.
+      subTog("ABOUT THIS CHALLENGE",showAbout,()=>setShowAbout(v=>!v),chShowN(f.aboutTitle,days)||null),
+      showAbout&&aboutEditor(days),
       // The words on the INTAKE part of a member's day.
       subTog("INTAKE",showIntake,()=>setShowIntake(v=>!v),chIntakeOf(f,"n").label+" · "+chIntakeOf(f,"h").label),
       showIntake&&intakeEditor(),
       // The weekly Timed Exercise challenge.
       subTog("WEEKLY CHALLENGE",showWeekly,()=>setShowWeekly(v=>!v),chWeeklyOf(f).on?"ON":"OFF"),
       showWeekly&&weeklyEditor(days),
-      subTog("ABOUT THIS CHALLENGE",showAbout,()=>setShowAbout(v=>!v),chShowN(f.aboutTitle,days)||null),
-      showAbout&&aboutEditor(days),
       subTog("JOURNEY",showJourney,()=>setShowJourney(v=>!v),`${(f.themes||[]).length} WEEKS · ${days} QUESTIONS`),
       showJourney&&journey(days),
       problem&&!clash?React.createElement("div",{"data-chproblem":"1",style:{fontSize:10,letterSpacing:"0.06em",color:"#e0625f",marginTop:14,lineHeight:1.7}},problem):null,
