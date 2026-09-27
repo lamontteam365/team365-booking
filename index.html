@@ -9759,7 +9759,9 @@ function chScrollToDay(){
     try{const el=document.getElementById("ch-day");if(el&&el.scrollIntoView)el.scrollIntoView({behavior:"smooth",block:"start"});}catch(e){}
   },60);
 }
-const chBlueHdr=(txt,tight)=>React.createElement("div",{style:{fontSize:10,letterSpacing:"0.22em",color:"#1d9bf0",fontWeight:600,margin:tight?"14px 0 10px":"26px 0 12px"}},txt);
+// Section headings on the member's challenge. Grey while the challenge runs;
+// blue once the whole challenge is complete.
+const chBlueHdr=(txt,tight,blue)=>React.createElement("div",{"data-chhdr":txt,style:{fontSize:10,letterSpacing:"0.22em",color:blue?"#1d9bf0":"#999",fontWeight:600,margin:tight?"14px 0 10px":"26px 0 12px"}},txt);
 // The width of the movement-name column, so every note ("Minimum 30 minutes")
 // starts in the same place on every row whatever the movements are called.
 function chLabelStack(movement){return (movement||[]).some(m=>String(m.label||"").length>12);}
@@ -9876,7 +9878,7 @@ function chFitLine(el){
   el.style.letterSpacing="0.05em";
   while(el.scrollWidth>el.clientWidth+0.5&&size>6){size=Math.round((size-0.25)*100)/100;el.style.fontSize=size+"px";}
 }
-function ChallengeBlock({title,tagline,sub,open,onToggle,head,children}){
+function ChallengeBlock({title,tagline,sub,done,open,onToggle,head,children}){
   const tag=String(tagline||"").trim();
   const tagRef=useRef(null);
   useEffect(()=>{
@@ -9909,7 +9911,7 @@ function ChallengeBlock({title,tagline,sub,open,onToggle,head,children}){
     // The start date (or the dates, once finished) is the first line inside,
     // in the same blue as YOUR PROGRESS and the other headings.
     open&&React.createElement("div",{style:{paddingTop:head?4:12}},
-      sub?React.createElement("div",{"data-chdate":"1",style:{fontSize:10,letterSpacing:"0.22em",color:"#1d9bf0",fontWeight:600,margin:"2px 0 10px"}},sub):null,
+      sub?React.createElement("div",{"data-chdate":"1",style:{fontSize:10,letterSpacing:"0.22em",color:done?"#1d9bf0":"#999",fontWeight:600,margin:"2px 0 10px"}},sub):null,
       children)
   );
 }
@@ -10254,6 +10256,7 @@ function ChallengeView({session,showToast,viewOnly,embedded}){
             title:(cfg.name||"CHALLENGE").toUpperCase(),
             tagline:cfg.tagline,
             sub:finished?chFmtRange(myStart,cfg.days):(pending?"STARTS ":"STARTED ")+chFmtDay(myStart),
+            done:finished,
             head,open:openNow===cfg.start,onToggle:()=>{setShowRecord(null);setOpenDay(null);setOpenKey(openNow===cfg.start?"":cfg.start);}},body),
           ...pastKeys.map(k=>{
             const pb=chBucket(log,k);
@@ -10263,7 +10266,7 @@ function ChallengeView({session,showToast,viewOnly,embedded}){
             return React.createElement(ChallengeBlock,{key:k,
               title:(pcfg.name||pb.name||"CHALLENGE").toUpperCase(),
               tagline:pcfg.tagline,
-              sub:chFmtRange(k,pcfg.days),
+              sub:chFmtRange(k,pcfg.days),done:true,
               open:openNow===k,onToggle:()=>{setShowRecord(null);setOpenDay(null);setOpenKey(openNow===k?"":k);}},
               openNow===k?React.createElement(ChallengeComplete,{cfg:pcfg,entries:pb.entries,weeklyDone:chWeeklyDone(pb),
                 showRecord:!!showRecord,onToggleRecord:()=>setShowRecord(!showRecord),
@@ -10399,8 +10402,8 @@ function ChallengeView({session,showToast,viewOnly,embedded}){
     setWeek(w,v?{done:true,ex:v}:{ex:""},v?"WEEK "+w+" SAVED":"WEEK "+w+" CLEARED");
   }
   const weeklyCard=wk.on&&(running||inGrace)&&React.createElement(React.Fragment,null,
-    chBlueHdr(wk.title),
-    React.createElement("div",{"data-chweekly":"1","data-done":wkLog[String(wkNow)]&&wkLog[String(wkNow)].done?"1":"0",style:{background:"#141414",border:"1px solid "+(wkLog[String(wkNow)]&&wkLog[String(wkNow)].done?"#1d9bf0":"#888"),borderRadius:0,padding:"13px 13px 14px"}},
+    chBlueHdr(wk.title,false,finished),
+    React.createElement("div",{"data-chweekly":"1","data-done":wkLog[String(wkNow)]&&wkLog[String(wkNow)].done?"1":"0",style:{background:"#141414",border:"1px solid "+(finished?"#1d9bf0":"#888"),borderRadius:0,padding:"13px 13px 14px"}},
       String(chWeekText(cfg,wkNow)||"").trim()?React.createElement("div",{"data-chweekly-text":"1",style:{fontSize:12.5,color:"#6e6e6e",letterSpacing:"0.01em",lineHeight:1.6,marginBottom:12,padding:"0 2px"}},chShowN(chWeekText(cfg,wkNow),cfg.days)):null,
       React.createElement("div",{"data-chweekly-weeks":"1",style:{display:"grid",gridTemplateColumns:"repeat("+wkCount+",minmax(0,1fr))",gap:6}},
         Array.from({length:wkCount},(_,i)=>{
@@ -10449,8 +10452,8 @@ function ChallengeView({session,showToast,viewOnly,embedded}){
         }))
     ));
   const dayGrid=React.createElement(React.Fragment,null,
-    chBlueHdr("DAILY REFLECTION"),
-    React.createElement("div",{"data-chbox":"reflection","data-done":running&&entries[String(curDay)]&&String(entries[String(curDay)].win||"").trim()&&String(entries[String(curDay)].ref||"").trim()?"1":"0",style:{background:"#141414",border:"1px solid "+(running&&entries[String(curDay)]&&String(entries[String(curDay)].win||"").trim()&&String(entries[String(curDay)].ref||"").trim()?"#1d9bf0":"#888"),borderRadius:0,padding:"14px 13px 14px"}},
+    chBlueHdr("DAILY REFLECTION",false,finished),
+    React.createElement("div",{"data-chbox":"reflection","data-done":running&&entries[String(curDay)]&&String(entries[String(curDay)].win||"").trim()&&String(entries[String(curDay)].ref||"").trim()?"1":"0",style:{background:"#141414",border:"1px solid "+(finished?"#1d9bf0":"#888"),borderRadius:0,padding:"14px 13px 14px"}},
     React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(42px,1fr))",gap:5}},
       Array.from({length:cfg.days},(_,i)=>{
         // Every day that has already happened can be opened, filled in or
@@ -10506,15 +10509,18 @@ function ChallengeView({session,showToast,viewOnly,embedded}){
   // A box's border turns blue once what it asks for is done: today saved,
   // today's intake, today's commitment, today's win and reflection, this week.
   const tE=running?entries[String(curDay)]||null:null;
-  const doneB=on=>"1px solid "+(on?"#1d9bf0":"#888");
+  // Every box stays grey while the challenge runs; they all turn blue together
+  // once the whole challenge is complete (not part by part, day by day).
+  const doneB=()=>"1px solid "+(finished?"#1d9bf0":"#888");
   const doneToday=!!tE;
   const doneIntake=!!(tE&&tE.n&&tE.h);
   const doneCommit=!!(tE&&chMoveMet(cfg,tE));
   const doneReflect=!!(tE&&String(tE.win||"").trim()&&String(tE.ref||"").trim());
   return renderShell(React.createElement(React.Fragment,null,
-      React.createElement(ChallengeAbout,{key:cfg.start,cfg}),
+      // The coach's read-only view of a member leaves the details button out.
+      viewOnly?null:React.createElement(ChallengeAbout,{key:cfg.start,cfg}),
       // The day box has a title like every other box.
-      chBlueHdr("YOUR PROGRESS",true),
+      chBlueHdr("YOUR PROGRESS",true,finished),
       React.createElement("div",{"data-chbox":"progress","data-done":doneToday?"1":"0",style:{background:"#141414",border:doneB(doneToday),borderRadius:0,padding:"14px 15px",marginBottom:0}},
         React.createElement("div",{style:{display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:10,marginBottom:9}},
           React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:10,minWidth:0,flexWrap:"wrap"}},
@@ -10535,14 +10541,14 @@ function ChallengeView({session,showToast,viewOnly,embedded}){
         pending&&React.createElement("div",{style:{fontSize:10,letterSpacing:"0.12em",color:"#777",marginTop:10}},"STARTS "+chFmtStart(myStart))
       ),
       completed>0&&React.createElement(React.Fragment,null,
-        chBlueHdr("NOURISHMENT JOURNEY",true),
+        chBlueHdr("NOURISHMENT JOURNEY",true,finished),
         // Boxed like COMMITMENT JOURNEY, so each journey reads as its own panel.
         React.createElement("div",{"data-chbox":"nourishment","data-done":doneIntake?"1":"0",style:{background:"#141414",border:doneB(doneIntake),borderRadius:0,padding:"14px 15px 2px"}},
           React.createElement(ChallengeIntakeStrip,{title:chIntakeOf(cfg,"n").label,days:cfg.days,values:nutByDay,opts:chIntakeOf(cfg,"n").opts}),
           React.createElement(ChallengeIntakeStrip,{title:chIntakeOf(cfg,"h").label,days:cfg.days,values:hydByDay,opts:chIntakeOf(cfg,"h").opts}))
       ),
       completed>0&&React.createElement(React.Fragment,null,
-        chBlueHdr("COMMITMENT JOURNEY"),
+        chBlueHdr("COMMITMENT JOURNEY",false,finished),
         React.createElement("div",{"data-chbox":"commitment","data-done":doneCommit?"1":"0",style:{background:"#141414",border:doneB(doneCommit),borderRadius:0,padding:"2px 15px"}},
           cfg.movement.map((m,i)=>React.createElement(ChallengeCommitRow,{key:m.id,label:m.label,
             n:totals.mov[m.id]||0,of:Math.min(Math.max(dayNum,1),cfg.days),last:i===cfg.movement.length-1}))
