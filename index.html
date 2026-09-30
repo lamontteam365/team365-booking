@@ -8645,6 +8645,10 @@ function MemberWorkoutReview({email}){
   const key=mwKey(email,weekStart);
   const notesKey="__MWN__"+email+"__"+weekDS;
   useEffect(()=>{load();},[weekStart,email]);
+  // The member's UNWELL days (their own "__MWU__"+email record) — read-only here.
+  const [unwell,setUnwell]=useState([]);
+  const [showUnwell,setShowUnwell]=useState(false);
+  useEffect(()=>{setUnwell([]);sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__MWU__"+email)}&select=content`).then(r=>{let a=[];if(r&&r.length&&r[0].content){try{a=JSON.parse(r[0].content)||[];}catch{a=[];}}setUnwell(Array.isArray(a)?a:[]);});},[email]);
   async function load(){
     setLoading(true);
     const[pData,logs,nData]=await Promise.all([
@@ -8672,10 +8676,23 @@ function MemberWorkoutReview({email}){
   const exercises=mwNormDay(program[dk]);
   const workouts=mwWorkouts(exercises);
   const doneCount=exercises.filter(ex=>exDone(dk,ex)).length;
+  const unwellYear=unwell.filter(x=>x.slice(0,4)===String(new Date().getFullYear()));
   const arrow={background:"none",border:"none",color:"#888",fontSize:22,cursor:"pointer",lineHeight:1,padding:"0 8px"};
   const chip={display:"inline-flex",alignItems:"center",justifyContent:"center",minWidth:34,padding:"4px 8px",borderRadius:0,border:"1px solid #2a2a2a",fontSize:11,fontFamily:"'DM Sans',sans-serif",fontWeight:600};
   return React.createElement("div",{style:{marginBottom:8}},
     React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:10}},"Read-only view of what this member sees — their logged weights and ticks. Use the arrows to look back at previous weeks."),
+    React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:6}},
+      React.createElement("button",{onClick:e=>{const r=e.currentTarget.getBoundingClientRect();setShowUnwell(v=>v?false:{top:r.bottom+6,right:window.innerWidth-r.right});},
+        style:{background:"none",border:"none",fontFamily:"inherit",fontSize:9,letterSpacing:"0.14em",fontWeight:600,color:unwellYear.length?"#e06040":"#666",cursor:"pointer",padding:"4px 0"}},
+        unwellYear.length+(unwellYear.length===1?" UNWELL DAY":" UNWELL DAYS")+" THIS YEAR"),
+      showUnwell&&React.createElement("div",{onClick:()=>setShowUnwell(false),onTouchMove:()=>setShowUnwell(false),onWheel:()=>setShowUnwell(false),style:{position:"fixed",inset:0,zIndex:140}}),
+      showUnwell&&React.createElement("div",{style:{position:"fixed",right:showUnwell.right,top:showUnwell.top,zIndex:141,background:"#141414",border:"1px solid #262626",padding:"10px 14px",minWidth:120,maxHeight:Math.max(120,Math.min(220,window.innerHeight-showUnwell.top-80)),overflowY:"auto",overscrollBehavior:"contain",WebkitOverflowScrolling:"touch"}},
+        React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#666",fontWeight:600,marginBottom:6,position:"sticky",top:-10,background:"#141414",padding:"10px 0 4px",marginTop:-10}},"UNWELL DAYS"),
+        unwellYear.length===0
+          ?React.createElement("div",{style:{fontSize:11,color:"#444"}},"None this year")
+          :unwellYear.map(ds=>React.createElement("div",{key:ds,style:{fontSize:11,letterSpacing:"0.1em",color:"#ddd",lineHeight:1.8}},parseInt(ds.slice(8),10)+" "+MONTHS[parseInt(ds.slice(5,7),10)-1].toUpperCase()))
+      )
+    ),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}},
       React.createElement("button",{onClick:()=>setWeekStart(w=>addDays(w,-7)),style:arrow},"‹"),
       React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",color:"#fff"}},weekLabel),
@@ -8689,7 +8706,7 @@ function MemberWorkoutReview({email}){
           style:{flex:1,background:i===selDay?"#1d9bf0":"#141414",color:i===selDay?"#fff":(dayEx.length?"#ccc":"#555"),border:"1px solid "+(i===selDay?"#1d9bf0":"#262626"),borderRadius:0,padding:"6px 0 4px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},
           React.createElement("div",{style:{fontSize:9,letterSpacing:"0.06em"}},MW_DAYS[i]),
           React.createElement("div",{style:{fontSize:14,fontWeight:700,fontFamily:"'Bebas Neue',sans-serif",lineHeight:1.1}},d.getDate()),
-          React.createElement("div",{style:{width:5,height:5,borderRadius:"50%",background:anyDone?"#4aaa66":"transparent",margin:"3px auto 0"}})
+          React.createElement("div",{style:{width:5,height:5,borderRadius:"50%",background:unwell.includes(toDS(d))?"#e06040":anyDone?"#4aaa66":"transparent",margin:"3px auto 0"}})
         );
       })
     ),
