@@ -8420,6 +8420,24 @@ function MemberWorkoutsView({session,memberData,ttl}){
   const key=mwKey(session.email,weekStart);
   const notesKey="__MWN__"+session.email+"__"+weekDS;
   const dayNote=dk=>mwDayNote(wNotes,dk);
+  // UNWELL days — one coaching_notes record per member ("__MWU__"+email) holding a
+  // sorted array of "YYYY-MM-DD" dates. Kept apart from the weekly notes blob so
+  // toggling it never writes a note, a workout or a completion.
+  const unwellKey="__MWU__"+session.email;
+  const [unwell,setUnwell]=useState([]);
+  const [showUnwell,setShowUnwell]=useState(false);
+  const unwellQ=useRef(Promise.resolve());
+  useEffect(()=>{sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(unwellKey)}&select=content`).then(r=>{let a=[];if(r&&r.length&&r[0].content){try{a=JSON.parse(r[0].content)||[];}catch{a=[];}}setUnwell(Array.isArray(a)?a:[]);});},[]);
+  function toggleUnwell(ds){
+    const next=unwell.includes(ds)?unwell.filter(x=>x!==ds):[...unwell,ds].sort();
+    setUnwell(next);
+    const q=`class_name=eq.${encodeURIComponent(unwellKey)}`;
+    unwellQ.current=unwellQ.current.then(async()=>{
+      const existing=await sbGet("coaching_notes",q+"&select=class_name");
+      if(existing&&existing.length){await sbPatch("coaching_notes",q,{content:JSON.stringify(next),updated_at:Date.now()});}
+      else{await sbPost("coaching_notes",{class_name:unwellKey,content:JSON.stringify(next),updated_at:Date.now()});}
+    });
+  }
   useEffect(()=>{load();},[weekStart]);
   async function load(){
     setLoading(true);
@@ -8479,6 +8497,10 @@ function MemberWorkoutsView({session,memberData,ttl}){
   const exercises=mwNormDay(program[dk]);
   const workouts=mwWorkouts(exercises);
   const multiW=workouts.length>1||!!(workouts[0]&&workouts[0].name);
+  const selDS=toDS(dayDates[selDay]);
+  const isUnwell=unwell.includes(selDS);
+  const unwellYear=unwell.filter(x=>x.slice(0,4)===String(new Date().getFullYear()));
+  const uwBtn={background:"none",border:"none",fontFamily:"inherit",fontSize:9,letterSpacing:"0.14em",color:"#666",fontWeight:600,cursor:"pointer",padding:"6px 0",margin:"-6px 0",lineHeight:"inherit"};
   function renderEx(ex){
     const unit=ex.log==="km"?"km":"kg";
     const setCount=Math.max(1,parseInt(ex.sets)||1);
@@ -8538,7 +8560,7 @@ function MemberWorkoutsView({session,memberData,ttl}){
       dayDates.map((d,i)=>React.createElement("button",{key:i,onClick:()=>setSelDay(i),className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}${mwNormDay(program[MW_DAYS[i]]).length?" dhb":""}`},
         React.createElement("div",{className:"d-name"},MW_DAYS[i]),
         React.createElement("div",{className:"d-num"},d.getDate()),
-        React.createElement("div",{className:"d-dot"})
+        React.createElement("div",{className:"d-dot",style:unwell.includes(toDS(d))?{background:"#e06040"}:undefined})
       ))
     ),
     React.createElement("div",{style:{padding:"14px 16px 80px"}},
@@ -8573,7 +8595,18 @@ function MemberWorkoutsView({session,memberData,ttl}){
         // collapsed \u2014 and a rest-day journal silently became "notes about
         // workout 1" the moment a workout was added to that day.
         React.createElement("div",{key:`note_${dk}_${weekDS}`,style:{marginTop:exercises.length===0?12:18}},
-          React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#666",fontWeight:600,marginBottom:6}},"MY NOTES"),
+          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",marginBottom:6,position:"relative"}},
+            React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#666",fontWeight:600}},"MY NOTES"),
+            React.createElement("button",{onClick:()=>toggleUnwell(selDS),style:{...uwBtn,padding:"6px 10px",color:isUnwell?"#e06040":"#666"}},"UNWELL"),
+            React.createElement("button",{onClick:()=>setShowUnwell(v=>!v),style:{...uwBtn,justifySelf:"end"}},unwellYear.length+(unwellYear.length===1?" DAY":" DAYS")),
+            showUnwell&&React.createElement("div",{onClick:()=>setShowUnwell(false),style:{position:"fixed",inset:0,zIndex:40}}),
+            showUnwell&&React.createElement("div",{style:{position:"absolute",right:0,top:"100%",marginTop:6,zIndex:41,background:"#141414",border:"1px solid #262626",padding:"10px 14px",minWidth:120}},
+              React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#666",fontWeight:600,marginBottom:6}},"UNWELL DAYS"),
+              unwellYear.length===0
+                ?React.createElement("div",{style:{fontSize:11,color:"#444"}},"None this year")
+                :unwellYear.map(ds=>React.createElement("div",{key:ds,style:{fontSize:11,letterSpacing:"0.1em",color:"#ddd",lineHeight:1.8}},parseInt(ds.slice(8),10)+" "+MONTHS[parseInt(ds.slice(5,7),10)-1].toUpperCase()))
+            )
+          ),
           React.createElement("textarea",{defaultValue:dayNote(dk),
             placeholder:exercises.length===0
               ?"Use this space as your journal \u2014 how are you feeling, sleep, nutrition, energy, soreness, anything you want to note."
