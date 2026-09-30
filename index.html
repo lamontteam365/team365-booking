@@ -9357,10 +9357,15 @@ function chWeeklyOf(cfg){
     weeks:(Array.isArray(w.weeks)?w.weeks:[]).map(x=>String(x||""))};
 }
 // The challenge's weeks follow its themes: four weeks for 30 days, the last one
-// running to the end.
-function chWeekCount(cfg){const n=Math.max(1,(cfg.themes||[]).length);return Math.max(1,Math.min(n,Math.ceil((cfg.days||1)/7)));}
-function chWeekOfDay(cfg,day){return Math.min(chWeekCount(cfg),Math.max(1,Math.ceil(day/7)));}
-function chWeekRange(cfg,w){const n=chWeekCount(cfg);const a=(w-1)*7+1;return [a,w===n?cfg.days:Math.min(cfg.days,w*7)];}
+// running to the end. A week is DAYS IN A WEEK long (`weekDays` on the
+// challenge), 7 unless it has been changed.
+// DAYS IN A WEEK as stored: a whole number from 1 to 366 other than 7, or
+// undefined (7). Blank, 7 and anything invalid are never saved.
+function chWeekDaysOf(v){const t=String(v==null?"":v).trim();if(!/^\d+$/.test(t))return undefined;const n=parseInt(t,10);return n>=1&&n<=366&&n!==7?n:undefined;}
+function chWeekLen(cfg){return (cfg&&chWeekDaysOf(cfg.weekDays))||7;}
+function chWeekCount(cfg){const n=Math.max(1,(cfg.themes||[]).length);return Math.max(1,Math.min(n,Math.ceil((cfg.days||1)/chWeekLen(cfg))));}
+function chWeekOfDay(cfg,day){return Math.min(chWeekCount(cfg),Math.max(1,Math.ceil(day/chWeekLen(cfg))));}
+function chWeekRange(cfg,w){const n=chWeekCount(cfg);const L=chWeekLen(cfg);const a=(w-1)*L+1;return [a,w===n?cfg.days:Math.min(cfg.days,w*L)];}
 function chWeekText(cfg,w){const x=chWeeklyOf(cfg);return (x.weeks[w-1]||"").trim()||x.text;}
 // Weekly times are minutes and seconds, "MM:SS". Digits are typed and the ":"
 // goes in by itself: 842 -> 8:42 while typing, 08:42 once saved.
@@ -9375,7 +9380,9 @@ function chMinsFmt(v){
 }
 // Every Timed Exercise starts "Team 365 …", so the drop-down leaves that off.
 function chExName(t){return String(t||"").replace(/^\s*team\s*365\s*/i,"").trim()||String(t||"");}
-function chWeeklyDone(b){const o=b&&b.weekly&&typeof b.weekly==="object"?b.weekly:{};return Object.keys(o).filter(k=>o[k]&&o[k].done).length;}
+// With n, only weeks 1 to n count: a week ticked before the weeks were made
+// longer stays saved, but isn't counted while that week doesn't exist.
+function chWeeklyDone(b,n){const o=b&&b.weekly&&typeof b.weekly==="object"?b.weekly:{};return Object.keys(o).filter(k=>o[k]&&o[k].done&&(n==null||(parseInt(k,10)>=1&&parseInt(k,10)<=n))).length;}
 function chAboutEmpty(o){
   return !o.title.some(x=>x.trim())&&!o.details.trim()&&!o.sections.some(x=>x.h.trim()||x.t.trim())&&!o.closing.some(x=>x.trim());
 }
@@ -9402,6 +9409,9 @@ function chCfgFrom(raw){
   if(raw){try{o=JSON.parse(raw)||{};}catch{o={};}}
   const c={...CH_DEFAULT_CFG,...o};
   c.days=Math.min(365,Math.max(1,parseInt(c.days)||30));
+  // DAYS IN A WEEK. Kept only when it isn't 7, so a challenge that never
+  // changed it reads and saves exactly as before.
+  {const wd=chWeekDaysOf(c.weekDays);if(wd===undefined)delete c.weekDays;else c.weekDays=wd;}
   // An extra movement (a fourth one) only exists while it has a real name. One
   // saved with its name cleared used to come back as "MOVE4"; it is dropped.
   const named=x=>{const l=String(x.label||"").trim();return CH_MOVE_DESC[String(x.id)]!==undefined||(!!l&&l.toUpperCase()!==String(x.id).toUpperCase());};
@@ -9615,18 +9625,18 @@ function chDayNum(start,ds){
   if(isNaN(a.getTime())||isNaN(b.getTime()))return 0;
   return Math.round((b-a)/86400000)+1;
 }
-const chWeekOf=day=>Math.max(1,Math.ceil(day/7));
+const chWeekOf=(day,cfg)=>Math.max(1,Math.ceil(day/chWeekLen(cfg)));
 // Four themes do not divide 30 days evenly, so the LAST theme absorbs the
 // remainder — week 4 of a 30-day challenge runs days 22-30. The same rule
 // carries any length: a 40-day run stretches the final theme rather than
 // needing themes nobody wrote.
 function chThemeOf(cfg,day){
   if(!cfg.themes.length)return "";
-  return cfg.themes[Math.min(chWeekOf(day),cfg.themes.length)-1]||"";
+  return cfg.themes[Math.min(chWeekOf(day,cfg),cfg.themes.length)-1]||"";
 }
 function chLineOf(cfg,day){
   if(!cfg.lines||!cfg.lines.length)return "";
-  return cfg.lines[Math.min(chWeekOf(day),cfg.lines.length)-1]||"";
+  return cfg.lines[Math.min(chWeekOf(day,cfg),cfg.lines.length)-1]||"";
 }
 const chQuestionFor=(cfg,day)=>cfg.reflections[day-1]||CH_FALLBACK_Q;
 // Example answers shown as input placeholders only. They are never part of the
@@ -10268,7 +10278,7 @@ function ChallengeView({session,showToast,viewOnly,embedded}){
               tagline:pcfg.tagline,
               sub:chFmtRange(k,pcfg.days),done:true,
               open:openNow===k,onToggle:()=>{setShowRecord(null);setOpenDay(null);setOpenKey(openNow===k?"":k);}},
-              openNow===k?React.createElement(ChallengeComplete,{cfg:pcfg,entries:pb.entries,weeklyDone:chWeeklyDone(pb),
+              openNow===k?React.createElement(ChallengeComplete,{cfg:pcfg,entries:pb.entries,weeklyDone:chWeeklyDone(pb,chWeekCount(pcfg)),
                 showRecord:!!showRecord,onToggleRecord:()=>setShowRecord(!showRecord),
                 openDay,onOpenDay:d=>{setOpenDay(d);if(d!==null)chScrollToDay();},
                 dayBelow:readCard(pcfg,pb.entries)}):null);
@@ -10496,7 +10506,7 @@ function ChallengeView({session,showToast,viewOnly,embedded}){
     // While there is still time to fill a day in, the record opens itself —
     // the deadline is no use to anyone behind a closed toggle.
     const recOpen=showRecord===null?inGrace:showRecord;
-    return renderShell(React.createElement(ChallengeComplete,{cfg,entries,weeklyDone:chWeeklyDone(chBucket(log,cfg.start)),
+    return renderShell(React.createElement(ChallengeComplete,{cfg,entries,weeklyDone:chWeeklyDone(chBucket(log,cfg.start),chWeekCount(cfg)),
       showRecord:recOpen,onToggleRecord:()=>setShowRecord(!recOpen),
       openDay,onOpenDay:d=>{setEditing(false);setOpenDay(d);if(d!==null)chScrollToDay();},
       editable:inGrace&&!viewOnly,
@@ -10604,6 +10614,7 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
   const [armDel,setArmDel]=useState(false);
   const [armAll,setArmAll]=useState(false);
   const [armArc,setArmArc]=useState("");
+  const [armWk,setArmWk]=useState(false);
   // The original single-config record. Never written to, so it is the one copy
   // of the themes and questions that deleting challenges cannot reach.
   const [legacy,setLegacy]=useState(null);
@@ -10633,7 +10644,7 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
   const today=toDS(new Date());
   const statusOf=c=>c.start>today?"UPCOMING":(chEndDS(c)>=today?"RUNNING":"FINISHED");
   const newest=list.length?list[list.length-1]:null;
-  const disarm=()=>{setArmDel(false);setArmAll(false);setArmArc("");};
+  const disarm=()=>{setArmDel(false);setArmAll(false);setArmArc("");setArmWk(false);};
   function openChallenge(c){setSel(c.start);setSelStart(c.start);setF(c);setShowRoll(false);setShowJourney(false);setShowQs(false);setShowAbout(false);setShowIntake(false);setShowWeekly(false);disarm();}
   function closeForm(){setSel("");setSelStart("");disarm();}
   function startNew(){
@@ -10934,22 +10945,50 @@ function ChallengeAdminPanel({showToast,challengeEnabled,alwaysOpen}){
       React.createElement("span",{style:{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:8,minWidth:0,flex:1}},
         right?React.createElement("span",{style:{fontFamily:"'DM Sans',sans-serif",fontSize:9,letterSpacing:"0.1em",color:warn?"#e0625f":"#7cc4f0",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},right):null,
         React.createElement("span",{style:{fontSize:11,letterSpacing:0,color:"#1d9bf0",flexShrink:0,transform:openNow?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")));
+    // DAYS IN A WEEK: 7 unless changed. The box holds what is typed (blank is
+    // allowed while typing and counts as 7); save keeps it only when it isn't 7.
+    const wl=chWeekLen(f);
+    const wdVal=f.weekDays==null?"7":String(f.weekDays);
+    // + ADD WEEK puts a blank week on the end; REMOVE WEEK takes the last one
+    // off (two taps). Neither changes the length: days after the last week
+    // join it, as always.
+    const addWeek=()=>{const n=themes.length;disarm();
+      setF(p=>{const T=(p.themes||[]).slice();const L=T.map((_,j)=>(p.lines||[])[j]||"");T.push("");L.push("");return {...p,themes:T,lines:L};});
+      setOpenWeeks(o=>({...o,[n+1]:true}));};
+    const removeWeek=()=>{if(themes.length<=1)return;
+      if(!armWk){disarm();setArmWk(true);return;}
+      const n=themes.length;setArmWk(false);
+      setF(p=>{const T=(p.themes||[]).slice(0,-1);const L=T.map((_,j)=>(p.lines||[])[j]||"");return {...p,themes:T,lines:L};});
+      setOpenWeeks(o=>{const x={...o};delete x[n];return x;});};
     return React.createElement("div",{"data-chjourney-edit":"1",style:{marginTop:8}},
+      jlbl("DAYS IN A WEEK"),
+      React.createElement("input",{"data-f":"weekDays",type:"number",min:1,max:366,step:1,inputMode:"numeric",value:wdVal,
+        onChange:e=>{const v=e.target.value;setF(p=>({...p,weekDays:v}));},style:{...jbox,height:"auto",width:90,fontWeight:600}}),
+      React.createElement("div",{"data-chweekdays-help":"1",style:{fontSize:9,letterSpacing:"0.06em",color:"#555",marginTop:6,marginBottom:4,lineHeight:1.7}},
+        "7 unless you change it. Week 1 is "+(wl===1?"day 1":"days 1–"+wl)+", week 2 starts on day "+(wl+1)+" and so on. Any days after the last week's theme join that last week. The weekly challenge and the completion screen count the same weeks."),
       // Each week's theme and the line under it, each week behind its own
-      // button. The last week runs to the end.
+      // button. The last week runs to the end. A week with no days left for it
+      // still shows here, so it can be filled in or removed; members never see it.
       themes.map((t,i)=>{
-        const a=i*7+1,b=i===themes.length-1?days:Math.min(days,i*7+7);
-        if(a>days)return null;
+        const a=i*wl+1,last=i===themes.length-1,b=last?days:Math.min(days,i*wl+wl);
+        const none=a>days;
         const wkOpen=!!openWeeks[i+1],blank=!String(t||"").trim();
         return React.createElement("div",{key:i,"data-chweek":i+1},
-          miniTog("week-"+(i+1),"WEEK "+(i+1)+" · DAYS "+a+"–"+b,wkOpen,()=>setOpenWeeks(o=>({...o,[i+1]:!o[i+1]})),blank?"NEEDS A THEME":String(t),blank),
+          miniTog("week-"+(i+1),"WEEK "+(i+1)+" · "+(none?"NO DAYS":"DAYS "+a+"–"+b),wkOpen,()=>setOpenWeeks(o=>({...o,[i+1]:!o[i+1]})),blank?"NEEDS A THEME":String(t),blank),
           wkOpen&&React.createElement("div",{"data-chweek-body":i+1,style:{padding:"8px 0 10px"}},
           React.createElement("textarea",{"data-f":"theme-"+(i+1),rows:2,value:t||"",placeholder:"THEME",
             onChange:e=>setTheme(i,e.target.value),style:{...jbox,fontWeight:600,marginBottom:6,borderColor:String(t||"").trim()?"#2a2a2a":"#5a1d1d"}}),
           React.createElement("textarea",{"data-f":"line-"+(i+1),rows:2,value:lines[i]||"",placeholder:"LINE UNDER THE THEME",
-            onChange:e=>setLine(i,e.target.value),style:{...jbox,color:"#bbb"}}))
+            onChange:e=>setLine(i,e.target.value),style:{...jbox,color:"#bbb"}}),
+          none&&React.createElement("div",{"data-chweek-nodays":i+1,style:{fontSize:9,letterSpacing:"0.06em",color:"#555",marginTop:6,lineHeight:1.7}},
+            "This week has no days in it, so members won't see it. Make the challenge longer or the weeks shorter, or remove it."),
+          last&&themes.length>1&&React.createElement("button",{type:"button","data-chweek-rm":"1",onClick:removeWeek,
+            style:{width:"100%",background:"transparent",color:armWk?"#fff":"#888",border:"1px solid "+(armWk?"#666":"#2a2a2a"),borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.14em",padding:"9px",cursor:"pointer",marginTop:8}},
+            armWk?"TAP AGAIN TO REMOVE WEEK "+(i+1):"REMOVE WEEK "+(i+1)))
         );
       }),
+      React.createElement("button",{type:"button","data-chweek-add":"1",onClick:addWeek,
+        style:{width:"100%",background:"transparent",color:"#1d9bf0",border:"1px solid #1d3a5a",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.14em",padding:"9px",cursor:"pointer",marginTop:6}},"+ ADD WEEK"),
       // Biggest Win, and one Reflection question a day. A day already answered
       // keeps the question it was answered under (rq), so rewording one never
       // changes what a member wrote.
