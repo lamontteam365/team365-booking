@@ -8648,6 +8648,9 @@ function MemberWorkoutReview({email}){
   // The member's UNWELL days (their own "__MWU__"+email record) — read-only here.
   const [unwell,setUnwell]=useState([]);
   const [showUnwell,setShowUnwell]=useState(false);
+  // Workout cards start closed; tap the header to open. View-only — nothing is saved.
+  const [openW,setOpenW]=useState(new Set());
+  function toggleW(k){setOpenW(prev=>{const n=new Set(prev);n.has(k)?n.delete(k):n.add(k);return n;});}
   useEffect(()=>{setUnwell([]);sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__MWU__"+email)}&select=content`).then(r=>{let a=[];if(r&&r.length&&r[0].content){try{a=JSON.parse(r[0].content)||[];}catch{a=[];}}setUnwell(Array.isArray(a)?a:[]);});},[email]);
   async function load(){
     setLoading(true);
@@ -8681,18 +8684,6 @@ function MemberWorkoutReview({email}){
   const chip={display:"inline-flex",alignItems:"center",justifyContent:"center",minWidth:34,padding:"4px 8px",borderRadius:0,border:"1px solid #2a2a2a",fontSize:11,fontFamily:"'DM Sans',sans-serif",fontWeight:600};
   return React.createElement("div",{style:{marginBottom:8}},
     React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:10}},"Read-only view of what this member sees — their logged weights and ticks. Use the arrows to look back at previous weeks."),
-    React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:6}},
-      React.createElement("button",{onClick:e=>{const r=e.currentTarget.getBoundingClientRect();setShowUnwell(v=>v?false:{top:r.bottom+6,right:window.innerWidth-r.right});},
-        style:{background:"none",border:"none",fontFamily:"inherit",fontSize:9,letterSpacing:"0.14em",fontWeight:600,color:unwellYear.length?"#e06040":"#666",cursor:"pointer",padding:"4px 0"}},
-        unwellYear.length+(unwellYear.length===1?" UNWELL DAY":" UNWELL DAYS")+" THIS YEAR"),
-      showUnwell&&React.createElement("div",{onClick:()=>setShowUnwell(false),onTouchMove:()=>setShowUnwell(false),onWheel:()=>setShowUnwell(false),style:{position:"fixed",inset:0,zIndex:140}}),
-      showUnwell&&React.createElement("div",{style:{position:"fixed",right:showUnwell.right,top:showUnwell.top,zIndex:141,background:"#141414",border:"1px solid #262626",padding:"10px 14px",minWidth:120,maxHeight:Math.max(120,Math.min(220,window.innerHeight-showUnwell.top-80)),overflowY:"auto",overscrollBehavior:"contain",WebkitOverflowScrolling:"touch"}},
-        React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#666",fontWeight:600,marginBottom:6,position:"sticky",top:-10,background:"#141414",padding:"10px 0 4px",marginTop:-10}},"UNWELL DAYS"),
-        unwellYear.length===0
-          ?React.createElement("div",{style:{fontSize:11,color:"#444"}},"None this year")
-          :unwellYear.map(ds=>React.createElement("div",{key:ds,style:{fontSize:11,letterSpacing:"0.1em",color:"#ddd",lineHeight:1.8}},parseInt(ds.slice(8),10)+" "+MONTHS[parseInt(ds.slice(5,7),10)-1].toUpperCase()))
-      )
-    ),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}},
       React.createElement("button",{onClick:()=>setWeekStart(w=>addDays(w,-7)),style:arrow},"‹"),
       React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",color:"#fff"}},weekLabel),
@@ -8711,15 +8702,33 @@ function MemberWorkoutReview({email}){
       })
     ),
     React.createElement("div",{style:{display:"flex",alignItems:"baseline",justifyContent:"space-between",marginBottom:8}},
-      React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.08em",color:"#fff"}},MW_DAY_FULL[dk]),
+      React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:10}},
+        React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.08em",color:"#fff"}},MW_DAY_FULL[dk]),
+      React.createElement("button",{onClick:e=>{const r=e.currentTarget.getBoundingClientRect();setShowUnwell(v=>v?false:{top:r.bottom+6,right:window.innerWidth-r.right});},
+        style:{background:"none",border:"none",fontFamily:"inherit",fontSize:9,letterSpacing:"0.14em",fontWeight:600,color:unwellYear.length?"#e06040":"#666",cursor:"pointer",padding:"4px 0"}},
+        unwellYear.length+(unwellYear.length===1?" UNWELL DAY":" UNWELL DAYS")+" THIS YEAR"),
+      showUnwell&&React.createElement("div",{onClick:()=>setShowUnwell(false),onTouchMove:()=>setShowUnwell(false),onWheel:()=>setShowUnwell(false),style:{position:"fixed",inset:0,zIndex:140}}),
+      showUnwell&&React.createElement("div",{style:{position:"fixed",right:showUnwell.right,top:showUnwell.top,zIndex:141,background:"#141414",border:"1px solid #262626",padding:"10px 14px",minWidth:120,maxHeight:Math.max(120,Math.min(220,window.innerHeight-showUnwell.top-80)),overflowY:"auto",overscrollBehavior:"contain",WebkitOverflowScrolling:"touch"}},
+        React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#666",fontWeight:600,marginBottom:6,position:"sticky",top:-10,background:"#141414",padding:"10px 0 4px",marginTop:-10}},"UNWELL DAYS"),
+        unwellYear.length===0
+          ?React.createElement("div",{style:{fontSize:11,color:"#444"}},"None this year")
+          :unwellYear.map(ds=>React.createElement("div",{key:ds,style:{fontSize:11,letterSpacing:"0.1em",color:"#ddd",lineHeight:1.8}},parseInt(ds.slice(8),10)+" "+MONTHS[parseInt(ds.slice(5,7),10)-1].toUpperCase()))
+      )
+      ),
       exercises.length>0&&React.createElement("div",{style:{fontSize:11,letterSpacing:"0.06em",fontWeight:600,color:doneCount===exercises.length?"#4aaa66":doneCount>0?"#e0a040":"#666"}},doneCount+" of "+exercises.length+" done")
     ),
     loading?React.createElement("div",{style:{fontSize:11,color:"#444",padding:"12px 0",letterSpacing:"0.1em"}},"LOADING…")
     :React.createElement(React.Fragment,null,
       exercises.length===0&&React.createElement("div",{style:{fontSize:11,color:"#555",padding:"12px 0"}},"No workout set for this day"),
-      workouts.map(w=>React.createElement("div",{key:"w"+w.num,style:{border:"1px solid #222",borderRadius:0,padding:"10px 12px",marginBottom:10}},
-        (workouts.length>1||w.name)&&React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.08em",color:"#1d9bf0",marginBottom:6}},(w.name||("WORKOUT "+w.num)).toUpperCase()),
-        w.exercises.map(ex=>{
+      workouts.map(w=>{const wk=weekDS+"_"+dk+"_"+w.num;const isOpen=openW.has(wk);return React.createElement("div",{key:"w"+w.num,style:{border:"1px solid #222",borderRadius:0,padding:"10px 12px",marginBottom:10}},
+        React.createElement("div",{onClick:()=>toggleW(wk),style:{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",marginBottom:isOpen?6:0}},
+          React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.08em",color:"#1d9bf0"}},(w.name||("WORKOUT "+w.num)).toUpperCase()),
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
+            React.createElement("span",{style:{fontSize:10,letterSpacing:"0.1em",color:"#555"}},w.exercises.length+(w.exercises.length===1?" EXERCISE":" EXERCISES")),
+            React.createElement("div",{style:{color:"#888",fontSize:13,lineHeight:1,transition:"transform .2s",transform:isOpen?"none":"rotate(-90deg)"}},"\u25be")
+          )
+        ),
+        isOpen&&w.exercises.map(ex=>{
           const setCount=Math.max(1,parseInt(ex.sets)||1);
           const unit=ex.log==="km"?"km":"kg";
           const done=exDone(dk,ex);
@@ -8740,7 +8749,7 @@ function MemberWorkoutReview({email}){
             ex.notes&&React.createElement("div",{style:{fontSize:10,color:"#888",marginTop:5,whiteSpace:"pre-wrap",lineHeight:1.5}},ex.notes)
           );
         })
-      )),
+      );}),
       (function(){
         const note=mwDayNote(wNotes,dk);
         if(!note)return null;
