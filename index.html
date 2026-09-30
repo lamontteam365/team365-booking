@@ -8599,9 +8599,9 @@ function MemberWorkoutsView({session,memberData,ttl}){
             React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#666",fontWeight:600}},"MY NOTES"),
             React.createElement("button",{onClick:()=>toggleUnwell(selDS),style:{...uwBtn,padding:"6px 10px",color:isUnwell?"#e06040":"#666"}},"UNWELL"),
             React.createElement("button",{onClick:()=>setShowUnwell(v=>!v),style:{...uwBtn,justifySelf:"end"}},unwellYear.length+(unwellYear.length===1?" DAY":" DAYS")),
-            showUnwell&&React.createElement("div",{onClick:()=>setShowUnwell(false),style:{position:"fixed",inset:0,zIndex:40}}),
-            showUnwell&&React.createElement("div",{style:{position:"absolute",right:0,top:"100%",marginTop:6,zIndex:41,background:"#141414",border:"1px solid #262626",padding:"10px 14px",minWidth:120}},
-              React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#666",fontWeight:600,marginBottom:6}},"UNWELL DAYS"),
+            showUnwell&&React.createElement("div",{onClick:()=>setShowUnwell(false),onTouchMove:()=>setShowUnwell(false),onWheel:()=>setShowUnwell(false),style:{position:"fixed",inset:0,zIndex:40}}),
+            showUnwell&&React.createElement("div",{style:{position:"absolute",right:0,top:"100%",marginTop:6,zIndex:41,background:"#141414",border:"1px solid #262626",padding:"10px 14px",minWidth:120,maxHeight:220,overflowY:"auto",overscrollBehavior:"contain",WebkitOverflowScrolling:"touch"}},
+              React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#666",fontWeight:600,marginBottom:6,position:"sticky",top:-10,background:"#141414",padding:"10px 0 4px",marginTop:-10}},"UNWELL DAYS"),
               unwellYear.length===0
                 ?React.createElement("div",{style:{fontSize:11,color:"#444"}},"None this year")
                 :unwellYear.map(ds=>React.createElement("div",{key:ds,style:{fontSize:11,letterSpacing:"0.1em",color:"#ddd",lineHeight:1.8}},parseInt(ds.slice(8),10)+" "+MONTHS[parseInt(ds.slice(5,7),10)-1].toUpperCase()))
