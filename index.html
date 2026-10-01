@@ -1024,7 +1024,7 @@ function ImageCropper({imageSrc,onSave,onCancel}){
   );
 }
 // ── Member Profile Overlay (Admin) ────────────────────────────────────────────
-function MemberProfileOverlay({onGrantSubscriber,member,bookings,onClose,currentUserIsAdmin,mfWk,isMaster,mfPasteAI,selfEmail,canManageWk,setBookingExcused,setBookingCheckedIn,wellnessOn,remindersOn,confirmationsOn}){
+function MemberProfileOverlay({onGrantSubscriber,member,bookings,onClose,currentUserIsAdmin,mfWk,isMaster,mfPasteAI,selfEmail,canManageWk,setBookingExcused,setBookingCheckedIn,wellnessOn,remindersOn,confirmationsOn,openMessages}){
   const joinDate=fmtJoinDate(member.joined_at);
   const PARQ_LABELS=["Heart condition","Chest pain during activity","Chest pain at rest","Dizziness/loss of consciousness","Bone or joint problem","Blood pressure medication","Other reason to avoid activity"];
   const PARQ_KEYS=["parq_heart","parq_chest_activity","parq_chest_rest","parq_dizziness","parq_joint","parq_blood_pressure","parq_other"];
@@ -1078,7 +1078,7 @@ function MemberProfileOverlay({onGrantSubscriber,member,bookings,onClose,current
     const d=new Date(ts);const h=d.getHours();const hh=(h%12)||12;const mm=String(d.getMinutes()).padStart(2,"0");const ap=h<12?"AM":"PM";
     return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${hh}:${mm}${ap}`;
   }
-  const [wkMemberView,setWkMemberView]=useState(false); // admin: view program as the member sees it (read-only, with completions)
+  const [wkMemberView,setWkMemberView]=useState(!!openMessages); // admin: view program as the member sees it (read-only, with completions)
   const [savingAcc,setSavingAcc]=useState(false);
   const [accMsg,setAccMsg]=useState("");
   useEffect(()=>{
@@ -1875,7 +1875,7 @@ function MemberProfileOverlay({onGrantSubscriber,member,bookings,onClose,current
               )
         )
       ),
-      currentUserIsAdmin&&canManageWk&&React.createElement(MemberWorkoutAdmin,{member,memberView:wkMemberView,setMemberView:setWkMemberView,isMaster,mfPasteAI}),
+      currentUserIsAdmin&&canManageWk&&React.createElement(MemberWorkoutAdmin,{member,memberView:wkMemberView,setMemberView:setWkMemberView,isMaster,mfPasteAI,openMessages}),
       currentUserIsAdmin&&React.createElement(RoutinesAdmin,{member,selfEmail}),
       currentUserIsAdmin&&React.createElement(MemberPBAdmin,{member}),
       currentUserIsAdmin&&React.createElement(MemberSCHistoryAdmin,{member}),
@@ -2565,7 +2565,7 @@ function TierLimitsEditor({tierOverrides,saveTierOverrides,showToast}){
   );
 }
 
-function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail,challengeEnabled,saveChallengeSetting}){
+function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail,challengeEnabled,saveChallengeSetting,msgUnread}){
   const [expandedTier,setExpandedTier]=useState(null);
   const [admDate,setAdmDate]=useState(new Date());
   const [expanded,setExpanded]=useState({});
@@ -3232,7 +3232,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   const canScBuild=isMaster||(mFlags.sc!==false&&!(mFlags.scAdminHide||[]).includes(selfEmail));
   return React.createElement("div",{className:"adm-wrap"},
     selectedMember&&isMaster&&subMap[String(selectedMember.email||"").toLowerCase()]&&React.createElement(SubscriberProfileOverlay,{member:selectedMember,sub:subMap[String(selectedMember.email||"").toLowerCase()],onClose:()=>setSelectedMember(null),showToast,onChanged:async()=>{await loadSubs();await reloadMembersList();}}),
-    selectedMember&&!(isMaster&&subMap[String(selectedMember.email||"").toLowerCase()])&&React.createElement(MemberProfileOverlay,{onGrantSubscriber:isMaster?grantSubscriber:null,member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin,mfWk:mFlags.wk,isMaster,mfPasteAI:mFlags.pasteAI,selfEmail,setBookingExcused,setBookingCheckedIn,wellnessOn:wellnessEnabled,remindersOn:remindersEnabled,confirmationsOn:confirmationsEnabled,canManageWk:(isMaster||(mFlags.wk!==false&&!(mFlags.wkAdminHide||[]).includes(selfEmail)))}),
+    selectedMember&&!(isMaster&&subMap[String(selectedMember.email||"").toLowerCase()])&&React.createElement(MemberProfileOverlay,{onGrantSubscriber:isMaster?grantSubscriber:null,member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin,mfWk:mFlags.wk,isMaster,mfPasteAI:mFlags.pasteAI,selfEmail,setBookingExcused,setBookingCheckedIn,wellnessOn:wellnessEnabled,remindersOn:remindersEnabled,confirmationsOn:confirmationsEnabled,canManageWk:(isMaster||(mFlags.wk!==false&&!(mFlags.wkAdminHide||[]).includes(selfEmail))),openMessages:!!(msgUnread&&msgUnread[String(selectedMember.email||"").toLowerCase()])}),
     React.createElement("div",{className:"adm-title"},"ADMIN"),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"0 0 6px"}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
@@ -3262,7 +3262,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
         const mbBks=bookings.filter(b=>b.email===mb.email&&bookingUpcoming(b)).length;
         const joinDate=fmtJoinDate(mb.joined_at);
         const lapsed=lapsedDays(mb);
-        return React.createElement("div",{key:i,className:"adm-member-card",style:lapsed?{borderColor:"#e06040"}:undefined,onClick:()=>openMemberProfile(mb)},
+        const newMsg=msgUnread&&msgUnread[String(mb.email||"").toLowerCase()];
+        return React.createElement("div",{key:i,className:"adm-member-card",style:{...(lapsed?{borderColor:"#e06040"}:{}),...(newMsg?{position:"relative",borderColor:"#e06040"}:{})},onClick:()=>openMemberProfile(mb)},
           React.createElement("div",{className:"adm-mc-top"},
             React.createElement("div",null,React.createElement("div",{className:"adm-mc-name"},(mb.name||"").toUpperCase())),
             React.createElement("div",{style:{position:"relative",flexShrink:0}},
@@ -3292,7 +3293,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
               return null;
             })()
           ),
-          React.createElement("div",{className:"adm-mc-detail"},`Joined ${joinDate} · ${mbBks} upcoming booking${mbBks!==1?"s":""}`)
+          React.createElement("div",{className:"adm-mc-detail"},`Joined ${joinDate} · ${mbBks} upcoming booking${mbBks!==1?"s":""}`),
+          newMsg&&React.createElement("div",{style:{position:"absolute",right:12,bottom:12,background:"#e06040",color:"#fff",fontSize:8,letterSpacing:"0.14em",fontWeight:700,padding:"3px 7px"}},"NEW MESSAGE")
         );
       })
     )),
@@ -8410,7 +8412,7 @@ EXAMPLE of the exact format (structure only - not a real program):
 }
 
 Now write the week for the client details above. Reply with ONLY the JSON.`;
-function MemberWorkoutAdmin({member,memberView,setMemberView,isMaster,mfPasteAI}){
+function MemberWorkoutAdmin({member,memberView,setMemberView,isMaster,mfPasteAI,openMessages}){
   const [enabled,setEnabled]=useState(member.workouts_enabled===true);
   const [weekStart,setWeekStart]=useState(()=>mondayOf(new Date()));
   const [draft,setDraft]=useState({});     // {Mon:[{title,body,repeat},...],...} (repeat is per-block, transient)
@@ -8427,7 +8429,7 @@ function MemberWorkoutAdmin({member,memberView,setMemberView,isMaster,mfPasteAI}
   const [mwDragId,setMwDragId]=useState(null);
   const [mwDragOverId,setMwDragOverId]=useState(null);
   const [collapsedDays,setCollapsedDays]=useState(new Set(MW_DAYS));
-  const [ptCol,setPtCol]=useState(true);
+  const [ptCol,setPtCol]=useState(()=>!openMessages); // opened from a NEW MESSAGE alert → start open
   const [ptTitle,setPtTitle]=useState("");
   const [ptTitleGlobal,setPtTitleGlobal]=useState("");
   const [editGlobalPt,setEditGlobalPt]=useState(false);
@@ -8601,7 +8603,7 @@ function MemberWorkoutAdmin({member,memberView,setMemberView,isMaster,mfPasteAI}
       ),
       React.createElement("button",{onClick:()=>setMemberView(v=>!v),style:{background:memberView?"#1d9bf0":"#222",color:memberView?"#fff":"#555",border:"1px solid "+(memberView?"#1d9bf0":"#333"),borderRadius:0,padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},memberView?"ON":"OFF")
     ),
-    !ptCol&&(memberView?React.createElement(MemberWorkoutReview,{email:member.email}):React.createElement(React.Fragment,null,
+    !ptCol&&(memberView?React.createElement(MemberWorkoutReview,{email:member.email,isMaster,openMessages}):React.createElement(React.Fragment,null,
     React.createElement("div",{style:{marginBottom:12}},
       React.createElement("label",{style:{display:"block",fontSize:9,letterSpacing:"0.12em",color:"#666",marginBottom:4}},"THIS MEMBER'S TITLE — OVERRIDES GLOBAL"),
       React.createElement("input",{value:ptTitle,placeholder:ptTitleGlobal||"PT PROGRAM",onChange:e=>setPtTitle(e.target.value),onBlur:e=>savePtTitle(e.target.value),style:{...inS,width:"100%"}})
@@ -8714,8 +8716,100 @@ function MemberWorkoutAdmin({member,memberView,setMemberView,isMaster,mfPasteAI}
     ))
   );
 }
+// ── PT Messages (2 Oct 2026) ──────────────────────────────────────────────────
+// One private, ongoing thread per member, between that member and staff (every
+// admin, including the master). Stored in public.pt_messages. The DATABASE decides
+// who can see, send and delete (members: own thread only; admins: all; delete: your
+// own messages, master any; only the read flags can change after sending), and a
+// trigger sets the sender, the staff flag and the read flags — the app can't fake them.
+function ptMsgNotify(){try{window.dispatchEvent(new Event("t365-msgs-changed"));}catch(e){}}
+function ptMsgWhen(iso){
+  const d=new Date(iso);if(isNaN(d))return"";
+  const h=d.getHours(),m=String(d.getMinutes()).padStart(2,"0");
+  return d.getDate()+" "+MONTHS[d.getMonth()].toUpperCase()+" · "+((h%12)||12)+":"+m+(h<12?"AM":"PM");
+}
+function PtMessages({memberEmail,selfEmail,selfName,asStaff,isMaster,startOpen,aboutDate}){
+  const em=String(memberEmail||"").toLowerCase();
+  const me=String(selfEmail||((lsGet("t365-session",null)||{}).email)||"").toLowerCase();
+  const myName=selfName||((lsGet("t365-session",null)||{}).name)||"";
+  const [open,setOpen]=useState(!!startOpen);
+  const [msgs,setMsgs]=useState(null);
+  const [text,setText]=useState("");
+  const [sending,setSending]=useState(false);
+  const [err,setErr]=useState("");
+  const listRef=useRef(null);const rootRef=useRef(null);
+  useEffect(()=>{if(startOpen){setOpen(true);setTimeout(()=>{try{rootRef.current&&rootRef.current.scrollIntoView({behavior:"smooth",block:"center"});}catch(e){}},350);}},[startOpen]);
+  async function load(){
+    if(!em)return;
+    const rows=await sbGet("pt_messages",`member_email=eq.${encodeURIComponent(em)}&select=id,sender_email,sender_name,from_staff,body,about_date,created_at,member_read,staff_read&order=created_at.asc&limit=300`);
+    setMsgs(Array.isArray(rows)?rows:[]);
+  }
+  // Open: check every 10 s while on screen. Closed: every 60 s (just for the NEW badge).
+  useEffect(()=>{load();return onScreenPoll(load,open?10000:60000);},[em,open]);
+  const isUnreadForMe=m=>asStaff?(!m.from_staff&&!m.staff_read):(m.from_staff&&!m.member_read);
+  const unread=(msgs||[]).filter(isUnreadForMe).length;
+  // Opening the thread marks the other side's messages as read (for every admin, when staff).
+  useEffect(()=>{
+    if(!open||!unread)return;
+    const q=`member_email=eq.${encodeURIComponent(em)}&`+(asStaff?"from_staff=eq.false&staff_read=eq.false":"from_staff=eq.true&member_read=eq.false");
+    sbPatch("pt_messages",q,asStaff?{staff_read:true}:{member_read:true}).then(()=>{
+      setMsgs(p=>(p||[]).map(m=>isUnreadForMe(m)?{...m,[asStaff?"staff_read":"member_read"]:true}:m));ptMsgNotify();
+    });
+  },[open,unread]);
+  useEffect(()=>{if(open&&listRef.current)listRef.current.scrollTop=listRef.current.scrollHeight;},[open,msgs&&msgs.length]);
+  async function send(){
+    const body=text.trim();if(!body||sending)return;
+    setSending(true);setErr("");
+    const ok=await sbPost("pt_messages",{member_email:em,sender_email:me,sender_name:myName,body:body.slice(0,2000),about_date:aboutDate||null});
+    if(ok){setText("");await load();ptMsgNotify();}else setErr("Couldn't send — check your connection and try again.");
+    setSending(false);
+  }
+  async function del(m){
+    if(!window.confirm("Delete this message? This can't be undone."))return;
+    const ok=await sbDelete("pt_messages",`id=eq.${m.id}`);
+    if(ok){setMsgs(p=>(p||[]).filter(x=>x.id!==m.id));ptMsgNotify();}
+  }
+  const count=(msgs||[]).length;
+  const label=8;
+  return React.createElement("div",{ref:rootRef,style:{marginBottom:12}},
+    React.createElement("div",{onClick:()=>setOpen(o=>!o),style:{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",background:"#0e0e0e",border:"1px solid "+(unread?"#e06040":"#333"),padding:"9px 14px"}},
+      React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.1em",color:"#fff"}},"MESSAGES"),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
+        unread>0
+          ?React.createElement("span",{style:{background:"#e06040",color:"#fff",fontSize:label,letterSpacing:"0.14em",fontWeight:700,padding:"3px 7px"}},unread+" NEW")
+          :count>0&&React.createElement("span",{style:{fontSize:10,letterSpacing:"0.1em",color:"#555"}},count+(count===1?" MESSAGE":" MESSAGES")),
+        React.createElement("div",{style:{color:"#888",fontSize:13,lineHeight:1,transition:"transform .2s",transform:open?"none":"rotate(-90deg)"}},"▾")
+      )
+    ),
+    open&&React.createElement("div",{style:{border:"1px solid #333",borderTop:"none",background:"#0a0a0a",padding:"10px 12px 12px"}},
+      React.createElement("div",{ref:listRef,style:{maxHeight:320,overflowY:"auto",overscrollBehavior:"contain",WebkitOverflowScrolling:"touch",display:"flex",flexDirection:"column",gap:10,paddingBottom:4}},
+        msgs===null?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",textAlign:"center",padding:"10px 0"}},"LOADING…")
+        :count===0?React.createElement("div",{style:{fontSize:11,color:"#555",lineHeight:1.6,textAlign:"center",padding:"8px 4px"}},asStaff?"No messages with this member yet. Only they and Team 365 staff can see this conversation.":"Private messages between you and the Team 365 coaches. Ask a question or let us know how you're going.")
+        :(msgs||[]).map(m=>{
+          const ours=asStaff?m.from_staff:!m.from_staff;
+          const canDel=String(m.sender_email||"").toLowerCase()===me||!!isMaster;
+          const who=(m.sender_name||(m.from_staff?"Team 365":"Member")).toUpperCase()+(m.from_staff?" · TEAM 365":"");
+          const created=new Date(m.created_at);
+          const re=m.about_date&&m.about_date!==toDS(created)?(()=>{const d=new Date(m.about_date+"T00:00:00");return " · RE "+MW_DAYS[(d.getDay()+6)%7].toUpperCase()+" "+d.getDate()+" "+MONTHS[d.getMonth()].toUpperCase();})():"";
+          return React.createElement("div",{key:m.id,style:{alignSelf:ours?"flex-end":"flex-start",maxWidth:"86%",display:"flex",flexDirection:"column",alignItems:ours?"flex-end":"flex-start"}},
+            React.createElement("div",{style:{fontSize:label,letterSpacing:"0.12em",color:"#666",fontWeight:600,marginBottom:3}},who+" · "+ptMsgWhen(m.created_at)+re),
+            React.createElement("div",{style:{background:ours?"#0a1a2a":"#141414",border:"1px solid "+(ours?"#1d3a5a":"#262626"),color:"#ddd",fontSize:13,lineHeight:1.5,padding:"8px 10px",whiteSpace:"pre-wrap",wordBreak:"break-word"}},m.body),
+            canDel&&React.createElement("button",{onClick:()=>del(m),style:{background:"none",border:"none",color:"#555",fontFamily:"inherit",fontSize:label,letterSpacing:"0.12em",fontWeight:600,cursor:"pointer",padding:"4px 0 0"}},"DELETE")
+          );
+        })
+      ),
+      React.createElement("textarea",{value:text,onChange:e=>setText(e.target.value),maxLength:2000,rows:2,
+        placeholder:asStaff?"Write a private message to this member…":"Write a private message to your coach…",
+        style:{width:"100%",marginTop:10,background:"#141414",border:"1px solid #262626",borderRadius:0,color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:13,lineHeight:1.6,padding:"10px 12px",outline:"none",resize:"vertical",boxSizing:"border-box"}}),
+      err&&React.createElement("div",{style:{fontSize:10,color:"#e06040",marginTop:6}},err),
+      React.createElement("button",{onClick:send,disabled:sending||!text.trim(),
+        style:{width:"100%",marginTop:8,background:text.trim()?"#1d9bf0":"#1a1a1a",color:text.trim()?"#fff":"#555",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.15em",padding:"10px",cursor:text.trim()?"pointer":"default"}},
+        sending?"SENDING…":"SEND")
+    )
+  );
+}
 // ── Member Workouts Tab (read-only, member-facing) ────────────────────────────
-function MemberWorkoutsView({session,memberData,ttl}){
+function MemberWorkoutsView({session,memberData,ttl,msgJump}){
   const [weekStart,setWeekStart]=useState(()=>mondayOf(new Date()));
   const [selDay,setSelDay]=useState(()=>{const d=new Date().getDay();return d===0?6:d-1;});
   const [program,setProgram]=useState({});
@@ -8877,6 +8971,7 @@ function MemberWorkoutsView({session,memberData,ttl}){
       ))
     ),
     React.createElement("div",{style:{padding:"14px 16px 80px"}},
+      React.createElement(PtMessages,{memberEmail:session.email,selfEmail:session.email,selfName:session.name,asStaff:false,startOpen:msgJump,aboutDate:selDS}),
       React.createElement("div",{className:"day-hdr",style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}},React.createElement("span",null,MW_DAY_FULL[dk]),
         // GO TO TODAY — only when away from today; jumps back to this week with today selected
         !isToday(dayDates[selDay])&&React.createElement("button",{onClick:()=>{const m=mondayOf(new Date());setWeekStart(w=>toDS(w)===toDS(m)?w:m);setSelDay(()=>{const d=new Date().getDay();return d===0?6:d-1;});},
@@ -8896,7 +8991,7 @@ function MemberWorkoutsView({session,memberData,ttl}){
         const isOpen=openW.has(dk+"_"+w.num);
         return React.createElement("div",{key:"w"+w.num,style:multiW?{border:"1px solid #333",borderRadius:0,background:"#0d0d0d",padding:"0 14px",marginBottom:14,overflow:"hidden"}:null},
           multiW&&React.createElement("div",{onClick:()=>toggleW(dk+"_"+w.num),style:{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",background:"#fff",color:"#000",margin:"0 -14px",padding:"9px 14px",marginBottom:isOpen?10:0}},
-            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.1em",color:"#000"}},(w.name||("WORKOUT "+w.num)).toUpperCase(),wComplete(w)&&React.createElement("span",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:700,fontSize:13,color:"#4aaa66",marginLeft:8,letterSpacing:0}},"\u2714")),
+            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.1em",color:"#000"}},(w.name||("WORKOUT "+w.num)).toUpperCase(),wComplete(w)&&React.createElement("svg",{"aria-label":"complete",width:14,height:14,viewBox:"0 0 24 24",style:{marginLeft:8,verticalAlign:"-1px",display:"inline-block"}},React.createElement("path",{d:"M4 12.5l5 5L20 6.5",fill:"none",stroke:"#4aaa66",strokeWidth:3.5,strokeLinecap:"round",strokeLinejoin:"round"}))),
             React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
               React.createElement("span",{style:{fontSize:10,letterSpacing:"0.1em",color:"#555"}},w.exercises.length+(w.exercises.length===1?" EXERCISE":" EXERCISES")),
               React.createElement("div",{style:{color:"#000",fontSize:13,transition:"transform .2s",transform:isOpen?"none":"rotate(-90deg)",lineHeight:1}},"\u25be")
@@ -8945,7 +9040,7 @@ function mwDayNote(wNotes,dk){
   return other.length?n[other[0]]:"";
 }
 // ── Admin: read-only "Member View" of a member's program with their completions ──
-function MemberWorkoutReview({email}){
+function MemberWorkoutReview({email,isMaster,openMessages}){
   const [weekStart,setWeekStart]=useState(()=>mondayOf(new Date()));
   const [selDay,setSelDay]=useState(()=>{const d=new Date().getDay();return d===0?6:d-1;});
   const [program,setProgram]=useState({});
@@ -9013,6 +9108,7 @@ function MemberWorkoutReview({email}){
         );
       })
     ),
+    React.createElement(PtMessages,{memberEmail:email,asStaff:true,isMaster,startOpen:openMessages,aboutDate:toDS(dayDates[selDay])}),
     React.createElement("div",{style:{display:"flex",alignItems:"baseline",justifyContent:"space-between",marginBottom:8}},
       React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:10}},
         React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.08em",color:"#fff"}},MW_DAY_FULL[dk]),
@@ -12630,6 +12726,35 @@ function App(){
   const effWkSub=wkOpts.some(o=>o.id===wkSub)?wkSub:(wkOpts[0]&&wkOpts[0].id);
   const renderSeg=(opts,cur,set)=>opts.length<=1?null:React.createElement("div",{className:"sp-toggle seg-nav",style:{marginTop:16,marginBottom:16,paddingLeft:20,paddingRight:20}},opts.map(o=>React.createElement("button",{key:o.id,className:`sp-toggle-btn${cur===o.id?" spta":""}`,style:{border:"1px solid #fff"},onClick:()=>set(o.id)},o.label)));
   // If the current tab isn't available to this member, snap to the first available one.
+  // PT messages: unread counts for the NEW MESSAGE alert (every 60 s on screen, and
+  // straight away whenever a thread is read or sent to).
+  const [msgMine,setMsgMine]=useState(0);      // staff messages to me I haven't read
+  const [msgStaff,setMsgStaff]=useState({});   // admins: {memberEmail: unread count from that member}
+  const [msgJump,setMsgJump]=useState(0);
+  useEffect(()=>{
+    const em=String((session&&session.email)||"").toLowerCase();
+    if(!em||isSubscriber){setMsgMine(0);setMsgStaff({});return;}
+    let live=true;
+    const run=async()=>{
+      const mine=await sbGet("pt_messages",`member_email=eq.${encodeURIComponent(em)}&from_staff=eq.true&member_read=eq.false&select=id`);
+      if(live)setMsgMine(Array.isArray(mine)?mine.length:0);
+      if(isAdmin){
+        const st=await sbGet("pt_messages","from_staff=eq.false&staff_read=eq.false&select=member_email");
+        const m={};(Array.isArray(st)?st:[]).forEach(r=>{const k=String(r.member_email||"").toLowerCase();if(k&&k!==em)m[k]=(m[k]||0)+1;});
+        if(live)setMsgStaff(m);
+      }
+    };
+    run();
+    const off=onScreenPoll(run,60000);
+    const h=()=>run();window.addEventListener("t365-msgs-changed",h);
+    return ()=>{live=false;off();window.removeEventListener("t365-msgs-changed",h);};
+  },[session&&session.email,isAdmin,isSubscriber]);
+  const msgStaffTotal=Object.values(msgStaff).reduce((a,b)=>a+b,0);
+  const showMsgAlert=(isAdmin&&msgStaffTotal>0)||(showPT&&msgMine>0);
+  function openMsgAlert(){
+    if(isAdmin&&msgStaffTotal>0){setTab("admin");setAdmSeg("members");}
+    else{setTab("workouts");setWkSub("pt");setMsgJump(Date.now());}
+  }
   useEffect(()=>{if(ready&&TAB_ORDER.length&&!TAB_ORDER.includes(tab)&&!(tab==="challenge"&&challengeEnabled&&chTab==="loading"))setTab(TAB_ORDER[0]);},[memberAccess,classesEnabled,strengthEnabled,wellnessEnabled,workoutsEnabled,challengeEnabled,chTab,ready]);
   useEffect(()=>{
     const em=session&&session.email;
@@ -13285,7 +13410,8 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
           )
         )
       ),
-      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:10,marginLeft:-20,marginRight:-20,width:"calc(100% + 40px)",padding:"5px 0 4px"},onClick:e=>e.stopPropagation()},
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:10,marginLeft:-20,marginRight:-20,width:"calc(100% + 40px)",padding:"5px 0 4px",position:"relative"},onClick:e=>e.stopPropagation()},
+        showMsgAlert&&React.createElement("button",{onClick:openMsgAlert,"data-msg-alert":"1",style:{position:"absolute",right:16,top:"50%",transform:"translateY(-50%)",background:"#e06040",color:"#fff",border:"none",borderRadius:0,fontFamily:"inherit",fontSize:8,letterSpacing:"0.14em",fontWeight:700,padding:"4px 8px",cursor:"pointer",zIndex:2}},"NEW MESSAGE"),
         React.createElement("span",{style:{color:"#1d9bf0",fontSize:11,lineHeight:1}},"‹"),
         React.createElement("span",{style:{color:"#1d9bf0",fontSize:7,letterSpacing:"0.22em",fontWeight:600}},"SWIPE FOR MORE"),
         React.createElement("span",{style:{color:"#1d9bf0",fontSize:11,lineHeight:1}},"›")
@@ -13516,7 +13642,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     effTab==="community"&&acc("community")&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
     effTab==="workouts"&&React.createElement(React.Fragment,null,
       renderSeg(wkOpts,effWkSub,setWkSub),
-      effWkSub==="pt"&&showPT&&React.createElement(MemberWorkoutsView,{session,memberData,ttl:wkTitles.pt}),
+      effWkSub==="pt"&&showPT&&React.createElement(MemberWorkoutsView,{session,memberData,ttl:wkTitles.pt,msgJump}),
       effWkSub==="strength"&&showStrength&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTabRouter,{session,isAdmin,showToast,bookings,memberData})),
       effWkSub==="routines"&&showRoutines&&React.createElement(RoutinesView,{session,ttl:wkTitles.rt,isAdmin})
     ),
@@ -13528,7 +13654,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         ?React.createElement(CoachingView,{showToast,restricted:true,selfEmail:session.email})
         :React.createElement("div",{className:"no-bk"},subRow&&subRow.status==="suspended"?"YOUR SUBSCRIPTION IS PAUSED — PLEASE CONTACT TEAM 365":subRow&&subRow.status==="pending"?"YOUR SUBSCRIPTION IS AWAITING APPROVAL — TEAM 365 WILL BE IN TOUCH":"DETAILS IS CURRENTLY UNAVAILABLE")
     ),
-    effTab==="admin"&&isAdmin&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:"",challengeEnabled,saveChallengeSetting}),
+    effTab==="admin"&&isAdmin&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:"",challengeEnabled,saveChallengeSetting,msgUnread:msgStaff}),
     ),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
