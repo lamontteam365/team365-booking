@@ -8806,6 +8806,10 @@ function MemberWorkoutsView({session,memberData,ttl}){
   const exercises=mwNormDay(program[dk]);
   const workouts=mwWorkouts(exercises);
   const multiW=workouts.length>1||!!(workouts[0]&&workouts[0].name);
+  // A workout is complete when every exercise in it has something logged (a weight/distance on any set,
+  // or a tick) — the same rule the admin Member View uses for "x of y done".
+  const exLogged=ex=>{const n=Math.max(1,parseInt(ex.sets)||1);for(let i=1;i<=n;i++){const k=dk+"__"+ex.id+"__s"+i;if(ex.log==="tick"?ticks[k]:((weights[k]||"")+"").trim()!=="")return true;}return false;};
+  const wComplete=w=>w.exercises.length>0&&w.exercises.every(exLogged);
   const selDS=toDS(dayDates[selDay]);
   const isUnwell=unwell.includes(selDS);
   const unwellYear=unwell.filter(x=>x.slice(0,4)===String(new Date().getFullYear()));
@@ -8892,7 +8896,7 @@ function MemberWorkoutsView({session,memberData,ttl}){
         const isOpen=openW.has(dk+"_"+w.num);
         return React.createElement("div",{key:"w"+w.num,style:multiW?{border:"1px solid #333",borderRadius:0,background:"#0d0d0d",padding:"0 14px",marginBottom:14,overflow:"hidden"}:null},
           multiW&&React.createElement("div",{onClick:()=>toggleW(dk+"_"+w.num),style:{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",background:"#fff",color:"#000",margin:"0 -14px",padding:"9px 14px",marginBottom:isOpen?10:0}},
-            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.1em",color:"#000"}},(w.name||("WORKOUT "+w.num)).toUpperCase()),
+            React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.1em",color:"#000"}},(w.name||("WORKOUT "+w.num)).toUpperCase(),wComplete(w)&&React.createElement("span",{style:{fontFamily:"'DM Sans',sans-serif",fontWeight:700,fontSize:13,color:"#4aaa66",marginLeft:8,letterSpacing:0}},"\u2714")),
             React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
               React.createElement("span",{style:{fontSize:10,letterSpacing:"0.1em",color:"#555"}},w.exercises.length+(w.exercises.length===1?" EXERCISE":" EXERCISES")),
               React.createElement("div",{style:{color:"#000",fontSize:13,transition:"transform .2s",transform:isOpen?"none":"rotate(-90deg)",lineHeight:1}},"\u25be")
