@@ -4957,6 +4957,216 @@ function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose,langOptio
   );
 }
 
+// ── Per-style warm-up · __WARMUP__<STYLE> (1 Oct 2026) ───────────────────────
+// Master only. One warm-up per workout STYLE (RISE UP, ASCEND, …), edited from any
+// workout of that style in Workout Details and saved as coaching_notes
+// "__WARMUP__"+STYLE = [{name,reps,secs},…]. tv.html and play.html read it; a style
+// with no record (or a record that breaks the rules) plays the built-in default.
+// Saving to other styles makes independent COPIES — nothing is linked.
+// WARMUP_DEFAULT must stay identical to WU / WSEG in tv.html and play.html.
+const WARMUP_DEFAULT=[
+  {name:"STRAIGHT ARM – SMALL CIRCLES (FORWARD)",reps:"10 REPS",secs:15},
+  {name:"STRAIGHT ARM – SMALL CIRCLES (BACKWARD)",reps:"10 REPS",secs:15},
+  {name:"LARGE ARM CIRCLES (FORWARD)",reps:"5 REPS",secs:10},
+  {name:"LARGE ARM CIRCLES (BACKWARD)",reps:"5 REPS",secs:10},
+  {name:"DYNAMIC OVERHEAD ARM SWINGS",reps:"5 REPS",secs:20},
+  {name:"FROG SQUATS",reps:"10 REPS",secs:20},
+  {name:"ALTERNATING HAMSTRING SWEEPS",reps:"5 EACH LEG",secs:30},
+  {name:"REVERSE LUNGES",reps:"5 EACH LEG",secs:30},
+  {name:"SQUATS",reps:"5 REPS",secs:15},
+  {name:"POGOS",reps:"10 REPS",secs:15}
+];
+const WARMUP_MAX=14,WARMUP_TOTAL=180,WARMUP_STEP=5;
+function warmupStyleOf(cn){return String(cn||"").toUpperCase().replace(/\s*\d+\s*$/,"").trim();}
+// Same rule as the players: lower case, "&" -> "and", anything else -> "-".
+function warmupSlug(nm){return String(nm||"").toLowerCase().replace(/&ndash;|&mdash;|[–—]/g,"-").replace(/&amp;|&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");}
+function warmupClock(s){s=Math.max(0,Math.round(s||0));return Math.floor(s/60)+":"+String(s%60).padStart(2,"0");}
+function warmupValid(a){
+  if(!Array.isArray(a)||a.length<1||a.length>WARMUP_MAX)return false;
+  let t=0;
+  for(const w of a){
+    if(!w||typeof w!=="object")return false;
+    const n=String(w.name==null?"":w.name).trim();
+    if(!n||!warmupSlug(n))return false;
+    const s=w.secs;
+    if(typeof s!=="number"||s%1!==0||s<WARMUP_STEP||s%WARMUP_STEP!==0)return false;
+    t+=s;
+  }
+  return t===WARMUP_TOTAL;
+}
+// Does tv-videos/warmups/<slug>.webm exist next to the app? Same folder the TV
+// player reads. "unknown" when the check itself can't run (offline etc.).
+const __warmClip={};
+function warmupClipStatus(slug){
+  if(!slug)return Promise.resolve("missing");
+  if(!__warmClip[slug]){
+    __warmClip[slug]=fetch("tv-videos/warmups/"+encodeURIComponent(slug)+".webm",{method:"HEAD",cache:"no-store"})
+      .then(r=>r.ok?"found":(r.status===404?"missing":"unknown"))
+      .catch(()=>"unknown");
+  }
+  return __warmClip[slug];
+}
+function WarmupSection({className,showToast}){
+  const style=warmupStyleOf(className);
+  const key="__WARMUP__"+style;
+  const [saved,setSaved]=useState(null);       // this style's own warm-up, or null = default
+  const [loaded,setLoaded]=useState(false);
+  const [open,setOpen]=useState(false);
+  const [editing,setEditing]=useState(false);
+  const [draft,setDraft]=useState([]);
+  const [styles,setStyles]=useState([]);       // every other style, for "ALSO USE FOR"
+  const [ownSet,setOwnSet]=useState({});       // style -> already has its own warm-up
+  const [also,setAlso]=useState([]);
+  const [saving,setSaving]=useState(false);
+  const [clips,setClips]=useState({});
+  const genId=()=>Math.random().toString(36).slice(2,9);
+  useEffect(()=>{setEditing(false);setOpen(false);load();},[style]);
+  async function load(){
+    setLoaded(false);
+    const r=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(key)}&select=content`);
+    let a=null;
+    if(r&&r.length&&r[0].content){try{const p=JSON.parse(r[0].content);if(warmupValid(p))a=p;}catch{}}
+    setSaved(a);setLoaded(true);
+  }
+  const list=saved||WARMUP_DEFAULT;
+  const shown=editing?draft:list;
+  // Video check, debounced so typing a name doesn't fire a request per key.
+  const slugKey=shown.map(w=>warmupSlug(w.name)).join("|");
+  useEffect(()=>{
+    if(!open)return;
+    let alive=true;
+    const t=setTimeout(()=>{
+      slugKey.split("|").forEach(s=>{
+        if(!s||clips[s])return;
+        warmupClipStatus(s).then(st=>{if(alive)setClips(c=>({...c,[s]:st}));});
+      });
+    },editing?600:0);
+    return ()=>{alive=false;clearTimeout(t);};
+  },[open,editing,slugKey]);
+  async function startEdit(){
+    setDraft(list.map(w=>({id:genId(),name:w.name,reps:w.reps||"",secs:w.secs})));
+    setAlso([]);setEditing(true);setOpen(true);
+    const labels=(await loadStyleLabels()).map(l=>String(l).toUpperCase()).filter(l=>l&&l!==style);
+    setStyles(labels);
+    const own=await sbGet("coaching_notes","class_name=like.__WARMUP__*&select=class_name");
+    const m={};(own||[]).forEach(x=>{if(x&&x.class_name)m[String(x.class_name).slice(10)]=true;});
+    setOwnSet(m);
+  }
+  function setRow(id,f,v){setDraft(d=>d.map(r=>r.id===id?{...r,[f]:v}:r));}
+  function move(i,dir){setDraft(d=>{const j=i+dir;if(j<0||j>=d.length)return d;const n=[...d];const t=n[i];n[i]=n[j];n[j]=t;return n;});}
+  function removeRow(id){setDraft(d=>d.length>1?d.filter(r=>r.id!==id):d);}
+  function addRow(){setDraft(d=>d.length>=WARMUP_MAX?d:[...d,{id:genId(),name:"",reps:"",secs:WARMUP_STEP}]);}
+  const clean=draft.map(r=>({name:String(r.name||"").trim().toUpperCase(),reps:String(r.reps||"").trim().toUpperCase(),secs:r.secs}));
+  const total=(editing?draft:list).reduce((s,w)=>s+(w.secs||0),0);
+  const canSave=editing&&warmupValid(clean)&&!saving;
+  async function upsert(k,content){
+    const ex=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent(k)}&select=class_name`);
+    const body={content,updated_at:Date.now()};
+    if(ex&&ex.length)return sbPatch("coaching_notes",`class_name=eq.${encodeURIComponent(k)}`,body);
+    return sbPost("coaching_notes",{class_name:k,...body});
+  }
+  async function save(){
+    if(!canSave)return;
+    const replacing=also.filter(s=>ownSet[s]);
+    if(replacing.length&&!window.confirm(replacing.join(", ")+(replacing.length>1?" already have their own warm-ups":" already has its own warm-up")+". Replace with this one?"))return;
+    setSaving(true);
+    const content=JSON.stringify(clean);
+    const targets=[style,...also];
+    const results=await Promise.all(targets.map(s=>upsert("__WARMUP__"+s,content)));
+    setSaving(false);
+    const failed=targets.filter((s,i)=>!results[i]);
+    if(failed.length){showToast("Couldn't save warm-up for "+failed.join(", ")+" — try again");return;}
+    setSaved(clean);setEditing(false);
+    showToast("Warm-up saved to "+targets.join(" + ")+" ✓");
+  }
+  async function resetDefault(){
+    if(!window.confirm("Put every "+style+" workout back on the default warm-up?"))return;
+    setSaving(true);
+    const ok=await sbDelete("coaching_notes",`class_name=eq.${encodeURIComponent(key)}`);
+    setSaving(false);
+    if(!ok){showToast("Couldn't reset — try again");return;}
+    setSaved(null);setEditing(false);showToast(style+" is back on the default warm-up ✓");
+  }
+  const bebas="'Bebas Neue',sans-serif";
+  const inp={background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#fff",fontSize:13,padding:"7px 8px",fontFamily:"inherit",minWidth:0};
+  const sqBtn={background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#aaa",fontSize:12,width:30,height:32,cursor:"pointer",padding:0,flexShrink:0};
+  const btn=(bg,col,bd)=>({flex:1,background:bg,color:col,border:"1px solid "+bd,borderRadius:0,padding:"9px 0",fontFamily:bebas,fontSize:13,letterSpacing:"0.12em",cursor:"pointer"});
+  const tagTxt=saved?style:"DEFAULT";
+  function clipLine(w,from){
+    const s=warmupSlug(w.name);const st=s?clips[s]:"missing";
+    const mark=!s?React.createElement("span",{style:{color:"#e0a040",whiteSpace:"nowrap"}}," · NAME NEEDED")
+      :st==="found"?React.createElement("span",{style:{color:"#6fcf5a",whiteSpace:"nowrap"}}," · ✓ VIDEO FOUND")
+      :st==="missing"?React.createElement("span",{style:{color:"#e0a040"}}," · ✗ NO VIDEO — TV SHOWS “VIDEO COMING SOON”")
+      :null;
+    return React.createElement("div",{"data-wuline":"1",style:{fontSize:10,color:"#666",marginTop:5,letterSpacing:"0.04em",lineHeight:1.5}},
+      warmupClock(from)+" – "+warmupClock(from+(w.secs||0))+" · ",
+      React.createElement("span",{style:{fontFamily:"monospace",color:"#888",wordBreak:"break-all"}},(s||"…")+".webm"),
+      mark);
+  }
+  let acc=0;
+  return React.createElement("div",{"data-warmup":style,style:{marginBottom:6}},
+    React.createElement("div",{"data-wuhdr":"1",onClick:()=>{if(!editing)setOpen(o=>!o);},style:{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:editing?"default":"pointer",fontFamily:bebas,fontSize:16,letterSpacing:"0.12em",color:"#1d9bf0",borderBottom:"1px solid #1d3a5a",padding:"10px 0 5px",marginTop:8,marginBottom:6}},
+      React.createElement("span",null,"WARM UP",
+        React.createElement("span",{"data-wutag":"1",style:{fontSize:11,letterSpacing:"0.1em",marginLeft:8,padding:"1px 6px",border:"1px solid "+(saved?"#3f7a1d":"#333"),color:saved?"#a4e07a":"#777",verticalAlign:"2px"}},loaded?tagTxt:"…")),
+      React.createElement("span",{style:{display:"flex",alignItems:"center",gap:10}},
+        React.createElement("span",{style:{fontSize:12,color:"#666",letterSpacing:"0.08em"}},"3:00 · "+list.length+(list.length===1?" EXERCISE":" EXERCISES")),
+        !editing&&React.createElement("span",{style:{fontSize:12,color:"#666",transition:"transform .2s",transform:open?"rotate(0deg)":"rotate(-90deg)"}},"▾"))
+    ),
+    open&&!editing&&React.createElement("div",null,
+      React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:8}},
+        saved?("This warm-up plays for every "+style+" workout. Only you can see this section."):("Every "+style+" workout plays the default warm-up. Only you can see this section.")),
+      ...list.map((w,i)=>{const from=acc;acc+=w.secs;
+        return React.createElement("div",{key:i,"data-wurow":"1",style:{background:"#0e0e0e",border:"1px solid #1a1a1a",borderRadius:0,padding:"9px 12px",marginBottom:6}},
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+            React.createElement("span",{style:{fontFamily:bebas,fontSize:13,color:"#555",width:18,flexShrink:0}},(i+1)+"."),
+            React.createElement("span",{style:{fontFamily:bebas,fontSize:13,color:"#fff",background:"#1a1a1a",padding:"1px 7px",flexShrink:0}},warmupClock(w.secs)),
+            React.createElement("span",{style:{flex:1,minWidth:0,fontFamily:bebas,fontSize:15,letterSpacing:"0.04em",color:"#fff"}},w.name),
+            w.reps&&React.createElement("span",{style:{fontSize:11,color:"#fff",border:"1px solid #3a3a3a",padding:"3px 10px",flexShrink:0,whiteSpace:"nowrap",fontWeight:600}},w.reps)),
+          clipLine(w,from));
+      }),
+      React.createElement("div",{style:{display:"flex",gap:8,marginTop:10,marginBottom:6}},
+        React.createElement("button",{onClick:startEdit,style:btn("#1a1a1a","#ccc","#2a2a2a")},"✎ EDIT WARM-UP"),
+        saved&&React.createElement("button",{onClick:resetDefault,disabled:saving,style:btn("transparent","#888","#2a2a2a")},saving?"…":"↺ RESET TO DEFAULT"))
+    ),
+    editing&&React.createElement("div",{"data-wuedit":"1"},
+      React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,marginBottom:8}},
+        "Saves to every "+style+" workout. Must add up to exactly 3:00 · 1–"+WARMUP_MAX+" exercises · seconds in steps of 5. The video is found by name: lower case, spaces become hyphens."),
+      ...draft.map((r,i)=>{const from=acc;acc+=(r.secs||0);
+        return React.createElement("div",{key:r.id,"data-wuedrow":"1",style:{background:"#0e0e0e",border:"1px solid #1a1a1a",borderRadius:0,padding:"9px 10px",marginBottom:6}},
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+            React.createElement("span",{style:{fontFamily:bebas,fontSize:13,color:"#555",width:20,flexShrink:0}},(i+1)+"."),
+            React.createElement("input",{"data-wuname":"1",value:r.name,placeholder:"EXERCISE NAME",onChange:e=>setRow(r.id,"name",e.target.value.toUpperCase()),style:{...inp,flex:1,fontFamily:bebas,fontSize:15,letterSpacing:"0.04em"}})),
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,marginTop:6,paddingLeft:26}},
+            React.createElement("input",{"data-wureps":"1",value:r.reps,placeholder:"REPS (e.g. 10 REPS)",onChange:e=>setRow(r.id,"reps",e.target.value.toUpperCase()),style:{...inp,flex:1}}),
+            React.createElement("select",{"data-wusecs":"1",value:r.secs,onChange:e=>setRow(r.id,"secs",parseInt(e.target.value,10)),style:{...inp,width:84,flex:"0 0 84px"}},
+              Array.from({length:WARMUP_TOTAL/WARMUP_STEP},(_,k)=>(k+1)*WARMUP_STEP).map(v=>React.createElement("option",{key:v,value:v},v+" SEC"))),
+            React.createElement("button",{title:"Move up",onClick:()=>move(i,-1),disabled:i===0,style:{...sqBtn,opacity:i===0?0.35:1}},"↑"),
+            React.createElement("button",{title:"Move down",onClick:()=>move(i,1),disabled:i===draft.length-1,style:{...sqBtn,opacity:i===draft.length-1?0.35:1}},"↓"),
+            React.createElement("button",{"data-wudel":"1",title:"Remove",onClick:()=>removeRow(r.id),disabled:draft.length<=1,style:{...sqBtn,color:"#e06040",opacity:draft.length<=1?0.35:1}},"✕")),
+          React.createElement("div",{style:{paddingLeft:26}},clipLine(r,from)));
+      }),
+      React.createElement("button",{"data-wuadd":"1",onClick:addRow,disabled:draft.length>=WARMUP_MAX,style:{width:"100%",padding:"10px",background:"#0e0e0e",color:draft.length>=WARMUP_MAX?"#333":"#666",border:"1px dashed #2a2a2a",borderRadius:0,fontFamily:bebas,fontSize:13,letterSpacing:"0.12em",cursor:draft.length>=WARMUP_MAX?"default":"pointer",marginBottom:8}},
+        draft.length>=WARMUP_MAX?("MAXIMUM "+WARMUP_MAX+" EXERCISES"):"+ ADD EXERCISE"),
+      React.createElement("div",{"data-wutotal":"1",style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",marginBottom:10,border:"1px solid "+(total===WARMUP_TOTAL?"#2c5a1d":"#5a4322"),background:total===WARMUP_TOTAL?"#0f1a0b":"#1a140a",fontFamily:bebas,letterSpacing:"0.1em",fontSize:14}},
+        React.createElement("span",{style:{color:total===WARMUP_TOTAL?"#9fdc7a":"#f0c070"}},
+          "TOTAL "+warmupClock(total)+(total===WARMUP_TOTAL?" ✓":total<WARMUP_TOTAL?(" — "+(WARMUP_TOTAL-total)+" SEC SHORT"):(" — "+(total-WARMUP_TOTAL)+" SEC OVER"))),
+        React.createElement("span",{style:{color:"#666",fontSize:12}},draft.length+" / "+WARMUP_MAX)),
+      styles.length>0&&React.createElement("div",{style:{marginBottom:10}},
+        React.createElement("div",{style:{fontSize:9,letterSpacing:"0.16em",color:"#555",fontWeight:600,marginBottom:6}},"ALSO USE FOR (COPIES — EACH STYLE KEEPS ITS OWN AFTER SAVING)"),
+        React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
+          styles.map(s=>{const on=also.includes(s);
+            return React.createElement("button",{key:s,"data-wualso":s,onClick:()=>setAlso(a=>a.includes(s)?a.filter(x=>x!==s):[...a,s]),
+              style:{background:on?"#0a1a2a":"#0e0e0e",border:"1px solid "+(on?"#1d9bf0":"#2a2a2a"),borderRadius:0,color:on?"#fff":"#777",fontFamily:bebas,fontSize:13,letterSpacing:"0.08em",padding:"6px 10px",cursor:"pointer"}},
+              (on?"☑ ":"☐ ")+s,
+              React.createElement("span",{style:{fontSize:10,color:ownSet[s]?"#a4e07a":"#555",marginLeft:6}},ownSet[s]?"OWN":"DEFAULT"));
+          }))),
+      React.createElement("div",{style:{display:"flex",gap:8,marginBottom:6}},
+        React.createElement("button",{onClick:()=>setEditing(false),disabled:saving,style:btn("transparent","#888","#2a2a2a")},"CANCEL"),
+        React.createElement("button",{"data-wusave":"1",onClick:save,disabled:!canSave,style:{...btn(canSave?"#1d9bf0":"#141414",canSave?"#fff":"#444",canSave?"#1d9bf0":"#222"),cursor:canSave?"pointer":"default"}},
+          saving?"SAVING…":("SAVE WARM-UP"+(also.length?" ("+(also.length+1)+" STYLES)":""))))
+    )
+  );
+}
 function WorkoutDetailsEditor({className,showToast,restricted}){
   const storageKey="__WORKOUT__"+className;
   const LIB_KEY="__HIIT_LIB__";
@@ -5133,6 +5343,7 @@ function WorkoutDetailsEditor({className,showToast,restricted}){
         rows.length>0&&React.createElement("button",{onClick:()=>{const u="tv.html?w="+encodeURIComponent(className);const w=window.open(u,"_blank");if(!w)window.location.href=u;},title:"Opens the full-screen TV page with a Cast button (uses the last SAVED version)",style:{flex:1,background:"#12331a",color:"#3ddc84",border:"1px solid #1d5a34",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"▸ PLAY"),
         rows.length>0&&stImgFirstStationRound(rows)&&React.createElement("button",{onClick:()=>setImgOpen(true),title:"Station-board image for this workout, same as the offline kit's Station Images tool",style:{flex:1,background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"▦ IMAGE")
       ),
+      !restricted&&React.createElement(WarmupSection,{className,showToast}),
       legacy&&React.createElement("div",{style:{whiteSpace:"pre-wrap",fontSize:12,color:"#aaa",lineHeight:1.6,marginBottom:12}},legacy),
       rows.length===0&&!legacy&&React.createElement("div",{style:{fontSize:11,color:"#444",letterSpacing:"0.1em",padding:"16px 0",textAlign:"center"}},restricted?"NO WORKOUT YET":"NO WORKOUT YET · TAP EDIT TO BUILD IT"),
       ...rows.map(r=>{
