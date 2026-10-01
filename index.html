@@ -4206,17 +4206,13 @@ const CONC_PROCESS_DEFAULT=[
   {title:"CLIENT COMPLETES THE FORM",body:"The same health screening form as Training & Coaching: personal details, emergency contact, PAR-Q, medical conditions, fitness level, media consent and signature."},
   {title:"AUTOMATIC SETUP ON SUBMIT",body:"Their account is marked as a concession with Notice Board and Book access and a 10-class card that bypasses the weekly caps. New clients get a welcome email with their temporary password and login link."},
   {title:"HEALTH SCREENING PDF",body:"A copy of the signed health screening PDF is emailed automatically, and their answers are saved to the form log. Read them before their first class."},
-  {title:"TAKE PAYMENT",body:"Take payment for the card using the price above."},
+  {title:"TAKE PAYMENT",body:"Take payment for the card. The current price is in Concession Prices."},
+  {title:"CHANGING THE PRICE",body:"Onboarding \u2192 Concessions \u2192 Concession Prices. Change the card price, GST label or terms and tap SAVE PRICES."},
   {title:"CLIENT BOOKS CLASSES",body:"They can book any classes they like until the card runs out. Each booking reserves a class. No-shows use a class unless you EXCUSE them. Wellness sessions are separate and don't use the card."},
   {title:"TOP UP",body:"When the card is used up, take payment again, then open their profile → Concession Card → TOP UP to reset it to 10 classes."},
 ];
 function ConcessionProcessPanel({showToast}){
-  return React.createElement("div",null,
-    React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.12em",color:"#fff",marginBottom:10}},"PRICES"),
-    React.createElement(ConcessionPricingEditor,{showToast}),
-    React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.12em",color:"#fff",margin:"6px 0 4px",paddingTop:14,borderTop:"1px solid #1a1a1a"}},"HOW IT WORKS"),
-    React.createElement(StepListEditor,{storageKey:"__CONCESSION_ONBOARDING_PROCESS__",defaultSteps:CONC_PROCESS_DEFAULT,toastMsg:"Concession process saved ✓",showToast})
-  );
+  return React.createElement(StepListEditor,{storageKey:"__CONCESSION_ONBOARDING_PROCESS__",defaultSteps:CONC_PROCESS_DEFAULT,toastMsg:"Concession process saved \u2713",showToast});
 }
 function InviteForm(props){
   const p=props||{};
@@ -4571,6 +4567,7 @@ function OnboardingView({showToast,isMaster}){
       })),
     obHead("CONCESSIONS"),
     P("concprocess","CONCESSION ONBOARDING PROCESS",React.createElement(ConcessionProcessPanel,{showToast})),
+    P("concprices","CONCESSION PRICES",React.createElement(ConcessionPricingEditor,{showToast})),
     P("concession","SEND CONCESSION FORM",React.createElement(InviteForm,{
         appsScript:true,
         endpoint:APPS_SCRIPT_URL,
@@ -4579,9 +4576,8 @@ function OnboardingView({showToast,isMaster}){
         btnLabel:"SEND CONCESSION FORM"
       })),
     isMaster&&obHead("SUBSCRIBERS · MASTER ONLY"),
-    isMaster&&React.createElement(OnboardingPanel,{id:"subprocess",title:"SUBSCRIBER ONBOARDING PROCESS",openPanel,setOpenPanel,titles,onSaveTitle},
-      React.createElement(SubscriberProcessPanel,{showToast})
-    ),
+    isMaster&&P("subonboard","SUBSCRIBER ONBOARDING PROCESS",React.createElement(SubscriberProcessPanel,{showToast})),
+    isMaster&&P("subprocess","SUBSCRIBER PRICING DETAILS",React.createElement(SubscriberPricingEditor,{showToast})),
     isMaster&&React.createElement(OnboardingPanel,{id:"subagreement",title:"SUBSCRIBER AGREEMENT",openPanel,setOpenPanel,titles,onSaveTitle},
       React.createElement(SubscriberAgreementPanel,{showToast})
     ),
@@ -12096,22 +12092,22 @@ function SubscriberPricingEditor({showToast}){
       saving?"SAVING…":"SAVE PRICES")
   );
 }
-const SUB_PROCESS_DEFAULT=[
-  {title:"SEND SUBSCRIBER MEMBERSHIP",body:"Onboarding → Send Subscriber Membership. Enter the gym's email and tap Send. They receive a branded email with a personal link to the Subscriber form. The link works once, only for that email, and expires after 30 days."},
-  {title:"GYM COMPLETES THE FORM",body:"Business details, number of locations and their addresses, main contact, 6 or 12 month term, and the Subscriber Agreement signed by an authorised person. The form shows the current prices from this panel and works out their weekly and monthly total."},
-  {title:"AGREEMENT PDF",body:"On submit, the signed Subscriber Agreement PDF is emailed to the gym and to Team 365. Their account is created as AWAITING APPROVAL."},
+// Subscriber onboarding steps. Stored in master_settings "sub_onboarding".
+// (The older "sub_process" row held the first six of these steps word for word
+// under the prices; it is no longer read.)
+const SUB_ONBOARDING_DEFAULT=[
+  {title:"SEND SUBSCRIBER MEMBERSHIP",body:"Onboarding → Subscribers → Send Subscriber Membership. Enter the gym's email and tap Send. They receive a branded email with a personal link to the Subscriber form. The link works once, only for that email, and expires after the number of days set in Subscriber Pricing Details (30 by default). RECENTLY SENT shows each link as WAITING, EXPIRED or SUBMITTED, and you can cancel or resend from there."},
+  {title:"GYM COMPLETES THE FORM",body:"Business details, number of locations and their addresses, main contact, 6 or 12 month term, and the Subscriber Agreement signed by an authorised person. The form shows the current prices from Subscriber Pricing Details and works out their weekly and monthly total."},
+  {title:"SIGNED AGREEMENT",body:"On submit, the signed Subscriber Agreement PDF is emailed to the gym and to Team 365. That email is the signed record, because signatures are not stored in the app. The agreed text, prices, term and locations are saved on the gym's profile under SUBSCRIPTION AGREEMENT. Their account is created as AWAITING APPROVAL."},
   {title:"REVIEW AND APPROVE",body:"Open Admin → Members → the gym (SUBSCRIBER · AWAITING APPROVAL). Check the details and tap APPROVE & SEND LOGIN. This activates the subscription and emails their login details."},
   {title:"INVOICE",body:"Send the first monthly invoice. Invoices are monthly in advance, payable within 7 days. Pause the subscription from their profile if an invoice is more than 14 days overdue."},
   {title:"ACCESS",body:"Details only, read only: workouts, Coaching Notes, Workout Details, Play and Workout Image. No Library Details and no editing. Hide workouts from their profile (Workout Visibility) or pause them at any time."},
+  {title:"CHANGING THE PRICES",body:"Onboarding → Subscribers → Subscriber Pricing Details. Change the weekly prices, the discount for each extra location, the GST label or how long form links last, then tap SAVE PRICES. New forms use the new prices straight away. Gyms that have already signed keep the price they signed for."},
+  {title:"CHANGING THE AGREEMENT",body:"Onboarding → Subscribers → Subscriber Agreement. Edit the clauses and save. Changes apply only to forms submitted from now on. Gyms that have already signed keep the copy they signed. Have any changes checked by a lawyer."},
 ];
 function SubscriberProcessPanel({showToast}){
-  return React.createElement("div",null,
-    React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.12em",color:"#fff",marginBottom:10}},"PRICES"),
-    React.createElement(SubscriberPricingEditor,{showToast}),
-    React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.12em",color:"#fff",margin:"6px 0 4px",paddingTop:14,borderTop:"1px solid #1a1a1a"}},"HOW IT WORKS"),
-    React.createElement(StepListEditor,{storageKey:"sub_process",defaultSteps:SUB_PROCESS_DEFAULT,toastMsg:"Subscriber process saved ✓",showToast,
-      loadFn:()=>msGet("sub_process"),saveFn:v=>msSet("sub_process",v)})
-  );
+  return React.createElement(StepListEditor,{storageKey:"sub_onboarding",defaultSteps:SUB_ONBOARDING_DEFAULT,toastMsg:"Subscriber onboarding process saved ✓",showToast,
+    loadFn:()=>msGet("sub_onboarding"),saveFn:v=>msSet("sub_onboarding",v)});
 }
 function SubscriberAgreementPanel({showToast}){
   return React.createElement("div",null,
