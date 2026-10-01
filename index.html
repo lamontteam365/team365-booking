@@ -8749,11 +8749,11 @@ function ptLinkify(text){
   if(last<text.length)out.push(text.slice(last));
   return out;
 }
-// Filled red = you liked it; red outline = liked by the other side; grey = no likes yet.
+// Filled blue = you liked it; blue outline = liked by the other side; grey = no likes yet.
 function PtThumb({on,red}){
   return React.createElement("svg",{width:14,height:14,viewBox:"0 0 24 24",style:{display:"block"}},
     React.createElement("path",{d:"M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3m7-2V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z",
-      fill:on?"#e06040":"none",stroke:(on||red)?"#e06040":"#666",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}));
+      fill:on?PT_BLUE:"none",stroke:(on||red)?PT_BLUE:"#666",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}));
 }
 function PtMessages({memberEmail,selfEmail,selfName,asStaff,isMaster,startOpen,aboutDate}){
   const em=String(memberEmail||"").toLowerCase();
@@ -8820,7 +8820,7 @@ function PtMessages({memberEmail,selfEmail,selfName,asStaff,isMaster,startOpen,a
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
         unread>0
           ?React.createElement("span",{className:"t365-blink",style:{background:"#fff",color:PT_BLUE,fontSize:label,letterSpacing:"0.14em",fontWeight:700,padding:"3px 8px",borderRadius:10}},unread+" NEW")
-          :count>0&&React.createElement("span",{style:{fontSize:10,letterSpacing:"0.1em",color:"rgba(255,255,255,0.8)"}},count+(count===1?" MESSAGE":" MESSAGES")),
+          :null,
         React.createElement("div",{style:{color:"#fff",fontSize:13,lineHeight:1,transition:"transform .2s",transform:open?"none":"rotate(-90deg)"}},"▾")
       )
     ),
@@ -8848,7 +8848,7 @@ function PtMessages({memberEmail,selfEmail,selfName,asStaff,isMaster,startOpen,a
             React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,marginTop:2}},
               React.createElement("button",{onClick:()=>{setReplyTo(replying?null:m.id);setReplyText("");},style:{...linkBtn,color:replying?PT_BLUE:"#666"}},"REPLY"),
               React.createElement("button",{onClick:()=>like(m),"aria-label":iLike?"Unlike":"Like",title:iLike?"Unlike":"Like",style:{...linkBtn,display:"flex",alignItems:"center",gap:4}},
-                React.createElement(PtThumb,{on:iLike,red:likes>0}),likes>0&&React.createElement("span",{style:{color:"#e06040",fontSize:10,fontWeight:700}},likes)),
+                React.createElement(PtThumb,{on:iLike,red:likes>0}),likes>0&&React.createElement("span",{style:{color:PT_BLUE,fontSize:10,fontWeight:700}},likes)),
               canDel&&React.createElement("button",{onClick:()=>del(m),style:linkBtn},"DELETE")
             ),
             replying&&React.createElement("div",{style:{width:"100%",marginTop:4}},
@@ -12812,9 +12812,13 @@ function App(){
   },[session&&session.email,isAdmin,isSubscriber]);
   const msgStaffTotal=Object.values(msgStaff).reduce((a,b)=>a+b,0);
   const showMsgAlert=(isAdmin&&msgStaffTotal>0)||(showPT&&msgMine>0);
+  // Tapping the profile image: admins → Admin → Members (cards show NEW MESSAGE); members →
+  // PT Program with the thread open. An admin with no member messages waiting but an
+  // unread reply in their own PT thread goes to their own thread.
+  const canOpenMsgs=!isSubscriber&&(isAdmin||showPT);
   function openMsgAlert(){
-    if(isAdmin&&msgStaffTotal>0){setTab("admin");setAdmSeg("members");}
-    else{setTab("workouts");setWkSub("pt");setMsgJump(Date.now());}
+    if(isAdmin&&(msgStaffTotal>0||!(showPT&&msgMine>0))){setTab("admin");setAdmSeg("members");}
+    else if(showPT){setTab("workouts");setWkSub("pt");setMsgJump(Date.now());}
   }
   useEffect(()=>{if(ready&&TAB_ORDER.length&&!TAB_ORDER.includes(tab)&&!(tab==="challenge"&&challengeEnabled&&chTab==="loading"))setTab(TAB_ORDER[0]);},[memberAccess,classesEnabled,strengthEnabled,wellnessEnabled,workoutsEnabled,challengeEnabled,chTab,ready]);
   useEffect(()=>{
@@ -13441,17 +13445,22 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         Array.from({length:30},(_,i)=>i+1).map(n=>React.createElement("option",{key:n,value:String(n)},n))
       ),
       React.createElement("div",{style:{display:"flex",alignItems:"center",padding:"30px 4px 30px",position:"relative",minHeight:140}},
-        React.createElement("div",{style:{flex:1,paddingLeft:0,zIndex:1,position:"relative"}},
+        React.createElement("div",{style:{flex:1,paddingLeft:0,zIndex:1}},
           React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:8,fontWeight:700,color:"#fff",letterSpacing:"0.04em",lineHeight:1.3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},session.name.toUpperCase()),
           React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:7,color:"#1d9bf0",letterSpacing:"0.04em",marginTop:4,lineHeight:1.4,whiteSpace:"nowrap"}},((memberData?.membership_type||"").replace(/\s*[-–]\s*\d[\s\S]*$/i,"").replace(/\s*\bMEMBER\b\s*$/i,"").trim()).toUpperCase()),
-          memberData?.joined_at?React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:7,color:"#777",letterSpacing:"0.04em",marginTop:3,whiteSpace:"nowrap"}},("JOINED "+new Date(memberData.joined_at).toLocaleDateString("en-US",{month:"short",year:"numeric"})).toUpperCase()):null,
-          // NEW MESSAGE — blinking Team 365 blue button under the joined date (PT messages)
-          showMsgAlert&&React.createElement("button",{onClick:e=>{e.stopPropagation();openMsgAlert();},"data-msg-alert":"1",className:"t365-blink",style:{position:"absolute",left:0,top:"100%",marginTop:8,background:"#1d9bf0",color:"#fff",border:"none",borderRadius:12,fontFamily:"inherit",fontSize:8,letterSpacing:"0.14em",fontWeight:700,padding:"5px 11px",cursor:"pointer",whiteSpace:"nowrap"}},"NEW MESSAGE")
+          memberData?.joined_at?React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:7,color:"#777",letterSpacing:"0.04em",marginTop:3,whiteSpace:"nowrap"}},("JOINED "+new Date(memberData.joined_at).toLocaleDateString("en-US",{month:"short",year:"numeric"})).toUpperCase()):null
         ),
         React.createElement("div",{style:{position:"absolute",left:0,right:0,marginTop:18,display:"flex",flexDirection:"column",alignItems:"center",pointerEvents:"none"}},
-          memberPhoto
-            ?React.createElement("img",{src:memberPhoto,alt:"profile",style:{display:"block",width:62,height:62,borderRadius:"50%",objectFit:"cover",border:"1px solid #1d9bf0",marginBottom:8,pointerEvents:"auto"}})
-            :React.createElement("div",{style:{width:62,height:62,borderRadius:"50%",background:"#1a1a1a",border:"1px solid #1d9bf0",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#777",marginBottom:8}},memberInit),
+          // Profile image = the way into PT messages. With a new message it turns Team 365 blue
+          // and NEW blinks inside it (same 62px circle).
+          React.createElement("div",{onClick:canOpenMsgs?openMsgAlert:undefined,"data-avatar":"1","data-msg-alert":showMsgAlert?"1":undefined,role:canOpenMsgs?"button":undefined,"aria-label":showMsgAlert?"New message — open messages":(canOpenMsgs?"Open messages":undefined),
+              style:{position:"relative",width:62,height:62,marginBottom:8,pointerEvents:"auto",cursor:canOpenMsgs?"pointer":"default"}},
+            memberPhoto
+              ?React.createElement("img",{src:memberPhoto,alt:"profile",style:{display:"block",width:62,height:62,borderRadius:"50%",objectFit:"cover",border:"1px solid #1d9bf0",pointerEvents:"auto"}})
+              :React.createElement("div",{style:{width:62,height:62,borderRadius:"50%",background:"#1a1a1a",border:"1px solid #1d9bf0",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#777"}},memberInit),
+            showMsgAlert&&React.createElement("div",{style:{position:"absolute",inset:0,borderRadius:"50%",background:"#1d9bf0",border:"1px solid #1d9bf0",display:"flex",alignItems:"center",justifyContent:"center"}},
+              React.createElement("span",{className:"t365-blink",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:"0.12em",color:"#fff",lineHeight:1,paddingLeft:"0.12em"}},"NEW"))
+          ),
           React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:9,fontWeight:700,color:"#fff",textAlign:"center",letterSpacing:"0.1em",lineHeight:1.3,whiteSpace:"nowrap"}},"LAMONT TEAM 365"),
           React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:5,color:"#999",textAlign:"center",marginTop:4,letterSpacing:"0.12em",fontWeight:700,whiteSpace:"nowrap"}},"EVERYDAY. ALL YEAR ROUND."),
           React.createElement("div",{onClick:e=>{e.stopPropagation();window.location.reload();},title:"Refresh",style:{marginTop:10,position:"relative",top:5,opacity:0.4,cursor:"pointer",pointerEvents:"auto",display:"flex",alignItems:"center",justifyContent:"center",gap:6}},
