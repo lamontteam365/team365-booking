@@ -302,7 +302,11 @@ html,body{background:#080808;min-height:100vh}
 .adm-mc-detail span{color:#aaa}
 @keyframes t365blink{0%,100%{opacity:1}50%{opacity:.35}}
 .t365-blink{animation:t365blink 1.2s ease-in-out infinite}
-@media (prefers-reduced-motion:reduce){.t365-blink{animation:none}}
+@keyframes t365ring{0%,100%{border-color:#1d9bf0}50%{border-color:#fff}}
+@keyframes t365ringtext{0%,100%{color:#1d9bf0}50%{color:#fff}}
+.t365-ring{animation:t365ring 1.2s ease-in-out infinite}
+.t365-ringtext{animation:t365ringtext 1.2s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.t365-blink,.t365-ring,.t365-ringtext{animation:none}}
 .member-profile-overlay{position:fixed;inset:0;background:#080808;z-index:60;display:flex;flex-direction:column;max-width:480px;margin:0 auto;overflow-y:auto;animation:su .2s ease}
 @keyframes su{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
 .mp-hdr{display:flex;align-items:center;justify-content:space-between;padding:20px 20px 0;flex-shrink:0}
@@ -13533,14 +13537,16 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         ),
         React.createElement("div",{style:{position:"absolute",left:0,right:0,marginTop:18,display:"flex",flexDirection:"column",alignItems:"center",pointerEvents:"none",zIndex:2}},
           // Profile photo = the way into messages (tap to open, tap again to close). With a new
-          // message it turns Team 365 blue and NEW blinks inside it (same 62px circle).
+          // message its outline blinks blue/white with NEW / MESSAGE inside (same 62px circle).
           React.createElement("div",{onClick:e=>{e.stopPropagation();toggleMsgs();},"data-avatar":"1","data-msg-alert":showMsgAlert?"1":undefined,"data-msg-open":msgOpen?"1":undefined,role:canOpenMsgs?"button":undefined,"aria-label":canOpenMsgs?(msgOpen?"Close messages":(showMsgAlert?"New message — open messages":"Open messages")):undefined,
               style:{position:"relative",width:62,height:62,marginBottom:8,pointerEvents:"auto",cursor:canOpenMsgs?"pointer":"default"}},
             memberPhoto
               ?React.createElement("img",{src:memberPhoto,alt:"profile",style:{display:"block",width:62,height:62,borderRadius:"50%",objectFit:"cover",border:"1px solid #1d9bf0",pointerEvents:"auto"}})
               :React.createElement("div",{style:{width:62,height:62,borderRadius:"50%",background:"#1a1a1a",border:"1px solid #1d9bf0",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#777"}},memberInit),
-            showMsgAlert&&React.createElement("div",{style:{position:"absolute",inset:0,borderRadius:"50%",background:"#1d9bf0",border:"1px solid #1d9bf0",display:"flex",alignItems:"center",justifyContent:"center"}},
-              React.createElement("span",{className:"t365-blink",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.14em",color:"#fff",lineHeight:1,paddingLeft:"0.14em"}},"NEW"))
+            // New message: the photo stays, its outline blinks blue ⇄ white, and NEW / MESSAGE blink with it
+            showMsgAlert&&React.createElement("div",{className:"t365-ring",style:{position:"absolute",inset:-1,borderRadius:"50%",border:"2px solid #1d9bf0",background:memberPhoto?"rgba(8,8,8,0.55)":"#1a1a1a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}},
+              React.createElement("span",{className:"t365-ringtext",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.14em",color:"#1d9bf0",lineHeight:1,paddingLeft:"0.14em"}},"NEW"),
+              React.createElement("span",{className:"t365-ringtext",style:{fontFamily:"'Syncopate',sans-serif",fontSize:5,fontWeight:700,letterSpacing:"0.12em",color:"#1d9bf0",lineHeight:1,paddingLeft:"0.12em"}},"MESSAGE"))
           ),
           React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:9,fontWeight:700,color:"#fff",textAlign:"center",letterSpacing:"0.1em",lineHeight:1.3,whiteSpace:"nowrap"}},"LAMONT TEAM 365"),
           React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:5,color:"#999",textAlign:"center",marginTop:4,letterSpacing:"0.12em",fontWeight:700,whiteSpace:"nowrap"}},"EVERYDAY. ALL YEAR ROUND."),
