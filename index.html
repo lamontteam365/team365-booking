@@ -8862,11 +8862,7 @@ function MemberWorkoutsView({session,memberData,ttl}){
     React.createElement("div",{className:"well-hdr"},React.createElement("div",{className:"well-title"},ttl||"PT PROGRAM")),
     React.createElement("div",{className:"week-nav",style:{paddingTop:0}},
       React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7))},"‹"),
-      React.createElement("div",{className:"wk-label"},
-        // TODAY — only when away from today; sits to the right of the centred label so the label never moves
-        React.createElement("span",{style:{position:"relative",whiteSpace:"nowrap"}},weekLabel,
-          !isToday(dayDates[selDay])&&React.createElement("button",{onClick:()=>{const m=mondayOf(new Date());setWeekStart(w=>toDS(w)===toDS(m)?w:m);setSelDay(()=>{const d=new Date().getDay();return d===0?6:d-1;});},
-            style:{position:"absolute",left:"100%",top:"50%",transform:"translateY(-50%)",marginLeft:10,background:"none",border:"none",fontFamily:"inherit",fontSize:9,letterSpacing:"0.14em",fontWeight:600,color:"#1d9bf0",cursor:"pointer",padding:"6px 4px",whiteSpace:"nowrap"}},"TODAY"))),
+      React.createElement("div",{className:"wk-label"},weekLabel),
       React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,7))},"›")
     ),
     React.createElement("div",{className:"day-strip"},
@@ -8877,7 +8873,10 @@ function MemberWorkoutsView({session,memberData,ttl}){
       ))
     ),
     React.createElement("div",{style:{padding:"14px 16px 80px"}},
-      React.createElement("div",{className:"day-hdr",style:{textAlign:"center",marginBottom:12}},React.createElement("span",null,MW_DAY_FULL[dk])),
+      React.createElement("div",{className:"day-hdr",style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}},React.createElement("span",null,MW_DAY_FULL[dk]),
+        // GO TO TODAY — only when away from today; jumps back to this week with today selected
+        !isToday(dayDates[selDay])&&React.createElement("button",{onClick:()=>{const m=mondayOf(new Date());setWeekStart(w=>toDS(w)===toDS(m)?w:m);setSelDay(()=>{const d=new Date().getDay();return d===0?6:d-1;});},
+          style:{background:"none",border:"none",fontFamily:"inherit",fontSize:9,letterSpacing:"0.14em",fontWeight:600,color:"#1d9bf0",cursor:"pointer",padding:"6px 0",margin:"-6px 0",lineHeight:"inherit",whiteSpace:"nowrap"}},"GO TO TODAY")),
       loading?React.createElement("div",{className:"sp-loading"},"LOADING...")
       :React.createElement(React.Fragment,null,
         exercises.length===0&&React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.08em",textAlign:"center",marginBottom:4}},"No workout set for this day \u2014 use the space below as your journal."),
