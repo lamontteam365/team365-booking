@@ -560,21 +560,18 @@ function generatePDF(d){
   doc.text("Lamont Team 365 · New Brighton · Christchurch 8061 · www.lamontcollective.com",W/2,285,{align:"center"});
   return doc.output("datauristring");
 }
-async function sendWelcomeEmail(to,firstName,tempPw){
-  try{const p=new URLSearchParams({action:"welcome",to,firstName,tempPassword:tempPw});await fetch(APPS_SCRIPT_URL+"?"+p.toString(),{method:"GET",mode:"no-cors"});}catch(e){}
-}
+// 1 Oct 2026: email moved off Google Apps Script to Namecheap (team365@lamontcollective.com) via Supabase edge functions.
+// The welcome email is sent by dynamic-api memberUpsert (sendWelcome:true).
 async function sendDDEmail(to,name,pdfData,d){
   try{
-    await fetch(APPS_SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},
+    await fetch(`${SB_URL}/functions/v1/dynamic-api`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
       body:JSON.stringify({action:"directDebit",to,name,planName:d.planName,term:d.term,
         freqAmt:d.freqAmt,frequency:d.frequency,endDate:d.endDate,startDate:d.date,
         weeklyAmt:d.weeklyAmt,bankAccount:`${d.bankBank}-${d.bankBranch}-${d.bankAccount}-${d.bankSuffix}`,
         bankName:d.bankName,phone:d.phone,pdfBase64:pdfData.split(",")[1]})});
   }catch(e){}
 }
-async function logHealthToSheets(data){
-  try{const p=new URLSearchParams({action:"logHealth",...data});await fetch(APPS_SCRIPT_URL+"?"+p.toString(),{method:"GET",mode:"no-cors"});}catch(e){}
-}
+// The health log is written by dynamic-api memberUpsert (healthLog) to form_submissions.
 async function handleSubmit(){
   const errEl=document.getElementById("err-msg");
   errEl.textContent="";
@@ -641,7 +638,7 @@ async function handleSubmit(){
   };
   let ok=false,tempPw="",isExisting=false;
   try{
-    const ur=await fetch(`${SB_URL}/functions/v1/dynamic-api`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({action:"memberUpsert",email,data:regData})});
+    const ur=await fetch(`${SB_URL}/functions/v1/dynamic-api`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({action:"memberUpsert",email,data:regData,sendWelcome:true,firstName,healthLog:{name,email,phone,dob,membershipType,emergencyName:eName,emergencyPhone:ePhone,parqHeart:parqAnswers[0]||"",parqChestActivity:parqAnswers[1]||"",parqChestRest:parqAnswers[2]||"",parqDizziness:parqAnswers[3]||"",parqJoint:parqAnswers[4]||"",parqBloodPressure:parqAnswers[5]||"",parqOther:parqAnswers[6]||"",medicalConditions:medCond,medications:meds,fitnessLevel,healthDeclaration,mediaConsent,registrationDate:today()}})});
     const uj=await ur.json().catch(()=>({}));
     ok=!!(uj&&uj.ok);isExisting=!!(uj&&uj.existing);tempPw=(uj&&uj.tempPw)||"";
   }catch(e){ok=false;}
@@ -659,16 +656,7 @@ async function handleSubmit(){
     frequency:selectedFreq.charAt(0).toUpperCase()+selectedFreq.slice(1),
     date:today(),endDate:endStr,signature:sigData
   };
-  if(!isExisting) sendWelcomeEmail(email,firstName,tempPw);
-  logHealthToSheets({
-    name,email,phone,dob,membershipType,
-    emergencyName:eName,emergencyPhone:ePhone,
-    parqHeart:parqAnswers[0]||"",parqChestActivity:parqAnswers[1]||"",
-    parqChestRest:parqAnswers[2]||"",parqDizziness:parqAnswers[3]||"",
-    parqJoint:parqAnswers[4]||"",parqBloodPressure:parqAnswers[5]||"",
-    parqOther:parqAnswers[6]||"",medicalConditions:medCond,medications:meds,
-    fitnessLevel,healthDeclaration,mediaConsent,registrationDate:today()
-  });
+  // Welcome email + health log are handled by memberUpsert (sendWelcome/healthLog).
   btn.textContent="GENERATING PDF...";
   const pdfUri=generatePDF(ddData);
   await sendDDEmail(email,name,pdfUri,ddData);

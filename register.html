@@ -111,12 +111,8 @@ const today = ()=>{const d=new Date();return`${d.getDate()} ${MONTHS[d.getMonth(
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz5cruljVDUVScwm14Sj1z5_6cRrNK9cgOaq7Tx8P9LfPAEI7p_kx8ZJnaghF_SmU46Fw/exec";
 // Concession sign-up: register.html?plan=concession sets up a 10-class card (Classes access + concession flag).
 const IS_CONCESSION = (new URLSearchParams(location.search).get("plan")||"").toLowerCase()==="concession";
-async function sendWelcomeEmailViaScript(to, firstName, tempPassword) {
-  try {
-    const params = new URLSearchParams({action:"welcome",to,firstName,tempPassword});
-    await fetch(APPS_SCRIPT_URL + "?" + params.toString(), {method:"GET",mode:"no-cors"});
-  } catch(e) {}
-}
+// 1 Oct 2026: email moved off Google Apps Script to Namecheap (team365@lamontcollective.com) via Supabase edge functions.
+// The welcome email is sent by dynamic-api memberUpsert (sendWelcome:true).
 // The signed form is emailed as a PDF (member + Team 365). The signature itself is never stored.
 function getSigData(){
   const off=document.createElement("canvas");
@@ -182,12 +178,7 @@ async function emailHealthPDF(email,name,pdfUri){
     const j=await r.json().catch(()=>({}));return !!(j&&j.ok);
   }catch(e){return false;}
 }
-async function logHealthToSheets(data) {
-  try {
-    const params = new URLSearchParams({action:"logHealth",...data});
-    await fetch(APPS_SCRIPT_URL + "?" + params.toString(), {method:"GET",mode:"no-cors"});
-  } catch(e) {}
-}
+// The health log is written by dynamic-api memberUpsert (healthLog) to form_submissions.
 const PARQ = [
   "Has your doctor ever said that you have a heart condition and that you should only do physical activity recommended by a doctor?",
   "Do you feel pain in your chest when you do physical activity?",
@@ -317,14 +308,13 @@ async function handleSubmit(){
   try{
     const upsertData = IS_CONCESSION ? {...regData, concession:true, membership_type:""} : {...regData, client_type:"PT"};
     const accessTabs = IS_CONCESSION ? ["community","book"] : ["community"];
-    const ur = await fetch(`${SB_URL}/functions/v1/dynamic-api`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({action:"memberUpsert",email,data:upsertData,defaults:{workouts_enabled:true},accessTabs})});
+    const ur = await fetch(`${SB_URL}/functions/v1/dynamic-api`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({action:"memberUpsert",email,data:upsertData,defaults:{workouts_enabled:true},accessTabs,sendWelcome:true,firstName,healthLog:healthData})});
     const uj = await ur.json().catch(()=>({}));
     ok = !!(uj&&uj.ok); isExisting = !!(uj&&uj.existing); tempPw = (uj&&uj.tempPw)||"";
   }catch(e){ ok=false; }
   if(ok){
     // New health-screening signups get the welcome email + Notice Board/Workouts access (created server-side).
-    if(!isExisting) sendWelcomeEmailViaScript(email, firstName, tempPw);
-    logHealthToSheets(healthData);
+    // Welcome email (new signups only) + health log are handled by memberUpsert.
     btn.textContent="EMAILING YOUR COPY...";
     let pdfUri="";
     try{pdfUri=generateHealthPDF({name,email,phone,dob,eName,ePhone,parq:PARQ.map((_,i)=>parqAnswers[i]||""),medCond,meds,fitnessLevel,healthDeclaration,mediaConsent,signature:sigData,date:regDate});}catch(e){pdfUri="";}

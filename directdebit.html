@@ -462,10 +462,10 @@ async function sendDDEmail(to, name, pdfData, data) {
       phone: data.phone,
       pdfBase64: pdfData.split(",")[1]
     };
-    await fetch(APPS_SCRIPT_URL, {
+    // 1 Oct 2026: email moved off Google Apps Script to Namecheap (team365@lamontcollective.com) via Supabase edge functions.
+    await fetch(`${SB_URL}/functions/v1/dynamic-api`, {
       method: "POST",
-      mode: "no-cors",
-      headers: {"Content-Type": "text/plain"},
+      headers: {"apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}`, "Content-Type": "application/json"},
       body: JSON.stringify(payload)
     });
   } catch(e){ console.log("Email error:",e); }

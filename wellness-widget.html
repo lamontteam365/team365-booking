@@ -189,11 +189,12 @@ function isPastSlot(date,time){
 async function sbGet(t,q=""){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
 async function sbPost(t,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
 // ── Notify ────────────────────────────────────────────────────────────────────
-async function notifyAdmin(data){
-  try{const p=new URLSearchParams({action:"guestBooking",...data});await fetch(APPS_URL+"?"+p.toString(),{method:"GET",mode:"no-cors"});}catch{}
-}
+// ── Notify ── 1 Oct 2026: email moved off Google Apps Script to Namecheap (team365@lamontcollective.com) via Supabase edge functions.
+// booking-confirm re-reads the booking, emails the guest once (honouring the
+// BOOKING CONFIRMATIONS switch and opt-outs) and tells support@ once.
+async function notifyAdmin(data){ /* sent server-side together with notifyGuest */ }
 async function notifyGuest(data){
-  try{const p=new URLSearchParams({action:"guestConfirm",...data});await fetch(APPS_URL+"?"+p.toString(),{method:"GET",mode:"no-cors"});}catch{}
+  try{await fetch(`${SB_URL}/functions/v1/booking-confirm`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({guest:true,email:data.guestEmail,bookingRef:data.bookingRef,bookingType:data.bookingType,payment:data.payment})});}catch(e){}
 }
 // ── Wellness Widget (guest-only) ──────────────────────────────────────────────
 function WellnessWidget(){

@@ -536,7 +536,7 @@ function sendBookingConfirm({ email, time, dates, type }) {
     fetch(`${SB_URL}/functions/v1/booking-confirm`, {
       method: "POST",
       headers: { "apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ email, time, dates, type: type || "class" })
+      body: JSON.stringify({ email, time, dates, type: type || "class", notifyAdmin: type === "wellness" })
     }).catch(() => {});
   } catch (e) {}
 }
@@ -628,6 +628,9 @@ function BringAFriend({email,showToast,widgetUrl,unlimited}){
   );
 }
 async function notifyWellnessBooking(name, email, dateKey, time) {
+  // 1 Oct 2026: email moved off Google Apps Script to Namecheap (team365@lamontcollective.com) via Supabase edge functions.
+  // support@ is now told by booking-confirm (notifyAdmin:true in sendBookingConfirm).
+  return;
   try {
     const d = new Date(dateKey + "T12:00:00");
     const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -642,7 +645,6 @@ async function notifyWellnessBooking(name, email, dateKey, time) {
       dateLabel,
       timeLabel
     });
-    await fetch(APPS_SCRIPT_URL + "?" + params.toString(), {method:"GET", mode:"no-cors"});
   } catch(e) { console.log("Notify error:", e); }
 }
 const SB_URL = "https://xczwmexavysvljmobbgv.supabase.co";
@@ -676,6 +678,21 @@ async function authRefresh(){
 }
 function authLogout(){setAuthToken(null);try{localStorage.removeItem("t365-refresh");localStorage.removeItem("t365-exp");}catch(e){}}
 async function migrateLogin(email,password){try{const r=await fetch(`${SB_URL}/functions/v1/dynamic-api`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({email,password})});const j=await r.json().catch(()=>({}));if(j&&j.ok)return{ok:true};if(j&&j.error==="wrong_password")return{wrong:true};return{error:(j&&j.error)||"failed"};}catch(e){return{error:"network"};}}
+// ── On-screen polling (1 Oct 2026) ─────────────────────────────────────────
+// Background refreshes (other members' bookings, community posts) run only while
+// the app is actually on screen, every `ms`. When the app comes back to the
+// front it refreshes straight away (unless it did so in the last 15 s), so what
+// people see is never older than it would have been. Cuts Supabase data usage:
+// a hidden tab or locked phone no longer downloads anything.
+function onScreenPoll(fn,ms){
+  let last=Date.now();
+  const shown=()=>typeof document==="undefined"||document.visibilityState!=="hidden";
+  const run=()=>{last=Date.now();try{fn();}catch(e){}};
+  const id=setInterval(()=>{if(shown())run();},ms);
+  const onVis=()=>{if(shown()&&Date.now()-last>15000)run();};
+  document.addEventListener("visibilitychange",onVis);
+  return ()=>{clearInterval(id);document.removeEventListener("visibilitychange",onVis);};
+}
 async function sbGet(t,q=""){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
 async function sbPost(t,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
 async function sbPatch(t,q,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{method:"PATCH",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
@@ -1879,13 +1896,11 @@ function MemberProfileOverlay({onGrantSubscriber,member,bookings,onClose,current
           onClick:async()=>{
             setResettingPw(true);setPwResetOk("");
             const tmpPw="T365"+String(Math.floor(1000+Math.random()*9000));
-            let srvOk=false;
-            try{const sr=await fetch(`${SB_URL}/functions/v1/dynamic-api`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${AUTH_TOKEN||SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({action:"adminSetPassword",email:member.email,password:tmpPw})});const sj=await sr.json().catch(()=>({}));srvOk=!!(sj&&sj.ok);}catch(e){}
+            let srvOk=false,mailed=false;
+            // The reset email is sent by dynamic-api itself (notify:true) — 1 Oct 2026: email moved off Google Apps Script to Namecheap (team365@lamontcollective.com) via Supabase edge functions.
+            try{const sr=await fetch(`${SB_URL}/functions/v1/dynamic-api`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${AUTH_TOKEN||SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({action:"adminSetPassword",email:member.email,password:tmpPw,notify:true,firstName:member.name?member.name.split(" ")[0]:"there"})});const sj=await sr.json().catch(()=>({}));srvOk=!!(sj&&sj.ok);mailed=!!(sj&&sj.emailed);}catch(e){}
             if(!srvOk){setResettingPw(false);setPwResetOk("Reset failed. Please try again.");return;}
-            const firstName=member.name?member.name.split(" ")[0]:"there";
-            const params=new URLSearchParams({action:"adminReset",to:member.email,firstName,tempPassword:tmpPw});
-            try{await fetch(APPS_SCRIPT_URL+"?"+params.toString(),{method:"GET",mode:"no-cors"});}catch(e){}
-            setResettingPw(false);setPwResetOk(`Password reset. Temp: ${tmpPw} — email sent to member.`);
+            setResettingPw(false);setPwResetOk(mailed?`Password reset. Temp: ${tmpPw} — email sent to member.`:`Password reset. Temp: ${tmpPw} — the email did not send, so give them this password yourself.`);
           },
           style:{width:"100%",background:"transparent",border:"1px solid #2a3a4a",color:"#4a8aaa",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.15em",padding:"14px",borderRadius:0,cursor:"pointer",marginBottom:8}
         },resettingPw?"SENDING...":"RESET PASSWORD"),
@@ -2045,7 +2060,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
   const [tagQuery,setTagQuery]=useState("");
   const [showTags,setShowTags]=useState(false);
   const MAX_CHARS=300;
-  useEffect(()=>{loadPosts();const id=setInterval(loadPosts,30000);return()=>clearInterval(id);},[]);
+  useEffect(()=>{loadPosts();return onScreenPoll(loadPosts,120000);},[]);
   async function loadPosts(){
     const data=await sbGet("posts","select=id,author_email,author_name,content,created_at,likes,pinned,reply_to,reply_to_name&order=pinned.desc.nullslast,created_at.desc&limit=80");
     setPosts(data||[]);setLoading(false);
@@ -4128,9 +4143,11 @@ function InviteForm(props){
     setSending(true);setMsg("");
     if(p.appsScript){
       try{
-        const params=new URLSearchParams({action:p.action||"healthInvite",to:email.trim(),firstName:""});
-        await fetch(url+"?"+params.toString(),{method:"GET",mode:"no-cors"});
-        setMsg("✓ Sent to "+email.trim());setEmail("");
+        // Admin-only server action — 1 Oct 2026: email moved off Google Apps Script to Namecheap (team365@lamontcollective.com) via Supabase edge functions.
+        const r=await fetch(`${SB_URL}/functions/v1/dynamic-api`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${AUTH_TOKEN||SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({action:"adminInvite",kind:p.action||"healthInvite",to:email.trim()})});
+        const j=await r.json().catch(()=>({}));
+        if(j&&j.ok){setMsg("✓ Sent to "+email.trim());setEmail("");}
+        else setMsg("Error: "+((j&&j.error)||"Could not send"));
       }catch(e){setMsg("Error: "+e.message);}
       setSending(false);return;
     }
@@ -12405,7 +12422,7 @@ function App(){
       setReady(true);
     })();
   },[]);
-  useEffect(()=>{const id=setInterval(refreshBookings,30000);return()=>clearInterval(id);},[]);
+  useEffect(()=>onScreenPoll(refreshBookings,120000),[]);
   // Keep the auth session alive: proactively refresh the access token before it expires,
   // and whenever the tab/app is brought back to the foreground. Stops members being logged out.
   useEffect(()=>{
@@ -12435,6 +12452,17 @@ function App(){
     const from=toDS(new Date());const to=bookingHorizonDS();
     sbGet("wellness_bookings",`email=eq.${encodeURIComponent(session.email)}&date_key=gte.${from}&date_key=lte.${to}&select=email,name,date_key,time`).then(data=>setMyWellness(data||[]));
   },[session]);
+  // Book-time check: re-read just this class's bookings from the database so the
+  // "Class is full" check never relies on the list from the last background
+  // refresh. If the read fails (sbGet answers [] on any error) the list already
+  // on screen is used, exactly as before.
+  async function freshBksFor(dk,time){
+    const local=getBksFor(dk,time);
+    const fresh=await sbGet("bookings",`date_key=eq.${dk}&time=eq.${encodeURIComponent(time)}&select=id,email,name,date_key,time,session_type,checked_in,excused,whanau`);
+    if(!fresh||!fresh.length)return local;
+    setBookings(prev=>[...prev.filter(b=>!(b.date_key===dk&&b.time===time)),...fresh]);
+    return fresh;
+  }
   async function refreshBookings(){
     const from=toDS(new Date());const to=bookingHorizonDS();
     const data=await sbGet("bookings",`date_key=gte.${from}&date_key=lte.${to}&select=id,email,name,date_key,time,session_type,checked_in,excused,whanau`);
@@ -12643,7 +12671,7 @@ function App(){
     const freshLimitData=await sbGet("class_limits",`time_slot=eq.${encodeURIComponent(time)}&date_key=eq.${selDK}&select=max_spots`);
     const freshMax=freshLimitData&&freshLimitData.length?freshLimitData[0].max_spots:MAX_SPOTS;
     if(freshMax===0){showToast("Class is not available");setBkBusy(p=>({...p,[lk]:false}));return;}
-    const list=getBksFor(selDK,time);const maxSp=Math.min(getMaxSpots(time,selDK),freshMax);
+    const list=await freshBksFor(selDK,time);const maxSp=Math.min(getMaxSpots(time,selDK),freshMax);
     if(list.length>=maxSp){showToast("Class is full");setBkBusy(p=>({...p,[lk]:false}));return;}
     if(list.some(b=>b.email===session.email)){showToast("Already booked");setBkBusy(p=>({...p,[lk]:false}));return;}
     const sessionType=classTypeOf(selDK,time);
@@ -12691,7 +12719,7 @@ function App(){
       const freshLimitData=await sbGet("class_limits",`time_slot=eq.${encodeURIComponent(time)}&date_key=eq.${dk}&select=max_spots`);
       const freshMax=freshLimitData&&freshLimitData.length?freshLimitData[0].max_spots:MAX_SPOTS;
       if(freshMax===0){skipped.push(d);continue;}
-      const list=getBksFor(dk,time);
+      const list=await freshBksFor(dk,time);
       const maxSp=Math.min(getMaxSpots(time,dk),freshMax);
       if(list.some(b=>b.email===session.email))continue;
       if(list.length>=maxSp){skipped.push(d);continue;}
