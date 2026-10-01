@@ -8854,13 +8854,17 @@ function PtThread({memberEmail,selfEmail,selfName,asStaff,isMaster,title}){
 }
 // The messages screen — opens from (and closes with) the profile photo.
 // Members: their own conversation with Team 365. Admins: every conversation, most
-// recent first, unread in blue, plus a search to start one with any member.
+// recent first, unread in blue. Tapping a name drops that conversation open under it;
+// tapping the name again closes it (one open at a time). "New message" drops down an
+// A–Z list of every member who can be messaged (typing narrows it).
 function MessagesView({session,isAdmin,isMaster,memberPhotos}){
   const me=String((session&&session.email)||"").toLowerCase();
-  const [sel,setSel]=useState(null);
+  const [openEm,setOpenEm]=useState(null);
+  const [extra,setExtra]=useState(null);      // picked from "New message" but no conversation yet
   const [threads,setThreads]=useState(null);
   const [people,setPeople]=useState([]);
   const [q,setQ]=useState("");
+  const [drop,setDrop]=useState(false);
   async function loadThreads(){
     const rows=await sbGet("pt_messages","select=member_email,sender_name,from_staff,body,created_at,staff_read&order=created_at.desc&limit=2000");
     const map={};
@@ -8879,7 +8883,9 @@ function MessagesView({session,isAdmin,isMaster,memberPhotos}){
       const mp=await sbGet("members_public","select=email,name");
       let subs=[];try{subs=await sbGet("subscribers","select=email");}catch(e){}
       const ss=new Set((Array.isArray(subs)?subs:[]).map(x=>String(x.email||"").toLowerCase()));
-      setPeople((Array.isArray(mp)?mp:[]).map(m=>({email:String(m.email||"").toLowerCase(),name:m.name||m.email||""})).filter(m=>m.email&&m.email!==me&&!ss.has(m.email)));
+      setPeople((Array.isArray(mp)?mp:[]).map(m=>({email:String(m.email||"").toLowerCase(),name:m.name||m.email||""}))
+        .filter(m=>m.email&&m.email!==me&&!ss.has(m.email))
+        .sort((x,y)=>x.name.localeCompare(y.name,undefined,{sensitivity:"base"})));
     })();
     return ()=>{off();window.removeEventListener("t365-msgs-changed",h);};
   },[isAdmin]);
@@ -8896,41 +8902,47 @@ function MessagesView({session,isAdmin,isMaster,memberPhotos}){
     return wrap(head("MESSAGES","TAP YOUR PHOTO TO CLOSE"),
       body(React.createElement(PtThread,{memberEmail:me,selfEmail:me,selfName:session.name,asStaff:false})));
   }
-  if(sel){
-    const nm=nameFor(sel);
-    return wrap(head("MESSAGES","TAP YOUR PHOTO TO CLOSE"),
-      body(
-        React.createElement("button",{onClick:()=>setSel(null),style:{background:"none",border:"none",color:PT_BLUE,fontFamily:"inherit",fontSize:10,letterSpacing:"0.14em",fontWeight:700,cursor:"pointer",padding:"0 0 12px"}},"‹ ALL MESSAGES"),
-        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:14}},avatar(sel,nm,40),
-          React.createElement("div",null,React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:"0.06em",color:"#fff"}},String(nm).toUpperCase()),
-            React.createElement("div",{style:{fontSize:10,color:"#666"}},sel))),
-        React.createElement(PtThread,{key:sel,memberEmail:sel,selfEmail:me,selfName:session.name,asStaff:true,isMaster,title:nm})));
+  function toggle(em){setOpenEm(cur=>cur===em?null:em);}
+  function pick(em){
+    setQ("");setDrop(false);
+    if(!(threads||[]).some(t=>t.email===em))setExtra(em);
+    setOpenEm(em);
+    setTimeout(()=>{try{const el=document.querySelector('[data-thread="'+em+'"]');if(el)el.scrollIntoView({behavior:"smooth",block:"start"});}catch(e){}},120);
   }
   const ql=q.trim().toLowerCase();
-  const matches=ql?people.filter(m=>m.name.toLowerCase().includes(ql)||m.email.includes(ql)).slice(0,8):[];
-  const list=(threads||[]).slice().sort((a,b)=>new Date(b.last.created_at)-new Date(a.last.created_at));
+  const choices=ql?people.filter(m=>m.name.toLowerCase().includes(ql)||m.email.includes(ql)):people;
+  let list=(threads||[]).slice().sort((a,b)=>new Date(b.last.created_at)-new Date(a.last.created_at));
+  if(extra&&!list.some(t=>t.email===extra))list=[{email:extra,last:null,unread:0,memberName:""},...list];
   return wrap(head("MESSAGES","TAP YOUR PHOTO TO CLOSE"),
     body(
-      React.createElement("input",{value:q,onChange:e=>setQ(e.target.value),placeholder:"New message — search members…","data-msg-search":"1",
-        style:{width:"100%",background:"#141414",border:"1px solid #262626",borderRadius:8,color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:13,padding:"10px 12px",outline:"none",boxSizing:"border-box"}}),
-      ql&&React.createElement("div",{style:{border:"1px solid #262626",borderTop:"none",marginBottom:4}},
-        matches.length===0?React.createElement("div",{style:{fontSize:11,color:"#555",padding:"10px 12px"}},"No members match")
-        :matches.map(m=>React.createElement("div",{key:m.email,onClick:()=>{setSel(m.email);setQ("");},style:{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",cursor:"pointer",borderTop:"1px solid #1a1a1a"}},
+      // New message — tap for an A–Z drop-down of every member; typing narrows it
+      React.createElement("div",{style:{position:"relative"}},
+        React.createElement("input",{value:q,onChange:e=>{setQ(e.target.value);setDrop(true);},onFocus:()=>setDrop(true),onBlur:()=>setTimeout(()=>setDrop(false),200),
+          placeholder:"New message — choose a member…","data-msg-search":"1",
+          style:{width:"100%",background:"#141414",border:"1px solid "+(drop?PT_BLUE:"#262626"),borderRadius:drop?"8px 8px 0 0":8,color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:13,padding:"10px 34px 10px 12px",outline:"none",boxSizing:"border-box"}}),
+        React.createElement("div",{onMouseDown:e=>{e.preventDefault();setDrop(d=>!d);},style:{position:"absolute",right:12,top:10,color:drop?PT_BLUE:"#666",fontSize:13,lineHeight:1,cursor:"pointer",transform:drop?"none":"rotate(-90deg)",transition:"transform .2s"}},"▾")
+      ),
+      drop&&React.createElement("div",{"data-msg-dropdown":"1",style:{border:"1px solid "+PT_BLUE,borderTop:"none",borderRadius:"0 0 8px 8px",background:"#0e0e0e",maxHeight:260,overflowY:"auto",overscrollBehavior:"contain",WebkitOverflowScrolling:"touch"}},
+        choices.length===0?React.createElement("div",{style:{fontSize:11,color:"#555",padding:"10px 12px"}},people.length?"No members match":"Loading members…")
+        :choices.map(m=>React.createElement("div",{key:m.email,"data-pick":m.email,onMouseDown:e=>e.preventDefault(),onClick:()=>pick(m.email),style:{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",cursor:"pointer",borderTop:"1px solid #1a1a1a"}},
           avatar(m.email,m.name,28),
-          React.createElement("div",null,React.createElement("div",{style:{fontSize:13,color:"#ddd"}},m.name),React.createElement("div",{style:{fontSize:10,color:"#555"}},m.email))))),
+          React.createElement("div",{style:{minWidth:0}},React.createElement("div",{style:{fontSize:13,color:"#ddd"}},m.name),React.createElement("div",{style:{fontSize:10,color:"#555",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.email))))),
       React.createElement("div",{style:{marginTop:16}},
         threads===null?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",textAlign:"center",padding:"10px 0"}},"LOADING…")
-        :list.length===0?React.createElement("div",{style:{fontSize:11,color:"#555",lineHeight:1.6,textAlign:"center",padding:"8px 4px"}},"No conversations yet. Search above to message a member.")
-        :list.map(t=>{const nm=nameFor(t.email);const un=t.unread>0;const l=t.last;
-          return React.createElement("div",{key:t.email,"data-thread":t.email,onClick:()=>setSel(t.email),
-              style:{display:"flex",alignItems:"center",gap:12,padding:"12px",marginBottom:8,background:"#141414",border:"1px solid "+(un?PT_BLUE:"#262626"),borderRadius:8,cursor:"pointer"}},
-            avatar(t.email,nm,36),
-            React.createElement("div",{style:{flex:1,minWidth:0}},
-              React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.06em",color:un?PT_BLUE:"#fff"}},String(nm).toUpperCase()),
-              React.createElement("div",{style:{fontSize:12,color:un?"#ccc":"#777",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},(l.from_staff?"Team 365: ":"")+l.body)),
-            React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5,flexShrink:0}},
-              React.createElement("div",{style:{fontSize:8,letterSpacing:"0.1em",color:"#666",fontWeight:600}},ptMsgWhen(l.created_at)),
-              un&&React.createElement("span",{style:{background:PT_BLUE,color:"#fff",fontSize:8,letterSpacing:"0.14em",fontWeight:700,padding:"3px 8px",borderRadius:10}},t.unread+" NEW")));
+        :list.length===0?React.createElement("div",{style:{fontSize:11,color:"#555",lineHeight:1.6,textAlign:"center",padding:"8px 4px"}},"No conversations yet. Choose a member above to start one.")
+        :list.map(t=>{const nm=nameFor(t.email);const un=t.unread>0;const l=t.last;const isOpen=openEm===t.email;
+          return React.createElement("div",{key:t.email,"data-thread":t.email,style:{marginBottom:8,background:"#141414",border:"1px solid "+((un||isOpen)?PT_BLUE:"#262626"),borderRadius:8,overflow:"hidden"}},
+            React.createElement("div",{"data-thread-head":"1",onClick:()=>toggle(t.email),style:{display:"flex",alignItems:"center",gap:12,padding:"12px",cursor:"pointer"}},
+              avatar(t.email,nm,36),
+              React.createElement("div",{style:{flex:1,minWidth:0}},
+                React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.06em",color:(un||isOpen)?PT_BLUE:"#fff"}},String(nm).toUpperCase()),
+                React.createElement("div",{style:{fontSize:12,color:un?"#ccc":"#777",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},l?((l.from_staff?"Team 365: ":"")+l.body):"New conversation")),
+              React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5,flexShrink:0}},
+                l&&React.createElement("div",{style:{fontSize:8,letterSpacing:"0.1em",color:"#666",fontWeight:600}},ptMsgWhen(l.created_at)),
+                un&&!isOpen&&React.createElement("span",{style:{background:PT_BLUE,color:"#fff",fontSize:8,letterSpacing:"0.14em",fontWeight:700,padding:"3px 8px",borderRadius:10}},t.unread+" NEW")),
+              React.createElement("div",{style:{color:isOpen?PT_BLUE:"#666",fontSize:13,lineHeight:1,transition:"transform .2s",transform:isOpen?"none":"rotate(-90deg)"}},"▾")),
+            isOpen&&React.createElement("div",{style:{borderTop:"1px solid #1f1f1f",padding:"12px",background:"#0a0a0a"}},
+              React.createElement(PtThread,{key:t.email,memberEmail:t.email,selfEmail:me,selfName:session.name,asStaff:true,isMaster,title:nm})));
         }))));
 }
 // ── Member Workouts Tab (read-only, member-facing) ────────────────────────────
