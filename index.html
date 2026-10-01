@@ -4130,6 +4130,94 @@ function MemberJourneyEditor({showToast}){
   ];
   return React.createElement(StepListEditor,{storageKey:"__MEMBER_JOURNEY__",defaultSteps:DEFAULTS,toastMsg:"Member journey saved ✓",showToast});
 }
+// ── Training & Coaching (PT) onboarding process ─────────────────────────────
+function PtProcessEditor({showToast}){
+  const DEFAULTS=[
+    {title:"SEND HEALTH SCREENING FORM",body:"Onboarding → Training & Coaching → Send Health Screening Form. Enter the client's email and tap Send. They receive a branded email with a link to the health screening form."},
+    {title:"CLIENT COMPLETES THE FORM",body:"Personal details, emergency contact, the PAR-Q health questions, medical conditions and medications, fitness level, media consent, and their signature."},
+    {title:"AUTOMATIC SETUP ON SUBMIT",body:"Their account is set up as a PT client with Notice Board (Community) access. New clients get a welcome email with their temporary app password and login link. Existing members just have their form updated."},
+    {title:"HEALTH SCREENING PDF",body:"A copy of the signed health screening PDF is emailed automatically, and their answers are saved to the form log."},
+    {title:"REVIEW THE HEALTH SCREENING",body:"Read their answers before the first session. Follow up on any YES answer to the PAR-Q, or any medical condition or medication, before training them."},
+    {title:"AGREE PACKAGE AND PRICE",body:"Agree the package from Training & Coaching Prices and set up payment."},
+    {title:"BOOK THE FIRST SESSION",body:"Book their first session and confirm the time and place with them. The studio address comes from Studio Location."},
+  ];
+  return React.createElement(StepListEditor,{storageKey:"__PT_ONBOARDING_PROCESS__",defaultSteps:DEFAULTS,toastMsg:"Training & Coaching process saved ✓",showToast});
+}
+// ── Concession (10-class card) prices + onboarding process ──────────────────
+// Prices are a reference for admins, stored in coaching_notes so every admin
+// can edit them (master_settings is master-only). Not shown on register.html
+// and not enforced anywhere — the card itself is CONCESSION_LIMIT classes.
+const CONC_PRICING_KEY="__CONCESSION_PRICING__";
+function ConcessionPricingEditor({showToast}){
+  const [p,setP]=useState(null);
+  const [saved,setSaved]=useState(null);
+  const [saving,setSaving]=useState(false);
+  useEffect(()=>{
+    sbGet("coaching_notes","class_name=eq."+encodeURIComponent(CONC_PRICING_KEY)+"&select=content").then(r=>{
+      let v={};if(r&&r.length&&r[0].content){try{v=JSON.parse(r[0].content)||{};}catch(e){v={};}}
+      const x={price:v.price!=null?String(v.price):"",gstLabel:v.gstLabel||"incl. GST",terms:v.terms||""};
+      setP(x);setSaved(x);
+    });
+  },[]);
+  if(!p)return React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"10px 0"}},"LOADING...");
+  const dirty=JSON.stringify(p)!==JSON.stringify(saved);
+  const L={display:"block",fontSize:9,letterSpacing:"0.16em",color:"#555",fontWeight:600,marginBottom:5};
+  const I={width:"100%",background:"#0e0e0e",border:"1px solid #333",borderRadius:0,padding:"9px 10px",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:14,outline:"none",boxSizing:"border-box"};
+  const priceN=Number(p.price)||0;
+  const perClass=priceN>0?Math.round(priceN/CONCESSION_LIMIT*100)/100:0;
+  async function save(){
+    const raw=String(p.price).trim();
+    const n=raw===""?null:Number(raw);
+    if(n!==null&&!(n>=0)){showToast("Enter a valid price");return;}
+    const out={price:n,gstLabel:String(p.gstLabel||"").trim(),terms:String(p.terms||"").trim()};
+    setSaving(true);
+    const q="class_name=eq."+encodeURIComponent(CONC_PRICING_KEY);
+    const json=JSON.stringify(out);
+    const ex=await sbGet("coaching_notes",q+"&select=class_name");
+    const ok=(ex&&ex.length)?await sbPatch("coaching_notes",q,{content:json,updated_at:Date.now()}):await sbPost("coaching_notes",{class_name:CONC_PRICING_KEY,content:json,updated_at:Date.now()});
+    setSaving(false);
+    const x={price:n!=null?String(n):"",gstLabel:out.gstLabel,terms:out.terms};
+    if(ok){setP(x);setSaved(x);showToast("Concession prices saved ✓");}else showToast("Could not save — try again");
+  }
+  return React.createElement("div",{style:{marginBottom:18}},
+    React.createElement("div",{style:{fontSize:10,letterSpacing:"0.06em",color:"#555",lineHeight:1.7,marginBottom:12}},
+      "What a "+CONCESSION_LIMIT+"-class concession card costs. A reference for admins — it isn't shown on the concession form yet."),
+    React.createElement("div",{style:{display:"flex",gap:10,marginBottom:12}},
+      React.createElement("div",{style:{flex:1,minWidth:0}},
+        React.createElement("label",{style:L},"CARD PRICE · $ FOR "+CONCESSION_LIMIT+" CLASSES"),
+        React.createElement("input",{type:"number",inputMode:"decimal",min:0,step:"any",value:p.price,placeholder:"e.g. 200",onChange:e=>setP(o=>({...o,price:e.target.value})),style:I})),
+      React.createElement("div",{style:{flex:1,minWidth:0}},
+        React.createElement("label",{style:L},"GST LABEL"),
+        React.createElement("input",{value:p.gstLabel,onChange:e=>setP(o=>({...o,gstLabel:e.target.value})),style:I}))),
+    React.createElement("div",{style:{marginBottom:12}},
+      React.createElement("label",{style:L},"TERMS (OPTIONAL)"),
+      React.createElement("textarea",{value:p.terms,rows:3,placeholder:"e.g. Paid before the first class. Valid for 6 months. Non-refundable.",onChange:e=>setP(o=>({...o,terms:e.target.value})),style:{...I,resize:"vertical",lineHeight:1.6}})),
+    React.createElement("div",{style:{background:"#0a0a0a",border:"1px solid #1a1a1a",padding:"10px 12px",marginBottom:12}},
+      React.createElement("div",{style:{fontSize:9,letterSpacing:"0.16em",color:"#1d9bf0",fontWeight:600,marginBottom:6}},"WHAT THE CLIENT PAYS"),
+      React.createElement("div",{style:{fontSize:12,color:"#ccc",lineHeight:1.7}},
+        priceN>0?(subMoney(priceN)+" for "+CONCESSION_LIMIT+" classes "+(p.gstLabel||"")+" · "+subMoney(perClass)+" per class"):"No price set yet.")),
+    React.createElement("button",{disabled:saving||!dirty,onClick:save,
+      style:{width:"100%",background:dirty?"#fff":"#111",color:dirty?"#000":"#333",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.16em",padding:12,cursor:dirty?"pointer":"not-allowed"}},
+      saving?"SAVING…":"SAVE PRICES")
+  );
+}
+const CONC_PROCESS_DEFAULT=[
+  {title:"SEND CONCESSION FORM",body:"Onboarding → Concessions → Send Concession Form. Enter the client's email and tap Send. They receive a branded email with a link to the health screening form, tagged as a 10-class concession card."},
+  {title:"CLIENT COMPLETES THE FORM",body:"The same health screening form as Training & Coaching: personal details, emergency contact, PAR-Q, medical conditions, fitness level, media consent and signature."},
+  {title:"AUTOMATIC SETUP ON SUBMIT",body:"Their account is marked as a concession with Notice Board and Book access and a 10-class card that bypasses the weekly caps. New clients get a welcome email with their temporary password and login link."},
+  {title:"HEALTH SCREENING PDF",body:"A copy of the signed health screening PDF is emailed automatically, and their answers are saved to the form log. Read them before their first class."},
+  {title:"TAKE PAYMENT",body:"Take payment for the card using the price above."},
+  {title:"CLIENT BOOKS CLASSES",body:"They can book any classes they like until the card runs out. Each booking reserves a class. No-shows use a class unless you EXCUSE them. Wellness sessions are separate and don't use the card."},
+  {title:"TOP UP",body:"When the card is used up, take payment again, then open their profile → Concession Card → TOP UP to reset it to 10 classes."},
+];
+function ConcessionProcessPanel({showToast}){
+  return React.createElement("div",null,
+    React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.12em",color:"#fff",marginBottom:10}},"PRICES"),
+    React.createElement(ConcessionPricingEditor,{showToast}),
+    React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.12em",color:"#fff",margin:"6px 0 4px",paddingTop:14,borderTop:"1px solid #1a1a1a"}},"HOW IT WORKS"),
+    React.createElement(StepListEditor,{storageKey:"__CONCESSION_ONBOARDING_PROCESS__",defaultSteps:CONC_PROCESS_DEFAULT,toastMsg:"Concession process saved ✓",showToast})
+  );
+}
 function InviteForm(props){
   const p=props||{};
   const url=p.endpoint||"https://xczwmexavysvljmobbgv.supabase.co/functions/v1/send-onboarding-invite";
@@ -4453,47 +4541,44 @@ function OnboardingView({showToast,isMaster}){
     else await sbPost("coaching_notes",{class_name:"__ONBOARDING_TITLES__",content:JSON.stringify(next),updated_at:Date.now()});
     if(showToast)showToast("Title saved ✓");
   }
+  // Sections by type of client. Panel ids are unchanged so saved custom titles
+  // (__ONBOARDING_TITLES__) still apply. Studio / Training & Coaching /
+  // Concessions are visible to all admins; Subscribers stays master-only.
+  const obHead=(t,first)=>React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#1d9bf0",fontWeight:600,margin:first?"0 0 12px":"26px 0 12px"}},t);
+  const P=(id,title,child)=>React.createElement(OnboardingPanel,{id,title,openPanel,setOpenPanel,titles,onSaveTitle},child);
   return React.createElement("div",{style:{marginTop:16}},
     React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},"ONBOARDING · ADMIN"),
-    React.createElement(OnboardingPanel,{id:"location",title:"STUDIO LOCATION",openPanel,setOpenPanel,titles,onSaveTitle},
-      React.createElement(StudioLocationEditor,{showToast})
-    ),
-    React.createElement(OnboardingPanel,{id:"process",title:"ONBOARDING PROCESS",openPanel,setOpenPanel,titles,onSaveTitle},
-      React.createElement(ProcessNoteEditor,{showToast})
-    ),
-    React.createElement(OnboardingPanel,{id:"journey",title:"MEMBER JOURNEY",openPanel,setOpenPanel,titles,onSaveTitle},
-      React.createElement(MemberJourneyEditor,{showToast})
-    ),
-    React.createElement(OnboardingPanel,{id:"training",title:"TRAINING & COACHING PRICES",openPanel,setOpenPanel,titles,onSaveTitle},React.createElement(TrainingTierEditor,{showToast})),React.createElement(OnboardingPanel,{id:"tiers",title:"MEMBERSHIP TIERS",openPanel,setOpenPanel,titles,onSaveTitle},
-      React.createElement(TierEditor,{showToast})
-    ),
-    React.createElement(OnboardingPanel,{id:"invite",title:"SEND REGISTRATION FORM",openPanel,setOpenPanel,titles,onSaveTitle},
-      React.createElement(InviteForm,{
+    obHead("STUDIO",true),
+    P("location","STUDIO LOCATION",React.createElement(StudioLocationEditor,{showToast})),
+    P("process","STUDIO ONBOARDING PROCESS",React.createElement(ProcessNoteEditor,{showToast})),
+    P("journey","MEMBER JOURNEY",React.createElement(MemberJourneyEditor,{showToast})),
+    P("tiers","MEMBERSHIP TIERS",React.createElement(TierEditor,{showToast})),
+    P("invite","SEND REGISTRATION FORM",React.createElement(InviteForm,{
         appsScript:true,
         endpoint:APPS_SCRIPT_URL,
         action:"registrationInvite",
         btnLabel:"SEND REGISTRATION FORM"
-      })
-    ),
-    React.createElement(OnboardingPanel,{id:"health",title:"SEND HEALTH SCREENING FORM",openPanel,setOpenPanel,titles,onSaveTitle},
-      React.createElement(InviteForm,{
+      })),
+    obHead("TRAINING & COACHING"),
+    P("ptprocess","TRAINING & COACHING ONBOARDING PROCESS",React.createElement(PtProcessEditor,{showToast})),
+    P("training","TRAINING & COACHING PRICES",React.createElement(TrainingTierEditor,{showToast})),
+    P("health","SEND HEALTH SCREENING FORM",React.createElement(InviteForm,{
         appsScript:true,
         endpoint:APPS_SCRIPT_URL,
         action:"healthInvite",
         desc:"Enter a personal-training client's email address to send them the health screening form.",
         btnLabel:"SEND HEALTH SCREENING FORM"
-      })
-    ),
-    React.createElement(OnboardingPanel,{id:"concession",title:"SEND CONCESSION FORM",openPanel,setOpenPanel,titles,onSaveTitle},
-      React.createElement(InviteForm,{
+      })),
+    obHead("CONCESSIONS"),
+    P("concprocess","CONCESSION ONBOARDING PROCESS",React.createElement(ConcessionProcessPanel,{showToast})),
+    P("concession","SEND CONCESSION FORM",React.createElement(InviteForm,{
         appsScript:true,
         endpoint:APPS_SCRIPT_URL,
         action:"concessionInvite",
         desc:"Sends the health screening form tagged as a 10-class concession card. On submit they're set up with Classes access and a card that bypasses weekly caps.",
         btnLabel:"SEND CONCESSION FORM"
-      })
-    ),
-    isMaster&&React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#1d9bf0",fontWeight:600,margin:"26px 0 12px"}},"SUBSCRIBERS · MASTER ONLY"),
+      })),
+    isMaster&&obHead("SUBSCRIBERS · MASTER ONLY"),
     isMaster&&React.createElement(OnboardingPanel,{id:"subprocess",title:"SUBSCRIBER ONBOARDING PROCESS",openPanel,setOpenPanel,titles,onSaveTitle},
       React.createElement(SubscriberProcessPanel,{showToast})
     ),
