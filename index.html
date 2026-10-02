@@ -12882,6 +12882,51 @@ const PUSH_TYPES=[
   {k:"reminders",col:"push_reminders",label:"Class reminders",hint:"The night before a class you've booked"}
 ];
 const pushBtn=(on,dis)=>({background:dis?"#141414":(on?"#fff":"#0e0e0e"),color:dis?"#444":(on?"#000":"#555"),border:"1px solid "+(dis?"#242424":(on?"#fff":"#2a2a2a")),borderRadius:0,padding:"7px 20px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:dis?"not-allowed":"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0});
+// One-tap ask on app open (2 Oct 2026). Phones won't let an app switch
+// notifications on by itself — each person must tap Allow once — so this card asks.
+// NOT NOW hides it for 7 days; after the second NOT NOW it never comes back (they
+// can still turn it on in Edit Profile). Remembered per device. Not shown once this
+// device is on, if notifications are blocked, or where the browser can't do push.
+function PushPrompt({session,isSubscriber,showToast}){
+  const [mode,setMode]=useState(null);   // null = hidden | "ask" | "install"
+  const [busy,setBusy]=useState(false);
+  const KEY="t365-push-ask";
+  const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"{}")||{};}catch(e){return {};}};
+  const write=v=>{try{localStorage.setItem(KEY,JSON.stringify(v));}catch(e){}};
+  useEffect(()=>{
+    let live=true;
+    if(!session||!session.email||isSubscriber){setMode(null);return;}
+    const a=read();
+    if(a.never||(a.until&&Date.now()<a.until)){setMode(null);return;}
+    (async()=>{
+      await new Promise(r=>setTimeout(r,1500));   // let the app settle first
+      const st=await pushDeviceState();
+      if(!live)return;
+      if(st.ios&&!st.standalone)setMode("install");
+      else if(st.supported&&!st.on&&st.permission!=="denied")setMode("ask");
+      else setMode(null);
+    })();
+    return ()=>{live=false;};
+  },[session&&session.email,isSubscriber]);
+  function later(){const a=read();const n=(a.n||0)+1;write(n>=2?{n,never:true}:{n,until:Date.now()+7*86400000});setMode(null);}
+  async function on(){
+    setBusy(true);const r=await pushTurnOn();setBusy(false);
+    if(r.ok){write({n:0,never:true});setMode(null);showToast("Notifications on ✓ — change them any time in Edit Profile");return;}
+    if(r.why==="denied"){write({never:true});setMode(null);showToast("Notifications are blocked — you can allow them later in Edit Profile");return;}
+    if(r.why!=="dismissed")showToast("Couldn't turn them on just now — try again in Edit Profile");
+  }
+  if(!mode)return null;
+  const btn=(label,fn,primary,attr)=>React.createElement("button",{type:"button",onClick:fn,disabled:busy,"data-push-ask":attr,
+    style:{flex:primary?2:1,background:primary?"#fff":"transparent",color:primary?"#000":"#888",border:primary?"none":"1px solid #2a2a2a",fontFamily:primary?"'Bebas Neue',sans-serif":"'DM Sans',sans-serif",fontSize:primary?15:10,letterSpacing:primary?"0.18em":"0.12em",fontWeight:primary?400:700,padding:"11px 10px",borderRadius:0,cursor:busy?"default":"pointer"}},busy&&primary?"…":label);
+  return React.createElement("div",{"data-push-prompt":mode,style:{margin:"12px 16px 4px",background:"#0a1a2a",border:"1px solid #1d9bf0",padding:"14px 14px 12px"}},
+    React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:"0.12em",color:"#fff",marginBottom:4}},"TURN ON NOTIFICATIONS"),
+    mode==="ask"
+      ?React.createElement("div",{style:{fontSize:12,color:"#9ab",lineHeight:1.6,marginBottom:12}},"Get a notification on this phone when someone messages you, a new Notice Board post goes up, or you have a class tomorrow — even when the app is closed. You can turn each one off in Edit Profile.")
+      :React.createElement("div",{style:{fontSize:12,color:"#9ab",lineHeight:1.8,marginBottom:12}},"To get notifications on your iPhone, add Team 365 to your Home Screen first:",React.createElement("br"),"1. In Safari, tap the Share button (square with an arrow)",React.createElement("br"),"2. Tap Add to Home Screen, then Add",React.createElement("br"),"3. Open Team 365 from your Home Screen — we'll ask you there"),
+    React.createElement("div",{style:{display:"flex",gap:8}},
+      mode==="ask"?btn("TURN ON",on,true,"on"):null,
+      btn(mode==="ask"?"NOT NOW":"GOT IT",later,false,"later")));
+}
 // Edit Profile → NOTIFICATIONS. Turning a device on/off, a test, and the three per-person types.
 function PushSettings({session,memberData,setMemberData,showToast,pushFlags}){
   const [st,setSt]=useState(null);
@@ -12940,7 +12985,7 @@ function PushSettings({session,memberData,setMemberData,showToast,pushFlags}){
           !globalOn&&React.createElement("div",{style:{fontSize:9,color:"#1d9bf0",letterSpacing:"0.08em",marginTop:4,fontWeight:600}},"PAUSED — NOBODY IS GETTING THESE RIGHT NOW")),
         React.createElement("button",{type:"button",disabled:busy===row.k||!globalOn,style:pushBtn(isOn,!globalOn),onClick:()=>savePref(row,!isOn)},busy===row.k?"…":(isOn?"ON":"OFF")));
     }),
-    note("These apply on every device you've turned on. If no device is on, you'll get an email for a message you haven't read after 15 minutes — turning Messages off stops those too.","#444")
+    note("These apply on every device you've turned on."+((pushFlags||{}).email?" If no device is on, you'll get an email for a message you haven't read after 15 minutes — turning Messages off stops those too.":""),"#444")
   );
 }
 // Admin → FUNCTIONS (master only): the push switches for everyone, the message
@@ -13216,7 +13261,7 @@ function App(){
         setRemindersEnabled(ffData[0].reminders_enabled!==false);
         setConfirmationsEnabled(ffData[0].confirmations_enabled!==false);
         setDmEnabled(ffData[0].dm_enabled===true);
-        setPushFlags({messages:ffData[0].push_messages!==false,notices:ffData[0].push_notices!==false,reminders:ffData[0].push_reminders!==false});
+        setPushFlags({messages:ffData[0].push_messages!==false,notices:ffData[0].push_notices!==false,reminders:ffData[0].push_reminders!==false,email:ffData[0].push_email_fallback===true});
       }
       const dnData=await sbGet("coaching_notes","class_name=eq.__DOW_NAMES__&select=content");
       if(dnData&&dnData.length){try{const dn=JSON.parse(dnData[0].content);setDowNames(p=>({...p,...dn}));}catch{}}
@@ -14162,6 +14207,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     ),
     msgOpen&&canOpenMsgs&&React.createElement("div",{className:"app-body"},React.createElement(MessagesView,{session,isAdmin,isMaster,memberPhotos,dmOn:dmEnabled,dmUnread:msgDm,focus:msgFocus})),
     React.createElement("div",{className:"app-body",style:msgOpen&&canOpenMsgs?{display:"none"}:undefined},
+    React.createElement(PushPrompt,{session,isSubscriber,showToast}),
     mFlags.maint&&React.createElement("div",{style:{background:"#c98a1e",color:"#0a0a0a",textAlign:"center",padding:"8px 10px",fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.2em",fontSize:14,marginBottom:10}},"⚙ MAINTENANCE MODE"),
     effTab==="book"&&React.createElement(React.Fragment,null,
       renderSeg(bookOpts,effBookSub,setBookSub),
