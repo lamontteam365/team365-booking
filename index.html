@@ -12876,6 +12876,17 @@ async function pushCloseNotes(match){
   try{if(!("serviceWorker" in navigator))return;const reg=await navigator.serviceWorker.getRegistration();if(!reg||!reg.getNotifications)return;
     const ns=await reg.getNotifications();ns.forEach(n=>{const t=n.tag||"";if(typeof match==="function"?match(t):t===match)n.close();});}catch(e){}
 }
+// Accounts that had notifications ON on this device when they logged out. When
+// one of them logs back in here, notifications switch back on by themselves (no
+// button, no prompt: permission is already granted). Anyone else starts OFF, so a
+// shared phone never gets another person's alerts. TURN OFF removes the account.
+const PUSH_REMEMBER_KEY="t365-push-remember";
+function pushRemembered(){try{const a=JSON.parse(localStorage.getItem(PUSH_REMEMBER_KEY)||"[]");return Array.isArray(a)?a:[];}catch(e){return [];}}
+function pushRemember(email,on){
+  const em=String(email||"").toLowerCase();if(!em)return;
+  const a=pushRemembered().filter(x=>x!==em);if(on)a.push(em);
+  try{localStorage.setItem(PUSH_REMEMBER_KEY,JSON.stringify(a.slice(-10)));}catch(e){}
+}
 const PUSH_TYPES=[
   {k:"messages",col:"push_messages",label:"Messages",hint:"When someone messages you"},
   {k:"notices",col:"push_notices",label:"Notice Board",hint:"When a new post goes up"},
@@ -12965,7 +12976,7 @@ function PushSettings({session,memberData,setMemberData,showToast,pushFlags}){
       :r.why==="install"?"Add Team 365 to your Home Screen first (steps below)."
       :"Couldn't turn them on just now — check your connection and try again.");
   }
-  async function off(){setBusy("off");await pushTurnOff();setBusy("");await refresh();showToast("Notifications off for this device");}
+  async function off(){setBusy("off");pushRemember(session&&session.email,false);await pushTurnOff();setBusy("");await refresh();showToast("Notifications off for this device");}
   async function test(){setBusy("test");const r=await pushSendTest();setBusy("");
     showToast(r&&r.ok&&r.devices>0?"Test sent — it should pop up in a few seconds":"Couldn't send a test — try turning notifications off and on");}
   async function savePref(row,next){
@@ -13534,7 +13545,9 @@ function App(){
     if(!session||!session.email||isSubscriber)return;
     (async()=>{const env=pushEnv();if(!env.supported||env.permission!=="granted")return;
       const reg=await pushRegistration();let sub=null;try{sub=reg&&reg.pushManager?await reg.pushManager.getSubscription():null;}catch(e){}
-      if(sub)pushSave(sub);})();
+      if(sub)pushSave(sub);
+      else if(pushRemembered().includes(String(session.email).toLowerCase()))pushTurnOn();   // this account had it on here before logging out
+    })();
   },[session&&session.email,isSubscriber]);
   useEffect(()=>{if(tab==="community")pushCloseNotes("t365-notice");},[tab]);
   useEffect(()=>{if(ready&&TAB_ORDER.length&&!TAB_ORDER.includes(tab)&&!(tab==="challenge"&&challengeEnabled&&chTab==="loading"))setTab(TAB_ORDER[0]);},[memberAccess,classesEnabled,strengthEnabled,wellnessEnabled,workoutsEnabled,challengeEnabled,chTab,ready]);
@@ -13620,7 +13633,7 @@ function App(){
     }
     setAuthBusy(false);
   }
-  async function handleLogout(){try{await Promise.race([pushTurnOff(),new Promise(r=>setTimeout(r,2500))]);}catch(e){}authLogout();lsSet("t365-session",null);setSession(null);setMemberData(null);setMemberAccess(null);setSubRow(null);setShowProf(false);}
+  async function handleLogout(){try{await Promise.race([(async()=>{const st=await pushDeviceState();if(st.on)pushRemember(session&&session.email,true);await pushTurnOff();})(),new Promise(r=>setTimeout(r,3500))]);}catch(e){}authLogout();lsSet("t365-session",null);setSession(null);setMemberData(null);setMemberAccess(null);setSubRow(null);setShowProf(false);}
   async function loadSubscriberState(email){
     const [sr,ms]=await Promise.all([
       sbGet("subscribers",`email=eq.${encodeURIComponent(String(email||"").toLowerCase())}&select=*`),
