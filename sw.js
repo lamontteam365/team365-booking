@@ -100,16 +100,25 @@ self.addEventListener("push", event => {
     try {
       if (self.navigator && self.navigator.setAppBadge && badgeNum > 0) await self.navigator.setAppBadge(badgeNum);
     } catch (e) {}
-    await self.registration.showNotification(title, {
-      body: n.body || "You have a new notification",
-      tag,
-      renotify: true,               // a new message in the same conversation still buzzes
-      icon: "/icon-192.png",
-      badge: "/badge-96.png",      // Android status-bar icon (white on transparent)
-      lang: n.lang || "en-NZ",
-      silent: n.silent === true,
-      data: { url }
-    });
+    // Full web addresses for the pictures: Android draws a plain letter ("T") on the
+    // right if the large icon can't be loaded.
+    const icon = n.icon || new URL("/icon-192.png", self.location.origin).href;
+    const badge = n.badge || new URL("/badge-96.png", self.location.origin).href;
+    const body = n.body || "You have a new notification";
+    try {
+      await self.registration.showNotification(title, {
+        body, tag,
+        renotify: true,             // a new message in the same conversation still buzzes
+        icon,                       // the large picture on the right (Android) / beside the text
+        badge,                      // Android status-bar icon (white on transparent)
+        lang: n.lang || "en-NZ",
+        silent: n.silent === true,
+        data: { url }
+      });
+    } catch (e) {
+      // A phone that rejects one of the options still gets the notification.
+      await self.registration.showNotification(title, { body, tag, icon, badge, data: { url } });
+    }
   })());
 });
 
