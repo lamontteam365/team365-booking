@@ -4049,7 +4049,9 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
               :"OFF — members only message Team 365. Earlier private conversations are hidden, not deleted")
         ),
         React.createElement("button",{onClick:async()=>{const next=!dmEnabled;const ok=await saveDmSetting(next);showToast(!ok?"Couldn't change it — try again":next?"Member-to-member messages on ✓":"Member-to-member messages off — hidden, not deleted");},
-          style:{background:dmEnabled?"#fff":"#222",color:dmEnabled?"#000":"#1d9bf0",border:"1px solid "+(dmEnabled?"#fff":"#1d9bf0"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},dmEnabled?"ON":"OFF"))
+          style:{background:dmEnabled?"#fff":"#222",color:dmEnabled?"#000":"#1d9bf0",border:"1px solid "+(dmEnabled?"#fff":"#1d9bf0"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},dmEnabled?"ON":"OFF")),
+      // Push notifications (2 Oct 2026) — master only
+      isMaster&&React.createElement(PushFunctions,{showToast})
     ),
   admSeg==="onboarding"&&React.createElement(OnboardingView,{showToast,isMaster}),
   admSeg==="coaching"&&(isMaster||!mFlags.dt)&&React.createElement(CoachingView,{showToast,restricted:!isMaster,selfEmail})
@@ -8743,6 +8745,24 @@ function MemberWorkoutAdmin({member,memberView,setMemberView,isMaster,mfPasteAI}
 // Replies point at another message in the same thread (reply_to); likes go through
 // the pt_message_like() function, which adds/removes only the signed-in person.
 const PT_BLUE="#1d9bf0";
+// Read receipts (2 Oct 2026): a tiny photo of whoever read it + "READ · 6:42PM",
+// under your latest message they have seen (Messenger style). The time and who
+// read it are set by the DATABASE (pt_messages_bu / direct_messages_bu triggers)
+// when the read flag flips; the app can't write them.
+function ptReadWhen(iso){
+  const d=new Date(iso);if(!iso||isNaN(d))return"";
+  const h=d.getHours(),m=String(d.getMinutes()).padStart(2,"0");
+  const t=((h%12)||12)+":"+m+(h<12?"AM":"PM");
+  return isToday(d)?t:d.getDate()+" "+MONTHS[d.getMonth()].toUpperCase()+" · "+t;
+}
+function ptReadMark({photo,name,label,at,team}){
+  const ini=String(name||"?").split(/\s+/).map(w=>w[0]||"").join("").slice(0,2).toUpperCase();
+  const av=photo?React.createElement("img",{src:photo,alt:"",style:{width:16,height:16,borderRadius:"50%",objectFit:"cover",border:"1px solid "+PT_BLUE,flexShrink:0}})
+    :React.createElement("div",{style:{width:16,height:16,borderRadius:"50%",background:team?"#0a1a2a":"#1a1a1a",border:"1px solid "+PT_BLUE,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:team?6:7,color:team?PT_BLUE:"#999",flexShrink:0}},team?"365":ini);
+  const when=ptReadWhen(at);
+  return React.createElement("div",{"data-read-receipt":"1",style:{display:"flex",alignItems:"center",gap:5,marginTop:3}},
+    av,React.createElement("span",{style:{fontSize:8,letterSpacing:"0.12em",color:"#888",fontWeight:600}},label+(when?" · "+when:"")));
+}
 function ptMsgNotify(){try{window.dispatchEvent(new Event("t365-msgs-changed"));}catch(e){}}
 function ptMsgWhen(iso){
   const d=new Date(iso);if(isNaN(d))return"";
@@ -8772,7 +8792,7 @@ function PtThumb({on,red}){
 }
 // One conversation, newest message first, write box on top. Used by the messages
 // screen that opens from the profile photo (members: their own; admins: any member's).
-function PtThread({memberEmail,selfEmail,selfName,asStaff,isMaster,title}){
+function PtThread({memberEmail,selfEmail,selfName,asStaff,isMaster,title,photos}){
   const em=String(memberEmail||"").toLowerCase();
   const me=String(selfEmail||((lsGet("t365-session",null)||{}).email)||"").toLowerCase();
   const myName=selfName||((lsGet("t365-session",null)||{}).name)||"";
@@ -8784,7 +8804,7 @@ function PtThread({memberEmail,selfEmail,selfName,asStaff,isMaster,title}){
   const [err,setErr]=useState("");
   async function load(){
     if(!em)return;
-    const rows=await sbGet("pt_messages",`member_email=eq.${encodeURIComponent(em)}&select=id,sender_email,sender_name,from_staff,body,about_date,created_at,member_read,staff_read,reply_to,liked_by&order=created_at.desc&limit=300`);
+    const rows=await sbGet("pt_messages",`member_email=eq.${encodeURIComponent(em)}&select=id,sender_email,sender_name,from_staff,body,about_date,created_at,member_read,staff_read,member_read_at,staff_read_at,staff_read_by,staff_read_by_name,reply_to,liked_by&order=created_at.desc&limit=300`);
     setMsgs(Array.isArray(rows)?rows:[]);
   }
   // While the conversation is on screen: check every 10 s.
@@ -8797,6 +8817,7 @@ function PtThread({memberEmail,selfEmail,selfName,asStaff,isMaster,title}){
     const q=`member_email=eq.${encodeURIComponent(em)}&`+(asStaff?"from_staff=eq.false&staff_read=eq.false":"from_staff=eq.true&member_read=eq.false");
     sbPatch("pt_messages",q,asStaff?{staff_read:true}:{member_read:true}).then(()=>{
       setMsgs(p=>(p||[]).map(m=>isUnreadForMe(m)?{...m,[asStaff?"staff_read":"member_read"]:true}:m));ptMsgNotify();
+      pushCloseNotes(asStaff?"t365-msg-"+em:"t365-msg-team");
     });
   },[unread,em]);
   async function post(body,reply){
@@ -8823,6 +8844,14 @@ function PtThread({memberEmail,selfEmail,selfName,asStaff,isMaster,title}){
   const byId={};(msgs||[]).forEach(m=>{byId[m.id]=m;});
   const label=8;
   const nameOf=m=>(m.sender_name||(m.from_staff?"Team 365":"Member"));
+  // Read receipt: under OUR newest message the other side has read (newest first, so the first match).
+  const readMark=(msgs||[]).find(m=>(asStaff?m.from_staff:!m.from_staff)&&(asStaff?m.member_read:m.staff_read));
+  const readMarkEl=m=>{
+    if(!readMark||m.id!==readMark.id)return null;
+    if(asStaff)return React.createElement(ptReadMark,{photo:photos&&photos[em],name:title||m.sender_name,label:"READ",at:m.member_read_at});
+    const by=String(m.staff_read_by||"").toLowerCase();const first=String(m.staff_read_by_name||"").split(/\s+/)[0];
+    return React.createElement(ptReadMark,{photo:by&&photos&&photos[by],name:m.staff_read_by_name||"Team 365",team:!by||!(photos&&photos[by])&&!m.staff_read_by_name,label:by&&first?"READ BY "+first.toUpperCase():"READ",at:m.staff_read_at});
+  };
   const inputS={width:"100%",background:"#141414",border:"1px solid #262626",borderRadius:0,color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:13,lineHeight:1.6,padding:"10px 12px",outline:"none",resize:"vertical",boxSizing:"border-box"};
   const blueBtn=on=>({background:on?PT_BLUE:"#1a1a1a",color:on?"#fff":"#555",border:"none",borderRadius:6,fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.15em",padding:"9px 14px",cursor:on?"pointer":"default"});
   const linkBtn={background:"none",border:"none",color:"#666",fontFamily:"inherit",fontSize:label,letterSpacing:"0.12em",fontWeight:600,cursor:"pointer",padding:"4px 0"};
@@ -8858,6 +8887,7 @@ function PtThread({memberEmail,selfEmail,selfName,asStaff,isMaster,title}){
               React.createElement(PtThumb,{on:iLike,red:likes>0}),likes>0&&React.createElement("span",{style:{color:PT_BLUE,fontSize:10,fontWeight:700}},likes)),
             canDel&&React.createElement("button",{onClick:()=>del(m),style:linkBtn},"DELETE")
           ),
+          readMarkEl(m),
           replying&&React.createElement("div",{style:{width:"100%",marginTop:4}},
             React.createElement("textarea",{autoFocus:true,value:replyText,onChange:e=>setReplyText(e.target.value),maxLength:2000,rows:2,placeholder:"Reply to "+nameOf(m)+"…",style:inputS}),
             React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginTop:6}},
@@ -8895,7 +8925,7 @@ function ptMsgRow({id,name,av,preview,when,unread,isOpen,onToggle,children}){
 }
 // One member-to-member conversation, newest first, write box on top (same look as PtThread).
 // viewPair ("a|b"): the master's read-only view of someone else's conversation.
-function DmThread({withEmail,withName,selfEmail,selfName,isMaster,viewPair}){
+function DmThread({withEmail,withName,selfEmail,selfName,isMaster,viewPair,photos}){
   const me=String(selfEmail||"").toLowerCase();
   const other=String(withEmail||"").toLowerCase();
   const key=viewPair||dmPairKey(me,other);
@@ -8909,7 +8939,7 @@ function DmThread({withEmail,withName,selfEmail,selfName,isMaster,viewPair}){
   const [err,setErr]=useState("");
   async function load(){
     if(key.indexOf("|")<1)return;
-    const rows=await sbGet("direct_messages",`pair_key=eq.${encodeURIComponent(key)}&select=id,sender_email,recipient_email,sender_name,body,created_at,read,reply_to,liked_by&order=created_at.desc&limit=300`);
+    const rows=await sbGet("direct_messages",`pair_key=eq.${encodeURIComponent(key)}&select=id,sender_email,recipient_email,sender_name,body,created_at,read,read_at,reply_to,liked_by&order=created_at.desc&limit=300`);
     setMsgs(Array.isArray(rows)?rows:[]);
   }
   useEffect(()=>{setMsgs(null);load();return onScreenPoll(load,10000);},[key]);
@@ -8919,6 +8949,7 @@ function DmThread({withEmail,withName,selfEmail,selfName,isMaster,viewPair}){
     if(!unread)return;
     sbPatch("direct_messages",`pair_key=eq.${encodeURIComponent(key)}&recipient_email=eq.${encodeURIComponent(me)}&read=eq.false`,{read:true}).then(()=>{
       setMsgs(p=>(p||[]).map(m=>isUnreadForMe(m)?{...m,read:true}:m));ptMsgNotify();
+      pushCloseNotes("t365-dm-"+key);
     });
   },[unread,key]);
   async function post(body,reply){
@@ -8944,6 +8975,9 @@ function DmThread({withEmail,withName,selfEmail,selfName,isMaster,viewPair}){
   const byId={};(msgs||[]).forEach(m=>{byId[m.id]=m;});
   const label=8;
   const nameOf=m=>(m.sender_name||"Member");
+  // Read receipt under my newest message they've read (not in the master's read-only view).
+  const readMark=viewOnly?null:(msgs||[]).find(m=>String(m.sender_email||"").toLowerCase()===me&&m.read);
+  const readMarkEl=m=>(!readMark||m.id!==readMark.id)?null:React.createElement(ptReadMark,{photo:photos&&photos[other],name:withName,label:"READ",at:m.read_at});
   const inputS={width:"100%",background:"#141414",border:"1px solid #262626",borderRadius:0,color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:13,lineHeight:1.6,padding:"10px 12px",outline:"none",resize:"vertical",boxSizing:"border-box"};
   const blueBtn=on=>({background:on?PT_BLUE:"#1a1a1a",color:on?"#fff":"#555",border:"none",borderRadius:6,fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.15em",padding:"9px 14px",cursor:on?"pointer":"default"});
   const linkBtn={background:"none",border:"none",color:"#666",fontFamily:"inherit",fontSize:label,letterSpacing:"0.12em",fontWeight:600,cursor:"pointer",padding:"4px 0"};
@@ -8977,6 +9011,7 @@ function DmThread({withEmail,withName,selfEmail,selfName,isMaster,viewPair}){
               React.createElement(PtThumb,{on:iLike,red:likes>0}),likes>0&&React.createElement("span",{style:{color:PT_BLUE,fontSize:10,fontWeight:700}},likes)),
             canDel&&React.createElement("button",{onClick:()=>del(m),style:linkBtn},"DELETE")
           ),
+          readMarkEl(m),
           replying&&React.createElement("div",{style:{width:"100%",marginTop:4}},
             React.createElement("textarea",{autoFocus:true,value:replyText,onChange:e=>setReplyText(e.target.value),maxLength:2000,rows:2,placeholder:"Reply to "+nameOf(m)+"…",style:inputS}),
             React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginTop:6}},
@@ -8992,7 +9027,7 @@ function DmThread({withEmail,withName,selfEmail,selfName,isMaster,viewPair}){
 // pinned on top, then their conversations with anyone. Admins: their own private
 // conversations (the PRIVATE tab). "New message" drops down an A–Z list of everyone
 // (admins included; never yourself or subscribers). One conversation open at a time.
-function DmInbox({session,isMaster,memberPhotos,includeTeam,avatar}){
+function DmInbox({session,isMaster,memberPhotos,includeTeam,avatar,focusKey}){
   const me=String((session&&session.email)||"").toLowerCase();
   const [dms,setDms]=useState(null);
   const [team,setTeam]=useState({unread:0,last:null});
@@ -9035,6 +9070,14 @@ function DmInbox({session,isMaster,memberPhotos,includeTeam,avatar}){
   },[me]);
   const nameFor=em=>{const p=people.find(x=>x.email===em);const t=(dms||[]).find(x=>x.email===em);return (p&&p.name)||(t&&t.name)||em;};
   function toggle(k){setOpenKey(cur=>cur===k?null:k);}
+  // Opened from a notification: drop that conversation open.
+  useEffect(()=>{
+    if(!focusKey||!focusKey.key)return;
+    const k=focusKey.key;
+    if(k!=="team365")setExtra(k);
+    setOpenKey(k);
+    setTimeout(()=>{try{const el=document.querySelector('[data-thread="'+k+'"]');if(el)el.scrollIntoView({behavior:"smooth",block:"start"});}catch(e){}},400);
+  },[focusKey&&focusKey.n]);
   function pick(em){
     setQ("");setDrop(false);
     if(!(dms||[]).some(t=>t.email===em))setExtra(em);
@@ -9065,14 +9108,14 @@ function DmInbox({session,isMaster,memberPhotos,includeTeam,avatar}){
       includeTeam&&ptMsgRow({id:"team365",name:"Team 365",av:teamAv,
         preview:team.last?((team.last.from_staff?"Team 365: ":"You: ")+team.last.body):"Your private conversation with the coaches",
         when:team.last&&team.last.created_at,unread:team.unread,isOpen:openKey==="team365",onToggle:()=>toggle("team365"),
-        children:React.createElement(PtThread,{memberEmail:me,selfEmail:me,selfName:session.name,asStaff:false})}),
+        children:React.createElement(PtThread,{memberEmail:me,selfEmail:me,selfName:session.name,asStaff:false,photos:memberPhotos})}),
       dms===null?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",textAlign:"center",padding:"10px 0"}},"LOADING…")
       :list.length===0?React.createElement("div",{style:{fontSize:11,color:"#555",lineHeight:1.6,textAlign:"center",padding:"8px 4px"}},"No private conversations yet. Choose someone above to start one.")
       :list.map(t=>{const nm=nameFor(t.email);const l=t.last;
         return ptMsgRow({id:t.email,name:nm,av:avatar(t.email,nm,36),
           preview:l?((String(l.sender_email||"").toLowerCase()===me?"You: ":"")+l.body):"New conversation",
           when:l&&l.created_at,unread:t.unread,isOpen:openKey===t.email,onToggle:()=>toggle(t.email),
-          children:React.createElement(DmThread,{key:t.email,withEmail:t.email,withName:nm,selfEmail:me,selfName:session.name,isMaster})});
+          children:React.createElement(DmThread,{key:t.email,withEmail:t.email,withName:nm,selfEmail:me,selfName:session.name,isMaster,photos:memberPhotos})});
       })));
 }
 // Master only: every member-to-member conversation (not the master's own), read-only.
@@ -9118,7 +9161,7 @@ function DmAll({session,memberPhotos,avatar}){
 // recent first, unread in blue. Tapping a name drops that conversation open under it;
 // tapping the name again closes it (one open at a time). "New message" drops down an
 // A–Z list of every member who can be messaged (typing narrows it).
-function MessagesView({session,isAdmin,isMaster,memberPhotos,dmOn,dmUnread}){
+function MessagesView({session,isAdmin,isMaster,memberPhotos,dmOn,dmUnread,focus}){
   const me=String((session&&session.email)||"").toLowerCase();
   const [seg,setSeg]=useState("team");      // admins, switch ON: team | private | all (master)
   const [openEm,setOpenEm]=useState(null);
@@ -9152,6 +9195,16 @@ function MessagesView({session,isAdmin,isMaster,memberPhotos,dmOn,dmUnread}){
     return ()=>{off();window.removeEventListener("t365-msgs-changed",h);};
   },[isAdmin]);
   const nameFor=em=>{const p=people.find(x=>x.email===em);const t=(threads||[]).find(x=>x.email===em);return (p&&p.name)||(t&&t.memberName)||em;};
+  // Opened from a notification: go to that conversation and drop it open.
+  useEffect(()=>{
+    if(!focus||!isAdmin)return;
+    if(focus.dm){setSeg("private");return;}
+    const em=String(focus.c||"").toLowerCase();
+    if(!em||em==="team365")return;
+    setSeg("team");setExtra(em);setOpenEm(em);
+    setTimeout(()=>{try{const el=document.querySelector('[data-thread="'+em+'"]');if(el)el.scrollIntoView({behavior:"smooth",block:"start"});}catch(e){}},400);
+  },[focus&&focus.n]);
+  const dmFocus=focus&&(focus.dm||(!isAdmin&&focus.c==="team365"))?{key:focus.dm?String(focus.dm).toLowerCase():"team365",n:focus.n}:null;
   const head=(t,sub)=>React.createElement("div",{className:"well-hdr",style:{paddingBottom:4}},
     React.createElement("div",{className:"well-title"},t),
     sub&&React.createElement("div",{style:{fontSize:9,letterSpacing:"0.12em",color:"#555",marginTop:6}},sub));
@@ -9163,10 +9216,10 @@ function MessagesView({session,isAdmin,isMaster,memberPhotos,dmOn,dmUnread}){
   if(!isAdmin){
     // Switch OFF: just their conversation with Team 365 (exactly as before).
     if(!dmOn)return wrap(head("MESSAGES","TAP YOUR PHOTO TO CLOSE"),
-      body(React.createElement(PtThread,{memberEmail:me,selfEmail:me,selfName:session.name,asStaff:false})));
+      body(React.createElement(PtThread,{memberEmail:me,selfEmail:me,selfName:session.name,asStaff:false,photos:memberPhotos})));
     // Switch ON: Team 365 pinned on top, then private conversations with anyone.
     return wrap(head("MESSAGES","TAP YOUR PHOTO TO CLOSE"),
-      body(React.createElement(DmInbox,{session,isMaster:false,memberPhotos,includeTeam:true,avatar})));
+      body(React.createElement(DmInbox,{session,isMaster:false,memberPhotos,includeTeam:true,avatar,focusKey:dmFocus})));
   }
   // Admins, switch ON: TEAM 365 (every member's thread, as before) | PRIVATE (their own
   // conversations with anyone) | ALL PRIVATE (master only, read-only, every pair).
@@ -9175,7 +9228,7 @@ function MessagesView({session,isAdmin,isMaster,memberPhotos,dmOn,dmUnread}){
     [{id:"team",label:"TEAM 365"},{id:"private",label:"PRIVATE"+(dmUnread>0?" •":"")},...(isMaster?[{id:"all",label:"ALL PRIVATE"}]:[])]
       .map(o=>React.createElement("button",{key:o.id,"data-msg-seg":o.id,className:"sp-toggle-btn"+(effSeg===o.id?" spta":""),style:{border:"1px solid #fff"},onClick:()=>setSeg(o.id)},o.label)));
   if(effSeg==="private")return wrap(head("MESSAGES","TAP YOUR PHOTO TO CLOSE"),
-    body(segBar,React.createElement(DmInbox,{session,isMaster,memberPhotos,includeTeam:false,avatar})));
+    body(segBar,React.createElement(DmInbox,{session,isMaster,memberPhotos,includeTeam:false,avatar,focusKey:dmFocus})));
   if(effSeg==="all")return wrap(head("MESSAGES","TAP YOUR PHOTO TO CLOSE"),
     body(segBar,React.createElement(DmAll,{session,memberPhotos,avatar})));
   function toggle(em){setOpenEm(cur=>cur===em?null:em);}
@@ -9219,7 +9272,7 @@ function MessagesView({session,isAdmin,isMaster,memberPhotos,dmOn,dmUnread}){
                 un&&!isOpen&&React.createElement("span",{style:{background:PT_BLUE,color:"#fff",fontSize:8,letterSpacing:"0.14em",fontWeight:700,padding:"3px 8px",borderRadius:10}},t.unread+" NEW")),
               React.createElement("div",{style:{color:isOpen?PT_BLUE:"#666",fontSize:13,lineHeight:1,transition:"transform .2s",transform:isOpen?"none":"rotate(-90deg)"}},"▾")),
             isOpen&&React.createElement("div",{style:{borderTop:"1px solid #1f1f1f",padding:"12px",background:"#0a0a0a"}},
-              React.createElement(PtThread,{key:t.email,memberEmail:t.email,selfEmail:me,selfName:session.name,asStaff:true,isMaster,title:nm})));
+              React.createElement(PtThread,{key:t.email,memberEmail:t.email,selfEmail:me,selfName:session.name,asStaff:true,isMaster,title:nm,photos:memberPhotos})));
         }))));
 }
 // ── Member Workouts Tab (read-only, member-facing) ────────────────────────────
@@ -12758,6 +12811,188 @@ function SubscriberApproveBox({member,onApproved,showToast}){
   );
 }
 
+// ── Push notifications (2 Oct 2026) ──────────────────────────────────────────
+// Phone notifications for messages, Notice Board posts and class reminders.
+// The SERVER decides who is told (Supabase edge function send-push, called by
+// database triggers on pt_messages / direct_messages / posts and by
+// class-reminders). This file only turns a device on or off, keeps the app-icon
+// badge right while the app is open, closes notifications once they're read and
+// opens the right screen when one is tapped. The VAPID private key lives in
+// Supabase Vault only; the public key is read from push_public_key().
+// Deep link from a tapped notification: /?goto=messages&c=<thread>|&dm=<email>, ?goto=community, ?goto=my
+const T365_DL=(()=>{try{const p=new URLSearchParams(window.location.search);return {goto:p.get("goto"),c:p.get("c"),dm:p.get("dm")};}catch(e){return {};}})();
+function pushEnv(){
+  const ua=(typeof navigator!=="undefined"&&navigator.userAgent)||"";
+  const ios=/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&typeof navigator!=="undefined"&&navigator.maxTouchPoints>1);
+  const android=/Android/.test(ua);
+  let standalone=false;try{standalone=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;}catch(e){}
+  const supported=typeof window!=="undefined"&&("serviceWorker" in navigator)&&("PushManager" in window)&&("Notification" in window);
+  const permission=(typeof Notification!=="undefined"&&Notification.permission)||"default";
+  return {ios,android,standalone,supported,permission};
+}
+function pushKeyBytes(b64){const pad="=".repeat((4-b64.length%4)%4);const s=atob((b64+pad).replace(/-/g,"+").replace(/_/g,"/"));const a=new Uint8Array(s.length);for(let i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a;}
+// SB_HDR without "Prefer" (edge-function CORS doesn't allow it, and RPCs return values).
+function pushHdr(){const h={...SB_HDR};delete h.Prefer;return h;}
+async function pushRpc(fn,args){try{const r=await fetch(`${SB_URL}/rest/v1/rpc/${fn}`,{method:"POST",headers:pushHdr(),body:JSON.stringify(args||{})});if(!r.ok)return null;const t=await r.text();try{return JSON.parse(t);}catch(e){return t;}}catch(e){return null;}}
+async function pushRegistration(){
+  if(typeof navigator==="undefined"||!("serviceWorker" in navigator))return null;
+  try{let reg=await navigator.serviceWorker.getRegistration();if(!reg)reg=await navigator.serviceWorker.register("/sw.js");
+    return await Promise.race([navigator.serviceWorker.ready,new Promise(r=>setTimeout(()=>r(reg),4000))]);}catch(e){return null;}
+}
+async function pushSave(sub){const j=sub&&sub.toJSON?sub.toJSON():null;if(!j||!j.endpoint||!j.keys)return false;
+  return (await pushRpc("push_subscribe",{p_endpoint:j.endpoint,p_p256dh:j.keys.p256dh,p_auth:j.keys.auth,p_ua:(navigator.userAgent||"").slice(0,300)}))===true;}
+// Must run straight from a tap — iPhone refuses the permission prompt otherwise.
+async function pushTurnOn(){
+  const env=pushEnv();
+  if(!env.supported)return {ok:false,why:env.ios&&!env.standalone?"install":"unsupported"};
+  let perm=env.permission;
+  if(perm!=="granted"){try{perm=await Notification.requestPermission();}catch(e){perm="denied";}}
+  if(perm!=="granted")return {ok:false,why:perm==="denied"?"denied":"dismissed"};
+  const reg=await pushRegistration();if(!reg||!reg.pushManager)return {ok:false,why:"unsupported"};
+  const key=await pushRpc("push_public_key");if(!key||typeof key!=="string")return {ok:false,why:"server"};
+  let sub=null;try{sub=await reg.pushManager.getSubscription();}catch(e){}
+  if(!sub){try{sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:pushKeyBytes(key)});}catch(e){return {ok:false,why:"subscribe"};}}
+  return (await pushSave(sub))?{ok:true}:{ok:false,why:"server"};
+}
+async function pushTurnOff(){
+  const reg=await pushRegistration();let sub=null;try{sub=reg&&reg.pushManager?await reg.pushManager.getSubscription():null;}catch(e){}
+  if(sub){await pushRpc("push_unsubscribe",{p_endpoint:sub.endpoint});try{await sub.unsubscribe();}catch(e){}}
+  pushSetBadge(0);
+  return true;
+}
+// Is THIS device on for this account? (permission granted + a live subscription saved)
+async function pushDeviceState(){
+  const env=pushEnv();
+  if(!env.supported||env.permission!=="granted")return {...env,on:false};
+  const reg=await pushRegistration();let sub=null;try{sub=reg&&reg.pushManager?await reg.pushManager.getSubscription():null;}catch(e){}
+  if(!sub)return {...env,on:false};
+  const mine=await sbGet("push_subscriptions",`endpoint=eq.${encodeURIComponent(sub.endpoint)}&select=id`);
+  return {...env,on:Array.isArray(mine)&&mine.length>0};
+}
+async function pushSendTest(){try{const r=await fetch(`${SB_URL}/functions/v1/send-push`,{method:"POST",headers:pushHdr(),body:JSON.stringify({action:"test"})});return await r.json().catch(()=>({ok:false}));}catch(e){return {ok:false};}}
+function pushSetBadge(n){try{if(n>0){if(navigator.setAppBadge)navigator.setAppBadge(n);}else if(navigator.clearAppBadge)navigator.clearAppBadge();}catch(e){}}
+// Close notifications that have been dealt with — one tag, or a test function on the tag.
+async function pushCloseNotes(match){
+  try{if(!("serviceWorker" in navigator))return;const reg=await navigator.serviceWorker.getRegistration();if(!reg||!reg.getNotifications)return;
+    const ns=await reg.getNotifications();ns.forEach(n=>{const t=n.tag||"";if(typeof match==="function"?match(t):t===match)n.close();});}catch(e){}
+}
+const PUSH_TYPES=[
+  {k:"messages",col:"push_messages",label:"Messages",hint:"When someone messages you"},
+  {k:"notices",col:"push_notices",label:"Notice Board",hint:"When a new post goes up"},
+  {k:"reminders",col:"push_reminders",label:"Class reminders",hint:"The night before a class you've booked"}
+];
+const pushBtn=(on,dis)=>({background:dis?"#141414":(on?"#fff":"#0e0e0e"),color:dis?"#444":(on?"#000":"#555"),border:"1px solid "+(dis?"#242424":(on?"#fff":"#2a2a2a")),borderRadius:0,padding:"7px 20px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:dis?"not-allowed":"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0});
+// Edit Profile → NOTIFICATIONS. Turning a device on/off, a test, and the three per-person types.
+function PushSettings({session,memberData,setMemberData,showToast,pushFlags}){
+  const [st,setSt]=useState(null);
+  const [busy,setBusy]=useState("");
+  const [msg,setMsg]=useState("");
+  const prefs={messages:memberData?.push_messages!==false,notices:memberData?.push_notices!==false,reminders:memberData?.push_reminders!==false};
+  async function refresh(){setSt(await pushDeviceState());}
+  useEffect(()=>{refresh();},[]);
+  async function on(){
+    setBusy("on");setMsg("");
+    const r=await pushTurnOn();
+    setBusy("");await refresh();
+    if(r.ok){showToast("Notifications on for this device ✓");return;}
+    setMsg(r.why==="denied"?"Notifications are blocked for Team 365 on this device — see below to allow them."
+      :r.why==="dismissed"?"No problem — tap again whenever you're ready."
+      :r.why==="install"?"Add Team 365 to your Home Screen first (steps below)."
+      :"Couldn't turn them on just now — check your connection and try again.");
+  }
+  async function off(){setBusy("off");await pushTurnOff();setBusy("");await refresh();showToast("Notifications off for this device");}
+  async function test(){setBusy("test");const r=await pushSendTest();setBusy("");
+    showToast(r&&r.ok&&r.devices>0?"Test sent — it should pop up in a few seconds":"Couldn't send a test — try turning notifications off and on");}
+  async function savePref(row,next){
+    setBusy(row.k);
+    const ok=await sbPatch("members",`email=eq.${encodeURIComponent(session.email)}`,{[row.col]:next});
+    setBusy("");
+    if(ok){setMemberData(m=>m?{...m,[row.col]:next}:m);showToast(next?"Turned on ✓":"Turned off ✓");}
+    else showToast("Couldn't save that — nothing changed");
+  }
+  const note=(t,c)=>React.createElement("div",{style:{fontSize:11,color:c||"#888",lineHeight:1.6,letterSpacing:"0.02em",margin:"6px 0 10px"}},t);
+  const big=(label,fn,b)=>React.createElement("button",{type:"button",onClick:fn,disabled:!!busy,"data-push":b,style:{display:"block",width:"100%",background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.18em",padding:"14px",borderRadius:0,cursor:busy?"default":"pointer",marginBottom:6}},busy===b?"…":label);
+  const small=(label,fn,b)=>React.createElement("button",{type:"button",onClick:fn,disabled:!!busy,"data-push":b,style:{flex:1,background:"#0e0e0e",color:"#ddd",border:"1px solid #2a2a2a",fontFamily:"'DM Sans',sans-serif",fontSize:10,letterSpacing:"0.12em",fontWeight:700,padding:"10px",borderRadius:0,cursor:busy?"default":"pointer"}},busy===b?"…":label);
+  let device;
+  if(!st)device=note("Checking this device…","#555");
+  else if(st.ios&&!st.standalone)device=React.createElement("div",{"data-push-state":"install",style:{background:"#0e0e0e",border:"1px solid #1d3a5a",padding:"12px 14px",margin:"6px 0 10px"}},
+    React.createElement("div",{style:{fontSize:10,letterSpacing:"0.14em",color:"#1d9bf0",fontWeight:700,marginBottom:6}},"ON IPHONE: ADD TEAM 365 TO YOUR HOME SCREEN FIRST"),
+    React.createElement("div",{style:{fontSize:12,color:"#aaa",lineHeight:1.8}},"1. In Safari, tap the Share button (the square with an arrow)",React.createElement("br"),"2. Tap Add to Home Screen, then Add",React.createElement("br"),"3. Open Team 365 from your Home Screen and come back here"));
+  else if(!st.supported)device=note("This browser can't show notifications. Try Chrome on Android, or Safari on an iPhone with Team 365 added to the Home Screen.");
+  else if(st.permission==="denied")device=React.createElement("div",{"data-push-state":"blocked"},
+    note("Notifications are blocked for Team 365 on this device. To allow them: "+(st.ios?"Settings → Notifications → Team 365 → Allow Notifications.":"tap the lock or settings icon next to the address (or Chrome ⋮ → Settings → Notifications), allow Team 365, then come back."),"#e0a040"));
+  else if(st.on)device=React.createElement("div",{"data-push-state":"on"},
+    React.createElement("div",{style:{fontSize:11,letterSpacing:"0.12em",color:"#1d9bf0",fontWeight:700,margin:"6px 0 10px"}},"ON FOR THIS DEVICE ✓"),
+    React.createElement("div",{style:{display:"flex",gap:8,marginBottom:6}},small("SEND A TEST",test,"test"),small("TURN OFF",off,"off")));
+  else device=React.createElement("div",{"data-push-state":"off"},big("TURN ON NOTIFICATIONS",on,"on"));
+  return React.createElement("div",{"data-push-settings":"1"},
+    React.createElement("div",{className:"prof-section"},"NOTIFICATIONS"),
+    note("Get a notification on this phone when someone messages you — even when the app is closed. Tap it and it opens the message.","#666"),
+    device,
+    msg&&note(msg,"#e0a040"),
+    st&&st.android&&!st.standalone&&st.supported&&note("Tip: install the app (Chrome ⋮ → Install app / Add to Home screen) so notifications show as Team 365 instead of Chrome.","#555"),
+    PUSH_TYPES.map(row=>{
+      const isOn=prefs[row.k];const globalOn=(pushFlags||{})[row.k]!==false;
+      return React.createElement("div",{key:row.k,"data-push-type":row.k,style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"9px 0"}},
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontSize:14,color:"#fff",fontWeight:300,letterSpacing:"0.02em"}},row.label),
+          React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:"0.06em",marginTop:3}},row.hint),
+          !globalOn&&React.createElement("div",{style:{fontSize:9,color:"#1d9bf0",letterSpacing:"0.08em",marginTop:4,fontWeight:600}},"PAUSED — NOBODY IS GETTING THESE RIGHT NOW")),
+        React.createElement("button",{type:"button",disabled:busy===row.k||!globalOn,style:pushBtn(isOn,!globalOn),onClick:()=>savePref(row,!isOn)},busy===row.k?"…":(isOn?"ON":"OFF")));
+    }),
+    note("These apply on every device you've turned on. If no device is on, you'll get an email for a message you haven't read after 15 minutes — turning Messages off stops those too.","#444")
+  );
+}
+// Admin → FUNCTIONS (master only): the push switches for everyone, the message
+// email backup, and which admins hear about member messages. The database refuses
+// anyone but the master (feature_flags_guard_push / members_guard_push_staff).
+function PushFunctions({showToast,onFlags}){
+  const [f,setF]=useState(null);
+  const [admins,setAdmins]=useState(null);
+  async function load(){
+    const ff=await sbGet("feature_flags","id=eq.1&select=push_messages,push_notices,push_reminders,push_email_fallback");
+    if(Array.isArray(ff)&&ff.length)setF(ff[0]);
+    const [a,m]=await Promise.all([sbGet("members","is_admin=eq.true&select=email,name,push_staff_alerts"),sbGet("members",`email=eq.${encodeURIComponent(ADMIN_EMAIL)}&select=email,name,push_staff_alerts`)]);
+    const map={};[...(Array.isArray(m)?m:[]),...(Array.isArray(a)?a:[])].forEach(x=>{if(x&&x.email)map[String(x.email).toLowerCase()]=x;});
+    setAdmins(Object.values(map).sort((x,y)=>String(x.name||"").localeCompare(String(y.name||""))));
+  }
+  useEffect(()=>{load();},[]);
+  async function flip(k,next,label){
+    const ok=await sbPatch("feature_flags","id=eq.1",{[k]:next});
+    if(ok){setF(p=>({...p,[k]:next}));if(onFlags)onFlags(k,next);}
+    showToast(!ok?"Couldn't change it — try again":(label+(next?" on ✓":" off")));
+  }
+  async function flipAdmin(a,next){
+    const ok=await sbPatch("members",`email=eq.${encodeURIComponent(a.email)}`,{push_staff_alerts:next});
+    if(ok)setAdmins(p=>p.map(x=>x.email===a.email?{...x,push_staff_alerts:next}:x));
+    showToast(!ok?"Couldn't change it — try again":next?(a.name||a.email)+" will be notified ✓":(a.name||a.email)+" won't be notified");
+  }
+  const rows=[
+    {k:"push_messages",t:"MESSAGE NOTIFICATIONS",d:"Coach messages and member-to-member messages",on:"ON — \"New message from …\" (name only, never the message)",off:"OFF — nobody gets message notifications"},
+    {k:"push_notices",t:"NOTICE BOARD NOTIFICATIONS",d:"Everyone (except subscribers) when a new post goes up",on:"ON — \"New post on the Team 365 Notice Board\"",off:"OFF — no Notice Board notifications"},
+    {k:"push_reminders",t:"CLASS REMINDER NOTIFICATIONS",d:"Sent with the night-before reminder email (CLASS REMINDERS must be on too)",on:"ON — \"Reminder: <class> tomorrow at <time>\"",off:"OFF — reminders by email only"},
+    {k:"push_email_fallback",t:"MESSAGE EMAIL BACKUP",d:"Emails people with no device turned on when a message is still unread after 15 minutes",on:"ON — \"You have a new message from …\" (no message text)",off:"OFF — no backup emails"}
+  ];
+  const lbl=t=>React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,margin:"22px 0 10px"}},t);
+  return React.createElement("div",{"data-push-functions":"1"},
+    lbl("NOTIFICATIONS · EVERYONE"),
+    !f?React.createElement("div",{style:{fontSize:10,color:"#444"}},"LOADING…"):rows.map(r=>{const on=f[r.k]!==false;
+      return React.createElement("div",{key:r.k,"data-push-flag":r.k,style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(on?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
+        React.createElement("div",{style:{paddingRight:10}},
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},r.t),
+          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},r.d),
+          React.createElement("div",{style:{fontSize:9,color:on?"#1d9bf0":"#555",marginTop:3,letterSpacing:"0.04em",fontWeight:on?600:400,lineHeight:1.5}},on?r.on:r.off)),
+        React.createElement("button",{onClick:()=>flip(r.k,!on,r.t.charAt(0)+r.t.slice(1).toLowerCase()),
+          style:{background:on?"#fff":"#222",color:on?"#000":"#1d9bf0",border:"1px solid "+(on?"#fff":"#1d9bf0"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},on?"ON":"OFF"));}),
+    lbl("WHO GETS MEMBER MESSAGES"),
+    React.createElement("div",{style:{fontSize:10,color:"#555",lineHeight:1.6,marginBottom:10}},"Admins switched ON get a notification when a member writes to Team 365. Each of them also needs notifications turned on in their own Edit Profile."),
+    !admins?React.createElement("div",{style:{fontSize:10,color:"#444"}},"LOADING…"):admins.map(a=>{const on=a.push_staff_alerts===true;
+      return React.createElement("div",{key:a.email,"data-push-admin":a.email,style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(on?"#1d9bf0":"#222"),padding:"9px 14px",marginBottom:8}},
+        React.createElement("div",null,React.createElement("div",{style:{fontSize:12,color:"#fff"}},a.name||a.email),React.createElement("div",{style:{fontSize:9,color:"#555"}},a.email)),
+        React.createElement("button",{onClick:()=>flipAdmin(a,!on),style:{background:on?"#fff":"#222",color:on?"#000":"#1d9bf0",border:"1px solid "+(on?"#fff":"#1d9bf0"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},on?"ON":"OFF"));})
+  );
+}
+
 const T365_DEEP_LINK=(typeof window!=="undefined"&&typeof URLSearchParams!=="undefined")?new URLSearchParams(window.location.search).get("goto"):null;
 function App(){
   const [ready,setReady]=useState(false);
@@ -12769,7 +13004,7 @@ function App(){
   const [memberPhotos,setMemberPhotos]=useState({});
   const [weekStart,setWeekStart]=useState(getWeekStart);
   const [selDay,setSelDay]=useState(getInitDay);
-  const [tab,setTab]=useState(()=>T365_DEEP_LINK==="library"?"admin":ssGet("t365-tab","community"));
+  const [tab,setTab]=useState(()=>T365_DEEP_LINK==="library"?"admin":(T365_DEEP_LINK==="community"||T365_DEEP_LINK==="my")?T365_DEEP_LINK:ssGet("t365-tab","community"));
   useEffect(()=>{ssSet("t365-tab",tab);},[tab]);
   // Keep the active tab scrolled into view in both nav bars whenever the tab changes
   useEffect(()=>{
@@ -12852,7 +13087,8 @@ function App(){
   // feature_flags columns with the service role.
   const [remindersEnabled,setRemindersEnabled]=useState(true);
   const [confirmationsEnabled,setConfirmationsEnabled]=useState(true);
-  const [dmEnabled,setDmEnabled]=useState(false);   // master switch: members can privately message anyone
+  const [dmEnabled,setDmEnabled]=useState(false);
+  const [pushFlags,setPushFlags]=useState({messages:true,notices:true,reminders:true}); // master push switches (Admin → FUNCTIONS)   // master switch: members can privately message anyone
   const [dowNames,setDowNames]=useState({1:"RISE UP",2:"STRENGTH LOWER",3:"ASCEND",4:"STRENGTH UPPER",5:"ELEVATE",6:"SUMMIT"});
   // Recurring per-slot names: keyed by "dow:time" (e.g. "4:19:15"), applies every week for that weekday+time.
   const [dowSlotNames,setDowSlotNames]=useState({});
@@ -12980,6 +13216,7 @@ function App(){
         setRemindersEnabled(ffData[0].reminders_enabled!==false);
         setConfirmationsEnabled(ffData[0].confirmations_enabled!==false);
         setDmEnabled(ffData[0].dm_enabled===true);
+        setPushFlags({messages:ffData[0].push_messages!==false,notices:ffData[0].push_notices!==false,reminders:ffData[0].push_reminders!==false});
       }
       const dnData=await sbGet("coaching_notes","class_name=eq.__DOW_NAMES__&select=content");
       if(dnData&&dnData.length){try{const dn=JSON.parse(dnData[0].content);setDowNames(p=>({...p,...dn}));}catch{}}
@@ -13150,11 +13387,14 @@ function App(){
     if(!em||isSubscriber){setMsgMine(0);setMsgStaff({});setMsgDm(0);return;}
     let live=true;
     const run=async()=>{
+      let tot=0;   // everything unread → the app-icon badge (phones with notifications on)
       const mine=await sbGet("pt_messages",`member_email=eq.${encodeURIComponent(em)}&from_staff=eq.true&member_read=eq.false&select=id`);
+      tot+=Array.isArray(mine)?mine.length:0;
       if(live)setMsgMine(Array.isArray(mine)?mine.length:0);
       if(isAdmin){
         const st=await sbGet("pt_messages","from_staff=eq.false&staff_read=eq.false&select=member_email");
         const m={};(Array.isArray(st)?st:[]).forEach(r=>{const k=String(r.member_email||"").toLowerCase();if(k&&k!==em)m[k]=(m[k]||0)+1;});
+        tot+=Object.values(m).reduce((a,b)=>a+b,0);
         if(live)setMsgStaff(m);
       }
       // The member-to-member switch is re-read here too, so turning it on/off reaches
@@ -13162,9 +13402,10 @@ function App(){
       const ff=await sbGet("feature_flags","id=eq.1&select=dm_enabled");
       if(Array.isArray(ff)&&ff.length){
         const on=ff[0].dm_enabled===true;if(live)setDmEnabled(on);
-        if(on){const dm=await sbGet("direct_messages",`recipient_email=eq.${encodeURIComponent(em)}&read=eq.false&select=id`);if(live)setMsgDm(Array.isArray(dm)?dm.length:0);}
+        if(on){const dm=await sbGet("direct_messages",`recipient_email=eq.${encodeURIComponent(em)}&read=eq.false&select=id`);tot+=Array.isArray(dm)?dm.length:0;if(live)setMsgDm(Array.isArray(dm)?dm.length:0);}
         else if(live)setMsgDm(0);
       }
+      if(live){pushSetBadge(tot);if(!tot)pushCloseNotes(t=>/^t365-(msg|dm)-/.test(t));}
     };
     run();
     const off=onScreenPoll(run,60000);
@@ -13189,6 +13430,48 @@ function App(){
     return ()=>window.removeEventListener("popstate",onPop);
   },[]);
   useEffect(()=>{if(!canOpenMsgs&&msgOpen)setMsgOpen(false);},[canOpenMsgs]);
+  // ── Push notifications: open the right place when one is tapped ──────────────
+  // msgFocus tells the messages screen which conversation to drop open.
+  const [msgFocus,setMsgFocus]=useState(null);
+  const msgOpenRef=useRef(false);msgOpenRef.current=msgOpen;
+  function openMsgsTo(f){
+    setMsgFocus({c:f.c||null,dm:f.dm||null,n:Date.now()});
+    // Messages open as an overlay on top of the app, so the back button (or the
+    // photo) closes them onto the app itself — not out of the app.
+    if(!msgOpenRef.current){setMsgOpen(true);window.history.pushState({overlay:"messages"},"");}
+    ptMsgNotify();
+  }
+  function goFromNote(href){
+    let p;try{p=new URL(href,window.location.origin).searchParams;}catch(e){return;}
+    const g=p.get("goto");
+    if(g==="messages"){if(canOpenMsgs)openMsgsTo({c:p.get("c"),dm:p.get("dm")});}
+    else if(g==="community"||g==="my"){if(msgOpenRef.current){if(window.history.state&&window.history.state.overlay==="messages")window.history.back();else setMsgOpen(false);}setTab(g);}
+  }
+  const dlDone=useRef(false);
+  useEffect(()=>{
+    if(dlDone.current||!session||!session.email)return;
+    dlDone.current=true;
+    if(T365_DL.goto==="messages"&&canOpenMsgs)openMsgsTo({c:T365_DL.c,dm:T365_DL.dm});
+    if(T365_DL.goto&&T365_DL.goto!=="library"){try{window.history.replaceState(window.history.state,"",window.location.pathname);}catch(e){}}
+  },[session&&session.email,canOpenMsgs]);
+  useEffect(()=>{
+    if(typeof navigator==="undefined"||!("serviceWorker" in navigator))return;
+    const h=e=>{const d=e&&e.data;if(!d||!d.t365)return;
+      if(d.t365==="push")ptMsgNotify();                       // refresh straight away
+      else if(d.t365==="open")goFromNote(d.url);
+      else if(d.t365==="resubscribe")pushTurnOn();            // permission already granted: no prompt
+    };
+    navigator.serviceWorker.addEventListener("message",h);
+    return ()=>navigator.serviceWorker.removeEventListener("message",h);
+  },[canOpenMsgs]);
+  // Keep this device linked to whoever is signed in (and re-save a rotated subscription).
+  useEffect(()=>{
+    if(!session||!session.email||isSubscriber)return;
+    (async()=>{const env=pushEnv();if(!env.supported||env.permission!=="granted")return;
+      const reg=await pushRegistration();let sub=null;try{sub=reg&&reg.pushManager?await reg.pushManager.getSubscription():null;}catch(e){}
+      if(sub)pushSave(sub);})();
+  },[session&&session.email,isSubscriber]);
+  useEffect(()=>{if(tab==="community")pushCloseNotes("t365-notice");},[tab]);
   useEffect(()=>{if(ready&&TAB_ORDER.length&&!TAB_ORDER.includes(tab)&&!(tab==="challenge"&&challengeEnabled&&chTab==="loading"))setTab(TAB_ORDER[0]);},[memberAccess,classesEnabled,strengthEnabled,wellnessEnabled,workoutsEnabled,challengeEnabled,chTab,ready]);
   useEffect(()=>{
     const em=session&&session.email;
@@ -13272,7 +13555,7 @@ function App(){
     }
     setAuthBusy(false);
   }
-  function handleLogout(){authLogout();lsSet("t365-session",null);setSession(null);setMemberData(null);setMemberAccess(null);setSubRow(null);setShowProf(false);}
+  async function handleLogout(){try{await Promise.race([pushTurnOff(),new Promise(r=>setTimeout(r,2500))]);}catch(e){}authLogout();lsSet("t365-session",null);setSession(null);setMemberData(null);setMemberAccess(null);setSubRow(null);setShowProf(false);}
   async function loadSubscriberState(email){
     const [sr,ms]=await Promise.all([
       sbGet("subscribers",`email=eq.${encodeURIComponent(String(email||"").toLowerCase())}&select=*`),
@@ -13877,7 +14160,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         ))
       )
     ),
-    msgOpen&&canOpenMsgs&&React.createElement("div",{className:"app-body"},React.createElement(MessagesView,{session,isAdmin,isMaster,memberPhotos,dmOn:dmEnabled,dmUnread:msgDm})),
+    msgOpen&&canOpenMsgs&&React.createElement("div",{className:"app-body"},React.createElement(MessagesView,{session,isAdmin,isMaster,memberPhotos,dmOn:dmEnabled,dmUnread:msgDm,focus:msgFocus})),
     React.createElement("div",{className:"app-body",style:msgOpen&&canOpenMsgs?{display:"none"}:undefined},
     mFlags.maint&&React.createElement("div",{style:{background:"#c98a1e",color:"#0a0a0a",textAlign:"center",padding:"8px 10px",fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.2em",fontSize:14,marginBottom:10}},"⚙ MAINTENANCE MODE"),
     effTab==="book"&&React.createElement(React.Fragment,null,
@@ -14175,6 +14458,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         React.createElement("div",{className:"prof-section"},"HEALTH INFORMATION"),
         React.createElement("a",{href:"/register.html",style:{display:"block",width:"100%",background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.18em",padding:"15px",borderRadius:0,textAlign:"center",textDecoration:"none",marginBottom:4}},"UPDATE HEALTH SCREENING FORM"),
         React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.06em",marginBottom:4}},"Update your medical conditions, fitness level, or consents"),
+        React.createElement(PushSettings,{session,memberData,setMemberData,showToast,pushFlags}),
         React.createElement("div",{className:"prof-section"},"EMAILS"),
         [
           {k:"reminders",col:"email_reminders",label:"Class reminders",hint:"The night before a class you have booked"},
