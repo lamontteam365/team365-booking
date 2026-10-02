@@ -9027,31 +9027,89 @@ function DmThread({withEmail,withName,selfEmail,selfName,isMaster,viewPair,photo
 // pinned on top, then their conversations with anyone. Admins: their own private
 // conversations (the PRIVATE tab). "New message" drops down an A–Z list of everyone
 // (admins included; never yourself or subscribers). One conversation open at a time.
-function DmInbox({session,isMaster,memberPhotos,includeTeam,avatar,focusKey}){
+// ── Choose who to message (3 Oct 2026) ──────────────────────────────────────
+// Tap ANYWHERE on the box to open the A–Z list; tap the box again, tap outside it,
+// or CLOSE to shut it. The list scrolls with your finger. (The old drop-down closed
+// itself as soon as you touched the list, because its search box lost focus — that
+// is why it "wouldn't scroll" and the arrow was hard to hit.) The search box narrows it.
+function PersonPicker({people,placeholder,onPick,avatar,showEmail,attr}){
+  const [open,setOpen]=useState(false);
+  const [q,setQ]=useState("");
+  const ref=useRef(null);
+  function close(){setOpen(false);setQ("");}
+  useEffect(()=>{
+    if(!open)return;
+    // Bring the whole list into view (the bottom tab bar would otherwise cover the end of it).
+    setTimeout(()=>{try{if(ref.current)ref.current.scrollIntoView({behavior:"smooth",block:"start"});}catch(e){}},30);
+    const h=e=>{if(ref.current&&!ref.current.contains(e.target))close();};
+    document.addEventListener("pointerdown",h);
+    return ()=>document.removeEventListener("pointerdown",h);
+  },[open]);
+  const ql=q.trim().toLowerCase();
+  const list=ql?people.filter(m=>String(m.name).toLowerCase().includes(ql)||m.email.includes(ql)):people;
+  return React.createElement("div",{ref,"data-picker":attr},
+    React.createElement("button",{type:"button","data-picker-toggle":attr,"aria-expanded":open?"true":"false",onClick:()=>{if(open)close();else setOpen(true);},
+      style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:"#141414",border:"1px solid "+(open?PT_BLUE:"#262626"),borderRadius:open?"8px 8px 0 0":8,color:open?"#ddd":"#888",fontFamily:"'DM Sans',sans-serif",fontSize:13,padding:"13px 12px",cursor:"pointer",textAlign:"left"}},
+      React.createElement("span",null,placeholder),
+      React.createElement("span",{style:{color:open?PT_BLUE:"#666",fontSize:14,lineHeight:1,transform:open?"none":"rotate(-90deg)",transition:"transform .2s"}},"▾")),
+    open&&React.createElement("div",{"data-picker-list":attr,style:{border:"1px solid "+PT_BLUE,borderTop:"none",borderRadius:"0 0 8px 8px",background:"#0e0e0e",overflow:"hidden"}},
+      React.createElement("div",{style:{padding:"8px 10px",borderBottom:"1px solid #1a1a1a"}},
+        React.createElement("input",{value:q,onChange:e=>setQ(e.target.value),placeholder:"Search by name…","data-picker-search":attr,
+          style:{width:"100%",background:"#141414",border:"1px solid #262626",borderRadius:6,color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:14,padding:"8px 10px",outline:"none",boxSizing:"border-box"}})),
+      React.createElement("div",{"data-picker-scroll":attr,style:{maxHeight:"min(300px, 45vh)",overflowY:"auto",WebkitOverflowScrolling:"touch",overscrollBehavior:"contain",touchAction:"pan-y"}},
+        list.length===0?React.createElement("div",{style:{fontSize:11,color:"#555",padding:"12px"}},people.length?"Nobody matches":"Loading…")
+        :list.map(m=>React.createElement("div",{key:m.email,"data-pick":m.email,role:"button",onClick:()=>{close();onPick(m.email);},
+          style:{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",cursor:"pointer",borderTop:"1px solid #1a1a1a"}},
+          avatar(m.email,m.name,30),
+          React.createElement("div",{style:{minWidth:0,flex:1}},
+            React.createElement("div",{style:{fontSize:13,color:"#ddd"}},m.name),
+            showEmail&&React.createElement("div",{style:{fontSize:10,color:"#555",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.email)),
+          m.staff&&React.createElement("span",{style:{fontSize:8,letterSpacing:"0.14em",fontWeight:700,color:PT_BLUE,border:"1px solid "+PT_BLUE,borderRadius:10,padding:"2px 7px",flexShrink:0}},"COACH")))),
+      React.createElement("button",{type:"button",onClick:close,"data-picker-close":attr,style:{width:"100%",background:"none",border:"none",borderTop:"1px solid #1a1a1a",color:"#888",fontSize:10,letterSpacing:"0.14em",fontWeight:700,padding:"11px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},"CLOSE")));
+}
+// Admins and the master, from the database (members_public doesn't say who's an admin).
+async function msgStaffList(){
+  try{const h={...SB_HDR};delete h.Prefer;
+    const r=await fetch(`${SB_URL}/rest/v1/rpc/messaging_staff`,{method:"POST",headers:h,body:"{}"});
+    const j=r.ok?await r.json():[];return Array.isArray(j)?j.map(x=>String(x.email||"").toLowerCase()).filter(Boolean):[];}catch(e){return [];}
+}
+// Everyone's conversation list except the master's (3 Oct 2026):
+//  • Team 365 pinned on top — their own conversation with Team 365 (the master).
+//  • Their private conversations. A member can message any coach (admin) at any
+//    time, and other members too while MEMBER-TO-MEMBER is ON. Each conversation is
+//    only between the two of them (the master can also read it — members are told).
+//  • Admins (not the master) see the conversations members start with them, and can
+//    message any member.
+// The master uses it for PRIVATE: conversations with the other admins only.
+// The DATABASE enforces who may message whom (dm_pair_ok in the direct_messages policies).
+function DmInbox({session,isMaster,isAdmin,dmOn,memberPhotos,includeTeam,avatar,focusKey}){
   const me=String((session&&session.email)||"").toLowerCase();
+  const master=String(ADMIN_EMAIL).toLowerCase();
   const [dms,setDms]=useState(null);
   const [team,setTeam]=useState({unread:0,last:null});
   const [people,setPeople]=useState([]);
   const [openKey,setOpenKey]=useState(null);
   const [extra,setExtra]=useState(null);
-  const [q,setQ]=useState("");
-  const [drop,setDrop]=useState(false);
+  const autoOpened=useRef(false);
   async function load(){
     const rows=await sbGet("direct_messages","select=id,sender_email,recipient_email,sender_name,body,created_at,read&order=created_at.desc&limit=2000");
     const map={};
     (Array.isArray(rows)?rows:[]).forEach(r=>{
       const s=String(r.sender_email||"").toLowerCase(),t=String(r.recipient_email||"").toLowerCase();
-      if(s!==me&&t!==me)return;               // the master's list also returns other people's — those live under ALL PRIVATE
+      if(s!==me&&t!==me)return;               // the master's read also returns other people's — those are under VIEW ALL
       const o=s===me?t:s;
       if(!map[o])map[o]={email:o,last:r,unread:0,name:""};
       if(s===o&&!map[o].name)map[o].name=r.sender_name||"";
       if(t===me&&!r.read)map[o].unread++;
     });
-    setDms(Object.values(map));
+    const vals=Object.values(map);
+    setDms(vals);
     if(includeTeam){
       const un=await sbGet("pt_messages",`member_email=eq.${encodeURIComponent(me)}&from_staff=eq.true&member_read=eq.false&select=id`);
       const last=await sbGet("pt_messages",`member_email=eq.${encodeURIComponent(me)}&select=body,created_at,from_staff&order=created_at.desc&limit=1`);
       setTeam({unread:Array.isArray(un)?un.length:0,last:Array.isArray(last)&&last.length?last[0]:null});
+      // Nothing else to show yet: open the Team 365 conversation straight away (as before).
+      if(!autoOpened.current){autoOpened.current=true;if(!vals.length)setOpenKey(k=>k||"team365");}
     }
   }
   useEffect(()=>{
@@ -9059,15 +9117,18 @@ function DmInbox({session,isMaster,memberPhotos,includeTeam,avatar,focusKey}){
     const off=onScreenPoll(load,30000);
     const h=()=>load();window.addEventListener("t365-msgs-changed",h);
     (async()=>{
-      const mp=await sbGet("members_public","select=email,name");
+      const [mp,staff]=await Promise.all([sbGet("members_public","select=email,name"),msgStaffList()]);
+      const st=new Set(staff);
       let subs=[];if(isMaster){try{subs=await sbGet("subscribers","select=email");}catch(e){}}
       const ss=new Set((Array.isArray(subs)?subs:[]).map(x=>String(x.email||"").toLowerCase()));
-      setPeople((Array.isArray(mp)?mp:[]).map(m=>({email:String(m.email||"").toLowerCase(),name:m.name||m.email||""}))
-        .filter(m=>m.email&&m.email!==me&&!ss.has(m.email))
-        .sort((x,y)=>x.name.localeCompare(y.name,undefined,{sensitivity:"base"})));
+      setPeople((Array.isArray(mp)?mp:[]).map(m=>({email:String(m.email||"").toLowerCase(),name:m.name||m.email||"",staff:st.has(String(m.email||"").toLowerCase())}))
+        .filter(m=>m.email&&m.email!==me&&m.email!==master&&!ss.has(m.email))
+        // master: other admins only · admins: anyone · members: coaches, plus members while the switch is ON
+        .filter(m=>isMaster?m.staff:(isAdmin||dmOn)?true:m.staff)
+        .sort((x,y)=>(x.staff===y.staff?0:x.staff?-1:1)||x.name.localeCompare(y.name,undefined,{sensitivity:"base"})));
     })();
     return ()=>{off();window.removeEventListener("t365-msgs-changed",h);};
-  },[me]);
+  },[me,dmOn,isAdmin]);
   const nameFor=em=>{const p=people.find(x=>x.email===em);const t=(dms||[]).find(x=>x.email===em);return (p&&p.name)||(t&&t.name)||em;};
   function toggle(k){setOpenKey(cur=>cur===k?null:k);}
   // Opened from a notification: drop that conversation open.
@@ -9079,38 +9140,28 @@ function DmInbox({session,isMaster,memberPhotos,includeTeam,avatar,focusKey}){
     setTimeout(()=>{try{const el=document.querySelector('[data-thread="'+k+'"]');if(el)el.scrollIntoView({behavior:"smooth",block:"start"});}catch(e){}},400);
   },[focusKey&&focusKey.n]);
   function pick(em){
-    setQ("");setDrop(false);
     if(!(dms||[]).some(t=>t.email===em))setExtra(em);
     setOpenKey(em);
     setTimeout(()=>{try{const el=document.querySelector('[data-thread="'+em+'"]');if(el)el.scrollIntoView({behavior:"smooth",block:"start"});}catch(e){}},120);
   }
-  const ql=q.trim().toLowerCase();
-  const choices=ql?people.filter(m=>m.name.toLowerCase().includes(ql)||m.email.includes(ql)):people;
   let list=(dms||[]).slice().sort((a,b)=>new Date(b.last.created_at)-new Date(a.last.created_at));
   if(extra&&!list.some(t=>t.email===extra))list=[{email:extra,last:null,unread:0,name:""},...list];
   const teamAv=React.createElement("div",{style:{width:36,height:36,borderRadius:"50%",background:"#0a1a2a",border:"1px solid "+PT_BLUE,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:PT_BLUE,flexShrink:0}},"365");
+  const notice=isMaster?"Your private conversations with the other admins. Members message you under TEAM 365."
+    :isAdmin?"Members can message you directly — only you can read those conversations (and the Team 365 master admin). Choose anyone below to start one."
+    :dmOn?"Message Team 365, one of our coaches, or another member. Only the person you message can read it — the Team 365 master admin can also see conversations."
+    :"Message Team 365 or one of our coaches. Only the person you message can read it — the Team 365 master admin can also see conversations.";
   return React.createElement("div",{"data-dm-inbox":"1"},
-    React.createElement("div",{"data-dm-notice":"1",style:{fontSize:10,color:"#666",lineHeight:1.6,marginBottom:12}},
-      isMaster?"Your private conversations with anyone. Every member-to-member conversation is under ALL PRIVATE."
-        :"Message anyone at Team 365. Conversations are private between the two of you — the Team 365 master admin can also see them."),
-    React.createElement("div",{style:{position:"relative"}},
-      React.createElement("input",{value:q,onChange:e=>{setQ(e.target.value);setDrop(true);},onFocus:()=>setDrop(true),onBlur:()=>setTimeout(()=>setDrop(false),200),
-        placeholder:"New message — choose anyone…","data-dm-search":"1",
-        style:{width:"100%",background:"#141414",border:"1px solid "+(drop?PT_BLUE:"#262626"),borderRadius:drop?"8px 8px 0 0":8,color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:13,padding:"10px 34px 10px 12px",outline:"none",boxSizing:"border-box"}}),
-      React.createElement("div",{onMouseDown:e=>{e.preventDefault();setDrop(d=>!d);},style:{position:"absolute",right:12,top:10,color:drop?PT_BLUE:"#666",fontSize:13,lineHeight:1,cursor:"pointer",transform:drop?"none":"rotate(-90deg)",transition:"transform .2s"}},"▾")
-    ),
-    drop&&React.createElement("div",{"data-dm-dropdown":"1",style:{border:"1px solid "+PT_BLUE,borderTop:"none",borderRadius:"0 0 8px 8px",background:"#0e0e0e",maxHeight:260,overflowY:"auto",overscrollBehavior:"contain",WebkitOverflowScrolling:"touch"}},
-      choices.length===0?React.createElement("div",{style:{fontSize:11,color:"#555",padding:"10px 12px"}},people.length?"Nobody matches":"Loading…")
-      :choices.map(m=>React.createElement("div",{key:m.email,"data-dm-pick":m.email,onMouseDown:e=>e.preventDefault(),onClick:()=>pick(m.email),style:{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",cursor:"pointer",borderTop:"1px solid #1a1a1a"}},
-        avatar(m.email,m.name,28),
-        React.createElement("div",{style:{minWidth:0,fontSize:13,color:"#ddd"}},m.name)))),
+    React.createElement("div",{"data-dm-notice":"1",style:{fontSize:10,color:"#666",lineHeight:1.6,marginBottom:12}},notice),
+    people.length>0&&React.createElement(PersonPicker,{people,attr:"dm",avatar,onPick:pick,
+      placeholder:isMaster?"New message — choose an admin…":isAdmin?"New message — choose anyone…":"New message — choose who to message…"}),
     React.createElement("div",{style:{marginTop:16}},
       includeTeam&&ptMsgRow({id:"team365",name:"Team 365",av:teamAv,
-        preview:team.last?((team.last.from_staff?"Team 365: ":"You: ")+team.last.body):"Your private conversation with the coaches",
+        preview:team.last?((team.last.from_staff?"Team 365: ":"You: ")+team.last.body):"Your conversation with Team 365",
         when:team.last&&team.last.created_at,unread:team.unread,isOpen:openKey==="team365",onToggle:()=>toggle("team365"),
         children:React.createElement(PtThread,{memberEmail:me,selfEmail:me,selfName:session.name,asStaff:false,photos:memberPhotos})}),
       dms===null?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",textAlign:"center",padding:"10px 0"}},"LOADING…")
-      :list.length===0?React.createElement("div",{style:{fontSize:11,color:"#555",lineHeight:1.6,textAlign:"center",padding:"8px 4px"}},"No private conversations yet. Choose someone above to start one.")
+      :list.length===0?(includeTeam?null:React.createElement("div",{style:{fontSize:11,color:"#555",lineHeight:1.6,textAlign:"center",padding:"8px 4px"}},people.length?"No private conversations yet. Choose someone above to start one.":"No private conversations yet."))
       :list.map(t=>{const nm=nameFor(t.email);const l=t.last;
         return ptMsgRow({id:t.email,name:nm,av:avatar(t.email,nm,36),
           preview:l?((String(l.sender_email||"").toLowerCase()===me?"You: ":"")+l.body):"New conversation",
@@ -9118,7 +9169,10 @@ function DmInbox({session,isMaster,memberPhotos,includeTeam,avatar,focusKey}){
           children:React.createElement(DmThread,{key:t.email,withEmail:t.email,withName:nm,selfEmail:me,selfName:session.name,isMaster,photos:memberPhotos})});
       })));
 }
-// Master only: every member-to-member conversation (not the master's own), read-only.
+// Master only, behind VIEW ALL: every private conversation that isn't the master's own
+// (members with coaches, and members with members), newest first. The two people's
+// photos sit half over each other. READ ONLY: opening one marks nothing as read and
+// nobody is told; the master can delete a message.
 function DmAll({session,memberPhotos,avatar}){
   const me=String((session&&session.email)||"").toLowerCase();
   const [pairs,setPairs]=useState(null);
@@ -9145,31 +9199,32 @@ function DmAll({session,memberPhotos,avatar}){
   },[me]);
   const nameOf=em=>names[em]||em;
   return React.createElement("div",{"data-dm-all":"1"},
-    React.createElement("div",{style:{fontSize:10,color:"#666",lineHeight:1.6,marginBottom:12}},"Every member-to-member conversation, newest first. Only you (master admin) can see this list. Read only — you can delete a message."),
+    React.createElement("div",{style:{fontSize:10,color:"#666",lineHeight:1.6,marginBottom:12}},"Every private conversation between other people — members with coaches, and members with members — newest first. Only you can see this. Read only: nothing is marked as read and nobody is told you looked. You can delete a message."),
     pairs===null?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",textAlign:"center",padding:"10px 0"}},"LOADING…")
-    :pairs.length===0?React.createElement("div",{style:{fontSize:11,color:"#555",lineHeight:1.6,textAlign:"center",padding:"8px 4px"}},"No member-to-member conversations yet.")
+    :pairs.length===0?React.createElement("div",{style:{fontSize:11,color:"#555",lineHeight:1.6,textAlign:"center",padding:"8px 4px"}},"No other conversations yet.")
     :pairs.map(p=>{const [a,b]=p.key.split("|");const l=p.last;
-      const av=React.createElement("div",{style:{display:"flex",flexShrink:0}},avatar(a,nameOf(a),30),React.createElement("div",{style:{marginLeft:-10}},avatar(b,nameOf(b),30)));
+      const av=React.createElement("div",{"data-pair-photos":"1",style:{display:"flex",flexShrink:0}},avatar(a,nameOf(a),32),React.createElement("div",{style:{marginLeft:-16}},avatar(b,nameOf(b),32)));
       return ptMsgRow({id:p.key,name:nameOf(a)+" ⇄ "+nameOf(b),av,
         preview:(l.sender_name?l.sender_name+": ":"")+l.body,when:l.created_at,unread:0,isOpen:openKey===p.key,
         onToggle:()=>setOpenKey(c=>c===p.key?null:p.key),
         children:React.createElement(DmThread,{key:p.key,viewPair:p.key,selfEmail:me,isMaster:true})});
     }));
 }
-// The messages screen — opens from (and closes with) the profile photo.
-// Members: their own conversation with Team 365. Admins: every conversation, most
-// recent first, unread in blue. Tapping a name drops that conversation open under it;
-// tapping the name again closes it (one open at a time). "New message" drops down an
-// A–Z list of every member who can be messaged (typing narrows it).
+// The messages screen — opens from (and closes with) the profile photo (3 Oct 2026).
+//  • Everyone except the master (members AND other admins): Team 365 pinned on top,
+//    then their private conversations; "New message" lets members choose a coach.
+//  • The master: TEAM 365 (every member's conversation with Team 365 — only the
+//    master sees these now) | PRIVATE (their conversations with other admins), and a
+//    VIEW ALL switch that is OFF every time messages are opened. ON shows every other
+//    private conversation, read only (DmAll).
 function MessagesView({session,isAdmin,isMaster,memberPhotos,dmOn,dmUnread,focus}){
   const me=String((session&&session.email)||"").toLowerCase();
-  const [seg,setSeg]=useState("team");      // admins, switch ON: team | private | all (master)
+  const [seg,setSeg]=useState("team");      // master: team | private
+  const [viewAll,setViewAll]=useState(false); // master: always starts OFF
   const [openEm,setOpenEm]=useState(null);
   const [extra,setExtra]=useState(null);      // picked from "New message" but no conversation yet
   const [threads,setThreads]=useState(null);
   const [people,setPeople]=useState([]);
-  const [q,setQ]=useState("");
-  const [drop,setDrop]=useState(false);
   async function loadThreads(){
     const rows=await sbGet("pt_messages","select=member_email,sender_name,from_staff,body,created_at,staff_read&order=created_at.desc&limit=2000");
     const map={};
@@ -9180,7 +9235,7 @@ function MessagesView({session,isAdmin,isMaster,memberPhotos,dmOn,dmUnread,focus
     setThreads(Object.values(map));
   }
   useEffect(()=>{
-    if(!isAdmin)return;
+    if(!isMaster)return;
     loadThreads();
     const off=onScreenPoll(loadThreads,30000);
     const h=()=>loadThreads();window.addEventListener("t365-msgs-changed",h);
@@ -9193,70 +9248,57 @@ function MessagesView({session,isAdmin,isMaster,memberPhotos,dmOn,dmUnread,focus
         .sort((x,y)=>x.name.localeCompare(y.name,undefined,{sensitivity:"base"})));
     })();
     return ()=>{off();window.removeEventListener("t365-msgs-changed",h);};
-  },[isAdmin]);
+  },[isMaster]);
   const nameFor=em=>{const p=people.find(x=>x.email===em);const t=(threads||[]).find(x=>x.email===em);return (p&&p.name)||(t&&t.memberName)||em;};
   // Opened from a notification: go to that conversation and drop it open.
   useEffect(()=>{
-    if(!focus||!isAdmin)return;
+    if(!focus||!isMaster)return;
+    setViewAll(false);
     if(focus.dm){setSeg("private");return;}
     const em=String(focus.c||"").toLowerCase();
     if(!em||em==="team365")return;
     setSeg("team");setExtra(em);setOpenEm(em);
     setTimeout(()=>{try{const el=document.querySelector('[data-thread="'+em+'"]');if(el)el.scrollIntoView({behavior:"smooth",block:"start"});}catch(e){}},400);
   },[focus&&focus.n]);
-  const dmFocus=focus&&(focus.dm||(!isAdmin&&focus.c==="team365"))?{key:focus.dm?String(focus.dm).toLowerCase():"team365",n:focus.n}:null;
+  const dmFocus=focus&&(focus.dm||(!isMaster&&focus.c==="team365"))?{key:focus.dm?String(focus.dm).toLowerCase():"team365",n:focus.n}:null;
   const head=(t,sub)=>React.createElement("div",{className:"well-hdr",style:{paddingBottom:4}},
     React.createElement("div",{className:"well-title"},t),
     sub&&React.createElement("div",{style:{fontSize:9,letterSpacing:"0.12em",color:"#555",marginTop:6}},sub));
   const avatar=(em,name,size)=>{const ph=memberPhotos&&memberPhotos[em];const ini=String(name||"?").split(/\s+/).map(w=>w[0]||"").join("").slice(0,2).toUpperCase();
-    return ph?React.createElement("img",{src:ph,alt:"",style:{width:size,height:size,borderRadius:"50%",objectFit:"cover",border:"1px solid "+PT_BLUE,flexShrink:0}})
+    return ph?React.createElement("img",{src:ph,alt:"",style:{width:size,height:size,borderRadius:"50%",objectFit:"cover",border:"1px solid "+PT_BLUE,flexShrink:0,background:"#0a0a0a"}})
       :React.createElement("div",{style:{width:size,height:size,borderRadius:"50%",background:"#1a1a1a",border:"1px solid "+PT_BLUE,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:size*0.4,color:"#777",flexShrink:0}},ini);};
   const wrap=(...kids)=>React.createElement("div",{className:"well-wrap","data-messages":"1"},...kids);
   const body=(...kids)=>React.createElement("div",{style:{padding:"14px 16px 80px"}},...kids);
-  if(!isAdmin){
-    // Switch OFF: just their conversation with Team 365 (exactly as before).
-    if(!dmOn)return wrap(head("MESSAGES","TAP YOUR PHOTO TO CLOSE"),
-      body(React.createElement(PtThread,{memberEmail:me,selfEmail:me,selfName:session.name,asStaff:false,photos:memberPhotos})));
-    // Switch ON: Team 365 pinned on top, then private conversations with anyone.
+  if(!isMaster){
     return wrap(head("MESSAGES","TAP YOUR PHOTO TO CLOSE"),
-      body(React.createElement(DmInbox,{session,isMaster:false,memberPhotos,includeTeam:true,avatar,focusKey:dmFocus})));
+      body(React.createElement(DmInbox,{session,isMaster:false,isAdmin:!!isAdmin,dmOn:!!dmOn,memberPhotos,includeTeam:true,avatar,focusKey:dmFocus})));
   }
-  // Admins, switch ON: TEAM 365 (every member's thread, as before) | PRIVATE (their own
-  // conversations with anyone) | ALL PRIVATE (master only, read-only, every pair).
-  const effSeg=!dmOn?"team":(seg==="all"&&!isMaster?"team":seg);
-  const segBar=dmOn&&React.createElement("div",{className:"sp-toggle seg-nav","data-msg-segs":"1",style:{marginBottom:14}},
-    [{id:"team",label:"TEAM 365"},{id:"private",label:"PRIVATE"+(dmUnread>0?" •":"")},...(isMaster?[{id:"all",label:"ALL PRIVATE"}]:[])]
+  // ── Master ──
+  const viewAllRow=React.createElement("div",{"data-view-all":viewAll?"on":"off",style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(viewAll?PT_BLUE:"#222"),padding:"10px 12px",marginBottom:14}},
+    React.createElement("div",{style:{paddingRight:10}},
+      React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"VIEW ALL CONVERSATIONS"),
+      React.createElement("div",{style:{fontSize:9,color:viewAll?PT_BLUE:"#555",marginTop:2,letterSpacing:"0.04em",lineHeight:1.5}},viewAll?"ON — every private conversation, read only":"OFF — only your own conversations")),
+    React.createElement("button",{type:"button","data-view-all-toggle":"1",onClick:()=>setViewAll(v=>!v),
+      style:{background:viewAll?"#fff":"#222",color:viewAll?"#000":PT_BLUE,border:"1px solid "+(viewAll?"#fff":PT_BLUE),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},viewAll?"ON":"OFF"));
+  if(viewAll)return wrap(head("MESSAGES","TAP YOUR PHOTO TO CLOSE"),body(viewAllRow,React.createElement(DmAll,{session,memberPhotos,avatar})));
+  const effSeg=seg==="private"?"private":"team";
+  const segBar=React.createElement("div",{className:"sp-toggle seg-nav","data-msg-segs":"1",style:{marginBottom:14}},
+    [{id:"team",label:"TEAM 365"},{id:"private",label:"PRIVATE"+(dmUnread>0?" •":"")}]
       .map(o=>React.createElement("button",{key:o.id,"data-msg-seg":o.id,className:"sp-toggle-btn"+(effSeg===o.id?" spta":""),style:{border:"1px solid #fff"},onClick:()=>setSeg(o.id)},o.label)));
   if(effSeg==="private")return wrap(head("MESSAGES","TAP YOUR PHOTO TO CLOSE"),
-    body(segBar,React.createElement(DmInbox,{session,isMaster,memberPhotos,includeTeam:false,avatar,focusKey:dmFocus})));
-  if(effSeg==="all")return wrap(head("MESSAGES","TAP YOUR PHOTO TO CLOSE"),
-    body(segBar,React.createElement(DmAll,{session,memberPhotos,avatar})));
+    body(viewAllRow,segBar,React.createElement(DmInbox,{session,isMaster:true,isAdmin:true,dmOn:!!dmOn,memberPhotos,includeTeam:false,avatar,focusKey:dmFocus})));
   function toggle(em){setOpenEm(cur=>cur===em?null:em);}
   function pick(em){
-    setQ("");setDrop(false);
     if(!(threads||[]).some(t=>t.email===em))setExtra(em);
     setOpenEm(em);
     setTimeout(()=>{try{const el=document.querySelector('[data-thread="'+em+'"]');if(el)el.scrollIntoView({behavior:"smooth",block:"start"});}catch(e){}},120);
   }
-  const ql=q.trim().toLowerCase();
-  const choices=ql?people.filter(m=>m.name.toLowerCase().includes(ql)||m.email.includes(ql)):people;
   let list=(threads||[]).slice().sort((a,b)=>new Date(b.last.created_at)-new Date(a.last.created_at));
   if(extra&&!list.some(t=>t.email===extra))list=[{email:extra,last:null,unread:0,memberName:""},...list];
   return wrap(head("MESSAGES","TAP YOUR PHOTO TO CLOSE"),
     body(
-      segBar,
-      // New message — tap for an A–Z drop-down of every member; typing narrows it
-      React.createElement("div",{style:{position:"relative"}},
-        React.createElement("input",{value:q,onChange:e=>{setQ(e.target.value);setDrop(true);},onFocus:()=>setDrop(true),onBlur:()=>setTimeout(()=>setDrop(false),200),
-          placeholder:"New message — choose a member…","data-msg-search":"1",
-          style:{width:"100%",background:"#141414",border:"1px solid "+(drop?PT_BLUE:"#262626"),borderRadius:drop?"8px 8px 0 0":8,color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:13,padding:"10px 34px 10px 12px",outline:"none",boxSizing:"border-box"}}),
-        React.createElement("div",{onMouseDown:e=>{e.preventDefault();setDrop(d=>!d);},style:{position:"absolute",right:12,top:10,color:drop?PT_BLUE:"#666",fontSize:13,lineHeight:1,cursor:"pointer",transform:drop?"none":"rotate(-90deg)",transition:"transform .2s"}},"▾")
-      ),
-      drop&&React.createElement("div",{"data-msg-dropdown":"1",style:{border:"1px solid "+PT_BLUE,borderTop:"none",borderRadius:"0 0 8px 8px",background:"#0e0e0e",maxHeight:260,overflowY:"auto",overscrollBehavior:"contain",WebkitOverflowScrolling:"touch"}},
-        choices.length===0?React.createElement("div",{style:{fontSize:11,color:"#555",padding:"10px 12px"}},people.length?"No members match":"Loading members…")
-        :choices.map(m=>React.createElement("div",{key:m.email,"data-pick":m.email,onMouseDown:e=>e.preventDefault(),onClick:()=>pick(m.email),style:{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",cursor:"pointer",borderTop:"1px solid #1a1a1a"}},
-          avatar(m.email,m.name,28),
-          React.createElement("div",{style:{minWidth:0}},React.createElement("div",{style:{fontSize:13,color:"#ddd"}},m.name),React.createElement("div",{style:{fontSize:10,color:"#555",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.email))))),
+      viewAllRow,segBar,
+      React.createElement(PersonPicker,{people,attr:"team",avatar,onPick:pick,showEmail:true,placeholder:"New message — choose a member…"}),
       React.createElement("div",{style:{marginTop:16}},
         threads===null?React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",textAlign:"center",padding:"10px 0"}},"LOADING…")
         :list.length===0?React.createElement("div",{style:{fontSize:11,color:"#555",lineHeight:1.6,textAlign:"center",padding:"8px 4px"}},"No conversations yet. Choose a member above to start one.")
@@ -13058,13 +13100,7 @@ function PushFunctions({showToast,onFlags}){
           React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},r.d),
           React.createElement("div",{style:{fontSize:9,color:on?"#1d9bf0":"#555",marginTop:3,letterSpacing:"0.04em",fontWeight:on?600:400,lineHeight:1.5}},on?r.on:r.off)),
         React.createElement("button",{onClick:()=>flip(r.k,!on,r.t.charAt(0)+r.t.slice(1).toLowerCase()),
-          style:{background:on?"#fff":"#222",color:on?"#000":"#1d9bf0",border:"1px solid "+(on?"#fff":"#1d9bf0"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},on?"ON":"OFF"));}),
-    lbl("WHO GETS MEMBER MESSAGES"),
-    React.createElement("div",{style:{fontSize:10,color:"#555",lineHeight:1.6,marginBottom:10}},"Admins switched ON get a notification when a member writes to Team 365. Each of them also needs notifications turned on in their own Edit Profile."),
-    !admins?React.createElement("div",{style:{fontSize:10,color:"#444"}},"LOADING…"):admins.map(a=>{const on=a.push_staff_alerts===true;
-      return React.createElement("div",{key:a.email,"data-push-admin":a.email,style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(on?"#1d9bf0":"#222"),padding:"9px 14px",marginBottom:8}},
-        React.createElement("div",null,React.createElement("div",{style:{fontSize:12,color:"#fff"}},a.name||a.email),React.createElement("div",{style:{fontSize:9,color:"#555"}},a.email)),
-        React.createElement("button",{onClick:()=>flipAdmin(a,!on),style:{background:on?"#fff":"#222",color:on?"#000":"#1d9bf0",border:"1px solid "+(on?"#fff":"#1d9bf0"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},on?"ON":"OFF"));})
+          style:{background:on?"#fff":"#222",color:on?"#000":"#1d9bf0",border:"1px solid "+(on?"#fff":"#1d9bf0"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},on?"ON":"OFF"));})
   );
 }
 
@@ -13467,7 +13503,7 @@ function App(){
       const mine=await sbGet("pt_messages",`member_email=eq.${encodeURIComponent(em)}&from_staff=eq.true&member_read=eq.false&select=id`);
       tot+=Array.isArray(mine)?mine.length:0;
       if(live)setMsgMine(Array.isArray(mine)?mine.length:0);
-      if(isAdmin){
+      if(isMaster){   // only the master reads members' Team 365 conversations (3 Oct 2026)
         const st=await sbGet("pt_messages","from_staff=eq.false&staff_read=eq.false&select=member_email");
         const m={};(Array.isArray(st)?st:[]).forEach(r=>{const k=String(r.member_email||"").toLowerCase();if(k&&k!==em)m[k]=(m[k]||0)+1;});
         tot+=Object.values(m).reduce((a,b)=>a+b,0);
@@ -13478,18 +13514,19 @@ function App(){
       const ff=await sbGet("feature_flags","id=eq.1&select=dm_enabled");
       if(Array.isArray(ff)&&ff.length){
         const on=ff[0].dm_enabled===true;if(live)setDmEnabled(on);
-        if(on){const dm=await sbGet("direct_messages",`recipient_email=eq.${encodeURIComponent(em)}&read=eq.false&select=id`);tot+=Array.isArray(dm)?dm.length:0;if(live)setMsgDm(Array.isArray(dm)?dm.length:0);}
-        else if(live)setMsgDm(0);
       }
+      // Private conversations count whatever the switch says — members can always message
+      // their coaches (3 Oct 2026). The database only returns the ones this person may see.
+      {const dm=await sbGet("direct_messages",`recipient_email=eq.${encodeURIComponent(em)}&read=eq.false&select=id`);tot+=Array.isArray(dm)?dm.length:0;if(live)setMsgDm(Array.isArray(dm)?dm.length:0);}
       if(live){pushSetBadge(tot);if(!tot)pushCloseNotes(t=>/^t365-(msg|dm)-/.test(t));}
     };
     run();
     const off=onScreenPoll(run,60000);
     const h=()=>run();window.addEventListener("t365-msgs-changed",h);
     return ()=>{live=false;off();window.removeEventListener("t365-msgs-changed",h);};
-  },[session&&session.email,isAdmin,isSubscriber]);
+  },[session&&session.email,isAdmin,isMaster,isSubscriber]);
   const msgStaffTotal=Object.values(msgStaff).reduce((a,b)=>a+b,0);
-  const showMsgAlert=!isSubscriber&&((isAdmin&&msgStaffTotal>0)||msgMine>0||(dmEnabled&&msgDm>0));
+  const showMsgAlert=!isSubscriber&&((isMaster&&msgStaffTotal>0)||msgMine>0||msgDm>0);
   // Messages live behind the profile photo: tap it to open the messages screen, tap it
   // again (or the phone's back button, or any nav tab) to close it. Everyone except
   // subscribers. The screen sits under the header, so the photo is always there to tap.
