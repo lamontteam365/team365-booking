@@ -12882,6 +12882,26 @@ const PUSH_TYPES=[
   {k:"reminders",col:"push_reminders",label:"Class reminders",hint:"The night before a class you've booked"}
 ];
 const pushBtn=(on,dis)=>({background:dis?"#141414":(on?"#fff":"#0e0e0e"),color:dis?"#444":(on?"#000":"#555"),border:"1px solid "+(dis?"#242424":(on?"#fff":"#2a2a2a")),borderRadius:0,padding:"7px 20px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:dis?"not-allowed":"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0});
+// Edit Profile: a section behind a white bar that opens and closes. Always starts
+// CLOSED — it remounts each time the profile is opened (2 Oct 2026).
+function ProfCollapse({title,attr,children}){
+  const [open,setOpen]=useState(false);
+  return React.createElement("div",{"data-prof-collapse":attr},
+    React.createElement("button",{type:"button","data-prof-toggle":attr,"aria-expanded":open?"true":"false",onClick:()=>setOpen(o=>!o),
+      style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",border:"none",borderRadius:0,padding:"12px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.18em",cursor:"pointer",marginTop:22,marginBottom:open?4:0}},
+      React.createElement("span",null,title),
+      React.createElement("span",{style:{fontSize:11,transform:open?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")),
+    open&&React.createElement("div",{style:{padding:"6px 0 2px"}},children));
+}
+// Show/hide toggle for a password box (eye icon).
+function PwEye({shown,onToggle}){
+  const eye=shown
+    ?[React.createElement("path",{key:"a",d:"M17.94 17.94A10.94 10.94 0 0 1 12 20C5 20 1 12 1 12a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A9.6 9.6 0 0 1 12 4c7 0 11 8 11 8a20.4 20.4 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"}),React.createElement("line",{key:"b",x1:1,y1:1,x2:23,y2:23})]
+    :[React.createElement("path",{key:"a",d:"M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"}),React.createElement("circle",{key:"b",cx:12,cy:12,r:3})];
+  return React.createElement("button",{type:"button",onClick:onToggle,"aria-label":shown?"Hide password":"Show password",title:shown?"Hide password":"Show password","data-pw-eye":"1",
+    style:{position:"absolute",right:0,top:0,bottom:12,width:48,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",padding:0}},
+    React.createElement("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:shown?"#1d9bf0":"#777",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},...eye));
+}
 // One-tap ask on app open (2 Oct 2026). Phones won't let an app switch
 // notifications on by itself — each person must tap Allow once — so this card asks.
 // NOT NOW hides it for 7 days; after the second NOT NOW it never comes back (they
@@ -12970,8 +12990,7 @@ function PushSettings({session,memberData,setMemberData,showToast,pushFlags}){
     React.createElement("div",{style:{fontSize:11,letterSpacing:"0.12em",color:"#1d9bf0",fontWeight:700,margin:"6px 0 10px"}},"ON FOR THIS DEVICE ✓"),
     React.createElement("div",{style:{display:"flex",gap:8,marginBottom:6}},small("SEND A TEST",test,"test"),small("TURN OFF",off,"off")));
   else device=React.createElement("div",{"data-push-state":"off"},big("TURN ON NOTIFICATIONS",on,"on"));
-  return React.createElement("div",{"data-push-settings":"1"},
-    React.createElement("div",{className:"prof-section"},"NOTIFICATIONS"),
+  return React.createElement(ProfCollapse,{title:"NOTIFICATIONS",attr:"notifications"},React.createElement("div",{"data-push-settings":"1"},
     note("Get a notification on this phone when someone messages you — even when the app is closed. Tap it and it opens the message.","#666"),
     device,
     msg&&note(msg,"#e0a040"),
@@ -12986,7 +13005,7 @@ function PushSettings({session,memberData,setMemberData,showToast,pushFlags}){
         React.createElement("button",{type:"button",disabled:busy===row.k||!globalOn,style:pushBtn(isOn,!globalOn),onClick:()=>savePref(row,!isOn)},busy===row.k?"…":(isOn?"ON":"OFF")));
     }),
     note("These apply on every device you've turned on."+((pushFlags||{}).email?" If no device is on, you'll get an email for a message you haven't read after 15 minutes — turning Messages off stops those too.":""),"#444")
-  );
+  ));
 }
 // Admin → FUNCTIONS (master only): the push switches for everyone, the message
 // email backup, and which admins hear about member messages. The database refuses
@@ -13096,6 +13115,7 @@ function App(){
     setMyEmPrefs({reminders:memberData.email_reminders!==false,confirmations:memberData.email_confirmations!==false});
   },[memberData]);
   const [profForm,setProfForm]=useState({name:"",email:"",phone:"",photo:"",newPw:"",confirmPw:""});
+  const [showPw,setShowPw]=useState({n:false,c:false});   // eye icons on the password boxes
   const [profErr,setProfErr]=useState("");
   const [profOk,setProfOk]=useState("");
   const [profBusy,setProfBusy]=useState(false);
@@ -14033,7 +14053,7 @@ function App(){
   }
   function openProf(){
     setProfForm({name:session.name,email:session.email,phone:memberData?.phone||"",photo:memberData?.photo||"",newPw:"",confirmPw:"",emergencyName:memberData?.emergency_name||"",emergencyPhone:memberData?.emergency_phone||"",gender:memberData?.gender||""});
-    setProfErr("");setProfOk("");setProfTab("details");setShowProf(true);
+    setProfErr("");setProfOk("");setShowPw({n:false,c:false});setProfTab("details");setShowProf(true);
     window.history.pushState({overlay:"profile"},"");
   }
   useEffect(()=>{
@@ -14505,7 +14525,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         React.createElement("a",{href:"/register.html",style:{display:"block",width:"100%",background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.18em",padding:"15px",borderRadius:0,textAlign:"center",textDecoration:"none",marginBottom:4}},"UPDATE HEALTH SCREENING FORM"),
         React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.06em",marginBottom:4}},"Update your medical conditions, fitness level, or consents"),
         React.createElement(PushSettings,{session,memberData,setMemberData,showToast,pushFlags}),
-        React.createElement("div",{className:"prof-section"},"EMAILS"),
+        React.createElement(ProfCollapse,{title:"EMAILS",attr:"emails"},
         [
           {k:"reminders",col:"email_reminders",label:"Class reminders",hint:"The night before a class you have booked"},
           {k:"confirmations",col:"email_confirmations",label:"Booking confirmations",hint:"When you book a class"}
@@ -14536,7 +14556,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
           );
         }),
         React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.06em",lineHeight:1.6,marginTop:4,marginBottom:4}},"Turning these off never affects your bookings."),
-        (remindersEnabled===false||confirmationsEnabled===false)&&React.createElement("div",{style:{fontSize:10,color:"#1d9bf0",letterSpacing:"0.06em",lineHeight:1.6,marginBottom:4}},"These emails are paused for everyone at the moment. Your own setting is saved and will apply again as soon as they’re switched back on."),
+        (remindersEnabled===false||confirmationsEnabled===false)&&React.createElement("div",{style:{fontSize:10,color:"#1d9bf0",letterSpacing:"0.06em",lineHeight:1.6,marginBottom:4}},"These emails are paused for everyone at the moment. Your own setting is saved and will apply again as soon as they’re switched back on.")),
         classesEnabled&&React.createElement(React.Fragment,null,
           React.createElement("button",{onClick:()=>setProfFriendCol(c=>!c),
             style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",border:"none",borderRadius:0,padding:"12px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.18em",cursor:"pointer",marginTop:22,marginBottom:profFriendCol?4:12}},
@@ -14550,9 +14570,13 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         isSubscriber&&React.createElement(SubscriberProfileSummary,{sub:subRow}),
         React.createElement("div",{className:"prof-section"},"CHANGE PASSWORD"),
         React.createElement("label",{className:"fl"},"NEW PASSWORD"),
-        React.createElement("input",{className:"fi",type:"password",placeholder:"Leave blank to keep current",value:profForm.newPw,onChange:e=>{setProfForm(f=>({...f,newPw:e.target.value}));setProfErr("");setProfOk("");}}),
+        React.createElement("div",{style:{position:"relative"}},
+          React.createElement("input",{className:"fi","data-pw":"new",type:showPw.n?"text":"password",autoComplete:"new-password",placeholder:"Leave blank to keep current",value:profForm.newPw,style:{paddingRight:50},onChange:e=>{setProfForm(f=>({...f,newPw:e.target.value}));setProfErr("");setProfOk("");}}),
+          React.createElement(PwEye,{shown:showPw.n,onToggle:()=>setShowPw(p=>({...p,n:!p.n}))})),
         React.createElement("label",{className:"fl"},"CONFIRM PASSWORD"),
-        React.createElement("input",{className:"fi",type:"password",placeholder:"Repeat new password",value:profForm.confirmPw,onChange:e=>{setProfForm(f=>({...f,confirmPw:e.target.value}));setProfErr("");setProfOk("");}}),
+        React.createElement("div",{style:{position:"relative"}},
+          React.createElement("input",{className:"fi","data-pw":"confirm",type:showPw.c?"text":"password",autoComplete:"new-password",placeholder:"Repeat new password",value:profForm.confirmPw,style:{paddingRight:50},onChange:e=>{setProfForm(f=>({...f,confirmPw:e.target.value}));setProfErr("");setProfOk("");}}),
+          React.createElement(PwEye,{shown:showPw.c,onToggle:()=>setShowPw(p=>({...p,c:!p.c}))})),
         profErr&&React.createElement("div",{className:"prof-err"},profErr),
         profOk&&React.createElement("div",{className:"prof-ok"},profOk),
         React.createElement("button",{className:"prof-save",onClick:handleSaveProf,disabled:profBusy},profBusy?"SAVING...":"SAVE CHANGES"),
