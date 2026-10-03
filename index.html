@@ -164,6 +164,12 @@ html,body{background:#080808;min-height:100vh}
 .post-react-opt{background:none;border:none;cursor:pointer;font-size:24px;line-height:1;padding:5px 6px;border-radius:50%;transition:transform .1s}
 .post-react-opt:active{transform:scale(1.25)}
 .post-react-opt.on{background:#2c2c2c}
+.post-react-pick.fixed{position:fixed;bottom:auto;left:auto}
+.msg-react .post-react-e{font-size:12px}
+.msg-react .post-react-k.mine .post-react-n{color:#1d9bf0}
+.post-edited{text-align:right;font-size:9px;color:#666;font-style:italic;letter-spacing:0.04em;margin:-6px 0 8px}
+.reply-edited{text-align:right;font-size:9px;color:#555;font-style:italic;margin-top:2px}
+.post-edit-box{background:#0e0e0e;border:1px solid #333;padding:8px 10px;margin-bottom:10px}
 @keyframes t365pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
 .post-delete{background:none;border:none;color:#333;cursor:pointer;font-size:10px;font-family:'DM Sans',sans-serif;letter-spacing:0.06em;transition:color .15s;font-weight:500}
 .post-delete:hover{color:#e06040}
@@ -2117,38 +2123,94 @@ function postReactApply(post,me,kind){   // what post_react() will do, for an in
   if(cur!==kind){if(kind==="heart")likes=[...likes,me];else rx[me]=kind;}
   return {...post,likes,reactions:rx};
 }
-function PostReactBtn({post,me,onReact}){
+// One reaction button for posts AND messages (3 Oct 2026). Tap = tapKind (♥ on the
+// Notice Board, 👍 in messages — what each always did); hold ~½ s = ❤️ 👍 😂.
+// The pop-up is fixed to the screen (so a conversation box can't clip it), sits above
+// the button (below it if there's no room), stays on screen, and closes on a tap
+// outside, Escape, or scrolling.
+function ReactBtn({id,st,onReact,tapKind,readOnly,variant,emptyEl,btnStyle}){
   const [pick,setPick]=useState(false);
-  const wrap=useRef(null);const timer=useRef(null);const held=useRef(false);const start=useRef(null);
-  const st=postReactState(post,me);
+  const [pos,setPos]=useState(null);
+  const wrap=useRef(null);const btn=useRef(null);const pop=useRef(null);
+  const timer=useRef(null);const held=useRef(false);const start=useRef(null);
+  function place(){
+    const b=btn.current;if(!b)return;const r=b.getBoundingClientRect();
+    const w=pop.current?pop.current.offsetWidth:150,h=pop.current?pop.current.offsetHeight:46;
+    let top=r.top-8-h;if(top<8)top=r.bottom+8;
+    let left=r.left-6;left=Math.max(8,Math.min(left,window.innerWidth-w-8));
+    setPos({top,left});
+  }
+  React.useLayoutEffect(()=>{if(pick)place();},[pick]);
   useEffect(()=>{
     if(!pick)return;
     const h=e=>{if(wrap.current&&!wrap.current.contains(e.target))setPick(false);};
     const k=e=>{if(e.key==="Escape")setPick(false);};
+    const sc=e=>{if(pop.current&&e.target&&pop.current.contains&&pop.current.contains(e.target))return;setPick(false);};
     document.addEventListener("click",h);document.addEventListener("keydown",k);
-    return ()=>{document.removeEventListener("click",h);document.removeEventListener("keydown",k);};
+    const t=setTimeout(()=>document.addEventListener("scroll",sc,true),250);
+    return ()=>{clearTimeout(t);document.removeEventListener("click",h);document.removeEventListener("keydown",k);document.removeEventListener("scroll",sc,true);};
   },[pick]);
   useEffect(()=>()=>clearTimeout(timer.current),[]);
+  const kinds=REACTS.filter(r=>st.counts[r.k]>0);
+  const isMsg=variant==="msg";
+  const summary=React.createElement("div",{className:"post-react-sum"},kinds.map(r=>React.createElement("span",{key:r.k,"data-react-count":r.k,className:"post-react-k"+(st.mine===r.k?" mine":"")},
+    React.createElement("span",{className:"post-react-e",style:r.k==="heart"&&!isMsg?{color:"#cc2200",fontSize:14}:undefined},isMsg?r.e:r.s),
+    React.createElement("span",{className:"post-react-n"},st.counts[r.k]))));
+  if(readOnly)return st.total>0?React.createElement("span",{className:isMsg?"msg-react":undefined,"data-react-ro":id},summary):null;
   const down=e=>{held.current=false;start.current={x:e.clientX,y:e.clientY};clearTimeout(timer.current);
     timer.current=setTimeout(()=>{held.current=true;setPick(true);try{navigator.vibrate&&navigator.vibrate(10);}catch(x){}},450);};
   const cancel=()=>{clearTimeout(timer.current);};
   const move=e=>{const s0=start.current;if(s0&&Math.hypot(e.clientX-s0.x,e.clientY-s0.y)>10)clearTimeout(timer.current);};
-  const click=()=>{if(held.current){held.current=false;return;}if(pick){setPick(false);return;}onReact(st.mine||"heart");};
-  const kinds=REACTS.filter(r=>st.counts[r.k]>0);
-  return React.createElement("div",{ref:wrap,style:{position:"relative"}},
-    pick&&React.createElement("div",{className:"post-react-pick","data-react-pick":post.id,role:"menu"},
+  const click=e=>{if(e&&e.stopPropagation)e.stopPropagation();if(held.current){held.current=false;return;}if(pick){setPick(false);return;}onReact(st.mine||tapKind);};
+  const tapE=(REACTS.find(r=>r.k===tapKind)||REACTS[0]).e;
+  return React.createElement("div",{ref:wrap,className:isMsg?"msg-react":undefined,style:{position:"relative"}},
+    pick&&React.createElement("div",{ref:pop,className:"post-react-pick fixed","data-react-pick":id,role:"menu",style:pos?{top:pos.top,left:pos.left}:{visibility:"hidden",top:0,left:0}},
       REACTS.map(r=>React.createElement("button",{key:r.k,type:"button",role:"menuitem","data-react":r.k,"aria-label":r.label,title:r.label,className:"post-react-opt"+(st.mine===r.k?" on":""),
         onClick:e=>{e.stopPropagation();setPick(false);onReact(r.k);}},r.e))),
-    React.createElement("button",{type:"button",className:`post-like-btn${st.mine?" liked":""}`,"data-react-btn":post.id,"data-mine":st.mine||"",
-      title:"Tap to ♥ · hold for 👍 😂","aria-label":st.mine?"Your reaction: "+st.mine+" (hold to change)":"React (hold for more)","aria-haspopup":"menu",
+    React.createElement("button",{ref:btn,type:"button",className:`post-like-btn${st.mine?" liked":""}`,"data-react-btn":id,"data-mine":st.mine||"",style:btnStyle,
+      title:"Tap for "+tapE+" · hold for ❤️ 👍 😂","aria-label":st.mine?"Your reaction: "+st.mine+" (hold to change)":"React (hold for more)","aria-haspopup":"menu",
       onPointerDown:down,onPointerUp:cancel,onPointerLeave:cancel,onPointerCancel:cancel,onPointerMove:move,onContextMenu:e=>e.preventDefault(),onClick:click},
-      st.total===0?React.createElement(React.Fragment,null,
-          React.createElement("div",{className:"post-like-icon"},"♡"),
-          React.createElement("div",{className:"post-like-count"},"0"))
-        :React.createElement("div",{className:"post-react-sum"},kinds.map(r=>React.createElement("span",{key:r.k,"data-react-count":r.k,className:"post-react-k"+(st.mine===r.k?" mine":"")},
-          React.createElement("span",{className:"post-react-e",style:r.k==="heart"?{color:"#cc2200",fontSize:14}:undefined},r.s),
-          React.createElement("span",{className:"post-react-n"},st.counts[r.k]))))));
+      st.total===0?emptyEl:summary));
 }
+function PostReactBtn({post,me,onReact}){
+  return React.createElement(ReactBtn,{id:post.id,st:postReactState(post,me),onReact,tapKind:"heart",
+    emptyEl:React.createElement(React.Fragment,null,React.createElement("div",{className:"post-like-icon"},"♡"),React.createElement("div",{className:"post-like-count"},"0"))});
+}
+// Messages: 👍 is liked_by (as before, so older installs still count it); ❤️ and 😂 are
+// reactions {email: "heart"|"laugh"}. Same rules as posts, saved by pt_/dm_message_react().
+function msgReactState(m,me){
+  const likes=(Array.isArray(m.liked_by)?m.liked_by:[]).map(e=>String(e||"").toLowerCase());
+  const rx=(m.reactions&&typeof m.reactions==="object")?m.reactions:{};
+  const counts={heart:0,like:likes.length,laugh:0};
+  Object.keys(rx).forEach(e=>{const k=rx[e];if((k==="heart"||k==="laugh")&&!likes.includes(String(e).toLowerCase()))counts[k]++;});
+  const mine=likes.includes(me)?"like":(rx[me]==="heart"||rx[me]==="laugh")?rx[me]:null;
+  return {counts,mine,total:counts.heart+counts.like+counts.laugh};
+}
+function msgReactApply(m,me,kind){
+  const cur=msgReactState(m,me).mine;
+  let liked_by=(Array.isArray(m.liked_by)?m.liked_by:[]).filter(e=>String(e||"").toLowerCase()!==me);
+  const rx={...((m.reactions&&typeof m.reactions==="object")?m.reactions:{})};delete rx[me];
+  if(cur!==kind){if(kind==="like")liked_by=[...liked_by,me];else rx[me]=kind;}
+  return {...m,liked_by,reactions:rx};
+}
+async function sbRpc(fn,body){
+  try{const h={...SB_HDR};delete h.Prefer;
+    const r=await fetch(`${SB_URL}/rest/v1/rpc/${fn}`,{method:"POST",headers:h,body:JSON.stringify(body||{})});
+    return r.ok?await r.json():null;}catch(e){return null;}
+}
+// The reaction button inside a message's action row.
+function MsgReactBtn({m,me,onReact,readOnly}){
+  return React.createElement(ReactBtn,{id:m.id,st:msgReactState(m,me),onReact,tapKind:"like",readOnly,variant:"msg",
+    btnStyle:{padding:"4px 0"},emptyEl:React.createElement(PtThumb,{on:false,red:false})});
+}
+// The edit box for your own message: the same rounded box + arrow (the arrow saves), plus CANCEL.
+function msgEditBox({value,onChange,onSave,onCancel,saving,linkBtn}){
+  return React.createElement("div",{"data-edit-box":"1",style:{width:"100%"}},
+    React.createElement(MsgComposer,{value,onChange,onSend:onSave,sending:saving,autoFocus:true,kind:"edit",placeholder:"Edit message…"}),
+    React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginTop:2}},
+      React.createElement("button",{type:"button","data-edit-cancel":"1",onClick:onCancel,style:linkBtn},"CANCEL")));
+}
+const msgEditedEl=m=>m.edited_at?React.createElement("div",{"data-edited":"1",style:{textAlign:"right",fontSize:9,color:"#7a8a99",fontStyle:"italic",marginTop:3,whiteSpace:"normal"}},"Edited"):null;
 function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
   const [posts,setPosts]=useState([]);
   const [loading,setLoading]=useState(true);
@@ -2180,7 +2242,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
     setViews(v);
   }
   async function loadPosts(){
-    const data=await sbGet("posts","select=id,author_email,author_name,content,created_at,likes,reactions,pinned,reply_to,reply_to_name&order=pinned.desc.nullslast,created_at.desc&limit=80");
+    const data=await sbGet("posts","select=id,author_email,author_name,content,created_at,likes,reactions,pinned,reply_to,reply_to_name,edited_at&order=pinned.desc.nullslast,created_at.desc&limit=80");
     setPosts(data||[]);setLoading(false);
     await loadViews(data||[]);
   }
@@ -2254,6 +2316,27 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
     if(ok){setReplyingTo(null);setReplyText("");await loadPosts();}
     else showToast("Failed to post reply");
   }
+  // Edit your own post or reply (3 Oct 2026). The database only lets the author change
+  // the wording, and stamps edited_at itself → "Edited" bottom right.
+  const [editing,setEditing]=useState(null);   // {id, text}
+  const [editSaving,setEditSaving]=useState(false);
+  async function saveEdit(p){
+    const content=String((editing&&editing.text)||"").trim();
+    if(!content||content.length>MAX_CHARS||editSaving)return;
+    if(content===p.content){setEditing(null);return;}
+    setEditSaving(true);
+    const ok=await sbPatch("posts",`id=eq.${p.id}`,{content});
+    setEditSaving(false);
+    if(ok){setPosts(prev=>prev.map(x=>x.id===p.id?{...x,content,edited_at:new Date().toISOString()}:x));setEditing(null);loadPosts();}
+    else showToast("Couldn't save the edit — try again");
+  }
+  const isMine=p=>String(p.author_email||"").toLowerCase()===meLc;
+  const editBox=(p,isReply)=>React.createElement("div",{className:isReply?undefined:"post-edit-box","data-post-edit-box":p.id,style:isReply?{marginTop:4}:undefined},
+    React.createElement("textarea",{className:"reply-textarea",value:editing.text,maxLength:MAX_CHARS,autoFocus:true,"data-post-edit-text":p.id,
+      onChange:e=>{const v=e.target.value;setEditing(ed=>ed?{...ed,text:v}:ed);}}),
+    React.createElement("div",{className:"reply-footer"},
+      React.createElement("button",{className:"reply-cancel-btn","data-post-edit-cancel":p.id,onClick:()=>setEditing(null)},"Cancel"),
+      React.createElement("button",{className:"reply-post-btn","data-post-edit-save":p.id,onClick:()=>saveEdit(p),disabled:editSaving||!String(editing.text||"").trim()},editSaving?"...":"SAVE")));
   async function handleReact(post,kind){
     const before=post;
     setPosts(prev=>prev.map(p=>p.id===post.id?postReactApply(p,meLc,kind):p));
@@ -2321,22 +2404,29 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
             ),
             React.createElement("div",{className:"post-time"},timeAgo(post.created_at))
           ),
-          React.createElement("div",{className:"post-content",dangerouslySetInnerHTML:{__html:renderContent(post.content)}}),
+          editing&&editing.id===post.id?editBox(post,false):React.createElement(React.Fragment,null,
+            React.createElement("div",{className:"post-content",dangerouslySetInnerHTML:{__html:renderContent(post.content)}}),
+            post.edited_at&&React.createElement("div",{className:"post-edited","data-edited":post.id},"Edited")),
           replies.length>0&&React.createElement("div",{style:{marginTop:8}},
             replies.map((r,ri)=>{
               const canDeleteReply=isAdmin||(r.author_email===session.email);
               return React.createElement("div",{key:ri,className:"reply-card"},
                 React.createElement("div",{className:"reply-author",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
                   React.createElement("span",null,r.author_name,React.createElement("span",null," replied")),
-                  canDeleteReply&&React.createElement("button",{className:"post-delete",style:{fontSize:"9px",color:"#333"},onClick:()=>handleDelete(r.id)},"Delete")
+                  React.createElement("span",{style:{display:"flex",gap:10}},
+                    isMine(r)&&!(editing&&editing.id===r.id)&&React.createElement("button",{className:"post-delete","data-post-edit":r.id,style:{fontSize:"9px",color:"#555"},onClick:()=>setEditing({id:r.id,text:r.content||""})},"Edit"),
+                    canDeleteReply&&React.createElement("button",{className:"post-delete",style:{fontSize:"9px",color:"#333"},onClick:()=>handleDelete(r.id)},"Delete"))
                 ),
-                React.createElement("div",{className:"reply-content",dangerouslySetInnerHTML:{__html:renderContent(r.content)}})
+                editing&&editing.id===r.id?editBox(r,true):React.createElement(React.Fragment,null,
+                  React.createElement("div",{className:"reply-content",dangerouslySetInnerHTML:{__html:renderContent(r.content)}}),
+                  r.edited_at&&React.createElement("div",{className:"reply-edited","data-edited":r.id},"Edited"))
               );
             })
           ),
           React.createElement("div",{className:"post-actions",style:{marginTop:8}},
             React.createElement(PostReactBtn,{post,me:meLc,onReact:k=>handleReact(post,k)}),
             React.createElement("button",{className:"post-reply-btn",onClick:()=>setReplyingTo(isReplying?null:post.id)},isReplying?"Cancel":"Reply"),
+            isMine(post)&&!(editing&&editing.id===post.id)&&React.createElement("button",{className:"post-reply-btn","data-post-edit":post.id,onClick:()=>setEditing({id:post.id,text:post.content||""})},"Edit"),
             isAdmin&&React.createElement("button",{className:`post-pin-btn${post.pinned?" pinned":""}`,onClick:()=>handlePin(post,i)},post.pinned?"Unpin":"Pin"),
             canDelete&&React.createElement("button",{className:"post-delete",onClick:()=>handleDelete(post.id)},"Delete")
           ),
@@ -8995,7 +9085,7 @@ function PtThread({memberEmail,selfEmail,selfName,asStaff,isMaster,title,photos}
   const [err,setErr]=useState("");
   async function load(){
     if(!em)return;
-    const rows=await sbGet("pt_messages",`member_email=eq.${encodeURIComponent(em)}&select=id,sender_email,sender_name,from_staff,body,about_date,created_at,member_read,staff_read,member_read_at,staff_read_at,staff_read_by,staff_read_by_name,reply_to,liked_by&order=created_at.desc&limit=300`);
+    const rows=await sbGet("pt_messages",`member_email=eq.${encodeURIComponent(em)}&select=id,sender_email,sender_name,from_staff,body,about_date,created_at,member_read,staff_read,member_read_at,staff_read_at,staff_read_by,staff_read_by_name,reply_to,liked_by,reactions,edited_at&order=created_at.desc&limit=300`);
     setMsgs(Array.isArray(rows)?rows:[]);
   }
   // While the conversation is on screen: check every 10 s.
@@ -9020,11 +9110,26 @@ function PtThread({memberEmail,selfEmail,selfName,asStaff,isMaster,title,photos}
   }
   async function send(){if(await post(text,null))setText("");}
   async function sendReply(){if(await post(replyText,replyTo)){setReplyText("");setReplyTo(null);}}
-  async function like(m){
-    const mine=(m.liked_by||[]).includes(me);
-    setMsgs(p=>(p||[]).map(x=>x.id===m.id?{...x,liked_by:mine?(x.liked_by||[]).filter(e=>e!==me):[...(x.liked_by||[]),me]}:x));
-    try{await fetch(`${SB_URL}/rest/v1/rpc/pt_message_like`,{method:"POST",headers:SB_HDR,body:JSON.stringify({p_id:m.id})});}catch(e){}
-    load();
+  // ❤️ 👍 😂 (3 Oct 2026): tap = 👍, hold = choose.
+  async function react(m,kind){
+    const before=m;
+    setMsgs(p=>(p||[]).map(x=>x.id===m.id?msgReactApply(x,me,kind):x));
+    const res=await sbRpc("pt_message_react",{p_id:m.id,p_kind:kind});
+    if(res&&typeof res==="object")setMsgs(p=>(p||[]).map(x=>x.id===m.id?{...x,liked_by:res.liked_by||[],reactions:res.reactions||{}}:x));
+    else{setMsgs(p=>(p||[]).map(x=>x.id===m.id?{...x,liked_by:before.liked_by,reactions:before.reactions}:x));setErr("Couldn't save that reaction — try again.");}
+  }
+  // Edit your own message: the database stamps edited_at → "Edited" bottom right.
+  const [editId,setEditId]=useState(null);
+  const [editText,setEditText]=useState("");
+  const [editSaving,setEditSaving]=useState(false);
+  async function saveEdit(m){
+    const b=String(editText||"").trim();if(!b||editSaving)return;
+    if(b===m.body){setEditId(null);return;}
+    setEditSaving(true);setErr("");
+    const res=await sbRpc("pt_message_edit",{p_id:m.id,p_body:b.slice(0,2000)});
+    setEditSaving(false);
+    if(res&&res.id){setMsgs(p=>(p||[]).map(x=>x.id===m.id?{...x,body:res.body,edited_at:res.edited_at}:x));setEditId(null);setEditText("");ptMsgNotify();}
+    else setErr("Couldn't save the edit — try again.");
   }
   async function del(m){
     if(!window.confirm("Delete this message? This can't be undone."))return;
@@ -9059,20 +9164,21 @@ function PtThread({memberEmail,selfEmail,selfName,asStaff,isMaster,title,photos}
         const created=new Date(m.created_at);
         const re=m.about_date&&m.about_date!==toDS(created)?(()=>{const d=new Date(m.about_date+"T00:00:00");return " · RE "+MW_DAYS[(d.getDay()+6)%7].toUpperCase()+" "+d.getDate()+" "+MONTHS[d.getMonth()].toUpperCase();})():"";
         const parent=m.reply_to?byId[m.reply_to]:null;
-        const likes=(m.liked_by||[]).length;const iLike=(m.liked_by||[]).includes(me);
         const replying=replyTo===m.id;
-        return React.createElement("div",{key:m.id,"data-msg-id":m.id,style:{alignSelf:ours?"flex-end":"flex-start",maxWidth:"88%",width:replying?"88%":undefined,display:"flex",flexDirection:"column",alignItems:ours?"flex-end":"flex-start"}},
+        const mineMsg=String(m.sender_email||"").toLowerCase()===me;const editingThis=editId===m.id;
+        return React.createElement("div",{key:m.id,"data-msg-id":m.id,style:{alignSelf:ours?"flex-end":"flex-start",maxWidth:"88%",width:(replying||editingThis)?"88%":undefined,display:"flex",flexDirection:"column",alignItems:ours?"flex-end":"flex-start"}},
           React.createElement("div",{style:{fontSize:label,letterSpacing:"0.12em",color:"#666",fontWeight:600,marginBottom:3}},who+" · "+ptMsgWhen(m.created_at)+re),
+          editingThis?msgEditBox({value:editText,onChange:setEditText,onSave:()=>saveEdit(m),onCancel:()=>{setEditId(null);setEditText("");},saving:editSaving,linkBtn}):
           React.createElement("div",{onClick:()=>{setReplyTo(replying?null:m.id);setReplyText("");},title:"Tap to reply",
             style:{cursor:"pointer",background:ours?"#0a1a2a":"#141414",border:"1px solid "+(replying?PT_BLUE:(ours?"#1d3a5a":"#262626")),color:"#ddd",fontSize:13,lineHeight:1.5,padding:"8px 10px",whiteSpace:"pre-wrap",wordBreak:"break-word"}},
             parent&&React.createElement("div",{style:{borderLeft:"2px solid "+PT_BLUE,padding:"2px 8px",marginBottom:6,fontSize:11,color:"#888",lineHeight:1.4}},
               React.createElement("span",{style:{fontWeight:600,color:"#aaa"}},"↳ "+nameOf(parent)+": "),
               parent.body.length>90?parent.body.slice(0,90)+"…":parent.body),
-            ptLinkify(m.body)),
-          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,marginTop:2}},
+            ptLinkify(m.body),msgEditedEl(m)),
+          !editingThis&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,marginTop:2}},
             React.createElement("button",{onClick:()=>{setReplyTo(replying?null:m.id);setReplyText("");},style:{...linkBtn,color:replying?PT_BLUE:"#666"}},"REPLY"),
-            React.createElement("button",{onClick:()=>like(m),"aria-label":iLike?"Unlike":"Like",title:iLike?"Unlike":"Like",style:{...linkBtn,display:"flex",alignItems:"center",gap:4}},
-              React.createElement(PtThumb,{on:iLike,red:likes>0}),likes>0&&React.createElement("span",{style:{color:PT_BLUE,fontSize:10,fontWeight:700}},likes)),
+            React.createElement(MsgReactBtn,{m,me,onReact:k=>react(m,k)}),
+            mineMsg&&React.createElement("button",{"data-edit":m.id,onClick:()=>{setEditId(m.id);setEditText(m.body||"");setReplyTo(null);},style:linkBtn},"EDIT"),
             canDel&&React.createElement("button",{onClick:()=>del(m),style:linkBtn},"DELETE")
           ),
           readMarkEl(m),
@@ -9124,7 +9230,7 @@ function DmThread({withEmail,withName,selfEmail,selfName,isMaster,viewPair,photo
   const [err,setErr]=useState("");
   async function load(){
     if(key.indexOf("|")<1)return;
-    const rows=await sbGet("direct_messages",`pair_key=eq.${encodeURIComponent(key)}&select=id,sender_email,recipient_email,sender_name,body,created_at,read,read_at,reply_to,liked_by&order=created_at.desc&limit=300`);
+    const rows=await sbGet("direct_messages",`pair_key=eq.${encodeURIComponent(key)}&select=id,sender_email,recipient_email,sender_name,body,created_at,read,read_at,reply_to,liked_by,reactions,edited_at&order=created_at.desc&limit=300`);
     setMsgs(Array.isArray(rows)?rows:[]);
   }
   useEffect(()=>{setMsgs(null);load();return onScreenPoll(load,10000);},[key]);
@@ -9146,11 +9252,26 @@ function DmThread({withEmail,withName,selfEmail,selfName,isMaster,viewPair,photo
   }
   async function send(){if(await post(text,null))setText("");}
   async function sendReply(){if(await post(replyText,replyTo)){setReplyText("");setReplyTo(null);}}
-  async function like(m){
-    const mine=(m.liked_by||[]).includes(me);
-    setMsgs(p=>(p||[]).map(x=>x.id===m.id?{...x,liked_by:mine?(x.liked_by||[]).filter(e=>e!==me):[...(x.liked_by||[]),me]}:x));
-    try{await fetch(`${SB_URL}/rest/v1/rpc/dm_message_like`,{method:"POST",headers:SB_HDR,body:JSON.stringify({p_id:m.id})});}catch(e){}
-    load();
+  // ❤️ 👍 😂 (3 Oct 2026): tap = 👍, hold = choose.
+  async function react(m,kind){
+    const before=m;
+    setMsgs(p=>(p||[]).map(x=>x.id===m.id?msgReactApply(x,me,kind):x));
+    const res=await sbRpc("dm_message_react",{p_id:m.id,p_kind:kind});
+    if(res&&typeof res==="object")setMsgs(p=>(p||[]).map(x=>x.id===m.id?{...x,liked_by:res.liked_by||[],reactions:res.reactions||{}}:x));
+    else{setMsgs(p=>(p||[]).map(x=>x.id===m.id?{...x,liked_by:before.liked_by,reactions:before.reactions}:x));setErr("Couldn't save that reaction — try again.");}
+  }
+  // Edit your own message: the database stamps edited_at → "Edited" bottom right.
+  const [editId,setEditId]=useState(null);
+  const [editText,setEditText]=useState("");
+  const [editSaving,setEditSaving]=useState(false);
+  async function saveEdit(m){
+    const b=String(editText||"").trim();if(!b||editSaving)return;
+    if(b===m.body){setEditId(null);return;}
+    setEditSaving(true);setErr("");
+    const res=await sbRpc("dm_message_edit",{p_id:m.id,p_body:b.slice(0,2000)});
+    setEditSaving(false);
+    if(res&&res.id){setMsgs(p=>(p||[]).map(x=>x.id===m.id?{...x,body:res.body,edited_at:res.edited_at}:x));setEditId(null);setEditText("");ptMsgNotify();}
+    else setErr("Couldn't save the edit — try again.");
   }
   async function del(m){
     if(!window.confirm("Delete this message? This can't be undone."))return;
@@ -9176,21 +9297,21 @@ function DmThread({withEmail,withName,selfEmail,selfName,isMaster,viewPair,photo
         const ours=String(m.sender_email||"").toLowerCase()===rightEm;
         const canDel=String(m.sender_email||"").toLowerCase()===me||!!isMaster;
         const parent=m.reply_to?byId[m.reply_to]:null;
-        const likes=(m.liked_by||[]).length;const iLike=(m.liked_by||[]).includes(me);
         const replying=replyTo===m.id;
-        return React.createElement("div",{key:m.id,"data-msg-id":m.id,style:{alignSelf:ours?"flex-end":"flex-start",maxWidth:"88%",width:replying?"88%":undefined,display:"flex",flexDirection:"column",alignItems:ours?"flex-end":"flex-start"}},
+        const mineMsg=!viewOnly&&String(m.sender_email||"").toLowerCase()===me;const editingThis=editId===m.id;
+        return React.createElement("div",{key:m.id,"data-msg-id":m.id,style:{alignSelf:ours?"flex-end":"flex-start",maxWidth:"88%",width:(replying||editingThis)?"88%":undefined,display:"flex",flexDirection:"column",alignItems:ours?"flex-end":"flex-start"}},
           React.createElement("div",{style:{fontSize:label,letterSpacing:"0.12em",color:"#666",fontWeight:600,marginBottom:3}},nameOf(m).toUpperCase()+" · "+ptMsgWhen(m.created_at)),
+          editingThis?msgEditBox({value:editText,onChange:setEditText,onSave:()=>saveEdit(m),onCancel:()=>{setEditId(null);setEditText("");},saving:editSaving,linkBtn}):
           React.createElement("div",{onClick:viewOnly?undefined:()=>{setReplyTo(replying?null:m.id);setReplyText("");},title:viewOnly?undefined:"Tap to reply",
             style:{cursor:viewOnly?"default":"pointer",background:ours?"#0a1a2a":"#141414",border:"1px solid "+(replying?PT_BLUE:(ours?"#1d3a5a":"#262626")),color:"#ddd",fontSize:13,lineHeight:1.5,padding:"8px 10px",whiteSpace:"pre-wrap",wordBreak:"break-word"}},
             parent&&React.createElement("div",{style:{borderLeft:"2px solid "+PT_BLUE,padding:"2px 8px",marginBottom:6,fontSize:11,color:"#888",lineHeight:1.4}},
               React.createElement("span",{style:{fontWeight:600,color:"#aaa"}},"↳ "+nameOf(parent)+": "),
               parent.body.length>90?parent.body.slice(0,90)+"…":parent.body),
-            ptLinkify(m.body)),
-          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,marginTop:2}},
+            ptLinkify(m.body),msgEditedEl(m)),
+          !editingThis&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,marginTop:2}},
             !viewOnly&&React.createElement("button",{onClick:()=>{setReplyTo(replying?null:m.id);setReplyText("");},style:{...linkBtn,color:replying?PT_BLUE:"#666"}},"REPLY"),
-            viewOnly?(likes>0&&React.createElement("span",{style:{display:"flex",alignItems:"center",gap:4}},React.createElement(PtThumb,{on:false,red:true}),React.createElement("span",{style:{color:PT_BLUE,fontSize:10,fontWeight:700}},likes)))
-            :React.createElement("button",{onClick:()=>like(m),"aria-label":iLike?"Unlike":"Like",title:iLike?"Unlike":"Like",style:{...linkBtn,display:"flex",alignItems:"center",gap:4}},
-              React.createElement(PtThumb,{on:iLike,red:likes>0}),likes>0&&React.createElement("span",{style:{color:PT_BLUE,fontSize:10,fontWeight:700}},likes)),
+            React.createElement(MsgReactBtn,{m,me,onReact:k=>react(m,k),readOnly:viewOnly}),
+            mineMsg&&React.createElement("button",{"data-edit":m.id,onClick:()=>{setEditId(m.id);setEditText(m.body||"");setReplyTo(null);},style:linkBtn},"EDIT"),
             canDel&&React.createElement("button",{onClick:()=>del(m),style:linkBtn},"DELETE")
           ),
           readMarkEl(m),
