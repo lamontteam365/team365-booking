@@ -2057,6 +2057,35 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,w
   );
 }
 // ── Notice Board ───────────────────────────────────────────────────────────
+// SEEN (3 Oct 2026): a post counts as seen by you once at least half of it (or
+// 120px of a long one) has been on your screen. That is saved in public.post_views
+// through post_mark_seen() (your own email only; your own posts and replies are
+// skipped). Under each post: "SEEN" and the small photos of everyone who has seen
+// it, oldest first; tap the row for their names. It also clears NEW NOTICE.
+const NOTICE_NEW_FROM=1790992800000;   // 3 Oct 2026: only posts after this can flash NEW NOTICE
+function noticeChanged(){try{window.dispatchEvent(new Event("t365-notice-changed"));}catch(e){}}
+async function noticeMarkSeen(ids){
+  if(!ids||!ids.length)return false;
+  try{const h={...SB_HDR};delete h.Prefer;
+    const r=await fetch(`${SB_URL}/rest/v1/rpc/post_mark_seen`,{method:"POST",headers:h,body:JSON.stringify({p_ids:ids.slice(0,200)}),keepalive:true});
+    return r.ok;}catch(e){return false;}
+}
+function NoticeSeen({postId,viewers,photoOf,nameOf,open,onToggle}){
+  if(!viewers||!viewers.length)return null;
+  const MAX=8;const shown=viewers.slice(0,MAX);const more=viewers.length-shown.length;
+  const av=(em,i)=>{const ph=photoOf(em);const nm=nameOf(em);
+    const st={width:18,height:18,borderRadius:"50%",border:"1px solid #141414",boxSizing:"border-box",flexShrink:0,marginLeft:i?-6:0,position:"relative",zIndex:MAX-i,background:"#1a1a1a"};
+    return ph?React.createElement("img",{key:em,src:ph,alt:nm,title:nm,"data-seen-av":em,style:{...st,objectFit:"cover"}})
+      :React.createElement("div",{key:em,title:nm,"data-seen-av":em,style:{...st,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:8,color:"#888"}},initials(nm));};
+  return React.createElement("div",{"data-seen":postId,style:{marginTop:10}},
+    React.createElement("div",{role:"button","aria-expanded":open?"true":"false","aria-label":"Seen by "+viewers.length,onClick:onToggle,"data-seen-toggle":postId,
+      style:{display:"inline-flex",alignItems:"center",gap:7,cursor:"pointer",padding:"2px 0"}},
+      React.createElement("span",{style:{fontSize:8,letterSpacing:"0.14em",color:"#666",fontWeight:700}},"SEEN"),
+      React.createElement("div",{style:{display:"flex",alignItems:"center"}},shown.map((v,i)=>av(v,i))),
+      more>0&&React.createElement("span",{style:{fontSize:9,color:"#666",fontWeight:600}},"+"+more)),
+    open&&React.createElement("div",{"data-seen-names":postId,style:{fontSize:10,color:"#777",lineHeight:1.6,marginTop:4}},
+      "Seen by "+viewers.map(nameOf).join(", ")));
+}
 function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
   const [posts,setPosts]=useState([]);
   const [loading,setLoading]=useState(true);
@@ -2067,11 +2096,64 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
   const [tagQuery,setTagQuery]=useState("");
   const [showTags,setShowTags]=useState(false);
   const MAX_CHARS=300;
-  useEffect(()=>{loadPosts();return onScreenPoll(loadPosts,120000);},[]);
+  const meLc=String((session&&session.email)||"").toLowerCase();
+  const [views,setViews]=useState({});        // {postId: [email, …]} oldest first
+  const [seenNames,setSeenNames]=useState({});
+  const [seenOpen,setSeenOpen]=useState(null);
+  const seenSent=useRef(new Set());           // posts already marked seen by me
+  const seenPending=useRef(new Set());
+  const seenTimer=useRef(null);
+  useEffect(()=>{
+    loadPosts();const off=onScreenPoll(loadPosts,120000);
+    const h=()=>loadPosts();window.addEventListener("t365-msgs-changed",h);   // a push arrived
+    (async()=>{const mp=await sbGet("members_public","select=email,name");const n={};(Array.isArray(mp)?mp:[]).forEach(m=>{if(m.email&&m.name)n[String(m.email).toLowerCase()]=m.name;});setSeenNames(n);})();
+    return ()=>{off();window.removeEventListener("t365-msgs-changed",h);flushSeen(true);};
+  },[]);
+  async function loadViews(list){
+    const ids=(list||[]).filter(p=>!p.reply_to&&p.id).map(p=>p.id);
+    if(!ids.length){setViews({});return;}
+    const rows=await sbGet("post_views",`post_id=in.(${ids.join(",")})&select=post_id,email,seen_at&order=seen_at.asc&limit=5000`);
+    const v={};(Array.isArray(rows)?rows:[]).forEach(r=>{const e=String(r.email||"").toLowerCase();(v[r.post_id]=v[r.post_id]||[]).push(e);if(e===meLc)seenSent.current.add(r.post_id);});
+    setViews(v);
+  }
   async function loadPosts(){
     const data=await sbGet("posts","select=id,author_email,author_name,content,created_at,likes,pinned,reply_to,reply_to_name&order=pinned.desc.nullslast,created_at.desc&limit=80");
     setPosts(data||[]);setLoading(false);
+    await loadViews(data||[]);
   }
+  async function flushSeen(now){
+    if(seenTimer.current){clearTimeout(seenTimer.current);seenTimer.current=null;}
+    const ids=[...seenPending.current];seenPending.current.clear();
+    if(!ids.length)return;
+    const ok=await noticeMarkSeen(ids);
+    if(!ok){ids.forEach(id=>seenSent.current.delete(id));return;}
+    noticeChanged();
+    if(!now)setViews(p=>{const n={...p};ids.forEach(id=>{const l=n[id]||[];if(!l.includes(meLc))n[id]=[...l,meLc];});return n;});
+  }
+  // Watches each post card; half of it (or 120px of a long one) on screen = seen.
+  const seenObs=useRef(null);
+  if(!seenObs.current&&typeof IntersectionObserver!=="undefined"){
+    seenObs.current=new IntersectionObserver(entries=>{
+      entries.forEach(en=>{
+        if(!en.isIntersecting)return;
+        if(en.intersectionRatio<0.5&&en.intersectionRect.height<120)return;
+        const id=en.target.getAttribute("data-post-id");
+        if(!id||seenSent.current.has(id))return;
+        seenSent.current.add(id);seenPending.current.add(id);
+        try{seenObs.current.unobserve(en.target);}catch(e){}
+      });
+      if(seenPending.current.size&&!seenTimer.current)seenTimer.current=setTimeout(()=>flushSeen(false),600);
+    },{threshold:[0,0.25,0.5,0.75,1]});
+  }
+  useEffect(()=>()=>{try{seenObs.current&&seenObs.current.disconnect();}catch(e){}},[]);
+  const watchSeen=post=>el=>{
+    if(!el||!seenObs.current||!post.id)return;
+    if(String(post.author_email||"").toLowerCase()===meLc||seenSent.current.has(post.id))return;
+    try{seenObs.current.observe(el);}catch(e){}
+  };
+  const photoLc=React.useMemo(()=>{const o={};Object.keys(memberPhotos||{}).forEach(k=>{if(memberPhotos[k])o[String(k).toLowerCase()]=memberPhotos[k];});return o;},[memberPhotos]);
+  const seenPhoto=em=>photoLc[em]||"";
+  const seenName=em=>seenNames[em]||em;
   function handleTextChange(e,setter){
     const val=e.target.value;
     setter(val);
@@ -2162,7 +2244,8 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
         const photo=memberPhotos[post.author_email]||"";
         const replies=posts.filter(p=>p.reply_to===post.id).sort((a,b)=>a.created_at-b.created_at);
         const isReplying=replyingTo===post.id;
-        return React.createElement("div",{key:post.id||i,className:`post-card${post.pinned?" pinned-post":""}${isAdminPost?" admin-post":""}`},
+        const viewers=(views[post.id]||[]).filter(e=>e!==String(post.author_email||"").toLowerCase());
+        return React.createElement("div",{key:post.id||i,"data-post-id":post.id,ref:watchSeen(post),className:`post-card${post.pinned?" pinned-post":""}${isAdminPost?" admin-post":""}`},
           post.pinned&&React.createElement("div",{className:"post-pin-label"},"📌 PINNED"),
           React.createElement("div",{className:"post-top"},
             React.createElement("div",{className:"post-author"},
@@ -2196,6 +2279,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
             isAdmin&&React.createElement("button",{className:`post-pin-btn${post.pinned?" pinned":""}`,onClick:()=>handlePin(post,i)},post.pinned?"Unpin":"Pin"),
             canDelete&&React.createElement("button",{className:"post-delete",onClick:()=>handleDelete(post.id)},"Delete")
           ),
+          React.createElement(NoticeSeen,{postId:post.id,viewers,photoOf:seenPhoto,nameOf:seenName,open:seenOpen===post.id,onToggle:()=>setSeenOpen(o=>o===post.id?null:post.id)}),
           isReplying&&React.createElement("div",{className:"reply-compose compose-wrap"},
             showTags&&filteredMembers.length>0&&React.createElement("div",{className:"tag-dropdown"},
               filteredMembers.map((n,idx2)=>React.createElement("div",{key:idx2,className:"tag-option",onClick:()=>insertTag(n,setReplyText,replyText)},n))
@@ -13564,6 +13648,32 @@ function App(){
   },[session&&session.email,isAdmin,isMaster,isSubscriber]);
   const msgStaffTotal=Object.values(msgStaff).reduce((a,b)=>a+b,0);
   const showMsgAlert=!isSubscriber&&((isMaster&&msgStaffTotal>0)||msgMine>0||msgDm>0);
+  // NEW NOTICE (3 Oct 2026): per member. A top-level Notice Board post by someone else,
+  // put up after you joined (and after this went live), that you haven't seen yet
+  // (no post_views row for you) turns the NOTICE BOARD tab into a flashing NEW NOTICE.
+  // Checked every 60 s on screen, straight away when a push arrives, and when you see one.
+  const [noticeNew,setNoticeNew]=useState(0);
+  const joinedMs=Number(memberData&&memberData.joined_at)||0;
+  useEffect(()=>{
+    const em=String((session&&session.email)||"").toLowerCase();
+    if(!em||isSubscriber){setNoticeNew(0);return;}
+    let live=true;
+    const run=async()=>{
+      const cut=Math.max(NOTICE_NEW_FROM,joinedMs);
+      const ps=await sbGet("posts",`reply_to=is.null&created_at=gt.${cut}&select=id,author_email&order=created_at.desc&limit=50`);
+      const ids=(Array.isArray(ps)?ps:[]).filter(p=>p.id&&String(p.author_email||"").toLowerCase()!==em).map(p=>p.id);
+      if(!ids.length){if(live)setNoticeNew(0);return;}
+      const seen=await sbGet("post_views",`email=eq.${encodeURIComponent(em)}&post_id=in.(${ids.join(",")})&select=post_id`);
+      const s=new Set((Array.isArray(seen)?seen:[]).map(r=>r.post_id));
+      if(live)setNoticeNew(ids.filter(id=>!s.has(id)).length);
+    };
+    run();
+    const off=onScreenPoll(run,60000);
+    const h=()=>run();
+    window.addEventListener("t365-notice-changed",h);window.addEventListener("t365-msgs-changed",h);
+    return ()=>{live=false;off();window.removeEventListener("t365-notice-changed",h);window.removeEventListener("t365-msgs-changed",h);};
+  },[session&&session.email,isSubscriber,joinedMs]);
+  const navLabel=t=>(t.dot&&noticeNew>0&&effTab!=="community")?React.createElement("span",{className:"t365-ringtext","data-new-notice":"1"},"NEW NOTICE"):t.label;
   // Messages live behind the profile photo: tap it to open the messages screen, tap it
   // again (or the phone's back button, or any nav tab) to close it. Everyone except
   // subscribers. The screen sits under the header, so the photo is always there to tap.
@@ -14305,8 +14415,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
           React.createElement("button",{"data-tab":t.id,
             style:{flex:"1 0 auto",minWidth:56,padding:"12px 10px",background:effTab===t.id?"#fff":"none",border:"none",borderTop:`1px solid ${effTab===t.id?"#fff":"#888"}`,borderBottom:`1px solid ${effTab===t.id?"#fff":"#888"}`,borderLeft:"1px solid transparent",borderRight:"1px solid transparent",marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8.5px",letterSpacing:"0.1em",color:effTab===t.id?"#000":"#555",fontWeight:600,whiteSpace:"nowrap",position:"relative"},
             onClick:()=>{setTab(t.id);setMsgOpen(false);if(t.id==="community")lsSet("t365-last-read",Date.now());}},
-            t.label,
-            t.dot&&unreadPosts>0&&tab!=="community"&&React.createElement("div",{className:"tab-dot"})
+            navLabel(t)
           ),
           ti<NAV_TABS.length-1&&React.createElement("div",{style:{width:1,flexShrink:0,background:"#888"}})
         ))
@@ -14551,8 +14660,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       NAV_TABS.map((t,ti)=>React.createElement(React.Fragment,{key:t.id},
         React.createElement("button",{"data-tab":t.id,className:`tab-btn${effTab===t.id?" ta":""}`,style:t.dot?{position:"relative"}:undefined,
           onClick:()=>{setTab(t.id);setMsgOpen(false);if(t.id==="community")lsSet("t365-last-read",Date.now());}},
-          t.label,
-          t.dot&&unreadPosts>0&&tab!=="community"&&React.createElement("div",{className:"tab-dot"})
+          navLabel(t)
         ),
         ti<NAV_TABS.length-1&&React.createElement("div",{style:{width:1,flexShrink:0,background:"#888"}})
       ))
