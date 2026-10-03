@@ -154,6 +154,17 @@ html,body{background:#080808;min-height:100vh}
 .post-like-icon{font-size:14px;line-height:1;color:#cc2200}
 .post-like-count{font-size:10px;letter-spacing:0.06em;color:#888;font-weight:500}
 .post-like-btn.liked .post-like-count{color:#cc2200}
+.post-like-btn{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
+.post-react-sum{display:flex;align-items:center;gap:8px}
+.post-react-k{display:flex;align-items:center;gap:3px}
+.post-react-e{font-size:13px;line-height:1}
+.post-react-n{font-size:10px;letter-spacing:0.06em;color:#888;font-weight:500}
+.post-react-k.mine .post-react-n{color:#cc2200;font-weight:700}
+.post-react-pick{position:absolute;bottom:calc(100% + 8px);left:-6px;z-index:5;display:flex;gap:2px;background:#1c1c1c;border:1px solid #333;border-radius:24px;padding:4px 6px;box-shadow:0 6px 18px rgba(0,0,0,.6);animation:t365pop .14s ease-out}
+.post-react-opt{background:none;border:none;cursor:pointer;font-size:24px;line-height:1;padding:5px 6px;border-radius:50%;transition:transform .1s}
+.post-react-opt:active{transform:scale(1.25)}
+.post-react-opt.on{background:#2c2c2c}
+@keyframes t365pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
 .post-delete{background:none;border:none;color:#333;cursor:pointer;font-size:10px;font-family:'DM Sans',sans-serif;letter-spacing:0.06em;transition:color .15s;font-weight:500}
 .post-delete:hover{color:#e06040}
 .post-pin-btn{background:none;border:none;color:#444;cursor:pointer;font-size:10px;font-family:'DM Sans',sans-serif;letter-spacing:0.06em;transition:color .15s;font-weight:500}
@@ -2086,6 +2097,58 @@ function NoticeSeen({postId,viewers,photoOf,nameOf,open,onToggle}){
     open&&React.createElement("div",{"data-seen-names":postId,style:{fontSize:10,color:"#777",lineHeight:1.6,marginTop:4}},
       "Seen by "+viewers.map(nameOf).join(", ")));
 }
+// Reactions (3 Oct 2026): TAP the heart = ♥ (tap again to take it off). HOLD it =
+// choose ♥ / 👍 / 😂. One reaction each per post; choosing the one you have takes it
+// off. Saved by post_react() (the database only changes YOUR reaction). Hearts stay
+// in posts.likes as before; 👍 and 😂 are in posts.reactions {email: "like"|"laugh"}.
+const REACTS=[{k:"heart",e:"❤️",s:"♥",label:"Love"},{k:"like",e:"👍",s:"👍",label:"Like"},{k:"laugh",e:"😂",s:"😂",label:"Haha"}];
+function postReactState(post,me){
+  const likes=(Array.isArray(post.likes)?post.likes:[]).map(e=>String(e||"").toLowerCase());
+  const rx=(post.reactions&&typeof post.reactions==="object")?post.reactions:{};
+  const counts={heart:likes.length,like:0,laugh:0};
+  Object.keys(rx).forEach(e=>{const k=rx[e];if((k==="like"||k==="laugh")&&!likes.includes(String(e).toLowerCase()))counts[k]++;});
+  const mine=likes.includes(me)?"heart":(rx[me]==="like"||rx[me]==="laugh")?rx[me]:null;
+  return {counts,mine,total:counts.heart+counts.like+counts.laugh};
+}
+function postReactApply(post,me,kind){   // what post_react() will do, for an instant screen update
+  const cur=postReactState(post,me).mine;
+  let likes=(Array.isArray(post.likes)?post.likes:[]).filter(e=>String(e||"").toLowerCase()!==me);
+  const rx={...((post.reactions&&typeof post.reactions==="object")?post.reactions:{})};delete rx[me];
+  if(cur!==kind){if(kind==="heart")likes=[...likes,me];else rx[me]=kind;}
+  return {...post,likes,reactions:rx};
+}
+function PostReactBtn({post,me,onReact}){
+  const [pick,setPick]=useState(false);
+  const wrap=useRef(null);const timer=useRef(null);const held=useRef(false);const start=useRef(null);
+  const st=postReactState(post,me);
+  useEffect(()=>{
+    if(!pick)return;
+    const h=e=>{if(wrap.current&&!wrap.current.contains(e.target))setPick(false);};
+    const k=e=>{if(e.key==="Escape")setPick(false);};
+    document.addEventListener("click",h);document.addEventListener("keydown",k);
+    return ()=>{document.removeEventListener("click",h);document.removeEventListener("keydown",k);};
+  },[pick]);
+  useEffect(()=>()=>clearTimeout(timer.current),[]);
+  const down=e=>{held.current=false;start.current={x:e.clientX,y:e.clientY};clearTimeout(timer.current);
+    timer.current=setTimeout(()=>{held.current=true;setPick(true);try{navigator.vibrate&&navigator.vibrate(10);}catch(x){}},450);};
+  const cancel=()=>{clearTimeout(timer.current);};
+  const move=e=>{const s0=start.current;if(s0&&Math.hypot(e.clientX-s0.x,e.clientY-s0.y)>10)clearTimeout(timer.current);};
+  const click=()=>{if(held.current){held.current=false;return;}if(pick){setPick(false);return;}onReact(st.mine||"heart");};
+  const kinds=REACTS.filter(r=>st.counts[r.k]>0);
+  return React.createElement("div",{ref:wrap,style:{position:"relative"}},
+    pick&&React.createElement("div",{className:"post-react-pick","data-react-pick":post.id,role:"menu"},
+      REACTS.map(r=>React.createElement("button",{key:r.k,type:"button",role:"menuitem","data-react":r.k,"aria-label":r.label,title:r.label,className:"post-react-opt"+(st.mine===r.k?" on":""),
+        onClick:e=>{e.stopPropagation();setPick(false);onReact(r.k);}},r.e))),
+    React.createElement("button",{type:"button",className:`post-like-btn${st.mine?" liked":""}`,"data-react-btn":post.id,"data-mine":st.mine||"",
+      title:"Tap to ♥ · hold for 👍 😂","aria-label":st.mine?"Your reaction: "+st.mine+" (hold to change)":"React (hold for more)","aria-haspopup":"menu",
+      onPointerDown:down,onPointerUp:cancel,onPointerLeave:cancel,onPointerCancel:cancel,onPointerMove:move,onContextMenu:e=>e.preventDefault(),onClick:click},
+      st.total===0?React.createElement(React.Fragment,null,
+          React.createElement("div",{className:"post-like-icon"},"♡"),
+          React.createElement("div",{className:"post-like-count"},"0"))
+        :React.createElement("div",{className:"post-react-sum"},kinds.map(r=>React.createElement("span",{key:r.k,"data-react-count":r.k,className:"post-react-k"+(st.mine===r.k?" mine":"")},
+          React.createElement("span",{className:"post-react-e",style:r.k==="heart"?{color:"#cc2200",fontSize:14}:undefined},r.s),
+          React.createElement("span",{className:"post-react-n"},st.counts[r.k]))))));
+}
 function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
   const [posts,setPosts]=useState([]);
   const [loading,setLoading]=useState(true);
@@ -2117,7 +2180,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
     setViews(v);
   }
   async function loadPosts(){
-    const data=await sbGet("posts","select=id,author_email,author_name,content,created_at,likes,pinned,reply_to,reply_to_name&order=pinned.desc.nullslast,created_at.desc&limit=80");
+    const data=await sbGet("posts","select=id,author_email,author_name,content,created_at,likes,reactions,pinned,reply_to,reply_to_name&order=pinned.desc.nullslast,created_at.desc&limit=80");
     setPosts(data||[]);setLoading(false);
     await loadViews(data||[]);
   }
@@ -2191,12 +2254,15 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
     if(ok){setReplyingTo(null);setReplyText("");await loadPosts();}
     else showToast("Failed to post reply");
   }
-  async function handleLike(post,idx){
-    const likes=Array.isArray(post.likes)?post.likes:[];
-    const alreadyLiked=likes.includes(session.email);
-    const newLikes=alreadyLiked?likes.filter(e=>e!==session.email):[...likes,session.email];
-    const updated=[...posts];updated[idx]={...post,likes:newLikes};setPosts(updated);
-    await sbPatch("posts",`id=eq.${post.id}`,{likes:newLikes});
+  async function handleReact(post,kind){
+    const before=post;
+    setPosts(prev=>prev.map(p=>p.id===post.id?postReactApply(p,meLc,kind):p));
+    let res=null;
+    try{const h={...SB_HDR};delete h.Prefer;
+      const r=await fetch(`${SB_URL}/rest/v1/rpc/post_react`,{method:"POST",headers:h,body:JSON.stringify({p_id:post.id,p_kind:kind})});
+      res=r.ok?await r.json():null;}catch(e){}
+    if(res&&typeof res==="object")setPosts(prev=>prev.map(p=>p.id===post.id?{...p,likes:res.likes||[],reactions:res.reactions||{}}:p));
+    else{setPosts(prev=>prev.map(p=>p.id===post.id?{...p,likes:before.likes,reactions:before.reactions}:p));showToast("Couldn't save that — try again");}
   }
   async function handlePin(post,idx){
     const newPinned=!post.pinned;
@@ -2239,8 +2305,6 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
       :topLevelPosts.map((post,i)=>{
         const isAdminPost=post.author_email===ADMIN_EMAIL;
         const canDelete=isAdmin||(post.author_email===session.email);
-        const likes=Array.isArray(post.likes)?post.likes:[];
-        const liked=likes.includes(session.email);
         const photo=memberPhotos[post.author_email]||"";
         const replies=posts.filter(p=>p.reply_to===post.id).sort((a,b)=>a.created_at-b.created_at);
         const isReplying=replyingTo===post.id;
@@ -2271,10 +2335,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
             })
           ),
           React.createElement("div",{className:"post-actions",style:{marginTop:8}},
-            React.createElement("button",{className:`post-like-btn${liked?" liked":""}`,onClick:()=>handleLike(post,i)},
-              React.createElement("div",{className:"post-like-icon"},liked?"♥":"♡"),
-              React.createElement("div",{className:"post-like-count"},likes.length>0?likes.length:"0")
-            ),
+            React.createElement(PostReactBtn,{post,me:meLc,onReact:k=>handleReact(post,k)}),
             React.createElement("button",{className:"post-reply-btn",onClick:()=>setReplyingTo(isReplying?null:post.id)},isReplying?"Cancel":"Reply"),
             isAdmin&&React.createElement("button",{className:`post-pin-btn${post.pinned?" pinned":""}`,onClick:()=>handlePin(post,i)},post.pinned?"Unpin":"Pin"),
             canDelete&&React.createElement("button",{className:"post-delete",onClick:()=>handleDelete(post.id)},"Delete")
@@ -13393,9 +13454,18 @@ function App(){
   useEffect(()=>{ssSet("t365-wksub",wkSub);},[wkSub]);
   const [myClsCol,setMyClsCol]=useState(true);
   const [myWellCol,setMyWellCol]=useState(true);
+  // Opening the app (3 Oct 2026, faster): it used to wait for ~28 requests to Supabase
+  // (Tokyo) ONE AFTER ANOTHER before showing anything — ~6 s from NZ. Now:
+  //  1. sign-in refresh (has to be first — everything else needs it);
+  //  2. everything the first screen needs, ALL AT ONCE: your member row + access +
+  //     subscriber state, bookings, class sizes, the switches, and every settings row
+  //     in ONE request → the app shows;
+  //  3. after it's on screen: everyone's names and any changed profile photos
+  //     (photos this phone already has show straight away from its cache).
   useEffect(()=>{
     (async()=>{
-      let joinedAt=0;
+      // Photos this phone already has: show them from the start.
+      {const pc0=lsGet("t365-photocache",{})||{};const pm0={};Object.keys(pc0).forEach(e=>{if(pc0[e]&&pc0[e].photo)pm0[e]=pc0[e].photo;});if(Object.keys(pm0).length)setMemberPhotos(pm0);}
       await authRefresh();
       // If the refresh didn't land but a refresh token is still stored, retry briefly (mobile/network blips).
       if(!AUTH_TOKEN){var _rt0="";try{_rt0=localStorage.getItem("t365-refresh")||"";}catch(e){}
@@ -13405,41 +13475,29 @@ function App(){
       var haveRT=false;try{haveRT=!!localStorage.getItem("t365-refresh");}catch(e){}
       // Only truly sign out when the refresh token is gone (server definitively rejected it).
       if(s&&!AUTH_TOKEN&&!haveRT)lsSet("t365-session",null);
-      if(s&&(AUTH_TOKEN||haveRT)){
-        const mb=await sbGet("members",`email=eq.${encodeURIComponent(s.email)}`);
-        if(mb.length){setSession(s);setMemberData(mb[0]);joinedAt=mb[0].joined_at||0;
-          const accRow=await sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__ACCESS__"+s.email)}&select=content`);
+      const signedIn=!!(s&&(AUTH_TOKEN||haveRT));
+      // Every settings row the first screen needs, in one request.
+      const CFG=["__DOW_NAMES__",STUDIO_ADDRESS_KEY,ARRIVAL_NOTES_KEY,"__BASE_TIMES__","__WELL_BASE_TIMES__","__TIER_LIMITS__","__DOW_SLOT_NAMES__","__CLASS_BRIEFS__","__DOW_SLOT_LIMITS__","__DOW_LIMITS__","__WELL_SLOTS__","__WELL_DOW__","__CLASS_DOW__",PROFILE_BG_KEY,"__MILESTONE_CONFIG__","__MFLAGS__"];
+      const em0=signedIn?String(s.email):"";
+      const [mb,accRow,_sub,_bk,limitsData,ffData,cfgRows]=await Promise.all([
+        signedIn?sbGet("members",`email=eq.${encodeURIComponent(em0)}`):Promise.resolve([]),
+        signedIn?sbGet("coaching_notes",`class_name=eq.${encodeURIComponent("__ACCESS__"+em0)}&select=content`):Promise.resolve([]),
+        signedIn?loadSubscriberState(em0):Promise.resolve(),
+        refreshBookings(),
+        sbGet("class_limits","select=time_slot,date_key,max_spots,name,session_type,duration_min,whanau"),
+        sbGet("feature_flags","id=eq.1&select=*"),
+        sbGet("coaching_notes",`class_name=in.(${CFG.map(k=>encodeURIComponent('"'+k+'"')).join(",")})&select=class_name,content`)
+      ]);
+      if(signedIn){
+        if(mb&&mb.length){setSession(s);setMemberData(mb[0]);
           if(accRow&&accRow.length&&accRow[0].content){try{const a=JSON.parse(accRow[0].content);if(a&&Array.isArray(a.tabs))setMemberAccess(a.tabs);}catch{}}
-          await loadSubscriberState(s.email);
         }
-        else if(AUTH_TOKEN){lsSet("t365-session",null);}
+        else if(AUTH_TOKEN){lsSet("t365-session",null);setSubRow(null);}
         else{setSession(s);}
       }
-      await refreshBookings();
-      const lastRead=lsGet("t365-last-read",0)||joinedAt;
-      const recentPosts=await sbGet("posts",`created_at=gt.${lastRead}&select=id`);
-      setUnreadPosts((recentPosts||[]).length);
-      const allMembers=await sbGet("members_public","select=email,name,photo_updated_at");
-      const nameList=[];
-      (allMembers||[]).forEach(m=>{if(m.name)nameList.push(m.name);});
-      setAllMemberNames(nameList);
-      let pcache=lsGet("t365-photocache",{})||{};
-      const changedP=[];
-      (allMembers||[]).forEach(m=>{const v=m.photo_updated_at||0;if(v>0){if(!pcache[m.email]||pcache[m.email].v!==v)changedP.push(m.email);}else if(pcache[m.email])delete pcache[m.email];});
-      if(changedP.length){
-        const fp=await sbGet("members_public",`email=in.(${changedP.map(e=>encodeURIComponent(e)).join(",")})&select=email,photo,photo_updated_at`);
-        (fp||[]).forEach(m=>{pcache[m.email]={v:m.photo_updated_at||0,photo:m.photo||""};});
-      }
-      const emSet=new Set((allMembers||[]).map(m=>m.email));
-      Object.keys(pcache).forEach(e=>{if(!emSet.has(e))delete pcache[e];});
-      lsSet("t365-photocache",pcache);
-      const photoMap={};Object.keys(pcache).forEach(e=>{if(pcache[e]&&pcache[e].photo)photoMap[e]=pcache[e].photo;});
-      setMemberPhotos(photoMap);
-      const limitsData=await sbGet("class_limits","select=time_slot,date_key,max_spots,name,session_type,duration_min,whanau");
       const lm={};const sn0={};const rows0={};
       (limitsData||[]).forEach(r=>{const k=`${r.date_key}:${r.time_slot}`;lm[k]=r.max_spots;if(r.name)sn0[k]=r.name;rows0[k]=r;});
       setClassLimits(lm);setSlotNames(sn0);setClassRows(rows0);
-      const ffData=await sbGet("feature_flags","id=eq.1&select=*");
       if(ffData&&ffData.length){
         setWellnessEnabled(ffData[0].wellness_enabled!==false);
         setClassesEnabled(ffData[0].classes_enabled!==false);
@@ -13451,39 +13509,42 @@ function App(){
         setDmEnabled(ffData[0].dm_enabled===true);
         setPushFlags({messages:ffData[0].push_messages!==false,notices:ffData[0].push_notices!==false,reminders:ffData[0].push_reminders!==false,email:ffData[0].push_email_fallback===true});
       }
-      const dnData=await sbGet("coaching_notes","class_name=eq.__DOW_NAMES__&select=content");
-      if(dnData&&dnData.length){try{const dn=JSON.parse(dnData[0].content);setDowNames(p=>({...p,...dn}));}catch{}}
-      const saData=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(STUDIO_ADDRESS_KEY)+"&select=content");
-      if(saData&&saData.length)setStudioAddress((saData[0].content||"").trim());
-      const anData=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(ARRIVAL_NOTES_KEY)+"&select=content");
-      if(anData&&anData.length)setArrivalNotes((anData[0].content||"").trim());
-      const btData=await sbGet("coaching_notes","class_name=eq.__BASE_TIMES__&select=content");
-      if(btData&&btData.length){try{const bt=JSON.parse(btData[0].content);if(bt&&typeof bt==="object")setBaseTimes(bt);}catch{}}
-      const wbtData=await sbGet("coaching_notes","class_name=eq.__WELL_BASE_TIMES__&select=content");
-      if(wbtData&&wbtData.length){try{const wbt=JSON.parse(wbtData[0].content);if(wbt&&typeof wbt==="object")setWellBaseTimes(wbt);}catch{}}
-      const tlData=await sbGet("coaching_notes","class_name=eq.__TIER_LIMITS__&select=content");
-      if(tlData&&tlData.length){try{const tl=JSON.parse(tlData[0].content);if(tl&&typeof tl==="object")setTierOverrides(tl);}catch{}}
-      const dsnData=await sbGet("coaching_notes","class_name=eq.__DOW_SLOT_NAMES__&select=content");
-      if(dsnData&&dsnData.length){try{const dsn=JSON.parse(dsnData[0].content);if(dsn&&typeof dsn==="object")setDowSlotNames(dsn);}catch{}}
-      const cbData=await sbGet("coaching_notes","class_name=eq.__CLASS_BRIEFS__&select=content");
-      if(cbData&&cbData.length){try{const cb=JSON.parse(cbData[0].content);if(cb&&typeof cb==="object")setClassBriefs(cb);}catch{}}
-      const dslData=await sbGet("coaching_notes","class_name=eq.__DOW_SLOT_LIMITS__&select=content");
-      if(dslData&&dslData.length){try{const dsl=JSON.parse(dslData[0].content);if(dsl&&typeof dsl==="object")setDowSlotLimits(dsl);}catch{}}
-      const dlData=await sbGet("coaching_notes","class_name=eq.__DOW_LIMITS__&select=content");
-      if(dlData&&dlData.length){try{const dl=JSON.parse(dlData[0].content);if(dl&&typeof dl==="object")setDowLimits(dl);}catch{}}
-      const wsData=await sbGet("coaching_notes","class_name=eq.__WELL_SLOTS__&select=content");
-      if(wsData&&wsData.length){try{const ws=JSON.parse(wsData[0].content);if(ws&&typeof ws==="object")setWellSlots(ws);}catch{}}
-      const wdData=await sbGet("coaching_notes","class_name=eq.__WELL_DOW__&select=content");
-      if(wdData&&wdData.length){try{const wd=JSON.parse(wdData[0].content);if(wd&&typeof wd==="object")setWellDow(wd);}catch{}}
-      const cdData=await sbGet("coaching_notes","class_name=eq.__CLASS_DOW__&select=content");
-      if(cdData&&cdData.length){try{const cd=JSON.parse(cdData[0].content);if(cd&&typeof cd==="object")setClassDow(cd);}catch{}}
-      const pbData=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(PROFILE_BG_KEY)+"&select=content");
-      if(pbData&&pbData.length)setProfileBg((pbData[0].content||"").trim());
-      const mcData=await sbGet("coaching_notes","class_name=eq.__MILESTONE_CONFIG__&select=content");
-      if(mcData&&mcData.length){try{const mc=JSON.parse(mcData[0].content);setMilestoneConfig(p=>({...p,...mc}));}catch{}}
-      const mfData=await sbGet("coaching_notes","class_name=eq.__MFLAGS__&select=content");
-      if(mfData&&mfData.length){try{const mf=JSON.parse(mfData[0].content);if(mf&&typeof mf==="object")setMFlags(p=>({...p,...mf}));}catch{}}
+      const cfg={};(Array.isArray(cfgRows)?cfgRows:[]).forEach(r=>{if(r&&r.class_name&&!(r.class_name in cfg))cfg[r.class_name]=r.content;});
+      const obj=k=>{const c=cfg[k];if(!c)return null;try{const o=JSON.parse(c);return o&&typeof o==="object"?o:null;}catch{return null;}};
+      const txt=k=>(k in cfg)?String(cfg[k]||"").trim():null;
+      {const v=obj("__DOW_NAMES__");if(v)setDowNames(p=>({...p,...v}));}
+      {const v=txt(STUDIO_ADDRESS_KEY);if(v!==null)setStudioAddress(v);}
+      {const v=txt(ARRIVAL_NOTES_KEY);if(v!==null)setArrivalNotes(v);}
+      {const v=obj("__BASE_TIMES__");if(v)setBaseTimes(v);}
+      {const v=obj("__WELL_BASE_TIMES__");if(v)setWellBaseTimes(v);}
+      {const v=obj("__TIER_LIMITS__");if(v)setTierOverrides(v);}
+      {const v=obj("__DOW_SLOT_NAMES__");if(v)setDowSlotNames(v);}
+      {const v=obj("__CLASS_BRIEFS__");if(v)setClassBriefs(v);}
+      {const v=obj("__DOW_SLOT_LIMITS__");if(v)setDowSlotLimits(v);}
+      {const v=obj("__DOW_LIMITS__");if(v)setDowLimits(v);}
+      {const v=obj("__WELL_SLOTS__");if(v)setWellSlots(v);}
+      {const v=obj("__WELL_DOW__");if(v)setWellDow(v);}
+      {const v=obj("__CLASS_DOW__");if(v)setClassDow(v);}
+      {const v=txt(PROFILE_BG_KEY);if(v!==null)setProfileBg(v);}
+      {const v=obj("__MILESTONE_CONFIG__");if(v)setMilestoneConfig(p=>({...p,...v}));}
+      {const v=obj("__MFLAGS__");if(v)setMFlags(p=>({...p,...v}));}
       setReady(true);
+      // ── After the app is on screen: names (for @tags) and any changed photos ──
+      const allMembers=await sbGet("members_public","select=email,name,photo_updated_at");
+      const nameList=[];
+      (allMembers||[]).forEach(m=>{if(m.name)nameList.push(m.name);});
+      setAllMemberNames(nameList);
+      let pcache=lsGet("t365-photocache",{})||{};
+      const changedP=[];
+      (allMembers||[]).forEach(m=>{const v=m.photo_updated_at||0;if(v>0){if(!pcache[m.email]||pcache[m.email].v!==v)changedP.push(m.email);}else if(pcache[m.email])delete pcache[m.email];});
+      if(changedP.length){
+        const fp=await sbGet("members_public",`email=in.(${changedP.map(e=>encodeURIComponent(e)).join(",")})&select=email,photo,photo_updated_at`);
+        (fp||[]).forEach(m=>{pcache[m.email]={v:m.photo_updated_at||0,photo:m.photo||""};});
+      }
+      if(Array.isArray(allMembers)&&allMembers.length){const emSet=new Set(allMembers.map(m=>m.email));Object.keys(pcache).forEach(e=>{if(!emSet.has(e))delete pcache[e];});}
+      lsSet("t365-photocache",pcache);
+      const photoMap={};Object.keys(pcache).forEach(e=>{if(pcache[e]&&pcache[e].photo)photoMap[e]=pcache[e].photo;});
+      setMemberPhotos(photoMap);
     })();
   },[]);
   useEffect(()=>onScreenPoll(refreshBookings,120000),[]);
