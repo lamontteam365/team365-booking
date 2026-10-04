@@ -1251,7 +1251,7 @@ function ImageCropper({imageSrc,onSave,onCancel}){
   );
 }
 // ── Member Profile Overlay (Admin) ────────────────────────────────────────────
-function MemberProfileOverlay({onGrantSubscriber,member,bookings,onClose,currentUserIsAdmin,mfWk,isMaster,mfPasteAI,selfEmail,canManageWk,setBookingExcused,setBookingCheckedIn,wellnessOn,remindersOn,confirmationsOn,track,onTrackChanged}){
+function MemberProfileOverlay({onGrantSubscriber,member,bookings,onClose,currentUserIsAdmin,mfWk,isMaster,mfPasteAI,selfEmail,canManageWk,setBookingExcused,setBookingCheckedIn,wellnessOn,remindersOn,confirmationsOn,track,onTrackChanged,onMessage,unreadN}){
   const joinDate=fmtJoinDate(member.joined_at);
   const PARQ_LABELS=["Heart condition","Chest pain during activity","Chest pain at rest","Dizziness/loss of consciousness","Bone or joint problem","Blood pressure medication","Other reason to avoid activity"];
   const PARQ_KEYS=["parq_heart","parq_chest_activity","parq_chest_rest","parq_dizziness","parq_joint","parq_blood_pressure","parq_other"];
@@ -1603,9 +1603,18 @@ function MemberProfileOverlay({onGrantSubscriber,member,bookings,onClose,current
     ),
     React.createElement("div",{className:"mp-body"},
       React.createElement("div",{className:"mp-top"},
-        member.photo
-          ?React.createElement("img",{src:member.photo,className:"mp-avatar",alt:""})
-          :React.createElement("div",{className:"mp-avatar-init"},initials(member.name||"?")),
+        // The main photo: tap to message them (5 Oct 2026) — the same faded bubble as the
+        // member list, and the flashing NEW MESSAGE ring when they've sent you one.
+        React.createElement("div",{"data-mp-photo":"1",role:onMessage?"button":undefined,"aria-label":onMessage?"Message "+(member.name||""):undefined,title:onMessage?"Message "+(member.name||""):undefined,
+          onClick:onMessage||undefined,style:{position:"relative",flexShrink:0,cursor:onMessage?"pointer":"default",lineHeight:0}},
+          member.photo
+            ?React.createElement("img",{src:member.photo,className:"mp-avatar",alt:""})
+            :React.createElement("div",{className:"mp-avatar-init"},initials(member.name||"?")),
+          onMessage&&!unreadN&&React.createElement("div",{"aria-hidden":"true","data-msg-badge":"1",style:{position:"absolute",right:2,bottom:2,width:22,height:22,borderRadius:"50%",background:"#141414",border:"1px solid #333",boxSizing:"border-box",display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"none"}},
+            React.createElement("svg",{width:12,height:12,viewBox:"0 0 24 24",style:{display:"block",opacity:0.55}},React.createElement("path",{d:"M4 4h16v12H9l-5 4z",fill:"#ffffff"}))),
+          onMessage&&unreadN>0&&React.createElement("div",{className:"t365-ring","data-msg-new":String(unreadN),style:{position:"absolute",inset:0,boxSizing:"border-box",borderRadius:"50%",border:"2px solid #1d9bf0",background:"rgba(8,8,8,0.55)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,pointerEvents:"none"}},
+            React.createElement("span",{className:"t365-ringtext",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.14em",color:"#1d9bf0",lineHeight:1,paddingLeft:"0.14em"}},"NEW"),
+            React.createElement("span",{className:"t365-ringtext",style:{fontFamily:"'Syncopate',sans-serif",fontSize:6,fontWeight:700,letterSpacing:"0.12em",color:"#1d9bf0",lineHeight:1,paddingLeft:"0.12em"}},"MESSAGE"))),
         React.createElement("div",null,
           React.createElement("div",{className:"mp-name"},(member.name||"").toUpperCase()),
           React.createElement("div",{className:"mp-meta"},`Joined ${joinDate}`),
@@ -1642,8 +1651,6 @@ function MemberProfileOverlay({onGrantSubscriber,member,bookings,onClose,current
           React.createElement("div",{className:"adm-stat-lbl"},"WELLNESS")
         )
       ),
-      // Traffic light, RESET COUNT, LOG CONTACT, contact history (5 Oct 2026). Admins only.
-      currentUserIsAdmin&&React.createElement(MemberTrackPanel,{member,track,selfEmail,isMaster,onChanged:onTrackChanged}),
       // ── Correcting the counts ─────────────────────────────────────────────
       // Stored as an offset from the real booking history rather than as a
       // replacement, so whatever you set here keeps counting upward as the
@@ -1693,6 +1700,9 @@ function MemberProfileOverlay({onGrantSubscriber,member,bookings,onClose,current
               )
             )
       ),
+      // Traffic light, RESET COUNT, LOG CONTACT, contact history (5 Oct 2026). Admins only.
+      // Sits under ADJUST COUNTS (Sam, 5 Oct).
+      currentUserIsAdmin&&React.createElement(MemberTrackPanel,{member,track,selfEmail,isMaster,onChanged:onTrackChanged}),
       // ── Email preferences ─────────────────────────────────────────────────
       currentUserIsAdmin&&React.createElement(ProfBar,{title:"EMAILS",open:showEm,onToggle:()=>setShowEm(v=>!v),attr:"emails"}),
       currentUserIsAdmin&&showEm&&React.createElement("div",{"data-prof-emails":"1",style:{background:"#141414",border:"1px solid #666",borderRadius:0,padding:"6px 16px",marginBottom:10}},
@@ -3465,6 +3475,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   }
   useEffect(()=>{
     const handlePop=()=>{
+      // Back from Messages opened from inside a profile: the profile stays open.
+      if(window.history.state&&window.history.state.overlay==="member")return;
       if(selectedMember){setSelectedMember(null);return;}
     };
     window.addEventListener("popstate",handlePop);
@@ -3721,7 +3733,11 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   const canScBuild=isMaster||(mFlags.sc!==false&&!(mFlags.scAdminHide||[]).includes(selfEmail));
   return React.createElement("div",{className:"adm-wrap"},
     selectedMember&&isMaster&&subMap[String(selectedMember.email||"").toLowerCase()]&&React.createElement(SubscriberProfileOverlay,{member:selectedMember,sub:subMap[String(selectedMember.email||"").toLowerCase()],onClose:()=>setSelectedMember(null),showToast,onChanged:async()=>{await loadSubs();await reloadMembersList();}}),
-    selectedMember&&!(isMaster&&subMap[String(selectedMember.email||"").toLowerCase()])&&React.createElement(MemberProfileOverlay,{onGrantSubscriber:isMaster?grantSubscriber:null,member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin,mfWk:mFlags.wk,isMaster,mfPasteAI:mFlags.pasteAI,selfEmail,setBookingExcused,setBookingCheckedIn,wellnessOn:wellnessEnabled,remindersOn:remindersEnabled,confirmationsOn:confirmationsEnabled,canManageWk:(isMaster||(mFlags.wk!==false&&!(mFlags.wkAdminHide||[]).includes(selfEmail))),track:lights?(lights[String(selectedMember.email||"").toLowerCase()]||{}):null,onTrackChanged:reloadLights}),
+    selectedMember&&!(isMaster&&subMap[String(selectedMember.email||"").toLowerCase()])&&React.createElement(MemberProfileOverlay,{onGrantSubscriber:isMaster?grantSubscriber:null,member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin,mfWk:mFlags.wk,isMaster,mfPasteAI:mFlags.pasteAI,selfEmail,setBookingExcused,setBookingCheckedIn,wellnessOn:wellnessEnabled,remindersOn:remindersEnabled,confirmationsOn:confirmationsEnabled,canManageWk:(isMaster||(mFlags.wk!==false&&!(mFlags.wkAdminHide||[]).includes(selfEmail))),track:lights?(lights[String(selectedMember.email||"").toLowerCase()]||{}):null,onTrackChanged:reloadLights,
+      ...(()=>{const em=String(selectedMember.email||"").toLowerCase();
+        const ok=!!openMsgsTo&&!!em&&!subMap[em]&&em!==String(selfEmail||"").toLowerCase();
+        const target=isMaster?{c:em}:(em===String(ADMIN_EMAIL).toLowerCase()?{c:"team365"}:{dm:em});
+        return {onMessage:ok?()=>openMsgsTo(target):null,unreadN:unreadFrom[em]||0};})()}),
     React.createElement("div",{className:"adm-title"},"ADMIN"),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"0 0 6px"}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
@@ -3776,8 +3792,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
               lc&&tr.light!=="blue"&&React.createElement("div",{"data-light-dot":tr.light,
                 style:{position:"absolute",top:2,right:2,width:12,height:12,borderRadius:"50%",background:lc,border:"2px solid #141414"}}),
               // Message bubble sitting faintly ON the photo, so it reads as "messages live here".
-              canMsg&&!unreadN&&React.createElement("div",{"aria-hidden":"true","data-msg-badge":"1",style:{position:"absolute",right:5,bottom:5,width:19,height:19,borderRadius:"50%",background:"rgba(8,8,8,0.55)",display:"flex",alignItems:"center",justifyContent:"center",opacity:0.75,pointerEvents:"none"}},
-                React.createElement("svg",{width:11,height:11,viewBox:"0 0 24 24",style:{display:"block"}},React.createElement("path",{d:"M4 4h16v12H9l-5 4z",fill:"#ffffff"}))),
+              canMsg&&!unreadN&&React.createElement("div",{"aria-hidden":"true","data-msg-badge":"1",style:{position:"absolute",right:5,bottom:5,width:19,height:19,borderRadius:"50%",background:"#141414",border:"1px solid #333",boxSizing:"border-box",display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"none"}},
+                React.createElement("svg",{width:11,height:11,viewBox:"0 0 24 24",style:{display:"block",opacity:0.55}},React.createElement("path",{d:"M4 4h16v12H9l-5 4z",fill:"#ffffff"}))),
               // They've sent you a message you haven't read: the same flashing NEW MESSAGE
               // ring as your own photo at the top of the app.
               canMsg&&unreadN>0&&React.createElement("div",{className:"t365-ring","data-msg-new":String(unreadN),style:{position:"absolute",top:4,left:4,width:44,height:44,boxSizing:"border-box",borderRadius:"50%",border:"2px solid #1d9bf0",background:"rgba(8,8,8,0.55)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,pointerEvents:"none"}},
