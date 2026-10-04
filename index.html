@@ -1079,6 +1079,12 @@ function LightKey({open,onToggle,left}){
         note("A photo flashing NEW MESSAGE means they've sent you a message you haven't read. Tap it to open the conversation."),
         note("Only admins see this. Members never see their colour."))));
 }
+// The message bubble on a profile photo (5 Oct 2026): sits half on, half off the photo's
+// edge at the bottom-right. Solid dark disc; the icon itself is faded.
+function MsgBadge({size,right,bottom}){
+  return React.createElement("div",{"aria-hidden":"true","data-msg-badge":"1",style:{position:"absolute",right,bottom,width:size,height:size,borderRadius:"50%",background:"#141414",border:"1px solid #333",boxSizing:"border-box",display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"none",zIndex:1}},
+    React.createElement("svg",{width:Math.round(size*0.55),height:Math.round(size*0.55),viewBox:"0 0 24 24",style:{display:"block",opacity:0.55}},React.createElement("path",{d:"M4 4h16v12H9l-5 4z",fill:"#ffffff"})));
+}
 // A collapsible bar in the member profile — the same look as NO-SHOWS (5 Oct 2026).
 function ProfBar({title,open,onToggle,right,attr}){
   return React.createElement("div",{"data-prof-bar":attr,role:"button","aria-expanded":open?"true":"false",onClick:onToggle,
@@ -1610,8 +1616,7 @@ function MemberProfileOverlay({onGrantSubscriber,member,bookings,onClose,current
           member.photo
             ?React.createElement("img",{src:member.photo,className:"mp-avatar",alt:""})
             :React.createElement("div",{className:"mp-avatar-init"},initials(member.name||"?")),
-          onMessage&&!unreadN&&React.createElement("div",{"aria-hidden":"true","data-msg-badge":"1",style:{position:"absolute",right:2,bottom:2,width:22,height:22,borderRadius:"50%",background:"#141414",border:"1px solid #333",boxSizing:"border-box",display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"none"}},
-            React.createElement("svg",{width:12,height:12,viewBox:"0 0 24 24",style:{display:"block",opacity:0.55}},React.createElement("path",{d:"M4 4h16v12H9l-5 4z",fill:"#ffffff"}))),
+          onMessage&&!unreadN&&React.createElement(MsgBadge,{size:22,right:-2,bottom:-2}),
           onMessage&&unreadN>0&&React.createElement("div",{className:"t365-ring","data-msg-new":String(unreadN),style:{position:"absolute",inset:0,boxSizing:"border-box",borderRadius:"50%",border:"2px solid #1d9bf0",background:"rgba(8,8,8,0.55)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,pointerEvents:"none"}},
             React.createElement("span",{className:"t365-ringtext",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.14em",color:"#1d9bf0",lineHeight:1,paddingLeft:"0.14em"}},"NEW"),
             React.createElement("span",{className:"t365-ringtext",style:{fontFamily:"'Syncopate',sans-serif",fontSize:6,fontWeight:700,letterSpacing:"0.12em",color:"#1d9bf0",lineHeight:1,paddingLeft:"0.12em"}},"MESSAGE"))),
@@ -3792,8 +3797,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
               lc&&tr.light!=="blue"&&React.createElement("div",{"data-light-dot":tr.light,
                 style:{position:"absolute",top:2,right:2,width:12,height:12,borderRadius:"50%",background:lc,border:"2px solid #141414"}}),
               // Message bubble sitting faintly ON the photo, so it reads as "messages live here".
-              canMsg&&!unreadN&&React.createElement("div",{"aria-hidden":"true","data-msg-badge":"1",style:{position:"absolute",right:5,bottom:5,width:19,height:19,borderRadius:"50%",background:"#141414",border:"1px solid #333",boxSizing:"border-box",display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"none"}},
-                React.createElement("svg",{width:11,height:11,viewBox:"0 0 24 24",style:{display:"block",opacity:0.55}},React.createElement("path",{d:"M4 4h16v12H9l-5 4z",fill:"#ffffff"}))),
+              canMsg&&!unreadN&&React.createElement(MsgBadge,{size:19,right:1,bottom:1}),
               // They've sent you a message you haven't read: the same flashing NEW MESSAGE
               // ring as your own photo at the top of the app.
               canMsg&&unreadN>0&&React.createElement("div",{className:"t365-ring","data-msg-new":String(unreadN),style:{position:"absolute",top:4,left:4,width:44,height:44,boxSizing:"border-box",borderRadius:"50%",border:"2px solid #1d9bf0",background:"rgba(8,8,8,0.55)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,pointerEvents:"none"}},
@@ -14858,6 +14862,8 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
             memberPhoto
               ?React.createElement("img",{src:memberPhoto,alt:"profile",style:{display:"block",width:62,height:62,borderRadius:"50%",objectFit:"cover",border:"1px solid #1d9bf0",pointerEvents:"auto"}})
               :React.createElement("div",{style:{width:62,height:62,borderRadius:"50%",background:"#1a1a1a",border:"1px solid #1d9bf0",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#777"}},memberInit),
+            // The message bubble, half on the photo's edge, so it's clear this is where messages are.
+            canOpenMsgs&&!showMsgAlert&&React.createElement(MsgBadge,{size:22,right:-2,bottom:-2}),
             // New message: the photo stays, its outline blinks blue ⇄ white, and NEW / MESSAGE blink with it
             showMsgAlert&&React.createElement("div",{className:"t365-ring",style:{position:"absolute",inset:-1,borderRadius:"50%",border:"2px solid #1d9bf0",background:memberPhoto?"rgba(8,8,8,0.55)":"#1a1a1a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}},
               React.createElement("span",{className:"t365-ringtext",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.14em",color:"#1d9bf0",lineHeight:1,paddingLeft:"0.14em"}},"NEW"),
