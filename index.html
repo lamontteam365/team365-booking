@@ -1051,7 +1051,7 @@ function lightLines(tr){
   return out;
 }
 // ⓘ KEY — tap to open what the colours mean (hover doesn't exist on phones).
-function LightKey({open,onToggle}){
+function LightKey({open,onToggle,left}){
   const row=(c,t,d)=>React.createElement("div",{key:t,style:{display:"flex",gap:10,alignItems:"flex-start",padding:"4px 0"}},
     React.createElement("span",{style:{width:12,height:12,borderRadius:"50%",background:c||"transparent",border:"2px solid "+(c||"#555"),flexShrink:0,marginTop:1,boxSizing:"border-box"}}),
     React.createElement("div",{style:{fontSize:10,lineHeight:1.5}},
@@ -1059,9 +1059,10 @@ function LightKey({open,onToggle}){
       React.createElement("span",{style:{color:"#888"}}," — "+d)));
   const note=t=>React.createElement("div",{key:t,style:{padding:"2px 0"}},t);
   return React.createElement("div",{"data-light-key":"1",style:{marginBottom:12}},
-    React.createElement("div",{style:{display:"flex",justifyContent:"flex-end"}},
+    React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
+      React.createElement("div",{style:{flex:1,minWidth:0}},left||null),
       React.createElement("button",{type:"button","data-light-key-toggle":"1","aria-expanded":open?"true":"false",onClick:onToggle,
-        style:{background:"none",border:"1px solid "+(open?"#444":"#2a2a2a"),borderRadius:20,color:open?"#ccc":"#888",fontSize:9,letterSpacing:"0.16em",fontWeight:700,padding:"6px 12px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},open?"ⓘ KEY ✕":"ⓘ KEY")),
+        style:{background:"none",border:"1px solid "+(open?"#444":"#2a2a2a"),borderRadius:20,color:open?"#ccc":"#888",fontSize:9,letterSpacing:"0.16em",fontWeight:700,padding:"6px 12px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0,whiteSpace:"nowrap"}},open?"ⓘ KEY ✕":"ⓘ KEY")),
     open&&React.createElement("div",{"data-light-key-panel":"1",style:{marginTop:8,background:"#0e0e0e",border:"1px solid #222",padding:"10px 12px"}},
       row(LIGHT_COLORS.blue,"ACTIVE","been to a class in the last 7 days"),
       row(LIGHT_COLORS.yellow,"SLIPPING","8–14 days since their last class"),
@@ -1073,8 +1074,18 @@ function LightKey({open,onToggle}){
         note("↓ USUALLY … — coming much less often than usual. It doesn't change the colour."),
         note("LAST CONTACTED — the last message from a coach, a logged call or text, or an automatic nudge."),
         note("Tap a member's photo to message them. Tap anywhere else on the card for their profile."),
-        note("Studio members are listed longest-absent first, then online / PT, then subscribers."),
+        note("Studio members are listed longest-absent first, then online / PT. Subscribers sit in their own SUBSCRIBERS list at the bottom."),
+        note("ALL · STUDIO · ONLINE · PT filter who's shown. A studio member who also trains online shows under both."),
+        note("A photo flashing NEW MESSAGE means they've sent you a message you haven't read. Tap it to open the conversation."),
         note("Only admins see this. Members never see their colour."))));
+}
+// A collapsible bar in the member profile — the same look as NO-SHOWS (5 Oct 2026).
+function ProfBar({title,open,onToggle,right,attr}){
+  return React.createElement("div",{"data-prof-bar":attr,role:"button","aria-expanded":open?"true":"false",onClick:onToggle,
+    style:{width:"100%",boxSizing:"border-box",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:"#141414",color:"#bbb",border:"1px solid #666",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginBottom:open?8:10}},
+    React.createElement("span",null,title),
+    React.createElement("span",{style:{display:"flex",alignItems:"center",gap:10}},right||null,
+      React.createElement("span",{style:{fontSize:11,transform:open?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")));
 }
 // Member profile → ATTENDANCE: the light, RESET COUNT, LOG CONTACT and the contact history.
 function MemberTrackPanel({member,track,selfEmail,isMaster,onChanged}){
@@ -1085,6 +1096,7 @@ function MemberTrackPanel({member,track,selfEmail,isMaster,onChanged}){
   const [note,setNote]=useState("");
   const [busy,setBusy]=useState(false);
   const [msg,setMsg]=useState("");
+  const [open,setOpen]=useState(false);
   async function loadContacts(){
     const r=await sbGet("member_contacts",`member_email=eq.${encodeURIComponent(em)}&select=id,contacted_at,by_email,by_name,kind,note&order=contacted_at.desc&limit=8`);
     setContacts(Array.isArray(r)?r:[]);
@@ -1118,9 +1130,12 @@ function MemberTrackPanel({member,track,selfEmail,isMaster,onChanged}){
   const btn={background:"#1c1c1c",border:"1px solid #2a2a2a",borderRadius:20,color:"#bbb",fontSize:9,letterSpacing:"0.14em",fontWeight:700,padding:"8px 14px",cursor:busy?"default":"pointer",fontFamily:"'DM Sans',sans-serif",opacity:busy?0.5:1};
   const link={background:"none",border:"none",color:"#777",fontSize:9,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",padding:"2px 0",fontFamily:"'DM Sans',sans-serif"};
   const kindLbl=k=>k==="nudge"?"AUTO NUDGE":k==="manual"?"LOGGED":"MESSAGE";
-  return React.createElement("div",{"data-track-panel":em,style:{marginBottom:20}},
-    React.createElement("div",{style:{...lbl,marginBottom:8}},"ATTENDANCE"),
-    React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid "+c,padding:"12px 14px"}},
+  // Closed: the bar still shows their colour and days, so the profile tells you at a glance.
+  const barRight=studio&&tr.light?React.createElement("span",{"data-track-bar-status":tr.light,style:{display:"flex",alignItems:"center",gap:6,fontFamily:"'DM Sans',sans-serif",fontSize:9,fontWeight:700,letterSpacing:"0.12em",color:c}},
+    React.createElement("span",{style:{width:9,height:9,borderRadius:"50%",background:c}}),lightDaysAgo(tr.days)):null;
+  return React.createElement("div",{"data-track-panel":em,"data-open":open?"1":"0"},
+    React.createElement(ProfBar,{title:"ATTENDANCE",open,onToggle:()=>setOpen(v=>!v),right:barRight,attr:"attendance"}),
+    open&&React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid "+c,padding:"12px 14px",marginBottom:10}},
       !tr?React.createElement("div",{style:small},"Loading…")
       :studio?React.createElement(React.Fragment,null,
         React.createElement("div",{"data-track-status":tr.light||"none",style:{display:"flex",alignItems:"center",gap:8}},
@@ -1392,6 +1407,7 @@ function MemberProfileOverlay({onGrantSubscriber,member,bookings,onClose,current
   const [emBusy,setEmBusy]=useState("");
   const [nsBusy,setNsBusy]=useState({});
   const [showNs,setShowNs]=useState(false);
+  const [showEm,setShowEm]=useState(false);
   useEffect(()=>{
     if(!currentUserIsAdmin)return;
     (async()=>{
@@ -1678,8 +1694,8 @@ function MemberProfileOverlay({onGrantSubscriber,member,bookings,onClose,current
             )
       ),
       // ── Email preferences ─────────────────────────────────────────────────
-      currentUserIsAdmin&&React.createElement("div",{style:{background:"#141414",border:"1px solid #666",borderRadius:0,padding:"14px 16px",marginBottom:10}},
-        React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:12}},"EMAILS"),
+      currentUserIsAdmin&&React.createElement(ProfBar,{title:"EMAILS",open:showEm,onToggle:()=>setShowEm(v=>!v),attr:"emails"}),
+      currentUserIsAdmin&&showEm&&React.createElement("div",{"data-prof-emails":"1",style:{background:"#141414",border:"1px solid #666",borderRadius:0,padding:"6px 16px",marginBottom:10}},
         [
           {k:"reminders",col:"email_reminders",label:"Class reminders",hint:"The night before a booked class"},
           {k:"confirmations",col:"email_confirmations",label:"Booking confirmations",hint:"When they book a class"}
@@ -3075,6 +3091,12 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
   // email -> that member's traffic light (member_lights(), 5 Oct 2026). null while loading.
   const [lights,setLights]=useState(null);
   const [keyOpen,setKeyOpen]=useState(false);
+  // MEMBERS filter (ALL / STUDIO / ONLINE / PT), remembered on this device; SUBSCRIBERS
+  // list open/closed; unread messages per person, for the NEW MESSAGE flash on photos.
+  const [memFilter,setMemFilterS]=useState(()=>{const v=lsGet("t365-mem-filter","all");return ["all","studio","online","pt"].includes(v)?v:"all";});
+  function setMemFilter(v){setMemFilterS(v);lsSet("t365-mem-filter",v);}
+  const [subsOpen,setSubsOpen]=useState(false);
+  const [unreadFrom,setUnreadFrom]=useState({});
   // POSSIBLE MEMBERS: the public who have booked but never signed up.
   // prospects holds only what the database has to remember — manual additions
   // and the "joined" tick. The rest of the list is derived from guest bookings
@@ -3484,12 +3506,26 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
     const r=await sbRpc("member_lights",{});
     if(Array.isArray(r)){const m={};r.forEach(x=>{if(x&&x.email)m[String(x.email).toLowerCase()]=x;});setLights(m);}
   }
+  // Unread messages to ME, per sender (5 Oct 2026): the master's members' Team 365
+  // conversations, private messages to me, and (other admins) Team 365 → the master's card.
+  async function reloadUnread(){
+    const me=String(selfEmail||"").toLowerCase();if(!me)return;
+    const m={};const add=k=>{k=String(k||"").toLowerCase();if(k&&k!==me)m[k]=(m[k]||0)+1;};
+    const [pt,dm]=await Promise.all([
+      isMaster?sbGet("pt_messages","from_staff=eq.false&staff_read=eq.false&select=member_email")
+        :sbGet("pt_messages",`member_email=eq.${encodeURIComponent(me)}&from_staff=eq.true&member_read=eq.false&select=id`),
+      sbGet("direct_messages",`recipient_email=eq.${encodeURIComponent(me)}&read=eq.false&select=sender_email`)]);
+    (Array.isArray(pt)?pt:[]).forEach(x=>add(isMaster?x.member_email:ADMIN_EMAIL));
+    (Array.isArray(dm)?dm:[]).forEach(x=>add(x.sender_email));
+    setUnreadFrom(m);
+  }
   useEffect(()=>{
     if(admSeg!=="members")return;
-    reloadLights();
+    reloadLights();reloadUnread();
     const off=onScreenPoll(reloadLights,120000);
-    const h=()=>reloadLights();window.addEventListener("t365-msgs-changed",h);
-    return ()=>{off();window.removeEventListener("t365-msgs-changed",h);};
+    const off2=onScreenPoll(reloadUnread,60000);
+    const h=()=>{reloadLights();reloadUnread();};window.addEventListener("t365-msgs-changed",h);
+    return ()=>{off();off2();window.removeEventListener("t365-msgs-changed",h);};
   },[admSeg]);
   useEffect(()=>{if(!selectedMember&&admSeg==="members"&&lights)reloadLights();},[selectedMember]);
   const visMembers=masterHidden?members.filter(m=>m.email!==ADMIN_EMAIL):members;
@@ -3501,6 +3537,21 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
     if(ra===0){const la=lights[String(a.m.email||"").toLowerCase()],lb=lights[String(b.m.email||"").toLowerCase()];
       const da=la&&la.days!=null?la.days:-1,db=lb&&lb.days!=null?lb.days:-1;if(da!==db)return db-da;}
     return a.i-b.i;}).map(x=>x.m);
+  // Filters. Subscribers are never in ALL — they have their own list at the bottom.
+  const memEm=mb=>String(mb.email||"").toLowerCase();
+  const memIsStudio=mb=>{const l=lights&&lights[memEm(mb)];if(l)return !!l.studio;
+    return (!!String(mb.membership_type||"").trim()||mb.concession===true)&&memEm(mb)!==String(ADMIN_EMAIL).toLowerCase();};
+  const memIsOnline=mb=>String(mb.client_type||"").toUpperCase()==="ONLINE TRAINING";
+  const memIsPT=mb=>String(mb.client_type||"").toUpperCase()==="PT"||trainingLabel(mb)==="PT";
+  const memNonSubs=sortedMembers.filter(mb=>!subMap[memEm(mb)]);
+  const memSubs=sortedMembers.filter(mb=>!!subMap[memEm(mb)]);
+  const MEM_FILTERS=[["all","ALL",()=>true],["studio","STUDIO",memIsStudio],["online","ONLINE",memIsOnline],["pt","PT",memIsPT]];
+  const memShown=memNonSubs.filter((MEM_FILTERS.find(f=>f[0]===memFilter)||MEM_FILTERS[0])[2]);
+  const memChips=React.createElement("div",{"data-mem-filters":"1",style:{display:"flex",gap:6,overflowX:"auto",scrollbarWidth:"none"}},
+    MEM_FILTERS.map(([k,lbl,fn])=>{const on=memFilter===k;const n=memNonSubs.filter(fn).length;
+      return React.createElement("button",{key:k,type:"button","data-mem-filter":k,"aria-pressed":on?"true":"false",onClick:()=>setMemFilter(k),
+        style:{background:on?"#fff":"#1c1c1c",color:on?"#000":"#888",border:"1px solid "+(on?"#fff":"#2a2a2a"),borderRadius:20,fontSize:9,letterSpacing:"0.12em",fontWeight:700,padding:"6px 10px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0,whiteSpace:"nowrap"}},
+        lbl+" ",React.createElement("span",{style:{opacity:0.55}},n));}));
   // ── LEADS ─────────────────────────────────────────────────────────────────
   // Anyone who has booked without an account, plus anyone an admin adds by
   // hand. Signing up does not remove you: a lead who joins stays here marked
@@ -3697,8 +3748,8 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
         React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},bookings.filter(bookingUpcoming).length),React.createElement("div",{className:"adm-stat-lbl"},"UPCOMING BKS"))
       ),
       // ⓘ KEY: what the colours mean (tap — hover doesn't exist on phones).
-      React.createElement(LightKey,{open:keyOpen,onToggle:()=>setKeyOpen(v=>!v)}),
-      sortedMembers.map((mb,i)=>{
+      React.createElement(LightKey,{open:keyOpen,onToggle:()=>setKeyOpen(v=>!v),left:memChips}),
+      (()=>{const memberCard=(mb,i)=>{
         const mbBks=bookings.filter(b=>b.email===mb.email&&bookingUpcoming(b)).length;
         const joinDate=fmtJoinDate(mb.joined_at);
         const em=String(mb.email||"").toLowerCase();
@@ -3710,6 +3761,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
         // Tap the photo → message them (the master: their Team 365 conversation; other
         // admins: a private message). Not subscribers, not yourself.
         const canMsg=!!openMsgsTo&&!!em&&!subMap[em]&&em!==String(selfEmail||"").toLowerCase();
+        const unreadN=unreadFrom[em]||0;
         const msgTarget=isMaster?{c:em}:(em===String(ADMIN_EMAIL).toLowerCase()?{c:"team365"}:{dm:em});
         const avS={width:44,height:44,borderRadius:"50%",border:"2px solid "+ring,display:"block",boxSizing:"border-box"};
         return React.createElement("div",{key:mb.email||i,className:"adm-member-card","data-member-card":em,"data-light":tr&&tr.studio?(tr.light||"none"):"off",style:lc?{borderColor:lc}:undefined,onClick:()=>openMemberProfile(mb)},
@@ -3723,8 +3775,14 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
                 :React.createElement("div",{style:{...avS,background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:"#666"}},initials(mb.name||"?")),
               lc&&tr.light!=="blue"&&React.createElement("div",{"data-light-dot":tr.light,
                 style:{position:"absolute",top:2,right:2,width:12,height:12,borderRadius:"50%",background:lc,border:"2px solid #141414"}}),
-              canMsg&&React.createElement("div",{"aria-hidden":"true",style:{position:"absolute",bottom:1,right:0,width:18,height:18,borderRadius:"50%",background:"#141414",border:"1px solid #333",display:"flex",alignItems:"center",justifyContent:"center"}},
-                React.createElement("svg",{width:10,height:10,viewBox:"0 0 24 24",style:{display:"block"}},React.createElement("path",{d:"M4 4h16v12H9l-5 4z",fill:"#1d9bf0"})))
+              // Message bubble sitting faintly ON the photo, so it reads as "messages live here".
+              canMsg&&!unreadN&&React.createElement("div",{"aria-hidden":"true","data-msg-badge":"1",style:{position:"absolute",right:5,bottom:5,width:19,height:19,borderRadius:"50%",background:"rgba(8,8,8,0.55)",display:"flex",alignItems:"center",justifyContent:"center",opacity:0.75,pointerEvents:"none"}},
+                React.createElement("svg",{width:11,height:11,viewBox:"0 0 24 24",style:{display:"block"}},React.createElement("path",{d:"M4 4h16v12H9l-5 4z",fill:"#ffffff"}))),
+              // They've sent you a message you haven't read: the same flashing NEW MESSAGE
+              // ring as your own photo at the top of the app.
+              canMsg&&unreadN>0&&React.createElement("div",{className:"t365-ring","data-msg-new":String(unreadN),style:{position:"absolute",top:4,left:4,width:44,height:44,boxSizing:"border-box",borderRadius:"50%",border:"2px solid #1d9bf0",background:"rgba(8,8,8,0.55)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,pointerEvents:"none"}},
+                React.createElement("span",{className:"t365-ringtext",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.14em",color:"#1d9bf0",lineHeight:1,paddingLeft:"0.14em"}},"NEW"),
+                React.createElement("span",{className:"t365-ringtext",style:{fontFamily:"'Syncopate',sans-serif",fontSize:5,fontWeight:700,letterSpacing:"0.12em",color:"#1d9bf0",lineHeight:1,paddingLeft:"0.12em"}},"MESSAGE"))
             )
           ),
           ...lightLines(tr),
@@ -3746,7 +3804,18 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
           ),
           React.createElement("div",{className:"adm-mc-detail"},`Joined ${joinDate} · ${mbBks} upcoming booking${mbBks!==1?"s":""}`)
         );
-      })
+      };
+      return React.createElement(React.Fragment,null,
+        memShown.length?memShown.map(memberCard)
+          :React.createElement("div",{"data-mem-empty":"1",style:{fontSize:11,color:"#555",textAlign:"center",padding:"18px 0"}},"Nobody in this list."),
+        // Subscribers (only the master can see them): their own list at the very bottom.
+        memSubs.length>0&&React.createElement("div",{"data-subs-list":subsOpen?"open":"closed",style:{marginTop:18}},
+          React.createElement("div",{"data-subs-toggle":"1",role:"button",onClick:()=>setSubsOpen(v=>!v),
+            style:{width:"100%",boxSizing:"border-box",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#141414",color:"#bbb",border:"1px solid #666",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginBottom:subsOpen?8:0}},
+            React.createElement("span",null,"SUBSCRIBERS · "+memSubs.length),
+            React.createElement("span",{style:{fontSize:11,transform:subsOpen?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")),
+          subsOpen&&memSubs.map(memberCard)));
+      })()
     )),
     admSeg==="leads"&&(!prospectsLoaded||!membersLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
     :React.createElement(React.Fragment,null,
