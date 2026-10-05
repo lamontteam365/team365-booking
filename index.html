@@ -1262,6 +1262,159 @@ function ImageCropper({imageSrc,onSave,onCancel}){
     React.createElement("div",{className:"crop-actions"},React.createElement("button",{className:"crop-cancel",onClick:onCancel},"CANCEL"),React.createElement("button",{className:"crop-save",onClick:handleSave},"SAVE PHOTO"))
   );
 }
+// ── My Health Screening (member's own Edit Profile, 5 Oct 2026) ───────────────
+// The member's own version of the admin's Member Details health sections, so
+// their saved answers are shown and edited in place (the old button sent them
+// to register.html, which runs logged-out and can't read their record).
+// Privacy: reads come from memberData (the signed-in member's own row, loaded
+// with their login). Saves PATCH only email = their own login email, and RLS
+// (members_upd: own email or admin) enforces that on the server too. Nothing
+// here is written to localStorage. members_public never exposes these columns.
+// Each member save stamps health_updated_at, which Member Details shows as
+// "UPDATED BY MEMBER · <date>". Admin edits don't stamp it.
+const MH_PARQ_KEYS=["parq_heart","parq_chest_activity","parq_chest_rest","parq_dizziness","parq_joint","parq_blood_pressure","parq_other"];
+const MH_PARQ_LABELS=["Heart condition","Chest pain during activity","Chest pain at rest","Dizziness/loss of consciousness","Bone or joint problem","Blood pressure medication","Other reason to avoid activity"];
+const MH_PARQ_QS=[
+  "Has your doctor ever said that you have a heart condition and that you should only do physical activity recommended by a doctor?",
+  "Do you feel pain in your chest when you do physical activity?",
+  "In the past month, have you had chest pain when you were not doing physical activity?",
+  "Do you lose your balance because of dizziness or do you ever lose consciousness?",
+  "Do you have a bone or joint problem that could be made worse by a change in your physical activity? (e.g. back, knee, hip)",
+  "Is your doctor currently prescribing drugs for your blood pressure or heart condition?",
+  "Do you know of any other reason why you should not do physical activity? (e.g. pregnancy, recent surgery, diabetes)"
+];
+const MH_FITNESS=["1. New to fitness or returning after a break.","2. Active and training regularly.","3. High performance, pushing the limits."];
+const MH_EXTRA=["medical_conditions","medications","fitness_level","health_declaration","media_consent"];
+const MH_HEALTH_DECL="I confirm that the information provided is accurate to the best of my knowledge. I agree to inform Team 365 of any changes to my health or medical status. I acknowledge that physical activity carries inherent risks, and I participate at my own risk.";
+const MH_MEDIA_DECL="I grant permission for Team 365 to capture and use photographs and video footage of me during training sessions for promotional, marketing, and social media purposes.";
+function fmtHealthUpdated(ts){const n=+ts;if(!n)return "";try{const d=new Date(n);return `${d.getDate()} ${["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"][d.getMonth()]} ${d.getFullYear()}`;}catch(e){return "";}}
+function MyHealthScreening({session,memberData,setMemberData}){
+  const md=memberData||{};
+  const [editing,setEditing]=useState(null); // null | "parq" | "extra"
+  const [ed,setEd]=useState({});
+  const [busy,setBusy]=useState(false);
+  const [err,setErr]=useState("");
+  const [ok,setOk]=useState("");
+  const anyYes=MH_PARQ_KEYS.some(k=>md[k]==="Yes");
+  const editYes=MH_PARQ_KEYS.some(k=>ed[k]==="Yes");
+  const lblS={fontSize:9,color:"#666",letterSpacing:"0.1em",marginBottom:6};
+  const editBtnS={background:"none",border:"1px solid #333",color:"#888",fontSize:9,letterSpacing:"0.12em",padding:"3px 8px",borderRadius:0,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600};
+  const taS={width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:300,padding:"10px 12px",borderRadius:0,outline:"none",resize:"none",minHeight:60,lineHeight:1.6};
+  const saveS={width:"100%",background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.15em",padding:"14px",borderRadius:0,cursor:"pointer",marginTop:12};
+  function open(which){
+    if(editing===which){setEditing(null);setErr("");return;}
+    const init={};
+    MH_PARQ_KEYS.concat(MH_EXTRA).forEach(k=>{init[k]=md[k]||"";});
+    setEd(init);setErr("");setOk("");setEditing(which);
+  }
+  function yn(key,val,onCls){
+    const sel=ed[key]===val;
+    const good=onCls==="parq"?val==="No":val==="Yes";
+    return React.createElement("button",{key:val,type:"button","data-mh":key+":"+val,
+      onClick:()=>{setEd(p=>({...p,[key]:val}));setErr("");},
+      style:{flex:1,padding:"8px",background:sel?(good?"#081a08":"#1a0808"):"#111",border:`1px solid ${sel?(good?"#2a4a2a":"#4a2a2a"):"#222"}`,color:sel?(good?"#4aaa66":"#e06040"):"#555",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.1em",cursor:"pointer"}
+    },onCls==="parq"?val.toUpperCase():(val==="Yes"?"I AGREE":"I DO NOT AGREE"));
+  }
+  async function save(){
+    const keys=editing==="parq"?MH_PARQ_KEYS:MH_EXTRA;
+    if(editing==="parq"&&MH_PARQ_KEYS.some(k=>ed[k]!=="Yes"&&ed[k]!=="No")){setErr("Please answer every question.");return;}
+    if(editing==="extra"){
+      if(!MH_FITNESS.includes(ed.fitness_level)){setErr("Please choose your fitness level.");return;}
+      if(ed.health_declaration!=="Yes"&&ed.health_declaration!=="No"){setErr("Please confirm the health declaration.");return;}
+      if(ed.media_consent!=="Yes"&&ed.media_consent!=="No"){setErr("Please confirm your media consent preference.");return;}
+    }
+    const upd={};
+    keys.forEach(k=>{const v=(k==="medical_conditions"||k==="medications")?String(ed[k]||"").trim():ed[k];if(v!==(md[k]||""))upd[k]=v;});
+    if(!Object.keys(upd).length){setEditing(null);setErr("");return;}
+    upd.health_updated_at=Date.now();
+    const em=String(session&&session.email||"").toLowerCase();
+    if(!em){setErr("Please sign in again.");return;}
+    setBusy(true);setErr("");
+    let saved=false;
+    try{
+      const r=await fetch(`${SB_URL}/rest/v1/members?email=eq.${encodeURIComponent(em)}`,{method:"PATCH",headers:{...SB_HDR,"Prefer":"return=representation"},body:JSON.stringify(upd)});
+      if(r.ok){const j=await r.json().catch(()=>[]);saved=Array.isArray(j)&&j.length===1;}
+    }catch(e){}
+    setBusy(false);
+    if(!saved){setErr("Couldn't save. Please try again.");return;}
+    setMemberData(m=>m?{...m,...upd}:m);
+    setEditing(null);setOk(editing);setTimeout(()=>setOk(""),2500);
+  }
+  function hdr(title,which,extra){
+    return React.createElement("div",{className:"prof-section",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
+      React.createElement("span",null,title,extra||null),
+      React.createElement("button",{type:"button","data-mh-edit":which,onClick:()=>open(which),style:editBtnS},editing===which?"CANCEL":"EDIT")
+    );
+  }
+  const row=(label,value,cls,key)=>React.createElement("div",{key,className:"mp-row"},
+    React.createElement("div",{className:"mp-label"},label),
+    React.createElement("div",{className:`mp-value ${cls||""}`,style:{textAlign:"right"}},value)
+  );
+  const errEl=err&&React.createElement("div",{style:{fontSize:11,color:"#e06040",textAlign:"center",marginTop:8}},err);
+  const okEl=w=>ok===w&&React.createElement("div",{style:{fontSize:11,color:"#4aaa88",textAlign:"center",marginTop:8}},"Updated successfully");
+  return React.createElement("div",{"data-my-health":"1"},
+    // ── PAR-Q ──
+    hdr("HEALTH SCREENING","parq",anyYes&&editing!=="parq"?React.createElement("span",{style:{marginLeft:8,fontSize:9,color:"#e06040",fontWeight:600}},"⚠ MEDICAL NOTES"):null),
+    editing==="parq"
+      ?React.createElement(React.Fragment,null,
+        ...MH_PARQ_KEYS.map((k,i)=>React.createElement("div",{key:k,style:{padding:"10px 0",borderBottom:"1px solid #0f0f0f"}},
+          React.createElement("div",{style:{fontSize:12,color:"#ccc",lineHeight:1.5,marginBottom:8,fontWeight:300}},MH_PARQ_QS[i]),
+          React.createElement("div",{style:{display:"flex",gap:8}},["Yes","No"].map(v=>yn(k,v,"parq")))
+        )),
+        editYes&&React.createElement("div",{style:{fontSize:11,color:"#e06040",lineHeight:1.6,marginTop:10}},"You've answered YES to at least one question. Please check with your doctor before training, and let your coach know before your next session."),
+        React.createElement("button",{type:"button",onClick:save,disabled:busy,style:saveS},busy?"SAVING...":"SAVE HEALTH SCREENING"),
+        errEl
+      )
+      :React.createElement(React.Fragment,null,
+        ...MH_PARQ_KEYS.map((k,i)=>React.createElement("div",{key:k,className:"mp-row"},
+          React.createElement("div",{className:"mp-label",style:{fontSize:9,maxWidth:"65%"}},MH_PARQ_LABELS[i]),
+          md[k]?React.createElement("span",{className:`parq-flag ${String(md[k]).toLowerCase()}`},md[k]):React.createElement("span",{style:{fontSize:9,color:"#555",letterSpacing:"0.1em"}},"NOT ANSWERED")
+        )),
+        okEl("parq")
+      ),
+    // ── Medical & declarations ──
+    hdr("MEDICAL & DECLARATIONS","extra"),
+    editing==="extra"
+      ?React.createElement(React.Fragment,null,
+        React.createElement("div",{style:{marginBottom:10}},
+          React.createElement("div",{style:lblS},"INJURIES OR CONDITIONS"),
+          React.createElement("textarea",{"data-mh-field":"medical_conditions",value:ed.medical_conditions||"",placeholder:"List any injuries or conditions, or write 'None'",onChange:e=>{const v=e.target.value;setEd(p=>({...p,medical_conditions:v}));setErr("");},style:taS})
+        ),
+        React.createElement("div",{style:{marginBottom:10}},
+          React.createElement("div",{style:lblS},"CURRENT MEDICATIONS"),
+          React.createElement("textarea",{"data-mh-field":"medications",value:ed.medications||"",placeholder:"List any current medications, or write 'None'",onChange:e=>{const v=e.target.value;setEd(p=>({...p,medications:v}));setErr("");},style:taS})
+        ),
+        React.createElement("div",{style:{marginBottom:10}},
+          React.createElement("div",{style:lblS},"FITNESS LEVEL"),
+          MH_FITNESS.map(opt=>React.createElement("button",{key:opt,type:"button","data-mh":"fitness:"+opt.charAt(0),
+            onClick:()=>{setEd(p=>({...p,fitness_level:opt}));setErr("");},
+            style:{display:"block",width:"100%",textAlign:"left",padding:"10px 12px",marginBottom:4,background:ed.fitness_level===opt?"#111":"#0a0a0a",border:`1px solid ${ed.fitness_level===opt?"#fff":"#1e1e1e"}`,color:ed.fitness_level===opt?"#fff":"#666",borderRadius:0,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:12}
+          },opt))
+        ),
+        React.createElement("div",{style:{marginBottom:10}},
+          React.createElement("div",{style:lblS},"HEALTH DECLARATION"),
+          React.createElement("div",{style:{fontSize:11,color:"#999",lineHeight:1.6,marginBottom:8,fontWeight:300}},MH_HEALTH_DECL),
+          React.createElement("div",{style:{display:"flex",gap:8}},["Yes","No"].map(v=>yn("health_declaration",v,"consent")))
+        ),
+        React.createElement("div",{style:{marginBottom:4}},
+          React.createElement("div",{style:lblS},"MEDIA CONSENT"),
+          React.createElement("div",{style:{fontSize:11,color:"#999",lineHeight:1.6,marginBottom:8,fontWeight:300}},MH_MEDIA_DECL),
+          React.createElement("div",{style:{display:"flex",gap:8}},["Yes","No"].map(v=>yn("media_consent",v,"consent")))
+        ),
+        React.createElement("button",{type:"button",onClick:save,disabled:busy,style:saveS},busy?"SAVING...":"SAVE MEDICAL DETAILS"),
+        errEl
+      )
+      :React.createElement(React.Fragment,null,
+        row("Conditions",md.medical_conditions||"None","","c"),
+        row("Medications",md.medications||"None","","m"),
+        row("Fitness Level",md.fitness_level||"—","","f"),
+        row("Health Declaration",md.health_declaration||"—",md.health_declaration==="Yes"?"yes":md.health_declaration?"no":"","h"),
+        row("Media Consent",md.media_consent||"—",md.media_consent==="Yes"?"yes":md.media_consent?"no":"","p"),
+        okEl("extra")
+      ),
+    React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.06em",marginTop:8,lineHeight:1.6}},"Only you and Team 365 coaches can see these answers.")
+  );
+}
 // ── Member Profile Overlay (Admin) ────────────────────────────────────────────
 function MemberProfileOverlay({onGrantSubscriber,member,bookings,onClose,currentUserIsAdmin,mfWk,isMaster,mfPasteAI,selfEmail,canManageWk,setBookingExcused,setBookingCheckedIn,wellnessOn,remindersOn,confirmationsOn,track,onTrackChanged,onMessage,unreadN}){
   const joinDate=fmtJoinDate(member.joined_at);
@@ -1958,6 +2111,7 @@ function MemberProfileOverlay({onGrantSubscriber,member,bookings,onClose,current
           style:{background:"none",border:"1px solid #333",color:"#888",fontSize:9,letterSpacing:"0.12em",padding:"3px 8px",borderRadius:0,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600}
         },editingParq?"CANCEL":"EDIT")
       ),
+      member.health_updated_at&&React.createElement("div",{"data-health-updated":"1",style:{fontSize:9,color:"#1d9bf0",letterSpacing:"0.12em",fontWeight:600,margin:"-4px 0 8px"}},`UPDATED BY MEMBER · ${fmtHealthUpdated(member.health_updated_at)}`),
       editingParq
         ?React.createElement(React.Fragment,null,
           ...PARQ_KEYS.map((k,i)=>React.createElement("div",{key:k,style:{padding:"10px 0",borderBottom:"1px solid #0f0f0f"}},
@@ -15308,9 +15462,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         React.createElement("input",{className:"fi",placeholder:"Emergency contact name",value:profForm.emergencyName||"",onChange:e=>{setProfForm(f=>({...f,emergencyName:e.target.value}));setProfErr("");setProfOk("");}}),
         React.createElement("label",{className:"fl"},"CONTACT PHONE"),
         React.createElement("input",{className:"fi",type:"tel",placeholder:"Emergency contact phone",value:profForm.emergencyPhone||"",onChange:e=>{setProfForm(f=>({...f,emergencyPhone:e.target.value}));setProfErr("");setProfOk("");}}),
-        React.createElement("div",{className:"prof-section"},"HEALTH INFORMATION"),
-        React.createElement("a",{href:"/register.html",style:{display:"block",width:"100%",background:"#fff",color:"#000",border:"none",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.18em",padding:"15px",borderRadius:0,textAlign:"center",textDecoration:"none",marginBottom:4}},"UPDATE HEALTH SCREENING FORM"),
-        React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.06em",marginBottom:4}},"Update your medical conditions, fitness level, or consents"),
+        React.createElement(MyHealthScreening,{session,memberData,setMemberData}),
         React.createElement(PushSettings,{session,memberData,setMemberData,showToast,pushFlags}),
         React.createElement(ProfCollapse,{title:"EMAILS",attr:"emails"},
         [
