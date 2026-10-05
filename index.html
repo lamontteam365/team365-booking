@@ -274,6 +274,8 @@ html,body{background:#080808;min-height:100vh}
 @keyframes ld{0%{width:0}50%{width:100%}100%{width:0}}
 .adm-wrap{padding:16px;flex:1;overflow-y:auto}
 .adm-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.15em;color:#fff;margin-bottom:16px}
+@keyframes aqDrop{from{opacity:0;transform:scaleY(.7) translateY(-6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){[data-admin-menu]{animation:none!important}}
 .adm-seg{display:flex;border-top:1px solid #888;border-bottom:1px solid #888;margin-bottom:16px;background:#141414;overflow-x:auto;scrollbar-width:none}
 .adm-seg::-webkit-scrollbar{display:none}
 .adm-seg-btn{flex:1 0 auto;min-width:76px;padding:9px 12px;background:none;border:1px solid;border-color:#888 #888 #888 transparent;margin:-1px 0;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.14em;color:#666;font-weight:600;transition:all .15s;white-space:nowrap}
@@ -3190,6 +3192,79 @@ function TierLimitsEditor({tierOverrides,saveTierOverrides,showToast}){
   );
 }
 
+// ── Admin quick access (6 Oct 2026) ─────────────────────────────────────────
+// The ADMIN button sits top-left, a twin of the master's BG picker top-right.
+// It opens a pull-down of the admin sections; picking one enters admin mode,
+// where a slim bar (ADMIN ▾ · section · EXIT ✕) replaces the member header and
+// nav. Dot: red = a membership expiring within 7 days (or expired) — stays until
+// renewed or ended; blue = new sign-ups, subscriber approvals (master), new leads.
+// Counts come from rpc admin_alerts(); opening MEMBERS / LEADS calls
+// admin_mark_seen(section), stored per admin so it clears on every device.
+const AQ_RED="#e0625f";
+const AQ_SECTIONS=[["members","MEMBERS"],["leads","LEADS"],["classes","CLASSES"],["wellness","WELLNESS"],["scbuilder","S&C BUILDER"],["sections","SECTIONS"],["challenge","CHALLENGE"],["functions","FUNCTIONS"],["onboarding","ONBOARDING"],["coaching","DETAILS"]];
+const AQ_CORNER_S={background:"rgba(0,0,0,0.55)",color:"#888",border:"1px solid #2a2a2a",borderRadius:0,fontSize:8,letterSpacing:"0.06em",
+  height:18,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",outline:"none",boxSizing:"border-box",flexShrink:0,
+  display:"flex",alignItems:"center",justifyContent:"space-between",gap:4,lineHeight:1};
+function aqCounts(a){
+  const n=a||{};
+  return {members:(+n.members_new||0)+(+n.subs_pending||0),leads:+n.leads_new||0,exp:+n.expiring||0};
+}
+function AdminQuickButton({open,alerts,onPress,inBar}){
+  const c=aqCounts(alerts);
+  const dot=c.exp>0?"red":(c.members+c.leads>0?"blue":null);
+  return React.createElement("button",{type:"button","data-admin-quick":"1","aria-haspopup":"menu","aria-expanded":open?"true":"false",
+      "aria-label":dot?"Admin, needs attention":"Admin",
+      onClick:e=>{e.stopPropagation();onPress(e.currentTarget);},
+      style:{...AQ_CORNER_S,position:inBar?"relative":"absolute",...(inBar?{}:{top:6,left:6}),zIndex:3,width:50,padding:"0 5px"}},
+    React.createElement("span",null,"ADMIN"),
+    React.createElement("span",{style:{fontSize:7}},open?"▴":"▾"),
+    dot&&React.createElement("span",{"data-admin-dot":dot,style:{position:"absolute",top:-3,right:-3,width:6,height:6,borderRadius:"50%",background:dot==="red"?AQ_RED:"#1d9bf0",pointerEvents:"none"}}),
+    // Bigger invisible tap area — the visible box is only 18px tall.
+    React.createElement("span",{"aria-hidden":"true",style:{position:"absolute",top:-12,bottom:-12,left:-10,right:-10}}));
+}
+function AdminQuickMenu({pos,sections,current,alerts,isMaster,onPick,onClose}){
+  useEffect(()=>{
+    const k=e=>{if(e.key==="Escape")onClose();};
+    document.addEventListener("keydown",k);
+    return ()=>document.removeEventListener("keydown",k);
+  },[]);
+  const c=aqCounts(alerts);
+  return React.createElement(React.Fragment,null,
+    React.createElement("div",{"data-admin-scrim":"1",onClick:onClose,style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:450}}),
+    React.createElement("div",{role:"menu","aria-label":"Admin sections","data-admin-menu":"1",
+        style:{position:"fixed",top:pos.top,left:pos.left,width:220,maxWidth:"calc(100vw - 12px)",maxHeight:`calc(100dvh - ${pos.top+12}px)`,overflowY:"auto",
+               background:"#0c0c0c",border:"1px solid #888",zIndex:451,display:"flex",flexDirection:"column",transformOrigin:"top left",animation:"aqDrop .18s ease"}},
+      React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"12px 14px 10px",borderBottom:"1px solid #2a2a2a"}},
+        React.createElement("span",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:7,fontWeight:700,letterSpacing:"0.2em",color:"#1d9bf0"}},"ADMIN"),
+        React.createElement("span",{style:{fontSize:7,letterSpacing:"0.14em",color:"#777",fontWeight:600}},isMaster?"MASTER":"ADMIN")),
+      sections.map(([id,label])=>{
+        const nn=id==="members"?c.members:id==="leads"?c.leads:0;
+        const ne=id==="members"?c.exp:0;
+        const on=current===id;
+        return React.createElement("button",{key:id,type:"button",role:"menuitem","data-admin-go":id,onClick:()=>onPick(id),
+            style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"12px 14px",background:on?"#444":"none",
+                   border:"none",borderBottom:"1px solid #181818",cursor:"pointer",textAlign:"left",color:"#fff",boxSizing:"border-box"}},
+          React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:"0.12em",lineHeight:1,whiteSpace:"nowrap"}},label,
+            id==="functions"&&React.createElement("span",{style:{fontFamily:"'DM Sans',sans-serif",fontSize:6,letterSpacing:"0.16em",color:"#777",border:"1px solid #2a2a2a",padding:"2px 4px",marginLeft:6,verticalAlign:3}},"MASTER")),
+          (nn||ne)
+            ?React.createElement("span",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}},
+                nn?React.createElement("span",{"data-admin-new":id,style:{fontSize:8,letterSpacing:"0.14em",fontWeight:600,color:"#1d9bf0",whiteSpace:"nowrap"}},nn+" NEW"):null,
+                ne?React.createElement("span",{"data-admin-exp":id,style:{fontSize:8,letterSpacing:"0.14em",fontWeight:600,color:AQ_RED,whiteSpace:"nowrap"}},ne+" EXPIRING"):null)
+            :React.createElement("span",{style:{fontSize:8,color:"#444",fontWeight:600}},"›"));
+      }),
+      React.createElement("div",{style:{padding:"10px 14px",fontSize:7,letterSpacing:"0.16em",color:"#444",textAlign:"center"}},"TAP OUTSIDE TO CLOSE")));
+}
+function AdminBar({open,alerts,label,onMenu,onExit}){
+  return React.createElement("div",{"data-admin-bar":"1",style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"14px 12px 12px",background:"#080808",borderBottom:"1px solid #2a2a2a",position:"relative",flexShrink:0}},
+    React.createElement(AdminQuickButton,{open,alerts,onPress:onMenu,inBar:true}),
+    React.createElement("div",{style:{textAlign:"center",flex:1,minWidth:0}},
+      React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:6,fontWeight:700,letterSpacing:"0.2em",color:"#1d9bf0"}},"ADMIN"),
+      React.createElement("div",{"data-admin-bar-title":"1",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:"0.14em",lineHeight:1.1,marginTop:3,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},label)),
+    React.createElement("button",{type:"button","data-admin-exit":"1",onClick:onExit,"aria-label":"Exit admin",
+        style:{...AQ_CORNER_S,position:"relative",padding:"0 5px"}},
+      "EXIT ✕",
+      React.createElement("span",{"aria-hidden":"true",style:{position:"absolute",top:-12,bottom:-12,left:-10,right:-10}})));
+}
 function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail,challengeEnabled,saveChallengeSetting,dmEnabled,saveDmSetting,openMsgsTo}){
   const [expandedTier,setExpandedTier]=useState(null);
   const [admDate,setAdmDate]=useState(new Date());
@@ -3905,7 +3980,6 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
         const ok=!!openMsgsTo&&!!em&&!subMap[em]&&em!==String(selfEmail||"").toLowerCase();
         const target=isMaster?{c:em}:(em===String(ADMIN_EMAIL).toLowerCase()?{c:"team365"}:{dm:em});
         return {onMessage:ok?()=>openMsgsTo(target):null,unreadN:unreadFrom[em]||0};})()}),
-    React.createElement("div",{className:"adm-title"},"ADMIN"),
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"0 0 6px"}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:7,letterSpacing:"0.22em",fontWeight:600,cursor:"pointer"}},"SWIPE FOR MORE"),
@@ -14301,6 +14375,43 @@ function App(){
   const isSubscriber=!isAdmin&&!!subRow;
   const subDetailsOn=isSubscriber&&subRow.status==="active"&&subDetailsFlag;
   const maintActive=mFlags.maint===true&&!isMaster&&!isSubscriber;
+  // ── Admin quick access (6 Oct 2026) ──
+  const [aqOpen,setAqOpen]=useState(null);       // {top,left} while the pull-down is open
+  const [aqAlerts,setAqAlerts]=useState(null);
+  const aqWhere=useRef({tab:"",seg:""});
+  aqWhere.current={tab,seg:admSeg};
+  const aqLoad=useRef(null);
+  aqLoad.current=async()=>{
+    if(!isAdmin||!session)return;
+    const w=aqWhere.current;
+    if(w.tab==="admin"&&(w.seg==="members"||w.seg==="leads"))await sbRpc("admin_mark_seen",{p_section:w.seg});
+    const r=await sbRpc("admin_alerts",{});
+    if(r&&typeof r==="object")setAqAlerts(r);
+  };
+  useEffect(()=>{
+    if(!isAdmin||!session)return;
+    aqLoad.current();
+    return onScreenPoll(()=>aqLoad.current&&aqLoad.current(),60000);
+  },[isAdmin,session&&session.email]);
+  useEffect(()=>{
+    if(isAdmin&&session&&tab==="admin"&&(admSeg==="members"||admSeg==="leads"))aqLoad.current();
+  },[tab,admSeg]);
+  function aqToggle(btn){
+    if(aqOpen){setAqOpen(null);return;}
+    const r=btn.getBoundingClientRect();
+    setAqOpen({top:Math.round(r.bottom+6),left:Math.max(6,Math.round(r.left))});
+    aqLoad.current&&aqLoad.current();
+  }
+  function aqGo(id){
+    if(tab!=="admin")ssSet("t365-admprev",tab);
+    setAdmSeg(id);setTab("admin");setMsgOpen(false);setAqOpen(null);
+    try{const b=document.querySelector(".app-body");if(b)b.scrollTop=0;}catch(e){}
+  }
+  function aqExit(){
+    setAqOpen(null);
+    const p=ssGet("t365-admprev","community");
+    setTab(p&&p!=="admin"&&TAB_ORDER.includes(p)?p:(TAB_ORDER[0]||"community"));
+  }
   const effTab=isSubscriber?"details":(maintActive?"community":tab);
   const NAV_TABS=isSubscriber?[{id:"details",label:"DETAILS"}]:maintActive?[{id:"community",label:"NOTICE BOARD",dot:true}]:[
     ...(acc("community")?[{id:"community",label:"NOTICE BOARD",dot:true}]:[]),
@@ -14309,7 +14420,6 @@ function App(){
     ...(acc("progress")?[{id:"progress",label:"PROGRESS"}]:[]),
     ...((showPT||showStrength||showRoutines)?[{id:"workouts",label:"WORKOUTS"}]:[]),
     ...(showChallenge?[{id:"challenge",label:"CHALLENGE"}]:[]),
-    ...(isAdmin?[{id:"admin",label:"ADMIN"}]:[])
   ];
   const TAB_ORDER=NAV_TABS.map(t=>t.id);
   const bookOpts=[...(showClasses?[{id:"classes",label:"CLASSES"}]:[]),...(showWellness?[{id:"wellness",label:"WELLNESS"}]:[])];
@@ -14475,7 +14585,7 @@ function App(){
     })();
   },[session&&session.email,isSubscriber]);
   useEffect(()=>{if(tab==="community")pushCloseNotes("t365-notice");},[tab]);
-  useEffect(()=>{if(ready&&TAB_ORDER.length&&!TAB_ORDER.includes(tab)&&!(tab==="challenge"&&challengeEnabled&&chTab==="loading"))setTab(TAB_ORDER[0]);},[memberAccess,classesEnabled,strengthEnabled,wellnessEnabled,workoutsEnabled,challengeEnabled,chTab,ready]);
+  useEffect(()=>{if(ready&&TAB_ORDER.length&&!TAB_ORDER.includes(tab)&&!(tab==="admin"&&isAdmin)&&!(tab==="challenge"&&challengeEnabled&&chTab==="loading"))setTab(TAB_ORDER[0]);},[memberAccess,classesEnabled,strengthEnabled,wellnessEnabled,workoutsEnabled,challengeEnabled,chTab,ready]);
   useEffect(()=>{
     const em=session&&session.email;
     if(!challengeEnabled||!em){setChTab("loading");return;}
@@ -15093,7 +15203,9 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
   );
   return React.createElement("div",{className:"app",onTouchStart:handleTouchStart,onTouchEnd:handleTouchEnd},
     cropSrc&&React.createElement(ImageCropper,{imageSrc:cropSrc,onSave:handleCropSave,onCancel:()=>setCropSrc(null)}),
-    React.createElement("div",{className:"hdr",style:{paddingBottom:0,position:"relative",...heroStyle(profileBg,"rgba(8,8,8,0.80),rgba(8,8,8,0.80)","center top")}},
+    (effTab==="admin"&&isAdmin)?React.createElement(AdminBar,{open:!!aqOpen,alerts:aqAlerts,label:((AQ_SECTIONS.find(x=>x[0]===admSeg)||[0,"MEMBERS"])[1]),onMenu:aqToggle,onExit:aqExit}):React.createElement("div",{className:"hdr",style:{paddingBottom:0,position:"relative",...heroStyle(profileBg,"rgba(8,8,8,0.80),rgba(8,8,8,0.80)","center top")}},
+      // ADMIN quick-access button — admins only, mirrors the BG picker (6 Oct 2026).
+      isAdmin&&!maintActive&&React.createElement(AdminQuickButton,{open:!!aqOpen,alerts:aqAlerts,onPress:aqToggle}),
       // Background picker — master admin only. Absolutely positioned so the
       // header's three-part layout underneath is untouched.
       isMaster&&React.createElement("select",{
@@ -15165,6 +15277,9 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         ))
       )
     ),
+    aqOpen&&isAdmin&&React.createElement(AdminQuickMenu,{pos:aqOpen,current:effTab==="admin"?admSeg:null,alerts:aqAlerts,isMaster,
+      sections:AQ_SECTIONS.filter(([id])=>id==="wellness"?(isMaster||mFlags.welladm):id==="scbuilder"?(isMaster||(mFlags.sc!==false&&!(mFlags.scAdminHide||[]).includes(session?session.email:""))):id==="functions"?isMaster:id==="coaching"?(isMaster||!mFlags.dt):true),
+      onPick:aqGo,onClose:()=>setAqOpen(null)}),
     // Messages, full screen over the whole app (5 Oct 2026). The app underneath stays as it was.
     msgOpen&&canOpenMsgs&&React.createElement("div",{className:"t365-msg-screen","data-msg-screen":"1",role:"dialog","aria-label":"Messages",style:{...MSG_SCREEN_S,zIndex:400}},
       React.createElement("div",{style:{display:"flex",justifyContent:"center",paddingTop:18}},
@@ -15404,12 +15519,12 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     ),
     effTab==="admin"&&isAdmin&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:"",challengeEnabled,saveChallengeSetting,dmEnabled,saveDmSetting,openMsgsTo:canOpenMsgs?openThreadDirect:null}),
     ),
-    React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
+    !(effTab==="admin"&&isAdmin)&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:7,letterSpacing:"0.22em",fontWeight:600,cursor:"pointer"}},"SWIPE FOR MORE"),
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"›")
     ),
-    React.createElement("div",{className:"tab-bar no-sb",style:{marginTop:0}},
+    !(effTab==="admin"&&isAdmin)&&React.createElement("div",{className:"tab-bar no-sb",style:{marginTop:0}},
       NAV_TABS.map((t,ti)=>React.createElement(React.Fragment,{key:t.id},
         React.createElement("button",{"data-tab":t.id,className:`tab-btn${effTab===t.id?" ta":""}`,style:t.dot?{position:"relative"}:undefined,
           onClick:()=>{setTab(t.id);setMsgOpen(false);if(t.id==="community")lsSet("t365-last-read",Date.now());}},
