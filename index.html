@@ -96,6 +96,7 @@ html,body{background:#080808;min-height:100vh}
 .well-wrap{flex:1;overflow-y:auto}
 /* Full-screen Messages (5 Oct 2026): the inbox and each conversation sit on top of the whole app */
 .t365-msg-screen .well-wrap{flex:none;overflow:visible}
+.t365-compose-ta::-webkit-scrollbar{display:none}
 .t365-thread-screen [data-thread-body]{flex:1 0 auto;display:flex;flex-direction:column;padding:14px 16px 0}
 .t365-thread-screen [data-thread-body]>div{flex:1 0 auto;display:flex;flex-direction:column}
 .t365-thread-screen [data-msg-scroll]{flex:1 0 auto}
@@ -9493,10 +9494,10 @@ function PtThumb({on,red}){
 function MsgComposer({value,onChange,onSend,sending,placeholder,autoFocus,kind}){
   const ref=useRef(null);
   const has=!!String(value||"").trim();
-  useEffect(()=>{const el=ref.current;if(!el)return;el.style.height="auto";el.style.height=Math.min(el.scrollHeight,120)+"px";},[value]);
+  useEffect(()=>{const el=ref.current;if(!el)return;el.style.height="auto";el.style.height=Math.min(el.scrollHeight,120)+"px";el.style.overflowY=el.scrollHeight>121?"auto":"hidden";},[value]);
   return React.createElement("div",{"data-compose":kind||"msg",style:{display:"flex",alignItems:"flex-end",gap:6,background:"#141414",border:"1px solid "+(has?"#333":"#262626"),borderRadius:20,padding:"4px 6px 4px 14px"}},
-    React.createElement("textarea",{ref,value,onChange:e=>onChange(e.target.value),maxLength:2000,rows:1,autoFocus,placeholder:placeholder||"Type message...",
-      style:{flex:1,minWidth:0,background:"transparent",border:"none",color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:14,lineHeight:1.45,padding:"7px 0",outline:"none",resize:"none",boxSizing:"border-box",maxHeight:120,overflowY:"auto"}}),
+    React.createElement("textarea",{ref,value,onChange:e=>onChange(e.target.value),maxLength:2000,rows:1,autoFocus,placeholder:placeholder||"Type message...",className:"t365-compose-ta",
+      style:{flex:1,minWidth:0,background:"transparent",border:"none",color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:14,lineHeight:1.45,padding:"7px 0",outline:"none",resize:"none",boxSizing:"border-box",maxHeight:120,overflowY:"hidden",scrollbarWidth:"none"}}),
     has&&React.createElement("button",{type:"button","data-send":kind||"msg","aria-label":"Send",title:"Send",disabled:sending,onClick:onSend,
       style:{flexShrink:0,width:34,height:34,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",padding:0,cursor:sending?"default":"pointer",opacity:sending?0.4:1}},
       React.createElement("svg",{width:22,height:22,viewBox:"0 0 24 24",style:{display:"block"}},
@@ -9636,7 +9637,7 @@ function PtThread({memberEmail,selfEmail,selfName,asStaff,isMaster,title,photos}
           React.createElement("div",{style:{fontSize:label,letterSpacing:"0.12em",color:"#9a9a9a",fontWeight:600,marginBottom:3}},who+" · "+ptMsgWhen(m.created_at)+re),
           editingThis?msgEditBox({value:editText,onChange:setEditText,onSave:()=>saveEdit(m),onCancel:()=>{setEditId(null);setEditText("");},saving:editSaving,linkBtn}):
           React.createElement("div",{onClick:()=>{setReplyTo(replying?null:m.id);setReplyText("");},title:"Tap to reply",
-            style:{cursor:"pointer",background:ours?"#0a1a2a":"#141414",border:"1px solid "+(replying?PT_BLUE:(ours?"#3a6a9a":"#555")),borderRadius:ours?"14px 14px 4px 14px":"14px 14px 14px 4px",color:"#ddd",fontSize:13,lineHeight:1.5,padding:"8px 10px",whiteSpace:"pre-wrap",wordBreak:"break-word"}},
+            style:{cursor:"pointer",background:ours?"#0a1a2a":"#1b3a5c",border:"1px solid "+(replying?PT_BLUE:(ours?"#3a6a9a":"#4f86bb")),borderRadius:ours?"14px 14px 4px 14px":"14px 14px 14px 4px",color:"#ddd",fontSize:13,lineHeight:1.5,padding:"8px 10px",whiteSpace:"pre-wrap",wordBreak:"break-word"}},
             parent&&React.createElement("div",{style:{borderLeft:"2px solid "+PT_BLUE,padding:"2px 8px",marginBottom:6,fontSize:11,color:"#888",lineHeight:1.4}},
               React.createElement("span",{style:{fontWeight:600,color:"#aaa"}},"↳ "+nameOf(parent)+": "),
               parent.body.length>90?parent.body.slice(0,90)+"…":parent.body),
@@ -9769,7 +9770,7 @@ function DmThread({withEmail,withName,selfEmail,selfName,isMaster,viewPair,photo
           React.createElement("div",{style:{fontSize:label,letterSpacing:"0.12em",color:"#9a9a9a",fontWeight:600,marginBottom:3}},nameOf(m).toUpperCase()+" · "+ptMsgWhen(m.created_at)),
           editingThis?msgEditBox({value:editText,onChange:setEditText,onSave:()=>saveEdit(m),onCancel:()=>{setEditId(null);setEditText("");},saving:editSaving,linkBtn}):
           React.createElement("div",{onClick:viewOnly?undefined:()=>{setReplyTo(replying?null:m.id);setReplyText("");},title:viewOnly?undefined:"Tap to reply",
-            style:{cursor:viewOnly?"default":"pointer",background:ours?"#0a1a2a":"#141414",border:"1px solid "+(replying?PT_BLUE:(ours?"#3a6a9a":"#555")),borderRadius:ours?"14px 14px 4px 14px":"14px 14px 14px 4px",color:"#ddd",fontSize:13,lineHeight:1.5,padding:"8px 10px",whiteSpace:"pre-wrap",wordBreak:"break-word"}},
+            style:{cursor:viewOnly?"default":"pointer",background:ours?"#0a1a2a":"#1b3a5c",border:"1px solid "+(replying?PT_BLUE:(ours?"#3a6a9a":"#4f86bb")),borderRadius:ours?"14px 14px 4px 14px":"14px 14px 14px 4px",color:"#ddd",fontSize:13,lineHeight:1.5,padding:"8px 10px",whiteSpace:"pre-wrap",wordBreak:"break-word"}},
             parent&&React.createElement("div",{style:{borderLeft:"2px solid "+PT_BLUE,padding:"2px 8px",marginBottom:6,fontSize:11,color:"#888",lineHeight:1.4}},
               React.createElement("span",{style:{fontWeight:600,color:"#aaa"}},"↳ "+nameOf(parent)+": "),
               parent.body.length>90?parent.body.slice(0,90)+"…":parent.body),
