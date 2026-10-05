@@ -1341,7 +1341,7 @@ function MyHealthScreening({session,memberData,setMemberData}){
     setEditing(null);setOk(editing);setTimeout(()=>setOk(""),2500);
   }
   function hdr(title,which,extra){
-    return React.createElement("div",{className:"prof-section",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
+    return React.createElement("div",{className:"prof-section",style:{display:"flex",alignItems:"center",justifyContent:"space-between",...(which==="parq"?{borderTop:"none",paddingTop:0,marginTop:12}:{})}},
       React.createElement("span",null,title,extra||null),
       React.createElement("button",{type:"button","data-mh-edit":which,onClick:()=>open(which),style:editBtnS},editing===which?"CANCEL":"EDIT")
     );
@@ -15462,7 +15462,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         React.createElement("input",{className:"fi",placeholder:"Emergency contact name",value:profForm.emergencyName||"",onChange:e=>{setProfForm(f=>({...f,emergencyName:e.target.value}));setProfErr("");setProfOk("");}}),
         React.createElement("label",{className:"fl"},"CONTACT PHONE"),
         React.createElement("input",{className:"fi",type:"tel",placeholder:"Emergency contact phone",value:profForm.emergencyPhone||"",onChange:e=>{setProfForm(f=>({...f,emergencyPhone:e.target.value}));setProfErr("");setProfOk("");}}),
-        React.createElement(MyHealthScreening,{session,memberData,setMemberData}),
+        React.createElement(ProfCollapse,{title:"HEALTH INFORMATION",attr:"health"},React.createElement(MyHealthScreening,{session,memberData,setMemberData})),
         React.createElement(PushSettings,{session,memberData,setMemberData,showToast,pushFlags}),
         React.createElement(ProfCollapse,{title:"EMAILS",attr:"emails"},
         [
