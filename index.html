@@ -1110,7 +1110,8 @@ function MemberTrackPanel({member,track,selfEmail,isMaster,onChanged}){
   const [msg,setMsg]=useState("");
   const [open,setOpen]=useState(false);
   async function loadContacts(){
-    const r=await sbGet("member_contacts",`member_email=eq.${encodeURIComponent(em)}&select=id,contacted_at,by_email,by_name,kind,note&order=contacted_at.desc&limit=8`);
+    // Live from the conversations (5 Oct 2026): delete a message and it drops off here too.
+    const r=await sbRpc("member_contact_history",{p_email:em});
     setContacts(Array.isArray(r)?r:[]);
   }
   useEffect(()=>{if(em)loadContacts();},[em]);
@@ -1173,7 +1174,7 @@ function MemberTrackPanel({member,track,selfEmail,isMaster,onChanged}){
       React.createElement("div",{style:{...lbl,marginTop:14,marginBottom:4}},"CONTACT HISTORY"),
       contacts===null?React.createElement("div",{style:small},"Loading…")
       :contacts.length===0?React.createElement("div",{style:small},"Nobody has contacted them yet.")
-      :contacts.map(x=>React.createElement("div",{key:x.id,"data-contact-row":x.kind,style:{...small,display:"flex",gap:10,alignItems:"baseline",justifyContent:"space-between"}},
+      :contacts.map(x=>React.createElement("div",{key:x.ref||x.id,"data-contact-row":x.kind,style:{...small,display:"flex",gap:10,alignItems:"baseline",justifyContent:"space-between"}},
         React.createElement("span",{style:{minWidth:0}},
           lightWhen(x.contacted_at)+" · "+(x.kind==="nudge"?"TEAM 365":lightWho(x.by_name,x.kind))+" · "+kindLbl(x.kind),
           x.note?React.createElement("span",{style:{color:"#aaa",letterSpacing:"0.02em"}}," — "+x.note):null),
@@ -9613,7 +9614,7 @@ function PtThread({memberEmail,selfEmail,selfName,asStaff,isMaster,title,photos}
     const by=String(m.staff_read_by||"").toLowerCase();const first=String(m.staff_read_by_name||"").split(/\s+/)[0];
     return React.createElement(ptReadMark,{photo:by&&photos&&photos[by],name:m.staff_read_by_name||"Team 365",team:!by||!(photos&&photos[by])&&!m.staff_read_by_name,label:by&&first?"READ BY "+first.toUpperCase():"READ",at:m.staff_read_at});
   };
-  const linkBtn={background:"none",border:"none",color:"#666",fontFamily:"inherit",fontSize:label,letterSpacing:"0.12em",fontWeight:600,cursor:"pointer",padding:"4px 0"};
+  const linkBtn={background:"none",border:"none",color:"#9a9a9a",fontFamily:"inherit",fontSize:label,letterSpacing:"0.12em",fontWeight:600,cursor:"pointer",padding:"4px 0"};
   const endRef=useMsgScroll(msgs);
   const [shown,setShown]=useState(MSG_PAGE);
   const replyBox=m=>ptReplyBox({name:nameOf(m),value:replyText,onChange:setReplyText,onSend:sendReply,onCancel:()=>{setReplyTo(null);setReplyText("");},sending,linkBtn});
@@ -9632,16 +9633,16 @@ function PtThread({memberEmail,selfEmail,selfName,asStaff,isMaster,title,photos}
         const replying=replyTo===m.id;
         const mineMsg=String(m.sender_email||"").toLowerCase()===me;const editingThis=editId===m.id;
         return React.createElement("div",{key:m.id,"data-msg-id":m.id,style:{alignSelf:ours?"flex-end":"flex-start",maxWidth:"88%",width:(replying||editingThis)?"88%":undefined,display:"flex",flexDirection:"column",alignItems:ours?"flex-end":"flex-start"}},
-          React.createElement("div",{style:{fontSize:label,letterSpacing:"0.12em",color:"#666",fontWeight:600,marginBottom:3}},who+" · "+ptMsgWhen(m.created_at)+re),
+          React.createElement("div",{style:{fontSize:label,letterSpacing:"0.12em",color:"#9a9a9a",fontWeight:600,marginBottom:3}},who+" · "+ptMsgWhen(m.created_at)+re),
           editingThis?msgEditBox({value:editText,onChange:setEditText,onSave:()=>saveEdit(m),onCancel:()=>{setEditId(null);setEditText("");},saving:editSaving,linkBtn}):
           React.createElement("div",{onClick:()=>{setReplyTo(replying?null:m.id);setReplyText("");},title:"Tap to reply",
-            style:{cursor:"pointer",background:ours?"#0a1a2a":"#141414",border:"1px solid "+(replying?PT_BLUE:(ours?"#1d3a5a":"#262626")),color:"#ddd",fontSize:13,lineHeight:1.5,padding:"8px 10px",whiteSpace:"pre-wrap",wordBreak:"break-word"}},
+            style:{cursor:"pointer",background:ours?"#0a1a2a":"#141414",border:"1px solid "+(replying?PT_BLUE:(ours?"#3a6a9a":"#555")),borderRadius:ours?"14px 14px 4px 14px":"14px 14px 14px 4px",color:"#ddd",fontSize:13,lineHeight:1.5,padding:"8px 10px",whiteSpace:"pre-wrap",wordBreak:"break-word"}},
             parent&&React.createElement("div",{style:{borderLeft:"2px solid "+PT_BLUE,padding:"2px 8px",marginBottom:6,fontSize:11,color:"#888",lineHeight:1.4}},
               React.createElement("span",{style:{fontWeight:600,color:"#aaa"}},"↳ "+nameOf(parent)+": "),
               parent.body.length>90?parent.body.slice(0,90)+"…":parent.body),
             ptLinkify(m.body),msgEditedEl(m)),
           !editingThis&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,marginTop:2}},
-            React.createElement("button",{onClick:()=>{setReplyTo(replying?null:m.id);setReplyText("");},style:{...linkBtn,color:replying?PT_BLUE:"#666"}},"REPLY"),
+            React.createElement("button",{onClick:()=>{setReplyTo(replying?null:m.id);setReplyText("");},style:{...linkBtn,color:replying?PT_BLUE:"#9a9a9a"}},"REPLY"),
             React.createElement(MsgReactBtn,{m,me,onReact:k=>react(m,k)}),
             mineMsg&&React.createElement("button",{"data-edit":m.id,onClick:()=>{setEditId(m.id);setEditText(m.body||"");setReplyTo(null);},style:linkBtn},"EDIT"),
             canDel&&React.createElement("button",{onClick:()=>del(m),style:linkBtn},"DELETE")
@@ -9749,7 +9750,7 @@ function DmThread({withEmail,withName,selfEmail,selfName,isMaster,viewPair,photo
   // Read receipt under my newest message they've read (not in the master's read-only view).
   const readMark=viewOnly?null:(msgs||[]).find(m=>String(m.sender_email||"").toLowerCase()===me&&m.read);
   const readMarkEl=m=>(!readMark||m.id!==readMark.id)?null:React.createElement(ptReadMark,{photo:photos&&photos[other],name:withName,label:"READ",at:m.read_at});
-  const linkBtn={background:"none",border:"none",color:"#666",fontFamily:"inherit",fontSize:label,letterSpacing:"0.12em",fontWeight:600,cursor:"pointer",padding:"4px 0"};
+  const linkBtn={background:"none",border:"none",color:"#9a9a9a",fontFamily:"inherit",fontSize:label,letterSpacing:"0.12em",fontWeight:600,cursor:"pointer",padding:"4px 0"};
   const endRef=useMsgScroll(msgs);
   const [shown,setShown]=useState(MSG_PAGE);
   const replyBox=m=>ptReplyBox({name:nameOf(m),value:replyText,onChange:setReplyText,onSend:sendReply,onCancel:()=>{setReplyTo(null);setReplyText("");},sending,linkBtn});
@@ -9765,16 +9766,16 @@ function DmThread({withEmail,withName,selfEmail,selfName,isMaster,viewPair,photo
         const replying=replyTo===m.id;
         const mineMsg=!viewOnly&&String(m.sender_email||"").toLowerCase()===me;const editingThis=editId===m.id;
         return React.createElement("div",{key:m.id,"data-msg-id":m.id,style:{alignSelf:ours?"flex-end":"flex-start",maxWidth:"88%",width:(replying||editingThis)?"88%":undefined,display:"flex",flexDirection:"column",alignItems:ours?"flex-end":"flex-start"}},
-          React.createElement("div",{style:{fontSize:label,letterSpacing:"0.12em",color:"#666",fontWeight:600,marginBottom:3}},nameOf(m).toUpperCase()+" · "+ptMsgWhen(m.created_at)),
+          React.createElement("div",{style:{fontSize:label,letterSpacing:"0.12em",color:"#9a9a9a",fontWeight:600,marginBottom:3}},nameOf(m).toUpperCase()+" · "+ptMsgWhen(m.created_at)),
           editingThis?msgEditBox({value:editText,onChange:setEditText,onSave:()=>saveEdit(m),onCancel:()=>{setEditId(null);setEditText("");},saving:editSaving,linkBtn}):
           React.createElement("div",{onClick:viewOnly?undefined:()=>{setReplyTo(replying?null:m.id);setReplyText("");},title:viewOnly?undefined:"Tap to reply",
-            style:{cursor:viewOnly?"default":"pointer",background:ours?"#0a1a2a":"#141414",border:"1px solid "+(replying?PT_BLUE:(ours?"#1d3a5a":"#262626")),color:"#ddd",fontSize:13,lineHeight:1.5,padding:"8px 10px",whiteSpace:"pre-wrap",wordBreak:"break-word"}},
+            style:{cursor:viewOnly?"default":"pointer",background:ours?"#0a1a2a":"#141414",border:"1px solid "+(replying?PT_BLUE:(ours?"#3a6a9a":"#555")),borderRadius:ours?"14px 14px 4px 14px":"14px 14px 14px 4px",color:"#ddd",fontSize:13,lineHeight:1.5,padding:"8px 10px",whiteSpace:"pre-wrap",wordBreak:"break-word"}},
             parent&&React.createElement("div",{style:{borderLeft:"2px solid "+PT_BLUE,padding:"2px 8px",marginBottom:6,fontSize:11,color:"#888",lineHeight:1.4}},
               React.createElement("span",{style:{fontWeight:600,color:"#aaa"}},"↳ "+nameOf(parent)+": "),
               parent.body.length>90?parent.body.slice(0,90)+"…":parent.body),
             ptLinkify(m.body),msgEditedEl(m)),
           !editingThis&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,marginTop:2}},
-            !viewOnly&&React.createElement("button",{onClick:()=>{setReplyTo(replying?null:m.id);setReplyText("");},style:{...linkBtn,color:replying?PT_BLUE:"#666"}},"REPLY"),
+            !viewOnly&&React.createElement("button",{onClick:()=>{setReplyTo(replying?null:m.id);setReplyText("");},style:{...linkBtn,color:replying?PT_BLUE:"#9a9a9a"}},"REPLY"),
             React.createElement(MsgReactBtn,{m,me,onReact:k=>react(m,k),readOnly:viewOnly}),
             mineMsg&&React.createElement("button",{"data-edit":m.id,onClick:()=>{setEditId(m.id);setEditText(m.body||"");setReplyTo(null);},style:linkBtn},"EDIT"),
             canDel&&React.createElement("button",{onClick:()=>del(m),style:linkBtn},"DELETE")
@@ -10036,7 +10037,7 @@ function MsgThreadScreen({t,session,isMaster,memberPhotos,onClose}){
   const key=t.kind==="view"?t.pair:own?"team365":em;
   return React.createElement("div",{className:"t365-thread-screen","data-thread-screen":key,role:"dialog","aria-label":"Conversation with "+title,
       style:{...MSG_SCREEN_S,zIndex:410,...(vb?{top:vb.top,height:vb.height,bottom:"auto"}:{})}},
-    React.createElement("div",{"data-thread-top":"1",style:{position:"sticky",top:0,zIndex:3,background:"#080808",borderBottom:"1px solid #1a1a1a",padding:"12px 16px",display:"flex",alignItems:"center",gap:12}},
+    React.createElement("div",{"data-thread-top":"1",style:{position:"sticky",top:0,zIndex:3,background:"#080808",borderBottom:"1px solid #3a3a3a",padding:"12px 16px",display:"flex",alignItems:"center",gap:12}},
       React.createElement("button",{type:"button","data-thread-close":"1","aria-label":"Close conversation",title:"Tap to close",onClick:onClose,
         style:{background:"none",border:"none",padding:0,margin:0,cursor:"pointer",flexShrink:0,borderRadius:"50%",lineHeight:0}},photo),
       React.createElement("div",{style:{minWidth:0}},
