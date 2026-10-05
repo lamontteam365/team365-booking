@@ -275,6 +275,7 @@ html,body{background:#080808;min-height:100vh}
 .adm-wrap{padding:16px;flex:1;overflow-y:auto}
 .adm-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.15em;color:#fff;margin-bottom:16px}
 @keyframes aqDrop{from{opacity:0;transform:scaleY(.7) translateY(-6px)}to{opacity:1;transform:none}}
+@keyframes aqRise{from{opacity:0;transform:scaleY(.7) translateY(6px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){[data-admin-menu]{animation:none!important}}
 .adm-seg{display:flex;border-top:1px solid #888;border-bottom:1px solid #888;margin-bottom:16px;background:#141414;overflow-x:auto;scrollbar-width:none}
 .adm-seg::-webkit-scrollbar{display:none}
@@ -3193,10 +3194,10 @@ function TierLimitsEditor({tierOverrides,saveTierOverrides,showToast}){
 }
 
 // ── Admin quick access (6 Oct 2026) ─────────────────────────────────────────
-// The ADMIN button sits top-left, a twin of the master's BG picker top-right.
-// It opens a pull-down of the admin sections; picking one enters admin mode,
-// where a slim bar (ADMIN ▾ · section · EXIT ✕) replaces the member header and
-// nav. Dot: red = a membership expiring within 7 days (or expired) — stays until
+// The ADMIN button sits bottom-right in the footer (thumb reach), styled like the
+// master's BG picker; its menu opens upward on the right. Picking a section enters
+// admin mode, where a slim bar (DETAILS · section · EXIT ✕) replaces the member
+// header and both nav bars. Top-left: DETAILS shortcut, master only (v2). Dot: red = a membership expiring within 7 days (or expired) — stays until
 // renewed or ended; blue = new sign-ups, subscriber approvals (master), new leads.
 // Counts come from rpc admin_alerts(); opening MEMBERS / LEADS calls
 // admin_mark_seen(section), stored per admin so it clears on every device.
@@ -3209,15 +3210,23 @@ function aqCounts(a){
   const n=a||{};
   return {members:(+n.members_new||0)+(+n.subs_pending||0),leads:+n.leads_new||0,exp:+n.expiring||0};
 }
+// One tap to Admin → DETAILS (master only). Same look as the BG picker.
+function AdminDetailsShortcut({onPress,inBar}){
+  return React.createElement("button",{type:"button","data-admin-details":"1","aria-label":"Admin details",
+      onClick:e=>{e.stopPropagation();onPress();},
+      style:{...AQ_CORNER_S,position:inBar?"relative":"absolute",...(inBar?{}:{top:6,left:6}),zIndex:3,padding:"0 5px",justifyContent:"center"}},
+    "DETAILS",
+    React.createElement("span",{"aria-hidden":"true",style:{position:"absolute",top:-12,bottom:-12,left:-10,right:-10}}));
+}
 function AdminQuickButton({open,alerts,onPress,inBar}){
   const c=aqCounts(alerts);
   const dot=c.exp>0?"red":(c.members+c.leads>0?"blue":null);
   return React.createElement("button",{type:"button","data-admin-quick":"1","aria-haspopup":"menu","aria-expanded":open?"true":"false",
       "aria-label":dot?"Admin, needs attention":"Admin",
       onClick:e=>{e.stopPropagation();onPress(e.currentTarget);},
-      style:{...AQ_CORNER_S,position:inBar?"relative":"absolute",...(inBar?{}:{top:6,left:6}),zIndex:3,width:50,padding:"0 5px"}},
+      style:{...AQ_CORNER_S,position:inBar?"relative":"absolute",...(inBar?{}:{top:9,right:6}),zIndex:3,width:50,padding:"0 5px"}},
     React.createElement("span",null,"ADMIN"),
-    React.createElement("span",{style:{fontSize:7}},open?"▴":"▾"),
+    React.createElement("span",{style:{fontSize:7}},open?"▾":"▴"),
     dot&&React.createElement("span",{"data-admin-dot":dot,style:{position:"absolute",top:-3,right:-3,width:6,height:6,borderRadius:"50%",background:dot==="red"?AQ_RED:"#1d9bf0",pointerEvents:"none"}}),
     // Bigger invisible tap area — the visible box is only 18px tall.
     React.createElement("span",{"aria-hidden":"true",style:{position:"absolute",top:-12,bottom:-12,left:-10,right:-10}}));
@@ -3232,9 +3241,9 @@ function AdminQuickMenu({pos,sections,current,alerts,isMaster,onPick,onClose}){
   return React.createElement(React.Fragment,null,
     React.createElement("div",{"data-admin-scrim":"1",onClick:onClose,style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:450}}),
     React.createElement("div",{role:"menu","aria-label":"Admin sections","data-admin-menu":"1",
-        style:{position:"fixed",top:pos.top,left:pos.left,width:220,maxWidth:"calc(100vw - 12px)",maxHeight:`calc(100dvh - ${pos.top+12}px)`,overflowY:"auto",
-               background:"#0c0c0c",border:"1px solid #888",zIndex:451,display:"flex",flexDirection:"column",transformOrigin:"top left",animation:"aqDrop .18s ease"}},
-      React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"12px 14px 10px",borderBottom:"1px solid #2a2a2a"}},
+        style:{position:"fixed",bottom:pos.bottom,right:pos.right,width:220,maxWidth:"calc(100vw - 12px)",maxHeight:`calc(100dvh - ${pos.bottom+12}px)`,overflowY:"auto",
+               background:"#0c0c0c",border:"1px solid #888",zIndex:451,display:"flex",flexDirection:"column",transformOrigin:"bottom right",animation:"aqRise .18s ease"}},
+      React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"12px 14px 10px",borderBottom:"1px solid #555"}},
         React.createElement("span",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:7,fontWeight:700,letterSpacing:"0.2em",color:"#1d9bf0"}},"ADMIN"),
         React.createElement("span",{style:{fontSize:7,letterSpacing:"0.14em",color:"#777",fontWeight:600}},isMaster?"MASTER":"ADMIN")),
       sections.map(([id,label])=>{
@@ -3243,7 +3252,7 @@ function AdminQuickMenu({pos,sections,current,alerts,isMaster,onPick,onClose}){
         const on=current===id;
         return React.createElement("button",{key:id,type:"button",role:"menuitem","data-admin-go":id,onClick:()=>onPick(id),
             style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"12px 14px",background:on?"#444":"none",
-                   border:"none",borderBottom:"1px solid #181818",cursor:"pointer",textAlign:"left",color:"#fff",boxSizing:"border-box"}},
+                   border:"none",borderBottom:"1px solid #3a3a3a",cursor:"pointer",textAlign:"left",color:"#fff",boxSizing:"border-box"}},
           React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:"0.12em",lineHeight:1,whiteSpace:"nowrap"}},label,
             id==="functions"&&React.createElement("span",{style:{fontFamily:"'DM Sans',sans-serif",fontSize:6,letterSpacing:"0.16em",color:"#777",border:"1px solid #2a2a2a",padding:"2px 4px",marginLeft:6,verticalAlign:3}},"MASTER")),
           (nn||ne)
@@ -3254,18 +3263,20 @@ function AdminQuickMenu({pos,sections,current,alerts,isMaster,onPick,onClose}){
       }),
       React.createElement("div",{style:{padding:"10px 14px",fontSize:7,letterSpacing:"0.16em",color:"#444",textAlign:"center"}},"TAP OUTSIDE TO CLOSE")));
 }
-function AdminBar({open,alerts,label,onMenu,onExit}){
+function AdminBar({label,isMaster,onDetails,onExit}){
   return React.createElement("div",{"data-admin-bar":"1",style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"14px 12px 12px",background:"#080808",borderBottom:"1px solid #2a2a2a",position:"relative",flexShrink:0}},
-    React.createElement(AdminQuickButton,{open,alerts,onPress:onMenu,inBar:true}),
+    React.createElement("div",{style:{width:60,display:"flex",justifyContent:"flex-start"}},
+      isMaster&&React.createElement(AdminDetailsShortcut,{onPress:onDetails,inBar:true})),
     React.createElement("div",{style:{textAlign:"center",flex:1,minWidth:0}},
       React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:6,fontWeight:700,letterSpacing:"0.2em",color:"#1d9bf0"}},"ADMIN"),
       React.createElement("div",{"data-admin-bar-title":"1",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:"0.14em",lineHeight:1.1,marginTop:3,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},label)),
-    React.createElement("button",{type:"button","data-admin-exit":"1",onClick:onExit,"aria-label":"Exit admin",
-        style:{...AQ_CORNER_S,position:"relative",padding:"0 5px"}},
-      "EXIT ✕",
-      React.createElement("span",{"aria-hidden":"true",style:{position:"absolute",top:-12,bottom:-12,left:-10,right:-10}})));
+    React.createElement("div",{style:{width:60,display:"flex",justifyContent:"flex-end"}},
+      React.createElement("button",{type:"button","data-admin-exit":"1",onClick:onExit,"aria-label":"Exit admin",
+          style:{...AQ_CORNER_S,position:"relative",padding:"0 5px"}},
+        "EXIT ✕",
+        React.createElement("span",{"aria-hidden":"true",style:{position:"absolute",top:-12,bottom:-12,left:-10,right:-10}}))));
 }
-function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail,challengeEnabled,saveChallengeSetting,dmEnabled,saveDmSetting,openMsgsTo}){
+function AdminView({aqNew,bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail,challengeEnabled,saveChallengeSetting,dmEnabled,saveDmSetting,openMsgsTo}){
   const [expandedTier,setExpandedTier]=useState(null);
   const [admDate,setAdmDate]=useState(new Date());
   const [expanded,setExpanded]=useState({});
@@ -4023,7 +4034,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
         const avS={width:44,height:44,borderRadius:"50%",border:"2px solid "+ring,display:"block",boxSizing:"border-box"};
         return React.createElement("div",{key:mb.email||i,className:"adm-member-card","data-member-card":em,"data-light":tr&&tr.studio?(tr.light||"none"):"off",style:lc?{borderColor:lc}:undefined,onClick:()=>openMemberProfile(mb)},
           React.createElement("div",{className:"adm-mc-top"},
-            React.createElement("div",{style:{minWidth:0}},React.createElement("div",{className:"adm-mc-name"},(mb.name||"").toUpperCase())),
+            React.createElement("div",{style:{minWidth:0}},React.createElement("div",{className:"adm-mc-name"},(mb.name||"").toUpperCase(),((aqNew&&aqNew.members)||[]).includes(em)&&React.createElement("span",{"data-new-tag":"1",style:{fontFamily:"'DM Sans',sans-serif",fontSize:8,letterSpacing:"0.12em",fontWeight:700,color:"#1d9bf0",border:"1px solid #1d9bf0",padding:"1px 4px",marginLeft:8,verticalAlign:2,whiteSpace:"nowrap"}},"NEW"))),
             React.createElement("div",{"data-member-photo":em,role:canMsg?"button":undefined,"aria-label":canMsg?"Message "+(mb.name||""):undefined,title:canMsg?"Message "+(mb.name||""):undefined,
               onClick:canMsg?(e=>{e.stopPropagation();openMsgsTo(msgTarget);}):undefined,
               style:{position:"relative",flexShrink:0,padding:4,margin:-4,cursor:"pointer"}},
@@ -4117,6 +4128,7 @@ function AdminView({bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveM
             React.createElement("div",{style:{minWidth:0,flex:1}},
               React.createElement("div",{className:"adm-mc-name",style:{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}},
                 React.createElement("span",null,(p.name||"NO NAME GIVEN").toUpperCase()),
+                ((aqNew&&aqNew.leads)||[]).includes(pmKey(p.email))&&React.createElement("span",{"data-new-tag":"1",style:{fontFamily:"'DM Sans',sans-serif",fontSize:8,letterSpacing:"0.12em",fontWeight:700,color:"#1d9bf0",border:"1px solid #1d9bf0",padding:"1px 4px",verticalAlign:2,whiteSpace:"nowrap"}},"NEW"),
                 p.joined&&React.createElement("span",{style:{fontFamily:"'DM Sans',sans-serif",fontSize:8,
                   letterSpacing:"0.12em",fontWeight:700,color:"#1d9bf0"}},
                   p.isMember?"CONVERTED \u00b7 MEMBER":"CONVERTED")
@@ -14378,28 +14390,39 @@ function App(){
   // ── Admin quick access (6 Oct 2026) ──
   const [aqOpen,setAqOpen]=useState(null);       // {top,left} while the pull-down is open
   const [aqAlerts,setAqAlerts]=useState(null);
+  const [aqNew,setAqNew]=useState({members:[],leads:[]}); // emails tagged NEW for this visit
   const aqWhere=useRef({tab:"",seg:""});
   aqWhere.current={tab,seg:admSeg};
   const aqLoad=useRef(null);
-  aqLoad.current=async()=>{
+  aqLoad.current=async(entering)=>{
     if(!isAdmin||!session)return;
     const w=aqWhere.current;
-    if(w.tab==="admin"&&(w.seg==="members"||w.seg==="leads"))await sbRpc("admin_mark_seen",{p_section:w.seg});
+    const onSec=w.tab==="admin"&&(w.seg==="members"||w.seg==="leads");
+    if(onSec){
+      // Which items are new BEFORE marking the section seen: they keep a NEW tag
+      // for this visit (replaced on entering, added to while you stay).
+      const pre=await sbRpc("admin_alerts",{});
+      if(pre&&typeof pre==="object"){
+        const got=(w.seg==="members"?pre.new_members:pre.new_leads)||[];
+        setAqNew(n=>({...n,[w.seg]:entering?got:[...new Set([...(n[w.seg]||[]),...got])]}));
+      }
+      await sbRpc("admin_mark_seen",{p_section:w.seg});
+    }
     const r=await sbRpc("admin_alerts",{});
     if(r&&typeof r==="object")setAqAlerts(r);
   };
   useEffect(()=>{
     if(!isAdmin||!session)return;
-    aqLoad.current();
-    return onScreenPoll(()=>aqLoad.current&&aqLoad.current(),60000);
+    aqLoad.current(true);
+    return onScreenPoll(()=>aqLoad.current&&aqLoad.current(false),60000);
   },[isAdmin,session&&session.email]);
   useEffect(()=>{
-    if(isAdmin&&session&&tab==="admin"&&(admSeg==="members"||admSeg==="leads"))aqLoad.current();
+    if(isAdmin&&session&&tab==="admin"&&(admSeg==="members"||admSeg==="leads"))aqLoad.current(true);
   },[tab,admSeg]);
   function aqToggle(btn){
     if(aqOpen){setAqOpen(null);return;}
     const r=btn.getBoundingClientRect();
-    setAqOpen({top:Math.round(r.bottom+6),left:Math.max(6,Math.round(r.left))});
+    setAqOpen({bottom:Math.max(6,Math.round(window.innerHeight-r.top+6)),right:Math.max(6,Math.round(window.innerWidth-r.right))});
     aqLoad.current&&aqLoad.current();
   }
   function aqGo(id){
@@ -15203,9 +15226,9 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
   );
   return React.createElement("div",{className:"app",onTouchStart:handleTouchStart,onTouchEnd:handleTouchEnd},
     cropSrc&&React.createElement(ImageCropper,{imageSrc:cropSrc,onSave:handleCropSave,onCancel:()=>setCropSrc(null)}),
-    (effTab==="admin"&&isAdmin)?React.createElement(AdminBar,{open:!!aqOpen,alerts:aqAlerts,label:((AQ_SECTIONS.find(x=>x[0]===admSeg)||[0,"MEMBERS"])[1]),onMenu:aqToggle,onExit:aqExit}):React.createElement("div",{className:"hdr",style:{paddingBottom:0,position:"relative",...heroStyle(profileBg,"rgba(8,8,8,0.80),rgba(8,8,8,0.80)","center top")}},
-      // ADMIN quick-access button — admins only, mirrors the BG picker (6 Oct 2026).
-      isAdmin&&!maintActive&&React.createElement(AdminQuickButton,{open:!!aqOpen,alerts:aqAlerts,onPress:aqToggle}),
+    (effTab==="admin"&&isAdmin)?React.createElement(AdminBar,{isMaster,onDetails:()=>aqGo("coaching"),label:((AQ_SECTIONS.find(x=>x[0]===admSeg)||[0,"MEMBERS"])[1]),onExit:aqExit}):React.createElement("div",{className:"hdr",style:{paddingBottom:0,position:"relative",...heroStyle(profileBg,"rgba(8,8,8,0.80),rgba(8,8,8,0.80)","center top")}},
+      // DETAILS shortcut — master only, mirrors the BG picker (6 Oct 2026).
+      isMaster&&React.createElement(AdminDetailsShortcut,{onPress:()=>aqGo("coaching")}),
       // Background picker — master admin only. Absolutely positioned so the
       // header's three-part layout underneath is untouched.
       isMaster&&React.createElement("select",{
@@ -15517,7 +15540,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         ?React.createElement(CoachingView,{showToast,restricted:true,selfEmail:session.email})
         :React.createElement("div",{className:"no-bk"},subRow&&subRow.status==="suspended"?"YOUR SUBSCRIPTION IS PAUSED — PLEASE CONTACT TEAM 365":subRow&&subRow.status==="pending"?"YOUR SUBSCRIPTION IS AWAITING APPROVAL — TEAM 365 WILL BE IN TOUCH":"DETAILS IS CURRENTLY UNAVAILABLE")
     ),
-    effTab==="admin"&&isAdmin&&React.createElement(AdminView,{bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:"",challengeEnabled,saveChallengeSetting,dmEnabled,saveDmSetting,openMsgsTo:canOpenMsgs?openThreadDirect:null}),
+    effTab==="admin"&&isAdmin&&React.createElement(AdminView,{aqNew,bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:"",challengeEnabled,saveChallengeSetting,dmEnabled,saveDmSetting,openMsgsTo:canOpenMsgs?openThreadDirect:null}),
     ),
     !(effTab==="admin"&&isAdmin)&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
@@ -15533,7 +15556,9 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         ti<NAV_TABS.length-1&&React.createElement("div",{style:{width:1,flexShrink:0,background:"#888"}})
       ))
     ),
-    React.createElement("div",{style:{textAlign:"center"}},
+    React.createElement("div",{style:{textAlign:"center",position:"relative"}},
+      // ADMIN quick-access button — admins only, bottom-right for the thumb (6 Oct 2026).
+      isAdmin&&!maintActive&&React.createElement(AdminQuickButton,{open:!!aqOpen,alerts:aqAlerts,onPress:aqToggle}),
       React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"LAMONT FITNESS APPLICATIONS"),
       React.createElement("div",{style:{marginTop:2,paddingBottom:20,fontSize:"7px",letterSpacing:"0.06em",color:"#999"}},
         React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"WWW.LAMONTCOLLECTIVE.COM")
