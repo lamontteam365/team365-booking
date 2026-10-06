@@ -572,7 +572,7 @@ html,body{background:#080808;min-height:100vh}
 .app[data-admin-mode] .adm-wrap [style^="color: rgb(96, 96, 96)"],.app[data-admin-mode] .adm-wrap [style*="; color: rgb(96, 96, 96)"]{color:#999!important}
 .app[data-admin-mode] .adm-wrap [style^="color: rgb(102, 102, 102)"],.app[data-admin-mode] .adm-wrap [style*="; color: rgb(102, 102, 102)"]{color:#999!important}
 .app[data-admin-mode] .adm-wrap [data-aq-body][data-aq-body]{background:#0e0e0e!important}
-.app[data-admin-mode] .adm-wrap [data-aq-note][data-aq-note]{background:#0e0e0e!important;padding:10px 12px!important}
+.app[data-admin-mode] .adm-wrap [data-aq-note][data-aq-note]{background:#0e0e0e!important;padding:10px 12px!important;border:1px solid #888!important}
 .app[data-admin-mode] .adm-wrap .scb-cycle-body.scb-cycle-body{background:#0e0e0e!important;margin:10px -14px -14px!important;padding:12px 14px 14px!important;border-top:1px solid #888!important}
 </style>
 </head>
@@ -4940,7 +4940,7 @@ function StepListEditor({storageKey,defaultSteps,toastMsg,showToast,loadFn,saveF
       React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#1d9bf0",lineHeight:1,minWidth:20,paddingTop:1}},(i+1).toString()),
       React.createElement("div",null,
         React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.1em",color:"#fff",marginBottom:s.body?5:0}},s.title),
-        s.body&&React.createElement("div",{style:{fontSize:12,color:"#777",lineHeight:1.7,fontWeight:300}},s.body)
+        s.body&&React.createElement("div",{"data-aq-note":"1",style:{fontSize:12,color:"#777",lineHeight:1.7,fontWeight:300}},s.body)
       )
     ))
   );
@@ -5300,7 +5300,7 @@ function OnboardingPanel({id,title,children,openPanel,setOpenPanel,titles,onSave
             React.createElement("div",{onClick:()=>setOpenPanel(open?null:id),style:{color:"#444",fontSize:14,transition:"transform .2s",transform:open?"rotate(180deg)":"rotate(0deg)",lineHeight:1,cursor:"pointer"}},"▾")
           )
     ),
-    open&&React.createElement("div",{"data-aq-body":"1",style:{padding:"14px"}},children)
+    open&&React.createElement("div",{style:{padding:"0 14px 14px"}},children)
   );
 }
 // ── Studio location ──────────────────────────────────────────────────────────
@@ -6827,14 +6827,14 @@ function CoachingView({showToast,restricted,selfEmail}){
           React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:"0.08em",color:"#fff"}},selectedClass),
           !restricted&&React.createElement("button",{onClick:()=>{if(window.confirm("Duplicate "+selectedClass+"? This creates the next "+label+" class with a copy of this workout, ready for you to edit."))duplicateClass(label,base,selectedClass);},style:{background:"none",border:"1px solid #1d3a5a",borderRadius:0,color:"#1d9bf0",fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.1em",padding:"6px 11px",cursor:"pointer",flexShrink:0}},"⧉ DUPLICATE")
         ),
-        React.createElement("div",{style:{display:"flex",gap:0,marginBottom:14,background:"#141414",borderRadius:0,padding:3}},
+        React.createElement("div",{style:{display:"flex",gap:6,marginBottom:14,background:"#141414",borderRadius:0,padding:3}},
           React.createElement("button",{onClick:()=>setSubTab("notes"),
-            style:{flex:1,background:subTab==="notes"?"#444":"transparent",color:subTab==="notes"?"#fff":"#555",
-                   border:"none",borderRadius:0,padding:"8px 0",fontFamily:"'Bebas Neue',sans-serif",
+            style:{flex:1,background:subTab==="notes"?"#262626":"#080808",color:subTab==="notes"?"#fff":"#555",
+                   border:"1px solid #888",borderRadius:0,padding:"8px 0",fontFamily:"'Bebas Neue',sans-serif",
                    fontSize:13,letterSpacing:"0.12em",cursor:"pointer",transition:"all .15s"}},"COACHING NOTES"),
           React.createElement("button",{onClick:()=>setSubTab("details"),
-            style:{flex:1,background:subTab==="details"?"#444":"transparent",color:subTab==="details"?"#fff":"#555",
-                   border:"none",borderRadius:0,padding:"8px 0",fontFamily:"'Bebas Neue',sans-serif",
+            style:{flex:1,background:subTab==="details"?"#262626":"#080808",color:subTab==="details"?"#fff":"#555",
+                   border:"1px solid #888",borderRadius:0,padding:"8px 0",fontFamily:"'Bebas Neue',sans-serif",
                    fontSize:13,letterSpacing:"0.12em",cursor:"pointer",transition:"all .15s"}},"WORKOUT DETAILS")
         ),
         subTab==="notes"
