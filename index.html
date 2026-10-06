@@ -3231,7 +3231,7 @@ const AQ_GREY="#262626",AQ_GREY_LINE="#3a3a3a"; // admin-mode top bar + footer
 const AQ_SECTIONS=[["members","MEMBERS"],["leads","LEADS"],["classes","CLASSES"],["wellness","WELLNESS"],["scbuilder","S&C BUILDER"],["sections","SECTIONS"],["challenge","CHALLENGE"],["functions","FUNCTIONS"],["onboarding","ONBOARDING"],["coaching","DETAILS"]];
 const AQ_CORNER_S={background:"rgba(0,0,0,0.55)",color:"#888",border:"1px solid #2a2a2a",borderRadius:0,fontSize:8,letterSpacing:"0.06em",
   height:18,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",outline:"none",boxSizing:"border-box",flexShrink:0,
-  display:"flex",alignItems:"center",justifyContent:"space-between",gap:4,lineHeight:1};
+  display:"flex",alignItems:"center",justifyContent:"center",gap:4,lineHeight:1,width:50,padding:"0 0 0 0.06em"};
 function aqCounts(a){
   const n=a||{};
   return {members:(+n.members_new||0)+(+n.subs_pending||0),leads:+n.leads_new||0,exp:+n.expiring||0};
@@ -3240,7 +3240,7 @@ function aqCounts(a){
 function AdminDetailsShortcut({onPress,inBar}){
   return React.createElement("button",{type:"button","data-admin-details":"1","aria-label":"Admin details",
       onClick:e=>{e.stopPropagation();onPress();},
-      style:{...AQ_CORNER_S,position:inBar?"relative":"absolute",...(inBar?{}:{top:6,left:6}),zIndex:3,padding:"0 5px",justifyContent:"center"}},
+      style:{...AQ_CORNER_S,position:inBar?"relative":"absolute",...(inBar?{}:{top:6,left:6}),zIndex:3}},
     "DETAILS",
     React.createElement("span",{"aria-hidden":"true",style:{position:"absolute",top:-12,bottom:-12,left:-10,right:-10}}));
 }
@@ -3250,9 +3250,8 @@ function AdminQuickButton({open,alerts,onPress,inBar}){
   return React.createElement("button",{type:"button","data-admin-quick":"1","aria-haspopup":"menu","aria-expanded":open?"true":"false",
       "aria-label":dot?"Admin, needs attention":"Admin",
       onClick:e=>{e.stopPropagation();onPress(e.currentTarget);},
-      style:{...AQ_CORNER_S,position:inBar?"relative":"absolute",...(inBar?{}:{top:9,right:6}),zIndex:3,width:50,padding:"0 5px"}},
+      style:{...AQ_CORNER_S,position:inBar?"relative":"absolute",...(inBar?{}:{top:9,right:6}),zIndex:3}},
     React.createElement("span",null,"ADMIN"),
-    React.createElement("span",{style:{fontSize:7}},open?"▾":"▴"),
     dot&&React.createElement("span",{"data-admin-dot":dot,style:{position:"absolute",top:-3,right:-3,width:6,height:6,borderRadius:"50%",background:dot==="red"?AQ_RED:"#1d9bf0",pointerEvents:"none"}}),
     // Bigger invisible tap area — the visible box is only 18px tall.
     React.createElement("span",{"aria-hidden":"true",style:{position:"absolute",top:-12,bottom:-12,left:-10,right:-10}}));
@@ -3304,8 +3303,8 @@ function AdminBar({label,isMaster,onDetails,onExit}){
       React.createElement("div",{"data-admin-bar-title":"1",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:"0.14em",lineHeight:1.1,marginTop:3,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},label)),
     React.createElement("div",{style:{width:60,display:"flex",justifyContent:"flex-end"}},
       React.createElement("button",{type:"button","data-admin-exit":"1",onClick:onExit,"aria-label":"Exit admin",
-          style:{...AQ_CORNER_S,position:"relative",padding:"0 5px"}},
-        "EXIT ✕",
+          style:{...AQ_CORNER_S,position:"relative"}},
+        "EXIT",
         React.createElement("span",{"aria-hidden":"true",style:{position:"absolute",top:-12,bottom:-12,left:-10,right:-10}}))));
 }
 function AdminView({aqNew,bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail,challengeEnabled,saveChallengeSetting,dmEnabled,saveDmSetting,openMsgsTo}){
@@ -15290,10 +15289,11 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         title:"Header background — same Strength images the S&C posters use",
         style:{position:"absolute",top:6,right:6,zIndex:3,background:"rgba(0,0,0,0.55)",color:"#888",
                border:"1px solid #2a2a2a",borderRadius:0,fontSize:8,letterSpacing:"0.06em",
-               padding:"2px 3px",width:38,height:18,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",outline:"none"}
+               padding:"0 0 0 0.06em",width:50,height:18,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",outline:"none",
+               appearance:"none",WebkitAppearance:"none",MozAppearance:"none",textAlign:"center",textAlignLast:"center",lineHeight:"16px",boxSizing:"border-box"}
       },
-        React.createElement("option",{value:""},"BG"),
-        Array.from({length:30},(_,i)=>i+1).map(n=>React.createElement("option",{key:n,value:String(n)},n))
+        React.createElement("option",{value:""},"NONE"),
+        Array.from({length:30},(_,i)=>i+1).map(n=>React.createElement("option",{key:n,value:String(n)},"NO. "+n))
       ),
       React.createElement("div",{style:{display:"flex",alignItems:"center",padding:"30px 4px 30px",position:"relative",minHeight:140}},
         React.createElement("div",{style:{flex:1,paddingLeft:0,zIndex:1}},
