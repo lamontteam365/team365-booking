@@ -575,6 +575,8 @@ html,body{background:#080808;min-height:100vh}
 .app[data-admin-mode] .adm-wrap [data-aq-note][data-aq-note]{background:#0e0e0e!important;padding:10px 12px!important;border:1px solid #888!important}
 .app[data-admin-mode] .adm-wrap [data-aq-note="coach"][data-aq-note="coach"]{color:#fff!important}
 .app[data-admin-mode] .adm-wrap .scb-cycle-body.scb-cycle-body{background:#0e0e0e!important;margin:10px -14px -14px!important;padding:12px 14px 14px!important;border-top:1px solid #888!important}
+.app[data-admin-mode] .adm-wrap [data-aq-box][data-aq-box]{background:#0e0e0e!important;border:1px solid #888!important}
+.app[data-admin-mode] .adm-wrap [data-aq-box="name"][data-aq-box="name"]{padding:4px 8px!important}
 </style>
 </head>
 <body>
@@ -6300,14 +6302,14 @@ function WorkoutDetailsEditor({className,showToast,restricted}){
           r.station&&React.createElement("div",{style:{fontSize:8,letterSpacing:"0.14em",color:"#555",fontWeight:700,marginBottom:5}},r.station),
           React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:hasW?8:0}},
             r.duration&&React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:"#fff",background:"#1a1a1a",borderRadius:0,padding:"1px 7px",flexShrink:0}},r.duration),
-            React.createElement("div",{style:{flex:1,minWidth:0}},
+            React.createElement("div",{"data-aq-box":"name",style:{flex:1,minWidth:0}},
               React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.04em",color:"#fff"}},r.exercise),
               r.maori&&React.createElement("span",{style:{fontSize:11,fontStyle:"italic",color:"#1d9bf0",marginLeft:8}},r.maori)
             ),
-            repsBox&&React.createElement("span",{style:{fontSize:11,color:"#fff",border:"1px solid #3a3a3a",borderRadius:0,padding:"3px 10px",flexShrink:0,whiteSpace:"nowrap",fontWeight:600}},repsBox)
+            repsBox&&React.createElement("span",{"data-aq-box":"1",style:{fontSize:11,color:"#fff",border:"1px solid #3a3a3a",borderRadius:0,padding:"3px 10px",flexShrink:0,whiteSpace:"nowrap",fontWeight:600}},repsBox)
           ),
           hasW&&React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}},
-            [["COMMITMENT",r.c],["CONSISTENCY",r.o],["DETERMINATION",r.d]].map(lv=>React.createElement("div",{key:lv[0],style:{background:"#141414",border:"1px solid #1e1e1e",borderRadius:0,padding:"6px 5px",textAlign:"center"}},
+            [["COMMITMENT",r.c],["CONSISTENCY",r.o],["DETERMINATION",r.d]].map(lv=>React.createElement("div",{key:lv[0],"data-aq-box":"1",style:{background:"#141414",border:"1px solid #1e1e1e",borderRadius:0,padding:"6px 5px",textAlign:"center"}},
               React.createElement("div",{style:{fontSize:7,letterSpacing:"0.06em",color:"#555",fontWeight:600,marginBottom:3}},lv[0]),
               React.createElement("div",{style:{fontSize:11,color:"#ddd",lineHeight:1.35,whiteSpace:"pre-wrap"}},lv[1]||"")
             ))
