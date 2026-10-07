@@ -3261,8 +3261,9 @@ function AdminQuickButton({open,alerts,onPress,inBar}){
       style:{...AQ_CORNER_S,position:inBar?"relative":"absolute",...(inBar?{}:{top:9,right:6}),zIndex:3}},
     React.createElement("span",null,"ADMIN"),
     dot&&React.createElement("span",{"data-admin-dot":dot,style:{position:"absolute",top:-3,right:-3,width:6,height:6,borderRadius:"50%",background:dot==="red"?AQ_RED:"#1d9bf0",pointerEvents:"none"}}),
-    // Bigger invisible tap area — the visible box is only 18px tall.
-    React.createElement("span",{"aria-hidden":"true",style:{position:"absolute",top:-12,bottom:-12,left:-10,right:-10}}));
+    // Bigger invisible tap area — the visible box is only 18px tall. Right side kept to -5 so it
+    // stays inside the screen (the button sits 6px from the edge).
+    React.createElement("span",{"aria-hidden":"true",style:{position:"absolute",top:-12,bottom:-12,left:-10,right:-5}}));
 }
 function AdminQuickMenu({pos,sections,current,alerts,isMaster,onPick,onClose,onExit}){
   useEffect(()=>{
@@ -3302,14 +3303,25 @@ function AdminQuickMenu({pos,sections,current,alerts,isMaster,onPick,onClose,onE
             React.createElement("span",{style:{fontSize:11,color:"#888",lineHeight:1}},"✕"))
         :React.createElement("div",{style:{padding:"10px 14px",fontSize:7,letterSpacing:"0.16em",color:"#444",textAlign:"center"}},"TAP OUTSIDE TO CLOSE")));
 }
+// ↻ in the admin bar: reloads the app so every admin screen shows fresh data. Admin mode and
+// the open section are remembered across a reload, so it comes straight back here.
+function AdminRefreshButton(){
+  const [spin,setSpin]=useState(false);
+  return React.createElement("button",{type:"button","data-admin-refresh":"1","aria-label":"Refresh","title":"Refresh",
+      onClick:()=>{if(spin)return;setSpin(true);setTimeout(()=>{try{window.location.reload();}catch(e){setSpin(false);}},250);},
+      style:{...AQ_CORNER_S,width:18,padding:0,fontSize:12,color:spin?"#1d9bf0":"#888",position:"relative"}},
+    React.createElement("span",{style:{display:"inline-block",lineHeight:1,transition:"transform .25s",transform:spin?"rotate(360deg)":"none"}},"\u21bb"),
+    React.createElement("span",{"aria-hidden":"true",style:{position:"absolute",top:-12,bottom:-12,left:-6,right:-3}}));
+}
 function AdminBar({label,isMaster,onDetails,onExit}){
   return React.createElement("div",{"data-admin-bar":"1",style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"14px 12px 12px",background:AQ_GREY,borderBottom:"1px solid "+AQ_GREY_LINE,position:"relative",flexShrink:0}},
-    React.createElement("div",{style:{width:60,display:"flex",justifyContent:"flex-start"}},
+    React.createElement("div",{style:{width:74,display:"flex",justifyContent:"flex-start"}},
       isMaster&&React.createElement(AdminDetailsShortcut,{onPress:onDetails,inBar:true})),
     React.createElement("div",{style:{textAlign:"center",flex:1,minWidth:0}},
       React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:6,fontWeight:700,letterSpacing:"0.2em",color:"#1d9bf0"}},"ADMIN"),
       React.createElement("div",{"data-admin-bar-title":"1",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:"0.14em",lineHeight:1.1,marginTop:3,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},label)),
-    React.createElement("div",{style:{width:60,display:"flex",justifyContent:"flex-end"}},
+    React.createElement("div",{style:{width:74,display:"flex",justifyContent:"flex-end",gap:6}},
+      React.createElement(AdminRefreshButton,null),
       React.createElement("button",{type:"button","data-admin-exit":"1",onClick:onExit,"aria-label":"Exit admin",
           style:{...AQ_CORNER_S,position:"relative"}},
         "EXIT",
