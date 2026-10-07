@@ -576,7 +576,8 @@ html,body{background:#080808;min-height:100vh}
 .app[data-admin-mode] .adm-wrap [data-aq-note="coach"][data-aq-note="coach"]{color:#fff!important}
 .app[data-admin-mode] .adm-wrap .scb-cycle-body.scb-cycle-body{background:#0e0e0e!important;margin:10px -14px -14px!important;padding:12px 14px 14px!important;border-top:1px solid #888!important}
 .app[data-admin-mode] .adm-wrap [data-aq-box][data-aq-box]{background:#0e0e0e!important;border:1px solid #888!important}
-.app[data-admin-mode] .adm-wrap [data-aq-box="name"][data-aq-box="name"]{padding:4px 8px!important}
+.app[data-admin-mode] .adm-wrap [data-aq-note="1"][data-aq-note="1"]{color:#fff!important}
+.app[data-admin-mode] .adm-wrap [data-aq-onboarding] input,.app[data-admin-mode] .adm-wrap [data-aq-onboarding] textarea,.app[data-admin-mode] .adm-wrap [data-aq-onboarding] select{color:#fff!important}
 </style>
 </head>
 <body>
@@ -4874,7 +4875,7 @@ function AdminView({aqNew,bookings,setBookings,showToast,isAdmin,isMaster,mFlags
       // Automatic nudges when a studio member turns yellow (5 Oct 2026) — master only
       isMaster&&React.createElement(NudgeFunctions,{showToast})
     ),
-  admSeg==="onboarding"&&React.createElement(OnboardingView,{showToast,isMaster}),
+  admSeg==="onboarding"&&React.createElement("div",{"data-aq-onboarding":"1"},React.createElement(OnboardingView,{showToast,isMaster})),
   admSeg==="coaching"&&(isMaster||!mFlags.dt)&&React.createElement(CoachingView,{showToast,restricted:!isMaster,selfEmail})
   );
 }
@@ -6177,6 +6178,25 @@ function WarmupSection({className,showToast}){
     )
   );
 }
+// Workout Details station row: exercise name + Māori translation on ONE line, never wrapped.
+// If the pair is wider than the space it has, the line is scaled down (to 60% at most) to fit;
+// re-checked when the box resizes and once the web fonts have loaded.
+function AqFitLine({style,children}){
+  const boxRef=useRef(null),lineRef=useRef(null);
+  const [k,setK]=useState(1);
+  React.useLayoutEffect(()=>{
+    const box=boxRef.current,line=lineRef.current;if(!box||!line)return;
+    const fit=()=>{const cw=box.clientWidth,lw=line.scrollWidth;if(!cw||!lw)return;setK(Math.max(0.6,Math.min(1,cw/lw)));};
+    fit();
+    let ro=null;
+    if(typeof ResizeObserver!=="undefined"){ro=new ResizeObserver(fit);ro.observe(box);}
+    else window.addEventListener("resize",fit);
+    try{document.fonts&&document.fonts.ready&&document.fonts.ready.then(fit);}catch(e){}
+    return()=>{if(ro)ro.disconnect();else window.removeEventListener("resize",fit);};
+  });
+  return React.createElement("div",{ref:boxRef,"data-aq-name":"1",style:{...style,overflow:"hidden",whiteSpace:"nowrap"}},
+    React.createElement("span",{ref:lineRef,style:{display:"inline-block",whiteSpace:"nowrap",transformOrigin:"left center",transform:k<1?"scale("+k.toFixed(3)+")":"none"}},children));
+}
 function WorkoutDetailsEditor({className,showToast,restricted,subscriber}){
   const storageKey="__WORKOUT__"+className;
   const LIB_KEY="__HIIT_LIB__";
@@ -6370,14 +6390,16 @@ function WorkoutDetailsEditor({className,showToast,restricted,subscriber}){
         const repsBox=r.reps||"";
         const hasW=r.c||r.o||r.d;
         return React.createElement("div",{key:r.id,style:{background:"#0e0e0e",border:"1px solid #1a1a1a",borderRadius:0,padding:"10px 12px",marginBottom:7}},
-          r.station&&React.createElement("div",{style:{fontSize:8,letterSpacing:"0.14em",color:"#555",fontWeight:700,marginBottom:5}},r.station),
-          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:hasW?8:0}},
+          (r.station||r.duration||repsBox)&&React.createElement("div",{"data-aq-stline":"1",style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},
+            React.createElement("div",{style:{flex:1,minWidth:0,fontSize:8,letterSpacing:"0.14em",color:"#555",fontWeight:700}},r.station||""),
             r.duration&&React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:"#fff",background:"#1a1a1a",borderRadius:0,padding:"1px 7px",flexShrink:0}},r.duration),
-            React.createElement("div",{"data-aq-box":"name",style:{flex:1,minWidth:0}},
+            repsBox&&React.createElement("span",{"data-aq-box":"1",style:{fontSize:11,color:"#fff",border:"1px solid #3a3a3a",borderRadius:0,padding:"3px 10px",flexShrink:0,whiteSpace:"nowrap",fontWeight:600}},repsBox)
+          ),
+          React.createElement("div",{style:{display:"flex",alignItems:"center",marginBottom:hasW?8:0}},
+            React.createElement(AqFitLine,{style:{flex:1,minWidth:0}},
               React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.04em",color:"#fff"}},r.exercise),
               r.maori&&React.createElement("span",{style:{fontSize:11,fontStyle:"italic",color:"#1d9bf0",marginLeft:8}},r.maori)
-            ),
-            repsBox&&React.createElement("span",{"data-aq-box":"1",style:{fontSize:11,color:"#fff",border:"1px solid #3a3a3a",borderRadius:0,padding:"3px 10px",flexShrink:0,whiteSpace:"nowrap",fontWeight:600}},repsBox)
+            )
           ),
           hasW&&React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}},
             [["COMMITMENT",r.c],["CONSISTENCY",r.o],["DETERMINATION",r.d]].map(lv=>React.createElement("div",{key:lv[0],"data-aq-box":"1",style:{background:"#141414",border:"1px solid #1e1e1e",borderRadius:0,padding:"6px 5px",textAlign:"center"}},
@@ -6908,11 +6930,11 @@ function CoachingView({showToast,restricted,selfEmail,subscriber}){
         ),
         React.createElement("div",{style:{display:"flex",gap:6,marginBottom:14,background:"#141414",borderRadius:0,padding:3}},
           React.createElement("button",{onClick:()=>setSubTab("notes"),
-            style:{flex:1,background:subTab==="notes"?"#262626":"#080808",color:subTab==="notes"?"#fff":"#555",
+            "data-aq-tog":subTab==="notes"?"on":"off",style:{flex:1,background:subTab==="notes"?"#fff":"#080808",color:subTab==="notes"?"#000":"#fff",
                    border:"1px solid #888",borderRadius:0,padding:"8px 0",fontFamily:"'Bebas Neue',sans-serif",
                    fontSize:13,letterSpacing:"0.12em",cursor:"pointer",transition:"all .15s"}},"COACHING NOTES"),
           React.createElement("button",{onClick:()=>setSubTab("details"),
-            style:{flex:1,background:subTab==="details"?"#262626":"#080808",color:subTab==="details"?"#fff":"#555",
+            "data-aq-tog":subTab==="details"?"on":"off",style:{flex:1,background:subTab==="details"?"#fff":"#080808",color:subTab==="details"?"#000":"#fff",
                    border:"1px solid #888",borderRadius:0,padding:"8px 0",fontFamily:"'Bebas Neue',sans-serif",
                    fontSize:13,letterSpacing:"0.12em",cursor:"pointer",transition:"all .15s"}},"WORKOUT DETAILS")
         ),
