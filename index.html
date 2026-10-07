@@ -5733,13 +5733,13 @@ function stImgKidsWorkTime(dur){
   const mm=Math.floor(secs/60),ss=secs%60;
   return mm+":"+(ss<10?"0"+ss:ss);
 }
-// "WORK FOR 30 SECONDS" under a minute, otherwise the same clock style as the card header
+// "WORK FOR 0:30 SECONDS" under a minute, otherwise the same clock style as the card header
 // ("WORK FOR 1:00 MINUTE", "WORK FOR 2:30 MINUTES"). null when there's no usable duration.
 function stImgKidsWorkLabel(dur){
   const t=stImgKidsWorkTime(dur);
   if(!t)return null;
   const p=t.split(":"),m=parseInt(p[0],10),sec=parseInt(p[1],10);
-  if(m===0)return "WORK FOR "+sec+" SECONDS";
+  if(m===0)return "WORK FOR "+t+" SECONDS";
   return "WORK FOR "+t+((m===1&&sec===0)?" MINUTE":" MINUTES");
 }
 function stImgDrawKidsCard(ctx,x,y,w,h,r,stnum,exSize,name){
@@ -5755,7 +5755,7 @@ function stImgDrawKidsCard(ctx,x,y,w,h,r,stnum,exSize,name){
   // Bebas Neue ~0.7em). No translation on the kids image.
   const lblH=9,gapH=12,nameH=Math.round(exSize*0.7);
   const blockTop=boxY+boxH/2-(lblH+gapH+nameH)/2;
-  stImgFillTextSpaced(ctx,"KIDS EXERCISE",x+w/2,blockTop+lblH,2,"600 12px DM Sans, Arial, sans-serif","#c5c9cc");
+  stImgFillTextSpaced(ctx,"KIDS EXERCISE",x+w/2,blockTop+lblH,2,"600 12px DM Sans, Arial, sans-serif","#1d9bf0");
   stImgFillTextSpaced(ctx,name,x+w/2,blockTop+lblH+gapH+nameH,2,exSize+'px "Bebas Neue", Arial Narrow, sans-serif',"#fff");
   // One full-width box where the three pillar boxes sit on the adult card, with the work
   // time written inside it.
@@ -5766,7 +5766,15 @@ function stImgDrawKidsCard(ctx,x,y,w,h,r,stnum,exSize,name){
   const work=stImgKidsWorkLabel(r.duration);
   if(work){
     const fs=stImgFitFontSpaced(ctx,[work],bw-20,18,11,"bold","DM Sans, Arial, sans-serif",1);
-    stImgFillTextSpaced(ctx,work,bx+bw/2,lv_y0+36+Math.round(fs*0.36),1,"bold "+fs+"px DM Sans, Arial, sans-serif","#fff");
+    // "WORK FOR " and " MINUTES" in white, the time itself in Team 365 blue. Drawn as three
+    // left-aligned pieces with the same 1px letter spacing between them as inside them, so the
+    // line sits exactly where one centred string would.
+    const font="bold "+fs+"px DM Sans, Arial, sans-serif",ty=lv_y0+36+Math.round(fs*0.36);
+    const t=stImgKidsWorkTime(r.duration),ti=work.indexOf(t);
+    const parts=[[work.slice(0,ti),"#fff"],[t,"#1d9bf0"],[work.slice(ti+t.length),"#fff"]];
+    const ws=parts.map(p=>stImgMeasureSpaced(ctx,p[0],font,1));
+    let px=bx+bw/2-(ws[0]+ws[1]+ws[2]+2)/2;
+    parts.forEach((p,k)=>{stImgFillTextSpaced(ctx,p[0],px,ty,1,font,p[1],"left");px+=ws[k]+1;});
   }else{
     stImgFillTextSpaced(ctx,r.duration?"CHECK STATION TIME":"NO STATION TIME",bx+bw/2,lv_y0+41,1,"bold 13px DM Sans, Arial, sans-serif","#c9603f");
   }
