@@ -5733,7 +5733,16 @@ function stImgKidsWorkTime(dur){
   const mm=Math.floor(secs/60),ss=secs%60;
   return mm+":"+(ss<10?"0"+ss:ss);
 }
-function stImgDrawKidsCard(ctx,x,y,w,h,r,stnum,exSize,name,translation){
+// "WORK FOR 30 SECONDS" under a minute, otherwise the same clock style as the card header
+// ("WORK FOR 1:00 MINUTE", "WORK FOR 2:30 MINUTES"). null when there's no usable duration.
+function stImgKidsWorkLabel(dur){
+  const t=stImgKidsWorkTime(dur);
+  if(!t)return null;
+  const p=t.split(":"),m=parseInt(p[0],10),sec=parseInt(p[1],10);
+  if(m===0)return "WORK FOR "+sec+" SECONDS";
+  return "WORK FOR "+t+((m===1&&sec===0)?" MINUTE":" MINUTES");
+}
+function stImgDrawKidsCard(ctx,x,y,w,h,r,stnum,exSize,name){
   const pad=12,topH=26,boxY=y+topH,boxH=h-topH;
   ctx.textBaseline="alphabetic";
   const labelFont="500 13px DM Sans, Arial, sans-serif";
@@ -5742,21 +5751,22 @@ function stImgDrawKidsCard(ctx,x,y,w,h,r,stnum,exSize,name,translation){
   stImgFillTextSpaced(ctx,dur,x+w-pad,y+16,1.2,labelFont,"#c5c9cc","right");
   ctx.fillStyle="rgba(43,43,43,0.62)";ctx.fillRect(x,boxY,w,boxH);
   ctx.strokeStyle="#767676";ctx.lineWidth=1;ctx.strokeRect(x+0.5,boxY+0.5,w-1,boxH-1);
-  const exY=boxY+boxH*0.5-22;
-  stImgFillTextSpaced(ctx,"KIDS EXERCISE",x+w/2,exY-exSize-8,2,"600 12px DM Sans, Arial, sans-serif","#c5c9cc");
-  stImgFillTextSpaced(ctx,name,x+w/2,exY,2,exSize+'px "Bebas Neue", Arial Narrow, sans-serif',"#fff");
-  if(translation){
-    stImgFillTextSpaced(ctx,translation,x+w/2,exY+30,2,"600 15px DM Sans, Arial, sans-serif","#1d9bf0");
-  }
-  // One full-width WORK box where the three pillar boxes sit on the adult card.
+  // "KIDS EXERCISE" + name as one block, centred in the box (cap heights: 12px DM Sans ~9px,
+  // Bebas Neue ~0.7em). No translation on the kids image.
+  const lblH=9,gapH=12,nameH=Math.round(exSize*0.7);
+  const blockTop=boxY+boxH/2-(lblH+gapH+nameH)/2;
+  stImgFillTextSpaced(ctx,"KIDS EXERCISE",x+w/2,blockTop+lblH,2,"600 12px DM Sans, Arial, sans-serif","#c5c9cc");
+  stImgFillTextSpaced(ctx,name,x+w/2,blockTop+lblH+gapH+nameH,2,exSize+'px "Bebas Neue", Arial Narrow, sans-serif',"#fff");
+  // One full-width box where the three pillar boxes sit on the adult card, with the work
+  // time written inside it.
   const lv_y0=boxY+boxH-66;
   const bx=x+pad,bw=w-2*pad;
-  stImgFillTextSpaced(ctx,"WORK",bx+bw/2,lv_y0+8,1.2,"600 11px DM Sans, Arial, sans-serif","#fff");
   ctx.fillStyle="rgba(10,26,42,0.62)";ctx.fillRect(bx,lv_y0+16,bw,40);
   ctx.strokeStyle="#565656";ctx.strokeRect(bx+0.5,lv_y0+16.5,bw-1,39);
-  const work=stImgKidsWorkTime(r.duration);
+  const work=stImgKidsWorkLabel(r.duration);
   if(work){
-    stImgFillTextSpaced(ctx,work,bx+bw/2,lv_y0+44,1,"bold 22px DM Sans, Arial, sans-serif","#fff");
+    const fs=stImgFitFontSpaced(ctx,[work],bw-20,18,11,"bold","DM Sans, Arial, sans-serif",1);
+    stImgFillTextSpaced(ctx,work,bx+bw/2,lv_y0+36+Math.round(fs*0.36),1,"bold "+fs+"px DM Sans, Arial, sans-serif","#fff");
   }else{
     stImgFillTextSpaced(ctx,r.duration?"CHECK STATION TIME":"NO STATION TIME",bx+bw/2,lv_y0+41,1,"bold 13px DM Sans, Arial, sans-serif","#c9603f");
   }
@@ -5789,7 +5799,7 @@ async function stImgRenderCanvas(canvas,className,rows,lib,bgNum,langKey,langNam
   const SAFE=96,areaX=SAFE,areaW=1920-2*SAFE,areaY=SAFE,areaH=1080-2*SAFE;
   const nameStripH=40;
   ctx.textBaseline="alphabetic";
-  const nameDisplay=className.toUpperCase().replace(/(\d+)\s*$/,"($1)")+(kids?" · KIDS":"");
+  const nameDisplay=className.toUpperCase().replace(/(\d+)\s*$/,"($1)")+(kids?" KIDS":"");
   const affirmation=await affirmationPromise;
   const titleFont="700 26px DM Sans, Arial, sans-serif";
   // Affirmation (top-left) and the translation-language label (top-right) match the
@@ -5800,7 +5810,7 @@ async function stImgRenderCanvas(canvas,className,rows,lib,bgNum,langKey,langNam
   if(affirmation){
     stImgFillTextSpaced(ctx,affirmation.toUpperCase(),areaX,titleY,1.5,cornerFont,"#fff","left");
   }
-  stImgFillTextSpaced(ctx,langName.toUpperCase()+" TRANSLATION",areaX+areaW,titleY,1.5,cornerFont,"#fff","right");
+  if(!kids)stImgFillTextSpaced(ctx,langName.toUpperCase()+" TRANSLATION",areaX+areaW,titleY,1.5,cornerFont,"#fff","right");
 
   if(!group||!group.sts.length){
     stImgFillTextSpaced(ctx,"NO STATION ROUND FOUND IN THIS WORKOUT",960,540,1,"600 20px DM Sans, Arial, sans-serif","#c9603f","center");
@@ -5817,17 +5827,17 @@ async function stImgRenderCanvas(canvas,className,rows,lib,bgNum,langKey,langNam
   const blockH=rowsN*cardH+(rowsN-1)*rowGap;
   const top=cardsAreaY+(cardsAreaH-blockH)/2-10;
 
-  // Kids image: a filled-in Kids exercise name shows as-is (no translation, whatever the
-  // language); an empty one falls back to the adult name + translation, same as the main image.
+  // Kids image: the Kids exercise name if filled in, otherwise the adult name. Never a
+  // translation (Sam, 7 Oct).
   const kidsNames=sts.map(r=>kids?stImgKidsNameFor(lib,r):"");
   const names=sts.map((r,i)=>kidsNames[i]||(r.exercise||"").toUpperCase());
   const exSize=stImgFitFontSpaced(ctx,names,cardW-24,30,12,"","Bebas Neue, Arial Narrow, sans-serif",2);
-  const translations=sts.map((r,i)=>kidsNames[i]?"":stImgTranslationFor(lib,langKey,r));
+  const translations=sts.map(r=>kids?"":stImgTranslationFor(lib,langKey,r));
 
   sts.forEach((r,i)=>{
     const col=i%cols,row=Math.floor(i/cols);
     const x=padX+col*(cardW+gap),y=top+row*(cardH+rowGap);
-    if(kids)stImgDrawKidsCard(ctx,x,y,cardW,cardH,r,i+1,exSize,names[i],translations[i]);
+    if(kids)stImgDrawKidsCard(ctx,x,y,cardW,cardH,r,i+1,exSize,names[i]);
     else stImgDrawCard(ctx,x,y,cardW,cardH,r,i+1,exSize,translations[i]);
   });
 
@@ -5904,7 +5914,7 @@ function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose,langOptio
   // Language picker — controls which translation shows on the cards and in the top-right
   // "<LANGUAGE> TRANSLATION" label. Māori is always available; anything else only shows up
   // once it's switched on + named in the exercise library's language settings.
-  const langSelect=React.createElement("select",{key:"lang",value:langKey,onChange:e=>setLangKey(e.target.value),onClick:e=>e.stopPropagation(),style:{position:"absolute",top:8,left:76,background:"#fff",color:"#000",border:"none",borderRadius:0,fontSize:10,height:22,padding:"0 3px",zIndex:2,maxWidth:84}},
+  const langSelect=kids?null:React.createElement("select",{key:"lang",value:langKey,onChange:e=>setLangKey(e.target.value),onClick:e=>e.stopPropagation(),style:{position:"absolute",top:8,left:76,background:"#fff",color:"#000",border:"none",borderRadius:0,fontSize:10,height:22,padding:"0 3px",zIndex:2,maxWidth:84}},
     opts.map(o=>React.createElement("option",{key:o.key,value:o.key},o.name))
   );
   // Same 22x22 square treatment as the close (✕) button, sitting immediately to its left —
@@ -6159,7 +6169,7 @@ function WarmupSection({className,showToast}){
     )
   );
 }
-function WorkoutDetailsEditor({className,showToast,restricted}){
+function WorkoutDetailsEditor({className,showToast,restricted,subscriber}){
   const storageKey="__WORKOUT__"+className;
   const LIB_KEY="__HIIT_LIB__";
   const SCROLL_KEY="__SCROLL__"+className;
@@ -6335,7 +6345,7 @@ function WorkoutDetailsEditor({className,showToast,restricted}){
         !restricted&&React.createElement("button",{onClick:()=>setEditing(true),style:{flex:1,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"✎ EDIT WORKOUT"),
         rows.length>0&&React.createElement("button",{onClick:()=>{const u="tv.html?w="+encodeURIComponent(className);const w=window.open(u,"_blank");if(!w)window.location.href=u;},title:"Opens the full-screen TV page with a Cast button (uses the last SAVED version)",style:{flex:1,background:"#12331a",color:"#3ddc84",border:"1px solid #1d5a34",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"▸ PLAY"),
         rows.length>0&&stImgFirstStationRound(rows)&&React.createElement("button",{onClick:()=>setImgOpen(true),title:"Station-board image for this workout, same as the offline kit's Station Images tool",style:{flex:1,background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"▦ IMAGE"),
-        rows.length>0&&stImgFirstStationRound(rows)&&React.createElement("button",{"data-kids-image":"1",onClick:()=>setKidsImgOpen(true),title:"Kids workout image: kids exercise names and work time (station length minus 30 seconds)",style:{flex:1,background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer",whiteSpace:"nowrap"}},"▦ KIDS IMAGE")
+        !subscriber&&rows.length>0&&stImgFirstStationRound(rows)&&React.createElement("button",{"data-kids-image":"1",onClick:()=>setKidsImgOpen(true),title:"Kids workout image: kids exercise names, no translation, work time = station length minus 30 seconds",style:{flex:1,background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer",whiteSpace:"nowrap"}},"▦ KIDS IMAGE")
       ),
       !restricted&&React.createElement(WarmupSection,{className,showToast}),
       legacy&&React.createElement("div",{style:{whiteSpace:"pre-wrap",fontSize:12,color:"#aaa",lineHeight:1.6,marginBottom:12}},legacy),
@@ -6374,7 +6384,7 @@ function WorkoutDetailsEditor({className,showToast,restricted}){
         React.createElement("button",{onClick:()=>setEditing(true),style:{flex:1,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"✎ EDIT WORKOUT")
       ),
       imgOpen&&React.createElement(StationImageOverlay,{className,rows,lib,bg:imgBg,onBgChange:restricted?setImgBg:saveImgBg,onClose:()=>setImgOpen(false),langOptions:[{key:"maori",name:"Māori"}].concat(langCfg.morioriOn?[{key:"moriori",name:"Moriori"}]:[]).concat((langCfg.bank||[]).map(b=>({key:b.key,name:b.name||b.key})))}),
-      kidsImgOpen&&React.createElement(StationImageOverlay,{kids:true,className,rows,lib,bg:imgBg,onBgChange:restricted?setImgBg:saveImgBg,onClose:()=>setKidsImgOpen(false),langOptions:[{key:"maori",name:"Māori"}].concat(langCfg.morioriOn?[{key:"moriori",name:"Moriori"}]:[]).concat((langCfg.bank||[]).map(b=>({key:b.key,name:b.name||b.key})))})
+      !subscriber&&kidsImgOpen&&React.createElement(StationImageOverlay,{kids:true,className,rows,lib,bg:imgBg,onBgChange:restricted?setImgBg:saveImgBg,onClose:()=>setKidsImgOpen(false),langOptions:[{key:"maori",name:"Māori"}].concat(langCfg.morioriOn?[{key:"moriori",name:"Moriori"}]:[]).concat((langCfg.bank||[]).map(b=>({key:b.key,name:b.name||b.key})))})
     );
   }
   const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",padding:"7px 9px",outline:"none",boxSizing:"border-box"};
@@ -6662,7 +6672,7 @@ function ClassBriefEditor({names,briefs,saveBriefs,showToast}){
     })
   );
 }
-function CoachingView({showToast,restricted,selfEmail}){
+function CoachingView({showToast,restricted,selfEmail,subscriber}){
   const BASE_GROUPS=DETAILS_BASE_GROUPS;
   const [extras,setExtras]=useState({});
   const [customGroups,setCustomGroups]=useState([]);
@@ -6900,7 +6910,7 @@ function CoachingView({showToast,restricted,selfEmail}){
         ),
         subTab==="notes"
           ? React.createElement(CoachingNoteEditor,{className:selectedClass,showToast,restricted})
-          : React.createElement(WorkoutDetailsEditor,{className:selectedClass,showToast,restricted})
+          : React.createElement(WorkoutDetailsEditor,{className:selectedClass,showToast,restricted,subscriber:!!subscriber})
       )
     );
   }
@@ -15654,7 +15664,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     effTab==="details"&&isSubscriber&&React.createElement("div",{className:"adm-wrap"},
       React.createElement("div",{className:"adm-title"},"DETAILS"),
       subDetailsOn
-        ?React.createElement(CoachingView,{showToast,restricted:true,selfEmail:session.email})
+        ?React.createElement(CoachingView,{showToast,restricted:true,selfEmail:session.email,subscriber:true})
         :React.createElement("div",{className:"no-bk"},subRow&&subRow.status==="suspended"?"YOUR SUBSCRIPTION IS PAUSED — PLEASE CONTACT TEAM 365":subRow&&subRow.status==="pending"?"YOUR SUBSCRIPTION IS AWAITING APPROVAL — TEAM 365 WILL BE IN TOUCH":"DETAILS IS CURRENTLY UNAVAILABLE")
     ),
     effTab==="admin"&&isAdmin&&React.createElement(AdminView,{aqNew,bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:"",challengeEnabled,saveChallengeSetting,dmEnabled,saveDmSetting,openMsgsTo:canOpenMsgs?openThreadDirect:null}),
