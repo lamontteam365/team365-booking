@@ -6390,10 +6390,12 @@ function WorkoutDetailsEditor({className,showToast,restricted,subscriber}){
         const repsBox=r.reps||"";
         const hasW=r.c||r.o||r.d;
         return React.createElement("div",{key:r.id,style:{background:"#0e0e0e",border:"1px solid #1a1a1a",borderRadius:0,padding:"10px 12px",marginBottom:7}},
-          (r.station||r.duration||repsBox)&&React.createElement("div",{"data-aq-stline":"1",style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},
+          (r.station||r.duration)&&React.createElement("div",{"data-aq-stline":"1",style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},
             React.createElement("div",{style:{flex:1,minWidth:0,fontSize:8,letterSpacing:"0.14em",color:"#555",fontWeight:700}},r.station||""),
-            r.duration&&React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:"#fff",background:"#1a1a1a",borderRadius:0,padding:"1px 7px",flexShrink:0}},r.duration),
-            repsBox&&React.createElement("span",{"data-aq-box":"1",style:{fontSize:11,color:"#fff",border:"1px solid #3a3a3a",borderRadius:0,padding:"3px 10px",flexShrink:0,whiteSpace:"nowrap",fontWeight:600}},repsBox)
+            r.duration&&React.createElement("span",{"data-aq-time":"1",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:"#fff",background:"#1a1a1a",borderRadius:0,padding:"1px 7px",flexShrink:0}},r.duration)
+          ),
+          repsBox&&React.createElement("div",{"data-aq-repsline":"1",style:{display:"flex",justifyContent:"flex-end",marginBottom:6}},
+            React.createElement("span",{"data-aq-box":"1",style:{fontSize:11,color:"#fff",border:"1px solid #3a3a3a",borderRadius:0,padding:"3px 10px",flexShrink:0,whiteSpace:"nowrap",fontWeight:600}},repsBox)
           ),
           React.createElement("div",{style:{display:"flex",alignItems:"center",marginBottom:hasW?8:0}},
             React.createElement(AqFitLine,{style:{flex:1,minWidth:0}},
