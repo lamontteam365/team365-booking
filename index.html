@@ -3305,11 +3305,11 @@ function AdminQuickMenu({pos,sections,current,alerts,isMaster,onPick,onClose,onE
 }
 // ↻ in the admin bar: reloads the app so every admin screen shows fresh data. Admin mode and
 // the open section are remembered across a reload, so it comes straight back here.
-function AdminRefreshButton(){
+function AdminRefreshButton({footer}={}){
   const [spin,setSpin]=useState(false);
   return React.createElement("button",{type:"button","data-admin-refresh":"1","aria-label":"Refresh","title":"Refresh",
       onClick:()=>{if(spin)return;setSpin(true);setTimeout(()=>{try{window.location.reload();}catch(e){setSpin(false);}},250);},
-      style:{...AQ_CORNER_S,width:18,padding:0,fontSize:12,color:spin?"#1d9bf0":"#888",position:"relative"}},
+      style:{...AQ_CORNER_S,width:18,padding:0,fontSize:12,color:spin?"#1d9bf0":"#888",position:footer?"absolute":"relative",...(footer?{top:9,right:62,zIndex:3}:{})}},
     React.createElement("span",{style:{display:"inline-block",lineHeight:1,transition:"transform .25s",transform:spin?"rotate(360deg)":"none"}},"\u21bb"),
     React.createElement("span",{"aria-hidden":"true",style:{position:"absolute",top:-12,bottom:-12,left:-6,right:-3}}));
 }
@@ -4042,23 +4042,8 @@ function AdminView({aqNew,bookings,setBookings,showToast,isAdmin,isMaster,mFlags
         const ok=!!openMsgsTo&&!!em&&!subMap[em]&&em!==String(selfEmail||"").toLowerCase();
         const target=isMaster?{c:em}:(em===String(ADMIN_EMAIL).toLowerCase()?{c:"team365"}:{dm:em});
         return {onMessage:ok?()=>openMsgsTo(target):null,unreadN:unreadFrom[em]||0};})()}),
-    React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"0 0 6px"}},
-      React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
-      React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:7,letterSpacing:"0.22em",fontWeight:600,cursor:"pointer"}},"SWIPE FOR MORE"),
-      React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"›")
-    ),
-    React.createElement("div",{className:"adm-seg"},
-      React.createElement("button",{"data-adm":"members",className:`adm-seg-btn${admSeg==="members"?" aas":""}`,onClick:()=>setAdmSeg("members")},"MEMBERS"),
-      React.createElement("button",{"data-adm":"leads",className:`adm-seg-btn${admSeg==="leads"?" aas":""}`,onClick:()=>setAdmSeg("leads")},"LEADS"),
-      React.createElement("button",{"data-adm":"classes",className:`adm-seg-btn${admSeg==="classes"?" aas":""}`,onClick:()=>setAdmSeg("classes")},"CLASSES"),
-      (isMaster||mFlags.welladm)&&React.createElement("button",{"data-adm":"wellness",className:`adm-seg-btn${admSeg==="wellness"?" aas":""}`,onClick:()=>setAdmSeg("wellness")},"WELLNESS"),
-      canScBuild&&React.createElement("button",{"data-adm":"scbuilder",className:`adm-seg-btn${admSeg==="scbuilder"?" aas":""}`,onClick:()=>setAdmSeg("scbuilder")},"S&C BUILDER"),
-      React.createElement("button",{"data-adm":"sections",className:`adm-seg-btn${admSeg==="sections"?" aas":""}`,onClick:()=>setAdmSeg("sections")},"SECTIONS"),
-      React.createElement("button",{"data-adm":"challenge",className:`adm-seg-btn${admSeg==="challenge"?" aas":""}`,onClick:()=>setAdmSeg("challenge")},"CHALLENGE"),
-      isMaster&&React.createElement("button",{"data-adm":"functions",className:`adm-seg-btn${admSeg==="functions"?" aas":""}`,onClick:()=>setAdmSeg("functions")},"FUNCTIONS"),
-      React.createElement("button",{"data-adm":"onboarding",className:`adm-seg-btn${admSeg==="onboarding"?" aas":""}`,onClick:()=>setAdmSeg("onboarding")},"ONBOARDING"),
-      (isMaster||!mFlags.dt)&&React.createElement("button",{"data-adm":"coaching",className:`adm-seg-btn${admSeg==="coaching"?" aas":""}`,onClick:()=>setAdmSeg("coaching")},"DETAILS")
-    ),
+    // v15: the old section strip (‹ SWIPE FOR MORE › + MEMBERS · LEADS · CLASSES …) was removed;
+    // the ADMIN menu and the admin bar do that job. Swiping between sections still works (App).
     admSeg==="members"&&(!membersLoaded?React.createElement("div",{className:"no-bk"},"LOADING...")
     :React.createElement(React.Fragment,null,
       isMaster&&React.createElement(AddSubscriberPanel,{showToast,onAdded:async()=>{await loadSubs();await reloadMembersList();}}),
@@ -5049,7 +5034,7 @@ function ConcessionPricingEditor({showToast}){
     React.createElement("div",{style:{marginBottom:12}},
       React.createElement("label",{style:L},"TERMS (OPTIONAL)"),
       React.createElement("textarea",{value:p.terms,rows:3,placeholder:"e.g. Paid before the first class. Valid for 6 months. Non-refundable.",onChange:e=>setP(o=>({...o,terms:e.target.value})),style:{...I,resize:"vertical",lineHeight:1.6}})),
-    React.createElement("div",{style:{background:"#0a0a0a",border:"1px solid #1a1a1a",padding:"10px 12px",marginBottom:12}},
+    React.createElement("div",{"data-aq-price":"1",style:{background:"#0e0e0e",border:"1px solid rgba(29,155,240,0.45)",padding:"10px 12px",marginBottom:12}},
       React.createElement("div",{style:{fontSize:9,letterSpacing:"0.16em",color:"#1d9bf0",fontWeight:600,marginBottom:6}},"WHAT THE CLIENT PAYS"),
       React.createElement("div",{style:{fontSize:12,color:"#ccc",lineHeight:1.7}},
         priceN>0?(subMoney(priceN)+" for "+CONCESSION_LIMIT+" classes "+(p.gstLabel||"")+" · "+subMoney(perClass)+" per class"):"No price set yet.")),
@@ -15486,7 +15471,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       React.createElement(MessagesView,{session,isAdmin,isMaster,memberPhotos,dmOn:dmEnabled,dmUnread:msgDm,focus:null,onOpenThread:t=>openThread(t,"inbox")})),
     thread&&canOpenMsgs&&session&&React.createElement(MsgThreadScreen,{key:(thread.kind||"")+":"+(thread.email||thread.pair||""),t:thread,session,isMaster,memberPhotos,onClose:closeThread}),
     React.createElement("div",{className:"app-body"},
-    React.createElement(PushPrompt,{session,isSubscriber,showToast}),
+    !(effTab==="admin"&&isAdmin)&&React.createElement(PushPrompt,{session,isSubscriber,showToast}),
     mFlags.maint&&React.createElement("div",{style:{background:"#c98a1e",color:"#0a0a0a",textAlign:"center",padding:"8px 10px",fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.2em",fontSize:14,marginBottom:10}},"⚙ MAINTENANCE MODE"),
     effTab==="book"&&React.createElement(React.Fragment,null,
       renderSeg(bookOpts,effBookSub,setBookSub),
@@ -15731,6 +15716,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     React.createElement("div",{"data-app-footer":"1",style:{textAlign:"center",position:"relative",...((effTab==="admin"&&isAdmin)?{background:AQ_GREY,borderTop:"1px solid "+AQ_GREY_LINE}:{})}},
       // ADMIN quick-access button — admins only, bottom-right for the thumb (6 Oct 2026).
       isAdmin&&!maintActive&&React.createElement(AdminQuickButton,{open:!!aqOpen,alerts:aqAlerts,onPress:aqToggle}),
+      isAdmin&&!maintActive&&React.createElement(AdminRefreshButton,{footer:true}),
       React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"LAMONT FITNESS APPLICATIONS"),
       React.createElement("div",{style:{marginTop:2,paddingBottom:20,fontSize:"7px",letterSpacing:"0.06em",color:"#999"}},
         React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"WWW.LAMONTCOLLECTIVE.COM")
