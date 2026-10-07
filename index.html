@@ -5714,7 +5714,54 @@ function stImgTranslationFor(lib,langKey,row){
   const t=lib&&lib[langKey];
   return (t&&t[EX])||"";
 }
-async function stImgRenderCanvas(canvas,className,rows,lib,bgNum,langKey,langName){
+// ---- Kids workout image (admin "KIDS IMAGE" button). Same board as above, but each card shows
+// the library's optional Kids exercise name (lib.kids = {"EXERCISE NAME":"KIDS NAME"}, inside the
+// same __HIIT_LIB__ row as the translations) and one WORK box instead of reps + three pillars.
+// Work = station length minus 30 s, so kids stop at the 30-second alarm (1:00 -> 0:30, 3:00 -> 2:30).
+function stImgKidsNameFor(lib,row){
+  const EX=(row.exercise||"").trim().toUpperCase();
+  const v=lib&&lib.kids&&lib.kids[EX];
+  return v?String(v).trim().toUpperCase():"";
+}
+// Returns "m:ss" work time, or null when the station has no usable duration (empty, not m:ss,
+// or 0:30 or shorter) — the card then shows a flag instead of a time.
+function stImgKidsWorkTime(dur){
+  const m=String(dur||"").trim().match(/^(\d+):(\d{1,2})$/);
+  if(!m)return null;
+  const secs=parseInt(m[1],10)*60+parseInt(m[2],10)-30;
+  if(secs<=0)return null;
+  const mm=Math.floor(secs/60),ss=secs%60;
+  return mm+":"+(ss<10?"0"+ss:ss);
+}
+function stImgDrawKidsCard(ctx,x,y,w,h,r,stnum,exSize,name,translation){
+  const pad=12,topH=26,boxY=y+topH,boxH=h-topH;
+  ctx.textBaseline="alphabetic";
+  const labelFont="500 13px DM Sans, Arial, sans-serif";
+  stImgFillTextSpaced(ctx,"STATION "+stnum,x+pad,y+16,1.2,labelFont,"#fff","left");
+  const dur=r.duration?stImgFmtDurClock(r.duration):"";
+  stImgFillTextSpaced(ctx,dur,x+w-pad,y+16,1.2,labelFont,"#c5c9cc","right");
+  ctx.fillStyle="rgba(43,43,43,0.62)";ctx.fillRect(x,boxY,w,boxH);
+  ctx.strokeStyle="#767676";ctx.lineWidth=1;ctx.strokeRect(x+0.5,boxY+0.5,w-1,boxH-1);
+  const exY=boxY+boxH*0.5-22;
+  stImgFillTextSpaced(ctx,"KIDS EXERCISE",x+w/2,exY-exSize-8,2,"600 12px DM Sans, Arial, sans-serif","#c5c9cc");
+  stImgFillTextSpaced(ctx,name,x+w/2,exY,2,exSize+'px "Bebas Neue", Arial Narrow, sans-serif',"#fff");
+  if(translation){
+    stImgFillTextSpaced(ctx,translation,x+w/2,exY+30,2,"600 15px DM Sans, Arial, sans-serif","#1d9bf0");
+  }
+  // One full-width WORK box where the three pillar boxes sit on the adult card.
+  const lv_y0=boxY+boxH-66;
+  const bx=x+pad,bw=w-2*pad;
+  stImgFillTextSpaced(ctx,"WORK",bx+bw/2,lv_y0+8,1.2,"600 11px DM Sans, Arial, sans-serif","#fff");
+  ctx.fillStyle="rgba(10,26,42,0.62)";ctx.fillRect(bx,lv_y0+16,bw,40);
+  ctx.strokeStyle="#565656";ctx.strokeRect(bx+0.5,lv_y0+16.5,bw-1,39);
+  const work=stImgKidsWorkTime(r.duration);
+  if(work){
+    stImgFillTextSpaced(ctx,work,bx+bw/2,lv_y0+44,1,"bold 22px DM Sans, Arial, sans-serif","#fff");
+  }else{
+    stImgFillTextSpaced(ctx,r.duration?"CHECK STATION TIME":"NO STATION TIME",bx+bw/2,lv_y0+41,1,"bold 13px DM Sans, Arial, sans-serif","#c9603f");
+  }
+}
+async function stImgRenderCanvas(canvas,className,rows,lib,bgNum,langKey,langName,kids){
   langKey=langKey||"maori";
   langName=langName||"Māori";
   const ctx=canvas.getContext("2d");
@@ -5742,7 +5789,7 @@ async function stImgRenderCanvas(canvas,className,rows,lib,bgNum,langKey,langNam
   const SAFE=96,areaX=SAFE,areaW=1920-2*SAFE,areaY=SAFE,areaH=1080-2*SAFE;
   const nameStripH=40;
   ctx.textBaseline="alphabetic";
-  const nameDisplay=className.toUpperCase().replace(/(\d+)\s*$/,"($1)");
+  const nameDisplay=className.toUpperCase().replace(/(\d+)\s*$/,"($1)")+(kids?" · KIDS":"");
   const affirmation=await affirmationPromise;
   const titleFont="700 26px DM Sans, Arial, sans-serif";
   // Affirmation (top-left) and the translation-language label (top-right) match the
@@ -5770,19 +5817,23 @@ async function stImgRenderCanvas(canvas,className,rows,lib,bgNum,langKey,langNam
   const blockH=rowsN*cardH+(rowsN-1)*rowGap;
   const top=cardsAreaY+(cardsAreaH-blockH)/2-10;
 
-  const names=sts.map(r=>(r.exercise||"").toUpperCase());
+  // Kids image: a filled-in Kids exercise name shows as-is (no translation, whatever the
+  // language); an empty one falls back to the adult name + translation, same as the main image.
+  const kidsNames=sts.map(r=>kids?stImgKidsNameFor(lib,r):"");
+  const names=sts.map((r,i)=>kidsNames[i]||(r.exercise||"").toUpperCase());
   const exSize=stImgFitFontSpaced(ctx,names,cardW-24,30,12,"","Bebas Neue, Arial Narrow, sans-serif",2);
-  const translations=sts.map(r=>stImgTranslationFor(lib,langKey,r));
+  const translations=sts.map((r,i)=>kidsNames[i]?"":stImgTranslationFor(lib,langKey,r));
 
   sts.forEach((r,i)=>{
     const col=i%cols,row=Math.floor(i/cols);
     const x=padX+col*(cardW+gap),y=top+row*(cardH+rowGap);
-    stImgDrawCard(ctx,x,y,cardW,cardH,r,i+1,exSize,translations[i]);
+    if(kids)stImgDrawKidsCard(ctx,x,y,cardW,cardH,r,i+1,exSize,names[i],translations[i]);
+    else stImgDrawCard(ctx,x,y,cardW,cardH,r,i+1,exSize,translations[i]);
   });
 
   stImgDrawFooter(ctx);
 }
-function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose,langOptions}){
+function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose,langOptions,kids}){
   const frameRef=useRef(null);
   const mobileOuterRef=useRef(null);
   const canvasRef=useRef(null);
@@ -5812,10 +5863,10 @@ function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose,langOptio
     return()=>{window.removeEventListener("resize",chk);window.removeEventListener("orientationchange",chk);document.removeEventListener("fullscreenchange",chk);};
   },[]);
   useEffect(()=>{
-    if(canvasRef.current)stImgRenderCanvas(canvasRef.current,className,rows,lib,bg,langKey,langName);
+    if(canvasRef.current)stImgRenderCanvas(canvasRef.current,className,rows,lib,bg,langKey,langName,!!kids);
     // mobileSize is included because switching between the mobile/desktop branches below
     // mounts a brand-new <canvas> node — this effect must re-fire to draw onto it.
-  },[className,rows,lib,bg,mobileSize,langKey,langName]);
+  },[className,rows,lib,bg,mobileSize,langKey,langName,kids]);
   async function toggleFullscreen(){
     const target=mobileSize?mobileOuterRef.current:frameRef.current;
     if(document.fullscreenElement){
@@ -5841,7 +5892,7 @@ function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose,langOptio
       const url=URL.createObjectURL(blob);
       const a=document.createElement("a");
       const slug=s=>(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
-      a.href=url;a.download=slug(className)+"-station-page.jpg";
+      a.href=url;a.download=slug(className)+(kids?"-kids":"")+"-station-page.jpg";
       document.body.appendChild(a);a.click();a.remove();
       setTimeout(()=>URL.revokeObjectURL(url),3000);
     },"image/jpeg",0.92);
@@ -6126,6 +6177,7 @@ function WorkoutDetailsEditor({className,showToast,restricted}){
   const [dragId,setDragId]=useState(null);
   const [dragOverId,setDragOverId]=useState(null);
   const [imgOpen,setImgOpen]=useState(false);
+  const [kidsImgOpen,setKidsImgOpen]=useState(false);
   const [imgBg,setImgBg]=useState("");
   const wdGenId=()=>Math.random().toString(36).slice(2,9);
   function mapRow(r){
@@ -6282,7 +6334,8 @@ function WorkoutDetailsEditor({className,showToast,restricted}){
       React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}},
         !restricted&&React.createElement("button",{onClick:()=>setEditing(true),style:{flex:1,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"✎ EDIT WORKOUT"),
         rows.length>0&&React.createElement("button",{onClick:()=>{const u="tv.html?w="+encodeURIComponent(className);const w=window.open(u,"_blank");if(!w)window.location.href=u;},title:"Opens the full-screen TV page with a Cast button (uses the last SAVED version)",style:{flex:1,background:"#12331a",color:"#3ddc84",border:"1px solid #1d5a34",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"▸ PLAY"),
-        rows.length>0&&stImgFirstStationRound(rows)&&React.createElement("button",{onClick:()=>setImgOpen(true),title:"Station-board image for this workout, same as the offline kit's Station Images tool",style:{flex:1,background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"▦ IMAGE")
+        rows.length>0&&stImgFirstStationRound(rows)&&React.createElement("button",{onClick:()=>setImgOpen(true),title:"Station-board image for this workout, same as the offline kit's Station Images tool",style:{flex:1,background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"▦ IMAGE"),
+        rows.length>0&&stImgFirstStationRound(rows)&&React.createElement("button",{"data-kids-image":"1",onClick:()=>setKidsImgOpen(true),title:"Kids workout image: kids exercise names and work time (station length minus 30 seconds)",style:{flex:1,background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer",whiteSpace:"nowrap"}},"▦ KIDS IMAGE")
       ),
       !restricted&&React.createElement(WarmupSection,{className,showToast}),
       legacy&&React.createElement("div",{style:{whiteSpace:"pre-wrap",fontSize:12,color:"#aaa",lineHeight:1.6,marginBottom:12}},legacy),
@@ -6320,7 +6373,8 @@ function WorkoutDetailsEditor({className,showToast,restricted}){
       !restricted&&rows.length>0&&React.createElement("div",{style:{display:"flex",gap:8,marginTop:12}},
         React.createElement("button",{onClick:()=>setEditing(true),style:{flex:1,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"✎ EDIT WORKOUT")
       ),
-      imgOpen&&React.createElement(StationImageOverlay,{className,rows,lib,bg:imgBg,onBgChange:restricted?setImgBg:saveImgBg,onClose:()=>setImgOpen(false),langOptions:[{key:"maori",name:"Māori"}].concat(langCfg.morioriOn?[{key:"moriori",name:"Moriori"}]:[]).concat((langCfg.bank||[]).map(b=>({key:b.key,name:b.name||b.key})))})
+      imgOpen&&React.createElement(StationImageOverlay,{className,rows,lib,bg:imgBg,onBgChange:restricted?setImgBg:saveImgBg,onClose:()=>setImgOpen(false),langOptions:[{key:"maori",name:"Māori"}].concat(langCfg.morioriOn?[{key:"moriori",name:"Moriori"}]:[]).concat((langCfg.bank||[]).map(b=>({key:b.key,name:b.name||b.key})))}),
+      kidsImgOpen&&React.createElement(StationImageOverlay,{kids:true,className,rows,lib,bg:imgBg,onBgChange:restricted?setImgBg:saveImgBg,onClose:()=>setKidsImgOpen(false),langOptions:[{key:"maori",name:"Māori"}].concat(langCfg.morioriOn?[{key:"moriori",name:"Moriori"}]:[]).concat((langCfg.bank||[]).map(b=>({key:b.key,name:b.name||b.key})))})
     );
   }
   const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",padding:"7px 9px",outline:"none",boxSizing:"border-box"};
@@ -6403,6 +6457,7 @@ function LibraryDetailsEditor({showToast,allWorkoutNames}){
   const [loaded,setLoaded]=useState(false);
   const [saving,setSaving]=useState(false);
   const [q,setQ]=useState("");
+  const [kidsOrphans,setKidsOrphans]=useState({});
   const [open,setOpen]=useState({});const [lang,setLang]=useState({morioriOn:false,featured:null,featuredKeys:[],bank:[],shades:["#1d9bf0","#5bb8f5","#9dd4fb","#ffcf5c","#8cd98c","#ff9e9e"]});
   function splitReps(v){const m=(v||"").match(/^\s*((?:\d+(?:\s*-\s*\d+)?\s*reps?)|(?:x\s*\d+))\s*\/\s*(.+)$/i);return m?{reps:m[1].trim(),weight:m[2].trim()}:{reps:"",weight:(v||"")};}
   function readPresc(p){if(!p)return{reps:"",c:"",o:"",d:""};if(p.reps!==undefined)return{reps:p.reps||"",c:p.c||"",o:p.o||"",d:p.d||""};const sc=splitReps(p.c||""),so=splitReps(p.o||""),sd=splitReps(p.d||"");return{reps:(sc.reps||so.reps||sd.reps||""),c:sc.weight,o:so.weight,d:sd.weight};}
@@ -6426,7 +6481,7 @@ function LibraryDetailsEditor({showToast,allWorkoutNames}){
     });
     const arr=Object.values(map).sort((a,b)=>a.ex.localeCompare(b.ex));
     arr.forEach(it=>it.durs.sort((a,b)=>durVal(a.dur)-durVal(b.dur)));
-    var _lr2=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__LANGS__")+"&select=content");var _lc={morioriOn:false,featured:null,featuredKeys:[],bank:[],shades:["#1d9bf0","#5bb8f5","#9dd4fb","#ffcf5c","#8cd98c","#ff9e9e"]};if(_lr2&&_lr2.length&&_lr2[0].content){try{_lc=Object.assign(_lc,JSON.parse(_lr2[0].content));}catch(e){}}if(!_lc.shades||!_lc.shades.length)_lc.shades=["#1d9bf0","#5bb8f5","#9dd4fb","#ffcf5c","#8cd98c","#ff9e9e"];if(!Array.isArray(_lc.featuredKeys)||!_lc.featuredKeys.length){_lc.featuredKeys=_lc.featured?[_lc.featured]:[];}var _bk=(_lc.bank||[]).map(function(b){return b.key;});arr.forEach(function(it){it.tr={moriori:((L.moriori||{})[it.ex]||"")};_bk.forEach(function(k){it.tr[k]=((L[k]||{})[it.ex]||"");});});setLang(_lc);setItems(arr);setLoaded(true);
+    var _lr2=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__LANGS__")+"&select=content");var _lc={morioriOn:false,featured:null,featuredKeys:[],bank:[],shades:["#1d9bf0","#5bb8f5","#9dd4fb","#ffcf5c","#8cd98c","#ff9e9e"]};if(_lr2&&_lr2.length&&_lr2[0].content){try{_lc=Object.assign(_lc,JSON.parse(_lr2[0].content));}catch(e){}}if(!_lc.shades||!_lc.shades.length)_lc.shades=["#1d9bf0","#5bb8f5","#9dd4fb","#ffcf5c","#8cd98c","#ff9e9e"];if(!Array.isArray(_lc.featuredKeys)||!_lc.featuredKeys.length){_lc.featuredKeys=_lc.featured?[_lc.featured]:[];}var _bk=(_lc.bank||[]).map(function(b){return b.key;});arr.forEach(function(it){it.kids=((L.kids||{})[it.ex]||"");it.tr={moriori:((L.moriori||{})[it.ex]||"")};_bk.forEach(function(k){it.tr[k]=((L[k]||{})[it.ex]||"");});});var _ko={};Object.keys(L.kids||{}).forEach(function(k){if(!map[k])_ko[k]=L.kids[k];});setKidsOrphans(_ko);setLang(_lc);setItems(arr);setLoaded(true);
   })();},[]);
   function setField(ex,field,val){setItems(its=>its.map(it=>it.ex===ex?{...it,[field]:val}:it));}function setTr(ex,lk,val){setItems(its=>its.map(it=>it.ex===ex?{...it,tr:{...(it.tr||{}),[lk]:val}}:it));}
   function setDur(ex,dur,field,val){setItems(its=>its.map(it=>it.ex!==ex?it:{...it,durs:it.durs.map(d=>d.dur===dur?{...d,[field]:val}:d)}));}
@@ -6437,14 +6492,15 @@ function LibraryDetailsEditor({showToast,allWorkoutNames}){
   function removeDuration(ex,dur){setItems(its=>its.map(it=>it.ex===ex?{...it,durs:it.durs.filter(d=>d.dur!==dur)}:it));}
   async function save(){
     setSaving(true);
-    const maori={},presc={},moriori={},bankMaps={};(lang.bank||[]).forEach(function(b){bankMaps[b.key]={};});
+    const maori={},presc={},moriori={},bankMaps={},kids=Object.assign({},kidsOrphans);(lang.bank||[]).forEach(function(b){bankMaps[b.key]={};});
     items.forEach(it=>{
       const nm=(it.name||it.ex||"").trim().toUpperCase();
       if(!nm)return;
+      delete kids[nm];if(it.kids&&(""+it.kids).trim())kids[nm]=(""+it.kids).trim().toUpperCase();
       if(it.maori&&it.maori.trim())maori[nm]=it.maori.trim();var _tr=it.tr||{};if(_tr.moriori&&(""+_tr.moriori).trim())moriori[nm]=(""+_tr.moriori).trim();(lang.bank||[]).forEach(function(b){var v=_tr[b.key];if(v&&(""+v).trim())bankMaps[b.key][nm]=(""+v).trim();});
       it.durs.forEach(d=>{presc[nm+"|"+d.dur]={reps:(d.reps||"").trim(),c:(d.c||"").trim(),o:(d.o||"").trim(),d:(d.d||"").trim()};});
     });
-    const newLib=Object.assign({maori:maori,presc:presc,moriori:moriori},bankMaps);
+    const newLib=Object.assign({maori:maori,presc:presc,moriori:moriori},bankMaps,{kids:kids});
     const ex=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(LIB_KEY)+"&select=class_name");
     if(ex&&ex.length)await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent(LIB_KEY),{content:JSON.stringify(newLib),updated_at:Date.now()});
     else await sbPost("coaching_notes",{class_name:LIB_KEY,content:JSON.stringify(newLib),updated_at:Date.now()});var _lx=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__LANGS__")+"&select=class_name");if(_lx&&_lx.length)await sbPatch("coaching_notes","class_name=eq."+encodeURIComponent("__LANGS__"),{content:JSON.stringify(lang),updated_at:Date.now()});else await sbPost("coaching_notes",{class_name:"__LANGS__",content:JSON.stringify(lang),updated_at:Date.now()});
@@ -6478,7 +6534,7 @@ function LibraryDetailsEditor({showToast,allWorkoutNames}){
   if(!loaded)return React.createElement("div",{style:{color:"#444",fontSize:11,padding:"12px 0"}},"Loading library…");
   const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#fff",fontSize:12,padding:"7px 9px",outline:"none",fontFamily:"inherit"};
   const ql=q.trim().toUpperCase();
-  const filtered=(items||[]).filter(it=>!ql||(it.name||it.ex).toUpperCase().includes(ql)||(it.maori||"").toUpperCase().includes(ql));
+  const filtered=(items||[]).filter(it=>!ql||(it.name||it.ex).toUpperCase().includes(ql)||(it.maori||"").toUpperCase().includes(ql)||(it.kids||"").toUpperCase().includes(ql));
   return React.createElement("div",null,
     React.createElement("div",{style:{fontSize:11,color:"#777",lineHeight:1.5,marginBottom:10}},"Edit the master exercise library. Saving updates every SAVED workout that uses each exercise + duration."),React.createElement("div",{style:{border:"1px solid #1d3a5a",background:"#0a1a2a",padding:"10px 12px",marginBottom:12}},React.createElement("div",{style:{fontSize:9,letterSpacing:"0.1em",color:"#8cd0ff",fontWeight:700,marginBottom:8}},"LANGUAGES ON THE BOARD (STATION SCREEN)"),React.createElement("div",{style:{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}},React.createElement("span",{style:{fontSize:12,color:lang.shades[0],fontStyle:"italic"}},"Māori — always on"),React.createElement("label",{style:{fontSize:12,color:lang.shades[1],fontStyle:"italic",display:"flex",alignItems:"center",gap:5,cursor:"pointer"}},React.createElement("input",{type:"checkbox",checked:!!lang.morioriOn,onChange:e=>setLang(l=>({...l,morioriOn:e.target.checked}))}),"Moriori"),React.createElement("span",{style:{fontSize:12,color:lang.shades[2],display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}},"Featured (up to 4):",(lang.bank||[]).length?(lang.bank||[]).map(function(b){var on=(lang.featuredKeys||[]).indexOf(b.key)>=0;var atCap=!on&&(lang.featuredKeys||[]).length>=4;return React.createElement("label",{key:b.key,style:{fontSize:11,color:atCap?"#555":"#cfd8e3",display:"flex",alignItems:"center",gap:4,cursor:atCap?"not-allowed":"pointer"}},React.createElement("input",{type:"checkbox",checked:on,disabled:atCap,onChange:e=>setLang(l=>{var cur=l.featuredKeys||[];if(e.target.checked){if(cur.length>=4)return l;return {...l,featuredKeys:[...cur,b.key],featured:null};}return {...l,featuredKeys:cur.filter(function(k){return k!==b.key;})};})}),b.name);}):React.createElement("span",{style:{fontSize:11,color:"#5f6b76"}},"\u2014 add a language below \u2014")),React.createElement("button",{onClick:()=>{var n=(typeof window!=="undefined"&&window.prompt)?window.prompt("Add a language (e.g. Samoan):"):"";n=(n||"").trim();if(!n)return;var key=n.toLowerCase().replace(/[^a-z0-9]/g,"");if(!key)return;setLang(l=>((l.bank||[]).some(b=>b.key===key)?l:{...l,bank:[...(l.bank||[]),{key:key,name:n}]}));},style:{background:"#161616",color:"#9fb3c4",border:"1px solid #35424d",fontSize:10,letterSpacing:"0.06em",padding:"4px 9px",cursor:"pointer"}},"+ ADD LANGUAGE")),React.createElement("div",{style:{fontSize:10,color:"#5f6b76",marginTop:7,lineHeight:1.4}},"Fill the translations below. A language only appears on the board once it\u2019s switched on here AND has a translation for that exercise.")),
     React.createElement("input",{value:q,onChange:e=>setQ(e.target.value),placeholder:"Search exercise…",style:{...inS,width:"100%",marginBottom:12}}),
@@ -6499,6 +6555,8 @@ function LibraryDetailsEditor({showToast,allWorkoutNames}){
         isOpen&&React.createElement("div",{style:{padding:"12px",background:"#0b0b0b"}},
           React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3}},"EXERCISE NAME"),
           React.createElement("input",{value:it.name||"",onChange:e=>setField(it.ex,"name",e.target.value.toUpperCase()),placeholder:"Exercise name",style:{...inS,width:"100%",marginBottom:12,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.05em",fontSize:14}}),
+          React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3}},"KIDS EXERCISE NAME"),
+          React.createElement("input",{"data-kids-name":"1",value:it.kids||"",onChange:e=>setField(it.ex,"kids",e.target.value.toUpperCase()),placeholder:"— same as exercise name",style:{...inS,width:"100%",marginBottom:12,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.05em",fontSize:14}}),
           React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3}},"MĀORI NAME"),
           React.createElement("input",{value:it.maori,onChange:e=>setField(it.ex,"maori",e.target.value),placeholder:"—",style:{...inS,width:"100%",marginBottom:12,color:"#1d9bf0",fontStyle:"italic"}}),React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3}},"MORIORI NAME"),React.createElement("input",{value:(it.tr&&it.tr.moriori)||"",onChange:e=>setTr(it.ex,"moriori",e.target.value),placeholder:"—",style:{...inS,width:"100%",marginBottom:12,color:lang.shades[1],fontStyle:"italic"}}),(lang.bank||[]).map(b=>React.createElement("div",{key:b.key},React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3}},(b.name||b.key).toUpperCase()+" NAME"),React.createElement("input",{value:(it.tr&&it.tr[b.key])||"",onChange:e=>setTr(it.ex,b.key,e.target.value),placeholder:"—",style:{...inS,width:"100%",marginBottom:12,color:lang.shades[2],fontStyle:"italic"}}))),
           it.durs.length===0&&React.createElement("div",{style:{fontSize:10,color:"#444",marginBottom:8}},"No durations yet — add one below."),
