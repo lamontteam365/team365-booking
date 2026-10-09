@@ -435,6 +435,25 @@ html,body{background:#080808;min-height:100vh}
 .sp-month-arrow:hover:not(:disabled){color:#fff}
 .sp-month-arrow:disabled{color:#252525;cursor:default}
 .sp-month-lbl{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.14em;color:#fff}
+/* MONTH view for class bookings (10 Oct 2026, from Sydenham) */
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;padding:0 12px}
+.cal-dow{text-align:center;font-size:8px;letter-spacing:0.14em;color:#777;font-weight:600;padding:4px 0}
+.cal-cell{min-height:62px;min-width:0;background:#000;border:1px solid #2a2a2a;border-radius:0;padding:4px 3px;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:2px;cursor:pointer;text-align:left;font-family:'DM Sans',sans-serif;overflow:hidden}
+.cal-cell.out{opacity:0.35}
+.cal-cell:disabled{cursor:default}
+.cal-cell.today{border-color:#888}
+.cal-cell.sel{border-color:#fff;background:#111}
+.cal-num{font-family:'Bebas Neue',sans-serif;font-size:15px;color:#bbb;line-height:1;padding-left:2px}
+.cal-cell.today .cal-num{color:#1d9bf0}
+.cal-lbl{font-size:7px;letter-spacing:0.02em;color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:2px solid #1d9bf0;padding-left:3px;line-height:1.4}
+.cal-more{font-size:7px;color:#888;padding-left:3px}
+.bk-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:#1d9bf0;margin-left:4px;vertical-align:middle}
+.today-inline{display:block;margin:4px auto 0;background:none;border:none;color:#1d9bf0;font-family:'DM Sans',sans-serif;font-size:9px;letter-spacing:0.14em;font-weight:600;cursor:pointer;padding:2px 0}
+/* Read aloud ▶ (10 Oct 2026, from Sydenham) */
+.play-btn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;background:none;color:#fff;cursor:pointer;flex-shrink:0}
+.play-btn svg{margin-left:1px}
+.play-btn.on{color:#1d9bf0}
+.play-btn.on svg{margin-left:0}
 .fp-section{margin-top:16px;padding:14px;background:#0a0a0a;border:1px solid #888;border-radius:0}
 .fp-title{font-size:10px;letter-spacing:0.16em;color:#aaa;font-weight:600;margin-bottom:12px}
 .fp-msg{font-size:11px;color:#1d9bf0;letter-spacing:0.04em;margin-top:10px;line-height:1.6}
@@ -973,6 +992,122 @@ function bookingUpcoming(b){
 const isToday=d=>toDS(d)===toDS(new Date());
 const isPastD=d=>toDS(d)<toDS(new Date());
 const fmt12=t=>{const[h,m]=t.split(":").map(Number);return`${h%12||12}:${String(m).padStart(2,"0")}${h<12?"am":"pm"}`;};
+// ── Voice to text (10 Oct 2026, from Sydenham) ───────────────────────────────
+// The browser's own speech recognition (Chrome, Edge, iPhone Safari). Hold the
+// mic to talk and let go to stop, or tap to start and tap again to finish.
+// Words are added after what's already typed; nothing is sent automatically.
+// Hidden where the browser has no speech recognition (e.g. Firefox).
+const VOICE_ACCENT="#1d9bf0";
+const VOICE_SR=typeof window!=="undefined"?(window.SpeechRecognition||window.webkitSpeechRecognition||null):null;
+const VOICE_ERR={"not-allowed":"Microphone blocked. Click the mic icon in the address bar and allow it.","service-not-allowed":"Microphone blocked. Click the mic icon in the address bar and allow it.","network":"Voice needs an internet connection.","audio-capture":"No microphone found.","language-not-supported":"Voice isn't supported in this browser."};
+const LISTEN_PH=t=>t.latched?"Listening… tap the mic when you're done":"Listening… let go when you're done";
+// If the browser is asking for microphone permission, letting go doesn't stop it: it keeps listening once allowed.
+function useHoldToTalk(value,onChange){
+  const rec=useRef(null);const base=useRef("");const cb=useRef(onChange);cb.current=onChange;
+  const [on,setOn]=useState(false);const [latched,setLatched]=useState(false);const [err,setErr]=useState("");
+  const downAt=useRef(0);const live=useRef(false);const errT=useRef(null);
+  function showErr(m){setErr(m);clearTimeout(errT.current);errT.current=setTimeout(()=>setErr(""),7000);}
+  function begin(){
+    const r=new VOICE_SR();r.lang="en-NZ";r.continuous=true;r.interimResults=true;
+    base.current=String(value||"");if(base.current&&!/\s$/.test(base.current))base.current+=" ";
+    live.current=false;
+    r.onaudiostart=()=>{live.current=true;};
+    // Rebuild what's been said from ALL results every time. Phones (Android Chrome, iPhone) send each new
+    // result with the earlier words repeated in it, or send the same results again; adding them up repeats text.
+    r.onresult=ev=>{live.current=true;const parts=[];
+      for(let i=0;i<ev.results.length;i++){const t=String((ev.results[i][0]||{}).transcript||"").trim();if(!t)continue;
+        const prev=parts.length?parts[parts.length-1]:null;const tl=t.toLowerCase(),pl=prev&&prev.toLowerCase();
+        if(prev!==null&&tl.startsWith(pl))parts[parts.length-1]=t;        // repeats the last one and adds to it
+        else if(prev!==null&&pl.startsWith(tl)){}                        // a shorter repeat of the last one
+        else parts.push(t);}
+      let said=parts.join(" ");if(!base.current.trim()||/[.!?]\s*$/.test(base.current))said=said.charAt(0).toUpperCase()+said.slice(1);
+      cb.current((base.current+said).replace(/^\s+/,""));};
+    r.onend=()=>{if(rec.current===r)rec.current=null;setOn(false);setLatched(false);};
+    r.onerror=ev=>{const c=ev&&ev.error;if(c&&VOICE_ERR[c])showErr(VOICE_ERR[c]);};
+    try{r.start();rec.current=r;setOn(true);setErr("");try{navigator.vibrate&&navigator.vibrate(20);}catch(_){}}
+    catch(e){rec.current=null;showErr("Couldn't start the microphone. Try again.");}
+  }
+  function stop(){if(rec.current){try{rec.current.stop();}catch(_){}}}
+  function down(e){if(e){e.preventDefault();try{e.currentTarget.setPointerCapture(e.pointerId);}catch(_){}}
+    if(!VOICE_SR)return;
+    if(rec.current){downAt.current=0;stop();return;}   // tap while listening = finish
+    downAt.current=Date.now();setLatched(false);begin();}
+  function up(){if(!downAt.current)return;const held=Date.now()-downAt.current;downAt.current=0;
+    if(held<450||!live.current){setLatched(true);return;}   // quick tap, or still waiting on permission: keep listening
+    stop();}
+  // halt: stop listening now and ignore any words still on their way (call it on POST / SEND / CANCEL).
+  function halt(){const r=rec.current;if(r){r.onresult=null;try{r.stop();}catch(_){}}downAt.current=0;}
+  // Closing the box (SAVE, CANCEL, leaving the screen) halts too, so late words can't land in a closed draft.
+  useEffect(()=>()=>{halt();clearTimeout(errT.current);},[]);
+  return {on,latched,err,start:down,stop:up,halt};
+}
+// The mic button.
+function MicBtn({talk,kind,style}){
+  if(!VOICE_SR)return null;
+  return React.createElement("button",{type:"button","data-mic":kind||"msg","data-listening":talk.on?"1":"0","aria-label":"Talk",title:"Hold to talk, or tap to start and tap again to stop",
+    onPointerDown:talk.start,onPointerUp:talk.stop,onPointerCancel:talk.stop,onContextMenu:e=>e.preventDefault(),
+    style:{flexShrink:0,width:34,height:34,display:"flex",alignItems:"center",justifyContent:"center",border:"none",padding:0,cursor:"pointer",borderRadius:"50%",
+      background:talk.on?VOICE_ACCENT:"none",touchAction:"none",userSelect:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none",transition:"background .15s",...(style||{})}},
+    React.createElement("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:talk.on?"#fff":"#8a8a8a",strokeWidth:1.8,strokeLinecap:"round",strokeLinejoin:"round",style:{display:"block",pointerEvents:"none"}},
+      React.createElement("rect",{x:9,y:3,width:6,height:11,rx:3}),React.createElement("path",{d:"M5 11a7 7 0 0 0 14 0M12 18v3"})));
+}
+// The red line under a box when the mic can't start.
+const MicErr=({talk})=>talk.err?React.createElement("div",{"data-mic-err":"1",style:{fontSize:11,color:"#e06040",margin:"6px 2px 0",lineHeight:1.4}},talk.err):null;
+// A textarea with its own mic in the bottom-right corner. onChange receives the TEXT, not the event.
+// Each one has its own mic, so it's safe inside .map() loops (step lists, note sections).
+// The textarea's flex / outer margins move to the wrapper so the box sits exactly where it did.
+function VoiceTextarea({value,onChange,placeholder,style,micStyle,kind,...rest}){
+  const talk=useHoldToTalk(value,onChange);
+  // A box cleared from outside (ADD NOTE, SEND) while the mic is finishing stays clear.
+  useEffect(()=>{if(!String(value||"")&&talk.on)talk.halt();},[value]);
+  const {flex,margin,marginTop,marginBottom,...st}=style||{};
+  const mic=!!VOICE_SR&&!rest.disabled&&!rest.readOnly;
+  return React.createElement("div",{"data-voice-box":kind||"text",style:{flex,margin,marginTop,marginBottom,minWidth:flex?0:undefined}},
+    React.createElement("div",{style:{position:"relative"}},
+      React.createElement("textarea",{...rest,value:value||"",onChange:e=>onChange(e.target.value),
+        placeholder:talk.on?LISTEN_PH(talk):placeholder,
+        style:{...st,display:"block",...(flex?{width:"100%",boxSizing:"border-box"}:{}),...(mic?{paddingRight:46}:{})}}),
+      mic&&React.createElement(MicBtn,{talk,kind:kind||"text",style:{position:"absolute",right:6,bottom:8,...(micStyle||{})}})),
+    React.createElement(MicErr,{talk}));
+}
+// ── Read aloud (10 Oct 2026, from Sydenham) ──────────────────────────────────
+// ▶ reads a panel out with the phone's or computer's built-in voice (free, no
+// internet on most phones). NZ voice first, then Australian, British, any English.
+const SPEECH=(typeof window!=="undefined"&&window.speechSynthesis&&typeof window.SpeechSynthesisUtterance!=="undefined")?window.speechSynthesis:null;
+let SPEAK_ID=null;const SPEAK_SUBS=new Set();
+const speakNotify=()=>SPEAK_SUBS.forEach(f=>f());
+// The voice list loads late on some phones, so this runs at tap time, not at load.
+function pickVoice(){const vs=(SPEECH&&SPEECH.getVoices())||[];
+  return vs.find(v=>/en-NZ/i.test(v.lang))||vs.find(v=>/en-AU/i.test(v.lang))||vs.find(v=>/en-GB/i.test(v.lang))||vs.find(v=>/^en/i.test(v.lang))||null;}
+const speechText=t=>String(t||"").replace(/^\s*\d+[.)]\s+/,"").replace(/\s*[→·]\s*/g,", ").replace(/_{3,}/g," to be decided ").replace(/(\d)\s*[–-]\s*(\d)/g,"$1 to $2").replace(/\*\*/g,"").replace(/\s+/g," ").replace(/\s+([.,])/g,"$1").replace(/\.{2,}/g,".").trim();
+function stopSpeaking(){if(SPEECH)SPEECH.cancel();SPEAK_ID=null;speakNotify();}
+// Stop only if it's this panel that's reading (closing one panel doesn't silence another).
+function stopSpeakingIf(id){if(SPEAK_ID===id)stopSpeaking();}
+function speakLines(id,lines){
+  if(!SPEECH)return;SPEECH.cancel();SPEAK_ID=id;speakNotify();
+  const v=pickVoice();const list=lines.map(speechText).filter(Boolean);
+  if(!list.length){SPEAK_ID=null;speakNotify();return;}
+  // One utterance per line: iPhones cut off long passages.
+  list.forEach((t,k)=>{const u=new SpeechSynthesisUtterance(t);if(v)u.voice=v;u.lang=v?v.lang:"en-NZ";u.rate=0.95;
+    if(k===list.length-1){u.onend=u.onerror=()=>{if(SPEAK_ID===id){SPEAK_ID=null;speakNotify();}};}
+    SPEECH.speak(u);});
+}
+function useSpeaking(id){const [,f]=useState(0);useEffect(()=>{const l=()=>f(x=>x+1);SPEAK_SUBS.add(l);return()=>{SPEAK_SUBS.delete(l);};},[]);return SPEAK_ID===id;}
+// ▶ / ■ button. lines = array of strings, or a function returning one (read at tap time, so it's always current).
+// iPhone needs a real tap to start speech, so speaking starts inside the click handler.
+function PlayBtn({id,lines}){
+  const on=useSpeaking(id);
+  if(!SPEECH)return null;
+  const go=e=>{e.stopPropagation();if(on)stopSpeaking();else speakLines(id,typeof lines==="function"?lines():lines);};
+  return React.createElement("span",{role:"button",tabIndex:0,className:"play-btn"+(on?" on":""),"data-play":id,title:on?"Stop":"Read aloud","aria-label":on?"Stop reading":"Read aloud",
+    onClick:go,onKeyDown:e=>{if(e.key==="Enter"||e.key===" ")go(e);}},
+    on?React.createElement("svg",{width:16,height:16,viewBox:"0 0 10 10"},React.createElement("rect",{x:1.5,y:1.5,width:7,height:7,fill:"currentColor"}))
+      :React.createElement("svg",{width:16,height:16,viewBox:"0 0 10 10"},React.createElement("path",{d:"M2 1l7 4-7 4z",fill:"currentColor"})));
+}
+// Title + body sections → lines to read.
+const sectionLines=(heading,list)=>[heading,...(list||[]).flatMap(s=>[s.title,...String(s.body||"").split(/\n+/)])].filter(x=>String(x||"").trim());
+// The open onboarding panel's title (custom name if renamed), for the ▶ heading.
+const PanelTitleCtx=React.createContext("");
 const dateStr=d=>`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 // ── Add to Calendar ───────────────────────────────────────────────────────────
 // Studio location records, edited in Admin > Onboarding > Studio Location.
@@ -1252,7 +1387,7 @@ function NudgeFunctions({showToast}){
         style:{background:on?"#fff":"#222",color:on?"#000":"#1d9bf0",border:"1px solid "+(on?"#fff":"#1d9bf0"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},on?"ON":"OFF")),
     React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #222",padding:"11px 14px",marginBottom:10}},
       React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#777",fontWeight:700,marginBottom:6}},"THE MESSAGE"),
-      React.createElement("textarea",{value:text,onChange:e=>setText(e.target.value),maxLength:1000,rows:4,"data-nudge-text":"1",
+      React.createElement(VoiceTextarea,{value:text,onChange:setText,maxLength:1000,rows:4,"data-nudge-text":"1",kind:"nudge",
         style:{width:"100%",background:"#141414",border:"1px solid #262626",borderRadius:6,color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:13,lineHeight:1.5,padding:"8px 10px",outline:"none",boxSizing:"border-box",resize:"vertical"}}),
       React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginTop:6}},
         React.createElement("div",{style:{fontSize:9,color:"#555",lineHeight:1.5}},"{name} becomes their first name. It arrives in their Team 365 messages, and their reply comes back to you."),
@@ -1416,11 +1551,11 @@ function MyHealthScreening({session,memberData,setMemberData}){
       ?React.createElement(React.Fragment,null,
         React.createElement("div",{style:{marginBottom:10}},
           React.createElement("div",{style:lblS},"INJURIES OR CONDITIONS"),
-          React.createElement("textarea",{"data-mh-field":"medical_conditions",value:ed.medical_conditions||"",placeholder:"List any injuries or conditions, or write 'None'",onChange:e=>{const v=e.target.value;setEd(p=>({...p,medical_conditions:v}));setErr("");},style:taS})
+          React.createElement(VoiceTextarea,{"data-mh-field":"medical_conditions",value:ed.medical_conditions||"",placeholder:"List any injuries or conditions, or write 'None'",onChange:v=>{setEd(p=>({...p,medical_conditions:v}));setErr("");},style:taS,kind:"health"})
         ),
         React.createElement("div",{style:{marginBottom:10}},
           React.createElement("div",{style:lblS},"CURRENT MEDICATIONS"),
-          React.createElement("textarea",{"data-mh-field":"medications",value:ed.medications||"",placeholder:"List any current medications, or write 'None'",onChange:e=>{const v=e.target.value;setEd(p=>({...p,medications:v}));setErr("");},style:taS})
+          React.createElement(VoiceTextarea,{"data-mh-field":"medications",value:ed.medications||"",placeholder:"List any current medications, or write 'None'",onChange:v=>{setEd(p=>({...p,medications:v}));setErr("");},style:taS,kind:"health"})
         ),
         React.createElement("div",{style:{marginBottom:10}},
           React.createElement("div",{style:lblS},"FITNESS LEVEL"),
@@ -2190,11 +2325,11 @@ function MemberProfileOverlay({onGrantSubscriber,member,bookings,onClose,current
         ?React.createElement(React.Fragment,null,
           React.createElement("div",{style:{marginBottom:8}},
             React.createElement("div",{style:{fontSize:9,color:"#666",letterSpacing:"0.1em",marginBottom:4}},"INJURIES OR CONDITIONS"),
-            React.createElement("textarea",{value:extraEdits.medical_conditions,onChange:e=>setExtraEdits(p=>({...p,medical_conditions:e.target.value})),style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:300,padding:"10px 12px",borderRadius:0,outline:"none",resize:"none",minHeight:60,lineHeight:1.6}})
+            React.createElement(VoiceTextarea,{value:extraEdits.medical_conditions,kind:"health",onChange:v=>setExtraEdits(p=>({...p,medical_conditions:v})),style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:300,padding:"10px 12px",borderRadius:0,outline:"none",resize:"none",minHeight:60,lineHeight:1.6}})
           ),
           React.createElement("div",{style:{marginBottom:8}},
             React.createElement("div",{style:{fontSize:9,color:"#666",letterSpacing:"0.1em",marginBottom:4}},"CURRENT MEDICATIONS"),
-            React.createElement("textarea",{value:extraEdits.medications,onChange:e=>setExtraEdits(p=>({...p,medications:e.target.value})),style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:300,padding:"10px 12px",borderRadius:0,outline:"none",resize:"none",minHeight:60,lineHeight:1.6}})
+            React.createElement(VoiceTextarea,{value:extraEdits.medications,kind:"health",onChange:v=>setExtraEdits(p=>({...p,medications:v})),style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:300,padding:"10px 12px",borderRadius:0,outline:"none",resize:"none",minHeight:60,lineHeight:1.6}})
           ),
           React.createElement("div",{style:{marginBottom:8}},
             React.createElement("div",{style:{fontSize:9,color:"#666",letterSpacing:"0.1em",marginBottom:6}},"FITNESS LEVEL"),
@@ -2300,7 +2435,7 @@ function MemberProfileOverlay({onGrantSubscriber,member,bookings,onClose,current
         ),
         showNotes&&React.createElement(React.Fragment,null,
           React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}},
-            React.createElement("textarea",{value:noteDraft,onChange:e=>setNoteDraft(e.target.value),placeholder:"Add a note about this member...",rows:3,style:{flex:1,background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:0,color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:13,padding:"10px 12px",resize:"vertical"}})
+            React.createElement(VoiceTextarea,{value:noteDraft,onChange:setNoteDraft,kind:"member-note",placeholder:"Add a note about this member...",rows:3,style:{flex:1,background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:0,color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:13,padding:"10px 12px",resize:"vertical"}})
           ),
           React.createElement("button",{onClick:addNote,disabled:savingNote||!noteDraft.trim(),style:{width:"100%",background:noteDraft.trim()?"#fff":"#222",color:noteDraft.trim()?"#000":"#555",border:"1px solid "+(noteDraft.trim()?"#fff":"#333"),borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",padding:"10px",cursor:noteDraft.trim()?"pointer":"default",marginBottom:14}},savingNote?"SAVING...":"ADD NOTE"),
           !notesLoaded
@@ -2640,6 +2775,8 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
   const [tagQuery,setTagQuery]=useState("");
   const [showTags,setShowTags]=useState(false);
   const MAX_CHARS=300;
+  const postTalk=useHoldToTalk(text,v=>setText(String(v).slice(0,MAX_CHARS)));
+  const replyTalk=useHoldToTalk(replyText,v=>setReplyText(String(v).slice(0,300)));
   const meLc=String((session&&session.email)||"").toLowerCase();
   const [views,setViews]=useState({});        // {postId: [email, …]} oldest first
   const [seenNames,setSeenNames]=useState({});
@@ -2739,6 +2876,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
   // the wording, and stamps edited_at itself → "Edited" bottom right.
   const [editing,setEditing]=useState(null);   // {id, text}
   const [editSaving,setEditSaving]=useState(false);
+  const editTalk=useHoldToTalk(editing?editing.text:"",v=>setEditing(e=>e?{...e,text:String(v).slice(0,MAX_CHARS)}:e));
   async function saveEdit(p){
     const content=String((editing&&editing.text)||"").trim();
     if(!content||content.length>MAX_CHARS||editSaving)return;
@@ -2752,10 +2890,14 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
   const isMine=p=>String(p.author_email||"").toLowerCase()===meLc;
   const editBox=(p,isReply)=>React.createElement("div",{className:isReply?undefined:"post-edit-box","data-post-edit-box":p.id,style:isReply?{marginTop:4}:undefined},
     React.createElement("textarea",{className:"reply-textarea",value:editing.text,maxLength:MAX_CHARS,autoFocus:true,"data-post-edit-text":p.id,
+      placeholder:editTalk.on?LISTEN_PH(editTalk):undefined,
       onChange:e=>{const v=e.target.value;setEditing(ed=>ed?{...ed,text:v}:ed);}}),
     React.createElement("div",{className:"reply-footer"},
-      React.createElement("button",{className:"reply-cancel-btn","data-post-edit-cancel":p.id,onClick:()=>setEditing(null)},"Cancel"),
-      React.createElement("button",{className:"reply-post-btn","data-post-edit-save":p.id,onClick:()=>saveEdit(p),disabled:editSaving||!String(editing.text||"").trim()},editSaving?"...":"SAVE")));
+      React.createElement("button",{className:"reply-cancel-btn","data-post-edit-cancel":p.id,onClick:()=>{editTalk.halt();setEditing(null);}},"Cancel"),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+        React.createElement(MicBtn,{talk:editTalk,kind:"post-edit"}),
+        React.createElement("button",{className:"reply-post-btn","data-post-edit-save":p.id,onClick:()=>{editTalk.halt();saveEdit(p);},disabled:editSaving||!String(editing.text||"").trim()},editSaving?"...":"SAVE"))),
+    React.createElement(MicErr,{talk:editTalk}));
   async function handleReact(post,kind){
     const before=post;
     setPosts(prev=>prev.map(p=>p.id===post.id?postReactApply(p,meLc,kind):p));
@@ -2794,11 +2936,14 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
         showTags&&filteredMembers.length>0&&React.createElement("div",{className:"tag-dropdown"},
           filteredMembers.map((n,i)=>React.createElement("div",{key:i,className:"tag-option",onClick:()=>insertTag(n,setText,text)},n))
         ),
-        React.createElement("textarea",{className:"comm-textarea",placeholder:"Share something with the team...",value:text,maxLength:MAX_CHARS,onChange:e=>handleTextChange(e,setText)}),
+        React.createElement("textarea",{className:"comm-textarea",placeholder:postTalk.on?LISTEN_PH(postTalk):"Share something with the team...",value:text,maxLength:MAX_CHARS,onChange:e=>handleTextChange(e,setText)}),
         React.createElement("div",{className:"comm-compose-footer"},
           React.createElement("div",{className:`comm-char${charsLeft<50?" warn":""}`},`${charsLeft}`),
-          React.createElement("button",{className:"comm-post-btn",onClick:handlePost,disabled:posting||!text.trim()},posting?"...":"POST")
-        )
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+            React.createElement(MicBtn,{talk:postTalk,kind:"post"}),
+            React.createElement("button",{className:"comm-post-btn",onClick:()=>{postTalk.halt();handlePost();},disabled:posting||!text.trim()},posting?"...":"POST"))
+        ),
+        React.createElement(MicErr,{talk:postTalk})
       )
     ),
     React.createElement("div",{className:"comm-feed"},
@@ -2833,7 +2978,7 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
                 React.createElement("div",{className:"reply-author",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
                   React.createElement("span",null,r.author_name,React.createElement("span",null," replied")),
                   React.createElement("span",{style:{display:"flex",gap:10}},
-                    isMine(r)&&!(editing&&editing.id===r.id)&&React.createElement("button",{className:"post-delete","data-post-edit":r.id,style:{fontSize:"9px",color:"#555"},onClick:()=>setEditing({id:r.id,text:r.content||""})},"Edit"),
+                    isMine(r)&&!(editing&&editing.id===r.id)&&React.createElement("button",{className:"post-delete","data-post-edit":r.id,style:{fontSize:"9px",color:"#555"},onClick:()=>{editTalk.halt();setEditing({id:r.id,text:r.content||""});}},"Edit"),
                     canDeleteReply&&React.createElement("button",{className:"post-delete",style:{fontSize:"9px",color:"#333"},onClick:()=>handleDelete(r.id)},"Delete"))
                 ),
                 editing&&editing.id===r.id?editBox(r,true):React.createElement(React.Fragment,null,
@@ -2844,8 +2989,8 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
           ),
           React.createElement("div",{className:"post-actions",style:{marginTop:8}},
             React.createElement(PostReactBtn,{post,me:meLc,onReact:k=>handleReact(post,k)}),
-            React.createElement("button",{className:"post-reply-btn",onClick:()=>setReplyingTo(isReplying?null:post.id)},isReplying?"Cancel":"Reply"),
-            isMine(post)&&!(editing&&editing.id===post.id)&&React.createElement("button",{className:"post-reply-btn","data-post-edit":post.id,onClick:()=>setEditing({id:post.id,text:post.content||""})},"Edit"),
+            React.createElement("button",{className:"post-reply-btn",onClick:()=>{replyTalk.halt();setReplyingTo(isReplying?null:post.id);}},isReplying?"Cancel":"Reply"),
+            isMine(post)&&!(editing&&editing.id===post.id)&&React.createElement("button",{className:"post-reply-btn","data-post-edit":post.id,onClick:()=>{editTalk.halt();setEditing({id:post.id,text:post.content||""});}},"Edit"),
             isAdmin&&React.createElement("button",{className:`post-pin-btn${post.pinned?" pinned":""}`,onClick:()=>handlePin(post,i)},post.pinned?"Unpin":"Pin"),
             canDelete&&React.createElement("button",{className:"post-delete",onClick:()=>handleDelete(post.id)},"Delete")
           ),
@@ -2854,11 +2999,14 @@ function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
             showTags&&filteredMembers.length>0&&React.createElement("div",{className:"tag-dropdown"},
               filteredMembers.map((n,idx2)=>React.createElement("div",{key:idx2,className:"tag-option",onClick:()=>insertTag(n,setReplyText,replyText)},n))
             ),
-            React.createElement("textarea",{className:"reply-textarea",placeholder:`Reply to ${post.author_name.split(" ")[0]}...`,value:replyText,onChange:e=>handleTextChange(e,setReplyText),maxLength:300}),
+            React.createElement("textarea",{className:"reply-textarea",placeholder:replyTalk.on?LISTEN_PH(replyTalk):`Reply to ${post.author_name.split(" ")[0]}...`,value:replyText,onChange:e=>handleTextChange(e,setReplyText),maxLength:300}),
             React.createElement("div",{className:"reply-footer"},
-              React.createElement("button",{className:"reply-cancel-btn",onClick:()=>{setReplyingTo(null);setReplyText("");}}, "Cancel"),
-              React.createElement("button",{className:"reply-post-btn",onClick:()=>handleReply(post),disabled:!replyText.trim()},"REPLY")
-            )
+              React.createElement("button",{className:"reply-cancel-btn",onClick:()=>{replyTalk.halt();setReplyingTo(null);setReplyText("");}}, "Cancel"),
+              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+                React.createElement(MicBtn,{talk:replyTalk,kind:"post-reply"}),
+                React.createElement("button",{className:"reply-post-btn",onClick:()=>{replyTalk.halt();handleReply(post);},disabled:!replyText.trim()},"REPLY"))
+            ),
+            React.createElement(MicErr,{talk:replyTalk})
           )
         );
       })
@@ -3011,16 +3159,19 @@ function SchPanel({title,hint,open,onToggle,children}){
 // which the note under the box says out loud.
 function ClassBriefBox({name,briefs,onChange,value}){
   const key=(name||"").trim().toUpperCase();
+  useEffect(()=>()=>stopSpeakingIf("brief-"+key),[key]);
   const stored=key?((briefs||{})[key]||""):"";
   const isNew=!!key&&!stored;
   return React.createElement("div",{style:{marginBottom:12}},
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:4}},
-      React.createElement("label",{style:SCH_LBL},"SESSION BRIEF"),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+        React.createElement("label",{style:SCH_LBL},"SESSION BRIEF"),
+        key&&String(value||"").trim()&&React.createElement(PlayBtn,{id:"brief-"+key,lines:()=>[key,...String(value||"").split(/\n+/)]})),
       key&&React.createElement("div",{style:{fontSize:8,letterSpacing:"0.12em",fontWeight:600,color:isNew?"#e06040":"#1d9bf0"}},
         isNew?"REQUIRED":"ALREADY SET")
     ),
-    React.createElement("textarea",{value:value,rows:8,disabled:!key,
-      onChange:e=>onChange(e.target.value),
+    React.createElement(VoiceTextarea,{value:value,rows:8,disabled:!key,kind:"brief",
+      onChange:onChange,
       placeholder:key?"Session brief required \u2014 what "+key+" is and how it runs.":"Name the class first.",
       style:{...SCH_INPUT,height:"auto",lineHeight:1.7,resize:"vertical",fontSize:12,color:key?"#fff":"#333"}}),
     key&&React.createElement("div",{style:{fontSize:8,color:"#555",letterSpacing:"0.08em",lineHeight:1.6,marginTop:5}},
@@ -4880,7 +5031,10 @@ function AdminView({aqNew,bookings,setBookings,showToast,isAdmin,isMaster,mFlags
 // ── Onboarding View ──────────────────────────────────────────────────────────
 // Generic editable step list — used for both Onboarding Process and Member Journey
 // storageKey: key in coaching_notes table  defaultSteps: fallback if nothing saved  toastMsg: save confirmation
-function StepListEditor({storageKey,defaultSteps,toastMsg,showToast,loadFn,saveFn,addLabel,bodyRows,bodyPlaceholder,titlePlaceholder}){
+function StepListEditor({storageKey,defaultSteps,toastMsg,showToast,loadFn,saveFn,addLabel,bodyRows,bodyPlaceholder,titlePlaceholder,title}){
+  const panelTitle=React.useContext(PanelTitleCtx);
+  const playId="steps-"+storageKey;
+  useEffect(()=>()=>stopSpeakingIf(playId),[playId]);   // closing the panel stops the voice
   const [steps,setSteps]=useState([]);
   const [editing,setEditing]=useState(false);
   const [draft,setDraft]=useState([]);
@@ -4927,15 +5081,16 @@ function StepListEditor({storageKey,defaultSteps,toastMsg,showToast,loadFn,saveF
             style:{flex:1,background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:0,color:"#ccc",fontSize:12,padding:"6px 10px",fontFamily:"'DM Sans',sans-serif",outline:"none",letterSpacing:"0.06em"}}),
           React.createElement("button",{onClick:()=>removeStep(i),style:{background:"none",border:"1px solid #2a2a2a",borderRadius:0,padding:"3px 8px",color:"#555",fontSize:11,cursor:"pointer",flexShrink:0}},"✕")
         ),
-        React.createElement("textarea",{value:s.body,onChange:e=>updateDraft(i,"body",e.target.value),placeholder:bodyPlaceholder||"Notes (optional)",rows:bodyRows||2,
+        React.createElement(VoiceTextarea,{value:s.body,onChange:v=>updateDraft(i,"body",v),kind:"step",placeholder:bodyPlaceholder||"Notes (optional)",rows:bodyRows||2,
           style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:0,color:"#888",fontSize:12,padding:"8px 10px",fontFamily:"'DM Sans',sans-serif",lineHeight:1.6,resize:"vertical",boxSizing:"border-box",outline:"none"}})
       )),
       React.createElement("button",{onClick:addStep,style:{width:"100%",background:"none",border:"1px dashed #2a2a2a",borderRadius:0,padding:"10px",color:"#444",fontSize:10,letterSpacing:"0.12em",cursor:"pointer",marginTop:4}},addLabel||"+ ADD STEP")
     );
   }
   return React.createElement("div",null,
-    React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:12}},
-      React.createElement("button",{onClick:()=>{setDraft(steps.map(s=>({...s})));setEditing(true);},style:{background:"none",border:"1px solid #333",borderRadius:0,padding:"4px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT")
+    React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}},
+      steps.length?React.createElement(PlayBtn,{id:playId,lines:()=>sectionLines(title||panelTitle,steps)}):React.createElement("span"),
+      React.createElement("button",{onClick:()=>{stopSpeaking();setDraft(steps.map(s=>({...s})));setEditing(true);},style:{background:"none",border:"1px solid #333",borderRadius:0,padding:"4px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT")
     ),
     steps.length===0&&React.createElement("div",{style:{fontSize:10,color:"#333",letterSpacing:"0.1em",textAlign:"center",padding:"20px 0"}},"NO STEPS YET · TAP EDIT TO ADD"),
     steps.map((s,i)=>React.createElement("div",{key:i,style:{display:"flex",gap:12,marginBottom:16,paddingBottom:16,borderBottom:i<steps.length-1?"1px solid #141414":"none"}},
@@ -5033,7 +5188,7 @@ function ConcessionPricingEditor({showToast}){
         React.createElement("input",{value:p.gstLabel,onChange:e=>setP(o=>({...o,gstLabel:e.target.value})),style:I}))),
     React.createElement("div",{style:{marginBottom:12}},
       React.createElement("label",{style:L},"TERMS (OPTIONAL)"),
-      React.createElement("textarea",{value:p.terms,rows:3,placeholder:"e.g. Paid before the first class. Valid for 6 months. Non-refundable.",onChange:e=>setP(o=>({...o,terms:e.target.value})),style:{...I,resize:"vertical",lineHeight:1.6}})),
+      React.createElement(VoiceTextarea,{value:p.terms,rows:3,kind:"terms",placeholder:"e.g. Paid before the first class. Valid for 6 months. Non-refundable.",onChange:v=>setP(o=>({...o,terms:v})),style:{...I,resize:"vertical",lineHeight:1.6}})),
     React.createElement("div",{"data-aq-price":"1",style:{background:"#0e0e0e",border:"1px solid rgba(29,155,240,0.45)",padding:"10px 12px",marginBottom:12}},
       React.createElement("div",{style:{fontSize:9,letterSpacing:"0.16em",color:"#1d9bf0",fontWeight:600,marginBottom:6}},"WHAT THE CLIENT PAYS"),
       React.createElement("div",{style:{fontSize:12,color:"#ccc",lineHeight:1.7}},
@@ -5147,7 +5302,7 @@ function TrainingTierEditor({showToast}){
         React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.1em",color:"#1d9bf0",marginBottom:5}},cat),
         catEditing
           ?React.createElement("div",{style:{marginBottom:12}},
-              React.createElement("textarea",{value:catDraft.intro,onChange:e=>setCatDraft(d=>({...d,intro:e.target.value})),style:{...fld,minHeight:72,resize:"vertical"}}),
+              React.createElement(VoiceTextarea,{value:catDraft.intro,kind:"cat-intro",onChange:v=>setCatDraft(d=>({...d,intro:v})),style:{...fld,minHeight:72,resize:"vertical"}}),
               React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",gap:8}},
                 React.createElement("button",{onClick:()=>setCatDraft(null),style:{background:"none",border:"1px solid #333",padding:"4px 12px",color:"#666",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"CANCEL"),
                 React.createElement("button",{onClick:()=>saveCat(cat),disabled:catSaving,style:{background:"#1d9bf0",border:"none",padding:"4px 14px",color:"#fff",fontSize:10,letterSpacing:"0.1em",cursor:"pointer",fontWeight:600}},catSaving?"SAVING...":"SAVE")
@@ -5302,7 +5457,7 @@ function OnboardingPanel({id,title,children,openPanel,setOpenPanel,titles,onSave
             React.createElement("div",{onClick:()=>setOpenPanel(open?null:id),style:{color:"#444",fontSize:14,transition:"transform .2s",transform:open?"rotate(180deg)":"rotate(0deg)",lineHeight:1,cursor:"pointer"}},"▾")
           )
     ),
-    open&&React.createElement("div",{style:{padding:"0 14px 14px"}},children)
+    open&&React.createElement("div",{style:{padding:"0 14px 14px"}},React.createElement(PanelTitleCtx.Provider,{value:shown},children))
   );
 }
 // ── Studio location ──────────────────────────────────────────────────────────
@@ -5346,9 +5501,9 @@ function StudioLocationEditor({showToast}){
     ),
     React.createElement("div",{style:{marginBottom:14}},
       React.createElement("label",{style:L},"ARRIVAL NOTES"),
-      React.createElement("textarea",{value:notes,rows:4,
+      React.createElement(VoiceTextarea,{value:notes,rows:4,kind:"location",
         placeholder:"Which door, where to park, anything to know before 6am. Keep it short \u2014 it goes in the calendar invite.",
-        onChange:e=>{setNotes(e.target.value);setDirty(true);},style:{...I,resize:"vertical",lineHeight:1.6}})
+        onChange:v=>{setNotes(v);setDirty(true);},style:{...I,resize:"vertical",lineHeight:1.6}})
     ),
     React.createElement("button",{disabled:saving||!dirty,
       style:{width:"100%",background:dirty?"#fff":"#111",color:dirty?"#000":"#333",border:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.16em",padding:13,cursor:dirty?"pointer":"not-allowed"},
@@ -5495,6 +5650,8 @@ function CoachingNoteEditor({className,showToast,restricted}){
   const [saving,setSaving]=useState(false);
   const [loaded,setLoaded]=useState(false);
   useEffect(()=>{load();},[className]);
+  // Switching class or leaving the screen stops the voice.
+  useEffect(()=>()=>stopSpeakingIf("notes-"+className),[className]);
   function parsePlainText(text){
     return text.split(/\n\n+/).map(block=>{
       const lines=block.trim().split('\n');
@@ -5537,15 +5694,16 @@ function CoachingNoteEditor({className,showToast,restricted}){
             style:{flex:1,background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:0,color:"#ccc",fontSize:12,padding:"6px 10px",fontFamily:"'DM Sans',sans-serif",outline:"none",letterSpacing:"0.06em"}}),
           React.createElement("button",{onClick:()=>setDraft(d=>d.filter((_,idx)=>idx!==i)),style:{background:"none",border:"1px solid #2a2a2a",borderRadius:0,padding:"3px 8px",color:"#555",fontSize:11,cursor:"pointer",flexShrink:0}},"✕")
         ),
-        React.createElement("textarea",{value:s.body,onChange:e=>updateDraft(i,"body",e.target.value),placeholder:"Notes for this section",rows:4,
+        React.createElement(VoiceTextarea,{value:s.body,onChange:v=>updateDraft(i,"body",v),kind:"coach-note",placeholder:"Notes for this section",rows:4,
           style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:0,color:"#888",fontSize:12,padding:"8px 10px",fontFamily:"'DM Sans',sans-serif",lineHeight:1.6,resize:"vertical",boxSizing:"border-box",outline:"none"}})
       )),
       React.createElement("button",{onClick:()=>setDraft(d=>[...d,{title:"",body:""}]),style:{width:"100%",background:"none",border:"1px dashed #2a2a2a",borderRadius:0,padding:"10px",color:"#444",fontSize:10,letterSpacing:"0.12em",cursor:"pointer",marginTop:4}},"+ ADD SECTION")
     );
   }
   return React.createElement("div",null,
-    !restricted&&React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:12}},
-      React.createElement("button",{onClick:()=>{setDraft(sections.map(s=>({...s})));setEditing(true);},style:{background:"none",border:"1px solid #333",borderRadius:0,padding:"4px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT")
+    (!restricted||sections.length>0)&&React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}},
+      sections.length?React.createElement(PlayBtn,{id:"notes-"+className,lines:()=>sectionLines(className,sections)}):React.createElement("span"),
+      !restricted&&React.createElement("button",{onClick:()=>{stopSpeaking();setDraft(sections.map(s=>({...s})));setEditing(true);},style:{background:"none",border:"1px solid #333",borderRadius:0,padding:"4px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT")
     ),
     sections.length===0&&React.createElement("div",{style:{fontSize:10,color:"#333",letterSpacing:"0.1em",textAlign:"center",padding:"20px 0"}},restricted?"NO NOTES YET":"NO NOTES YET · TAP EDIT TO ADD"),
     sections.map((s,i)=>React.createElement("div",{key:i,style:{marginBottom:16,paddingBottom:16,borderBottom:i<sections.length-1?"1px solid #141414":"none"}},
@@ -6687,8 +6845,8 @@ function ClassBriefEditor({names,briefs,saveBriefs,showToast}){
           )
         ),
         isOpen&&React.createElement("div",{style:{padding:"0 13px 13px"}},
-          React.createElement("textarea",{value:draft[name]||"",rows:9,
-            onChange:e=>{const v=e.target.value;setDraft(d=>({...d,[name]:v}));},
+          React.createElement(VoiceTextarea,{value:draft[name]||"",rows:9,kind:"brief",
+            onChange:v=>{setDraft(d=>({...d,[name]:v}));},
             placeholder:"What this style is and how it runs.",
             style:{width:"100%",boxSizing:"border-box",background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#aaa",fontSize:12,padding:"10px",fontFamily:"'DM Sans',sans-serif",lineHeight:1.7,resize:"vertical",outline:"none",marginBottom:9}}),
           React.createElement("div",{style:{display:"flex",gap:8}},
@@ -8488,7 +8646,7 @@ Now write the ${weeks}-week class. Reply with ONLY the JSON.`;
         React.createElement("input",{className:"sp-edit-input",style:{width:70,marginBottom:0},value:aiCycleWeeksCustom,onChange:e=>setAiCycleWeeksCustom(e.target.value.replace(/[^0-9]/g,"")),placeholder:"Other"})
       ),
       React.createElement("div",{className:"sp-edit-lbl"},"CLASS REQUIREMENTS / GOALS / EQUIPMENT (optional)"),
-      React.createElement("textarea",{value:aiRequirements,onChange:e=>setAiRequirements(e.target.value),placeholder:"e.g. focus on posterior chain, full gym available, keep impact low, 45 min class",rows:3,className:"sp-edit-input",style:{width:"100%",resize:"vertical",fontFamily:"'DM Sans',sans-serif",boxSizing:"border-box"}}),
+      React.createElement(VoiceTextarea,{value:aiRequirements,onChange:setAiRequirements,kind:"ai-req",placeholder:"e.g. focus on posterior chain, full gym available, keep impact low, 45 min class",rows:3,className:"sp-edit-input",style:{width:"100%",resize:"vertical",fontFamily:"'DM Sans',sans-serif",boxSizing:"border-box"}}),
       React.createElement("button",{className:"scb-btn primary",style:{marginTop:4,marginBottom:aiCycleName.trim()?10:4,opacity:aiCycleName.trim()?1:0.35,cursor:aiCycleName.trim()?"pointer":"not-allowed"},onClick:()=>setShowAiPrompt(s=>!s),disabled:!aiCycleName.trim()},showAiPrompt?"✕ HIDE PROMPT":"📋 GENERATE PROMPT"),
       !aiCycleName.trim()&&React.createElement("div",{style:{fontSize:9,color:"#666",marginBottom:10,letterSpacing:"0.04em"}},"Enter a cycle name above first."),
       showAiPrompt&&React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1d3a5a",borderRadius:0,padding:"12px",marginBottom:10}},
@@ -9630,7 +9788,7 @@ function MemberWorkoutAdmin({member,memberView,setMemberView,isMaster,mfPasteAI}
                 React.createElement("input",{value:it.reps,onChange:e=>setItem(dk,it.id,"reps",e.target.value),placeholder:"Reps",style:{...inS,width:74,textAlign:"center"}}),
                 React.createElement("input",{value:it.duration,onChange:e=>setItem(dk,it.id,"duration",e.target.value),placeholder:"Duration e.g. 5 km / 45 sec",style:{...inS,flex:1}})
               ),
-              React.createElement("textarea",{value:it.notes,onChange:e=>setItem(dk,it.id,"notes",e.target.value),placeholder:"Notes (optional) e.g. tempo, RPE, cues. **stars** = bold.",rows:2,
+              React.createElement(VoiceTextarea,{value:it.notes,onChange:v=>setItem(dk,it.id,"notes",v),kind:"pt-item",placeholder:"Notes (optional) e.g. tempo, RPE, cues. **stars** = bold.",rows:2,
                 style:{...inS,width:"100%",lineHeight:1.6,resize:"vertical",marginBottom:0}})
               )
             );}),
@@ -9715,14 +9873,18 @@ function PtThumb({on,red}){
 function MsgComposer({value,onChange,onSend,sending,placeholder,autoFocus,kind}){
   const ref=useRef(null);
   const has=!!String(value||"").trim();
+  const talk=useHoldToTalk(value,onChange);
   useEffect(()=>{const el=ref.current;if(!el)return;el.style.height="auto";el.style.height=Math.min(el.scrollHeight,120)+"px";el.style.overflowY=el.scrollHeight>121?"auto":"hidden";},[value]);
-  return React.createElement("div",{"data-compose":kind||"msg",style:{display:"flex",alignItems:"flex-end",gap:6,background:"#141414",border:"1px solid "+(has?"#333":"#262626"),borderRadius:20,padding:"4px 6px 4px 14px"}},
-    React.createElement("textarea",{ref,value,onChange:e=>onChange(e.target.value),maxLength:2000,rows:1,autoFocus,placeholder:placeholder||"Type message...",className:"t365-compose-ta",
+  return React.createElement(React.Fragment,null,React.createElement("div",{"data-compose":kind||"msg",style:{display:"flex",alignItems:"flex-end",gap:6,background:"#141414",border:"1px solid "+(has||talk.on?"#333":"#262626"),borderRadius:20,padding:"4px 6px 4px 14px"}},
+    React.createElement("textarea",{ref,value,onChange:e=>onChange(e.target.value),maxLength:2000,rows:1,autoFocus,placeholder:talk.on?LISTEN_PH(talk):(placeholder||"Type message..."),className:"t365-compose-ta",
       style:{flex:1,minWidth:0,background:"transparent",border:"none",color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:14,lineHeight:1.45,padding:"7px 0",outline:"none",resize:"none",boxSizing:"border-box",maxHeight:120,overflowY:"hidden",scrollbarWidth:"none"}}),
-    has&&React.createElement("button",{type:"button","data-send":kind||"msg","aria-label":"Send",title:"Send",disabled:sending,onClick:onSend,
+    has&&React.createElement("button",{type:"button","data-send":kind||"msg","aria-label":"Send",title:"Send",disabled:sending,onClick:e=>{talk.halt();onSend(e);},
       style:{flexShrink:0,width:34,height:34,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",padding:0,cursor:sending?"default":"pointer",opacity:sending?0.4:1}},
       React.createElement("svg",{width:22,height:22,viewBox:"0 0 24 24",style:{display:"block"}},
-        React.createElement("path",{d:"M3.4 20.4 21.85 12.5a.55.55 0 0 0 0-1L3.4 3.6a.55.55 0 0 0-.76.62L4.6 11l9 1-9 1-1.96 6.78a.55.55 0 0 0 .76.62z",fill:PT_BLUE}))));
+        React.createElement("path",{d:"M3.4 20.4 21.85 12.5a.55.55 0 0 0 0-1L3.4 3.6a.55.55 0 0 0-.76.62L4.6 11l9 1-9 1-1.96 6.78a.55.55 0 0 0 .76.62z",fill:PT_BLUE}))),
+    // The mic is always the far-right item, so it never moves when the send arrow appears.
+    React.createElement(MicBtn,{talk,kind:kind||"msg"})),
+    React.createElement(MicErr,{talk}));
 }
 // The reply box that opens under a message: the same rounded box and arrow, plus CANCEL.
 function ptReplyBox({name,value,onChange,onSend,onCancel,sending,linkBtn}){
@@ -10576,17 +10738,34 @@ function MemberWorkoutsView({session,memberData,ttl}){
                 :unwellYear.map(ds=>React.createElement("div",{key:ds,style:{fontSize:11,letterSpacing:"0.1em",color:"#ddd",lineHeight:1.8}},parseInt(ds.slice(8),10)+" "+MONTHS[parseInt(ds.slice(5,7),10)-1].toUpperCase()))
             )
           ),
-          React.createElement("textarea",{defaultValue:dayNote(dk),
+          React.createElement(DayNoteBox,{initial:dayNote(dk),
             placeholder:exercises.length===0
               ?"Use this space as your journal \u2014 how are you feeling, sleep, nutrition, energy, soreness, anything you want to note."
               :"How did today go? Anything not tracked above \u2014 how it felt, energy, sleep, soreness, nutrition.",
-            rows:4,
-            onBlur:e=>saveNote(dk,1,e.target.value),
-            style:{width:"100%",background:"#141414",border:"1px solid #262626",borderRadius:0,color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:13,lineHeight:1.6,padding:"10px 12px",outline:"none",resize:"vertical",boxSizing:"border-box"}})
+            onSave:v=>saveNote(dk,1,v)})
         )
       )
     )
   );
+}
+// The MY NOTES box with a mic (10 Oct 2026). It saves when you leave the box, as
+// before, and also when you stop talking, so spoken notes save without a tap.
+function DayNoteBox({initial,placeholder,onSave}){
+  const [v,setV]=useState(initial||"");
+  const talk=useHoldToTalk(v,setV);
+  const latest=useRef(v);latest.current=v;
+  const was=useRef(false);
+  useEffect(()=>{if(was.current&&!talk.on)onSave(latest.current);was.current=talk.on;},[talk.on]);
+  return React.createElement(React.Fragment,null,
+    React.createElement("div",{style:{position:"relative"}},
+      React.createElement("textarea",{value:v,"data-day-note":"1",
+        placeholder:talk.on?LISTEN_PH(talk):placeholder,
+        rows:4,
+        onChange:e=>setV(e.target.value),
+        onBlur:e=>onSave(e.target.value),
+        style:{width:"100%",display:"block",background:"#141414",border:"1px solid #262626",borderRadius:0,color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:13,lineHeight:1.6,padding:"10px 12px",outline:"none",resize:"vertical",boxSizing:"border-box",...(VOICE_SR?{paddingRight:46}:{})}}),
+      React.createElement(MicBtn,{talk,kind:"journal",style:{position:"absolute",right:6,bottom:8}})),
+    React.createElement(MicErr,{talk}));
 }
 // The note for a whole day. Day notes live at w1; the fallback picks up
 // anything written into w2/w3 back when each workout had its own box, so an
@@ -13648,7 +13827,7 @@ function SubscriberProfileOverlay({member,sub,onClose,showToast,onChanged}){
       React.createElement("div",{style:lbl},"CONTACT PERSON"),
       React.createElement("input",{value:contact,onChange:e=>setContact(e.target.value),style:SUB_INP}),
       React.createElement("div",{style:lbl},"NOTES"),
-      React.createElement("textarea",{value:notes,onChange:e=>setNotes(e.target.value),rows:3,style:{...SUB_INP,resize:"vertical"}}),
+      React.createElement(VoiceTextarea,{value:notes,onChange:setNotes,kind:"sub-note",rows:3,style:{...SUB_INP,resize:"vertical"}}),
       React.createElement("button",{onClick:saveDetails,disabled:saving,style:{background:"#1d9bf0",border:"none",color:"#fff",padding:"7px 16px",fontSize:10,letterSpacing:"0.1em",fontWeight:600,cursor:"pointer",marginBottom:6}},saving?"SAVING...":"SAVE"),
       React.createElement("div",{className:"mp-section"},"ACCESS"),
       (status==="pending"||justApproved)?React.createElement(SubscriberApproveBox,{member,showToast,onApproved:()=>{setJustApproved(true);setStatus("active");if(onChanged)onChanged();}}):
@@ -14165,6 +14344,10 @@ function App(){
   const [memberPhotos,setMemberPhotos]=useState({});
   const [weekStart,setWeekStart]=useState(getWeekStart);
   const [selDay,setSelDay]=useState(getInitDay);
+  // BOOKINGS → CLASSES: WEEK | MONTH (10 Oct 2026, from Sydenham). Remembered for the session.
+  const [bookMode,setBookMode]=useState(()=>{try{return sessionStorage.getItem("t365-bookmode")||"week";}catch(e){return "week";}});
+  useEffect(()=>{try{sessionStorage.setItem("t365-bookmode",bookMode);}catch(e){}},[bookMode]);
+  const [bookMonth,setBookMonth]=useState(()=>{const d=new Date();return new Date(d.getFullYear(),d.getMonth(),1);});
   const [tab,setTab]=useState(()=>T365_DEEP_LINK==="library"?"admin":(T365_DEEP_LINK==="community"||T365_DEEP_LINK==="my")?T365_DEEP_LINK:ssGet("t365-tab","community"));
   useEffect(()=>{ssSet("t365-tab",tab);},[tab]);
   // Keep the active tab scrolled into view in both nav bars whenever the tab changes
@@ -14805,6 +14988,21 @@ function App(){
   const getBksFor=(dk,t)=>bookings.filter(b=>b.date_key===dk&&b.time===t);
   const userBooked=(dk,t)=>session&&getBksFor(dk,t).some(b=>b.email===session.email);
   const weekDots=weekDates.map(d=>isAdmin?bookings.some(b=>b.date_key===toDS(d)):session&&bookings.some(b=>b.date_key===toDS(d)&&b.email===session.email));
+  // MONTH view helpers. The classes on any date, worked out exactly as the week view does,
+  // so a class can't look different in MONTH than in WEEK.
+  const timesOn=dk=>{const rows=Object.keys(classLimits||{}).filter(k=>k.startsWith(dk+':')).map(k=>k.slice(dk.length+1));
+    return classTimesFor(dk,baseTimesFor(baseTimes,dk),rows.filter(t=>classLimits[dk+':'+t]>0),rows.filter(t=>classLimits[dk+':'+t]===0),classDow);};
+  const dotOn=dk=>isAdmin?bookings.some(b=>b.date_key===dk):!!session&&bookings.some(b=>b.date_key===dk&&b.email===session.email);
+  const dayIdxOf=d=>{const x=d.getDay();return x===0?6:x-1;};
+  // Picking a day in MONTH moves the normal week/day state, so the class list below is the existing one.
+  const pickBookDay=d=>{setWeekStart(mondayOf(d));setSelDay(dayIdxOf(d));};
+  const horizonDS=bookingHorizonDS();const todayDS=toDS(new Date());
+  const bmPrevOk=toDS(new Date(bookMonth.getFullYear(),bookMonth.getMonth(),0))>=todayDS;
+  const bmNextOk=toDS(new Date(bookMonth.getFullYear(),bookMonth.getMonth()+1,1))<=horizonDS;
+  const goBookMonth=n=>{if(n<0&&!bmPrevOk)return;if(n>0&&!bmNextOk)return;setBookMonth(new Date(bookMonth.getFullYear(),bookMonth.getMonth()+n,1));};
+  const bmCells=(()=>{if(bookMode!=="month")return [];const g0=mondayOf(bookMonth);const cells=Array.from({length:42},(_,i)=>addDays(g0,i));
+    const lastRow=cells.findIndex((d,i)=>i%7===0&&d.getMonth()!==bookMonth.getMonth()&&d>bookMonth);
+    return lastRow>0?cells.slice(0,lastRow):cells;})();
   const [expandedClass,setExpandedClass]=useState(null);
   // The session brief for a class, by its name. One generic brief per style,
   // written in Admin -> Details -> SESSION BRIEFS: ELEVATE 1 and ELEVATE 4 run
@@ -15483,6 +15681,10 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         React.createElement("span",{style:{fontSize:10,letterSpacing:"0.08em",color:concRemaining>0?"#cfcfcf":"#e06040",fontWeight:600}},concRemaining>0?"CONCESSION CARD":"CARD USED UP"),
         React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.08em",color:concRemaining>0?"#1d9bf0":"#e06040"}},concRemaining>0?(concRemaining+" of "+CONCESSION_LIMIT+" left"):"See Team 365")
       ),
+      React.createElement("div",{className:"sp-toggle seg-nav",style:{margin:"0 20px 14px"}},
+        [["week","WEEK"],["month","MONTH"]].map(([k,l])=>React.createElement("button",{key:k,"data-book-mode":k,className:"sp-toggle-btn"+(bookMode===k?" spta":""),style:{border:"1px solid #fff"},
+          onClick:()=>{setBookMode(k);if(k==="month"){const d=addDays(weekStart,selDay);setBookMonth(new Date(d.getFullYear(),d.getMonth(),1));}}},l))),
+      bookMode==="week"&&React.createElement(React.Fragment,null,
       React.createElement("div",{className:"week-nav",style:{paddingTop:0}},
         React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7)),disabled:isThisWeek},"‹"),
         React.createElement("div",{className:"wk-label"},`${MONTHS[weekDates[0].getMonth()]} ${weekDates[0].getDate()} – ${MONTHS[weekDates[6].getMonth()]} ${weekDates[6].getDate()}  ${weekDates[0].getFullYear()}`),
@@ -15494,7 +15696,22 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
           React.createElement("div",{className:"d-num"},d.getDate()),
           React.createElement("div",{className:"d-dot"})
         ))
-      ),
+      )),
+      bookMode==="month"&&React.createElement(React.Fragment,null,
+        React.createElement("div",{className:"sp-month-nav",style:{padding:"0 16px",marginBottom:10}},
+          React.createElement("button",{className:"sp-month-arrow","data-bmonth":"prev",disabled:!bmPrevOk,onClick:()=>goBookMonth(-1)},"‹"),
+          React.createElement("div",{className:"sp-month-lbl","data-bmonth-lbl":"1",style:{textAlign:"center"}},MONTHS_FULL[bookMonth.getMonth()]+" "+bookMonth.getFullYear(),
+            selDK!==todayDS&&React.createElement("button",{type:"button",className:"today-inline","data-book-today":"1",onClick:()=>{const t=new Date();pickBookDay(t);setBookMonth(new Date(t.getFullYear(),t.getMonth(),1));}},"← BACK TO TODAY")),
+          React.createElement("button",{className:"sp-month-arrow","data-bmonth":"next",disabled:!bmNextOk,onClick:()=>{if(!bmNextOk){showToast("Bookings open "+BOOKING_WEEKS+" weeks ahead");return;}goBookMonth(1);}},"›")),
+        React.createElement("div",{className:"cal-grid","data-cal-grid":"1"},
+          DAY_SHORT.map(d=>React.createElement("div",{key:d,className:"cal-dow"},d.toUpperCase())),
+          bmCells.map(d=>{const k=toDS(d);const list=timesOn(k);
+            const off=k<todayDS||k>horizonDS;
+            return React.createElement("button",{key:k,type:"button","data-bday":k,disabled:off,onClick:()=>pickBookDay(d),
+              className:"cal-cell"+(d.getMonth()!==bookMonth.getMonth()||off?" out":"")+(k===selDK?" sel":"")+(isToday(d)?" today":"")},
+              React.createElement("div",{className:"cal-num"},d.getDate(),dotOn(k)&&React.createElement("span",{className:"bk-dot"})),
+              list.slice(0,2).map(t=>{const c=classOf(k,t)||{};return React.createElement("div",{key:t,className:"cal-lbl"},fmt12(t)+" "+(c.name||""));}),
+              list.length>2&&React.createElement("div",{className:"cal-more"},"+"+(list.length-2)+" more"));}))),
       React.createElement("div",{className:"cls-wrap"},
         React.createElement("div",{className:"day-hdr",style:{textAlign:"center"}},React.createElement("span",null,DAY_LONG[selDay].toUpperCase()),React.createElement("em",null,` · ${times.length} CLASSES`)),
         !isAdmin&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,margin:"0 0 12px"}},
