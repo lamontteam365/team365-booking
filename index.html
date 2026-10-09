@@ -992,6 +992,12 @@ function bookingUpcoming(b){
 const isToday=d=>toDS(d)===toDS(new Date());
 const isPastD=d=>toDS(d)<toDS(new Date());
 const fmt12=t=>{const[h,m]=t.split(":").map(Number);return`${h%12||12}:${String(m).padStart(2,"0")}${h<12?"am":"pm"}`;};
+// The heading under a week strip: day and date on the left, how many on the right (10 Oct 2026).
+function dayHeader(d,n,one,many){
+  return React.createElement("div",{className:"day-hdr","data-day-hdr":"1",style:{display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:10}},
+    React.createElement("span",null,DAY_LONG[(d.getDay()+6)%7].toUpperCase()+" "+MONTHS_FULL[d.getMonth()]+" "+d.getDate()),
+    React.createElement("em",{style:{whiteSpace:"nowrap"}},n+" "+(n===1?one:many)));
+}
 // ── Voice to text (10 Oct 2026, from Sydenham) ───────────────────────────────
 // The browser's own speech recognition (Chrome, Edge, iPhone Safari). Hold the
 // mic to talk and let go to stop, or tap to start and tap again to finish.
@@ -2572,10 +2578,7 @@ function WellnessView({session,showToast,bookings,isAdmin,memberData,wellSlots,w
       ))
     ),
     React.createElement("div",{className:"cls-wrap"},
-      React.createElement("div",{className:"day-hdr",style:{textAlign:"center"}},
-        React.createElement("span",null,DAY_LONG[selDay].toUpperCase()),
-        React.createElement("em",null,` · ${wellTimes.length} SESSIONS`)
-      ),
+      dayHeader(selDate,wellTimes.length,"SESSION","SESSIONS"),
       isAdmin&&React.createElement("div",{className:"adm-stats-row",style:{marginBottom:10}},
         React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},dayBks.filter(b=>wellTimes.includes(b.time)).length),React.createElement("div",{className:"adm-stat-lbl"},"BOOKED")),
         React.createElement("div",{className:"adm-stat"},React.createElement("div",{className:"adm-stat-num"},wellTimes.length-dayBks.filter(b=>wellTimes.includes(b.time)).length),React.createElement("div",{className:"adm-stat-lbl"},"AVAILABLE"))
@@ -15733,11 +15736,11 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         ))
       )),
       bookMode==="month"&&React.createElement(React.Fragment,null,
-        React.createElement("div",{className:"sp-month-nav",style:{padding:"0 16px",marginBottom:10}},
-          React.createElement("button",{className:"sp-month-arrow","data-bmonth":"prev",disabled:!bmPrevOk,onClick:()=>goBookMonth(-1)},"‹"),
-          React.createElement("div",{className:"sp-month-lbl","data-bmonth-lbl":"1",style:{textAlign:"center"}},MONTHS_FULL[bookMonth.getMonth()]+" "+bookMonth.getFullYear(),
+        React.createElement("div",{className:"week-nav",style:{paddingTop:0,marginBottom:10}},
+          React.createElement("button",{className:"wk-arrow","data-bmonth":"prev",disabled:!bmPrevOk,onClick:()=>goBookMonth(-1)},"‹"),
+          React.createElement("div",{className:"wk-label","data-bmonth-lbl":"1"},MONTHS_FULL[bookMonth.getMonth()]+" "+bookMonth.getFullYear(),
             selDK!==todayDS&&React.createElement("button",{type:"button",className:"today-inline","data-book-today":"1",onClick:()=>{const t=new Date();pickBookDay(t);setBookMonth(new Date(t.getFullYear(),t.getMonth(),1));}},"← BACK TO TODAY")),
-          React.createElement("button",{className:"sp-month-arrow","data-bmonth":"next",disabled:!bmNextOk,onClick:()=>{if(!bmNextOk){showToast("Bookings open "+BOOKING_WEEKS+" weeks ahead");return;}goBookMonth(1);}},"›")),
+          React.createElement("button",{className:"wk-arrow","data-bmonth":"next",disabled:!bmNextOk,onClick:()=>{if(!bmNextOk){showToast("Bookings open "+BOOKING_WEEKS+" weeks ahead");return;}goBookMonth(1);}},"›")),
         React.createElement("div",{className:"cal-grid","data-cal-grid":"1"},
           DAY_SHORT.map(d=>React.createElement("div",{key:d,className:"cal-dow"},d.toUpperCase())),
           bmCells.map(d=>{const k=toDS(d);const list=timesOn(k);
@@ -15748,7 +15751,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
               list.slice(0,2).map(t=>{const c=classOf(k,t)||{};return React.createElement("div",{key:t,className:"cal-lbl"},fmt12(t)+" "+(c.name||""));}),
               list.length>2&&React.createElement("div",{className:"cal-more"},"+"+(list.length-2)+" more"));}))),
       React.createElement("div",{className:"cls-wrap"},
-        React.createElement("div",{className:"day-hdr",style:{textAlign:"center"}},React.createElement("span",null,DAY_LONG[selDay].toUpperCase()),React.createElement("em",null,` · ${times.length} CLASSES`)),
+        dayHeader(selDate,times.length,"CLASS","CLASSES"),
         !isAdmin&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,margin:"0 0 12px"}},
           React.createElement("span",{style:{fontSize:9,letterSpacing:"0.12em",color:"#555",fontWeight:600,flexShrink:0}},"REPEAT WEEKLY"),
           React.createElement("select",{value:repeatWeeks,onChange:e=>setRepeatWeeks(parseInt(e.target.value)),style:{flex:1,background:"#141414",border:"1px solid "+(repeatWeeks>1?"#1d3a5a":"#2a2a2a"),borderRadius:0,color:repeatWeeks>1?"#1d9bf0":"#ccc",fontSize:12,padding:"7px 8px",fontFamily:"'DM Sans',sans-serif",outline:"none",cursor:"pointer"}},
