@@ -15719,8 +15719,11 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     mFlags.maint&&React.createElement("div",{style:{background:"#c98a1e",color:"#0a0a0a",textAlign:"center",padding:"8px 10px",fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.2em",fontSize:14,marginBottom:10}},"⚙ MAINTENANCE MODE"),
     effTab==="book"&&React.createElement(React.Fragment,null,
       effBookSub==="classes"&&showClasses&&React.createElement(React.Fragment,null,
-      React.createElement("div",{className:"well-hdr"},
-        React.createElement("div",{className:"well-title"},"CLASSES")
+      React.createElement("div",{className:"well-hdr","data-classes-hdr":"1",style:{display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",gap:8}},
+        React.createElement("span"),
+        React.createElement("div",{className:"well-title"},"CLASSES"),
+        selDK!==todayDS?React.createElement("button",{type:"button",className:"today-inline","data-book-today":"1",style:{margin:0,justifySelf:"end",whiteSpace:"nowrap"},
+          onClick:()=>{const t=new Date();pickBookDay(t);setBookMonth(new Date(t.getFullYear(),t.getMonth(),1));}},"← BACK TO TODAY"):React.createElement("span")
       ),
       isConcession&&React.createElement("div",{style:{margin:"0 20px 4px",padding:"9px 12px",background:"#0a1a2a",border:"1px solid #1d3a5a",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}},
         React.createElement("span",{style:{fontSize:10,letterSpacing:"0.08em",color:concRemaining>0?"#cfcfcf":"#e06040",fontWeight:600}},concRemaining>0?"CONCESSION CARD":"CARD USED UP"),
@@ -15747,7 +15750,6 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
           React.createElement("button",{className:"wk-arrow","data-bmonth":"prev",disabled:!bmPrevOk,onClick:()=>goBookMonth(-1)},"‹"),
           navTrio(DAY_LONG[selDay].toUpperCase(),[MONTHS_FULL[bookMonth.getMonth()]+" "+bookMonth.getFullYear()],times.length,"CLASS","CLASSES",{"data-bmonth-lbl":"1"}),
           React.createElement("button",{className:"wk-arrow","data-bmonth":"next",disabled:!bmNextOk,onClick:()=>{if(!bmNextOk){showToast("Bookings open "+BOOKING_WEEKS+" weeks ahead");return;}goBookMonth(1);}},"›")),
-        selDK!==todayDS&&React.createElement("button",{type:"button",className:"today-inline","data-book-today":"1",style:{margin:"-4px auto 10px"},onClick:()=>{const t=new Date();pickBookDay(t);setBookMonth(new Date(t.getFullYear(),t.getMonth(),1));}},"← BACK TO TODAY"),
         React.createElement("div",{className:"cal-grid","data-cal-grid":"1"},
           DAY_SHORT.map(d=>React.createElement("div",{key:d,className:"cal-dow"},d.toUpperCase())),
           bmCells.map(d=>{const k=toDS(d);const list=timesOn(k);
