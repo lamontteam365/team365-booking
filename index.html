@@ -19,6 +19,15 @@ html,body{background:#080808;min-height:100vh}
 #root{min-height:100vh}
 .app{font-family:'DM Sans',sans-serif;background:#080808;color:#fff;min-height:100vh;height:100dvh;display:flex;flex-direction:column;max-width:480px;margin:0 auto}
 .app-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+/* App shell (from The Complete Player, 12 Oct 2026): header, nav bars and footer stay put; only .app-body scrolls. */
+.app-body{overscroll-behavior:contain}
+@media (hover:hover) and (pointer:fine){.app-body{scrollbar-gutter:stable}}
+html:has(.app),html:has(.app) body{height:100%;overflow:hidden;overscroll-behavior:none}
+html:has(.app),html:has(.app) body,html:has(.app) #root{min-height:0}
+html:has(.app) #root{height:100%}
+.app{min-height:0;height:100vh;height:100dvh}
+.app>:not(.app-body){flex-shrink:0}
+.member-profile-overlay,.prof-overlay{overscroll-behavior:contain}
 .hdr{padding:14px 20px 0;display:flex;flex-direction:column;background:#080808}
 .hdr-row{display:flex;align-items:center;justify-content:space-between}
 .hdr-left{display:flex;align-items:center;gap:10px;cursor:pointer}
@@ -604,6 +613,19 @@ html,body{background:#080808;min-height:100vh}
 .app[data-admin-mode] .adm-wrap [data-aq-note="1"][data-aq-note="1"]{color:#fff!important}
 .app[data-admin-mode] .adm-wrap [data-aq-price][data-aq-price]{background:#0e0e0e!important;border:1px solid rgba(29,155,240,0.45)!important}
 .app[data-admin-mode] .adm-wrap [data-aq-onboarding] input,.app[data-admin-mode] .adm-wrap [data-aq-onboarding] textarea,.app[data-admin-mode] .adm-wrap [data-aq-onboarding] select{color:#fff!important}
+/* COMPUTER VIEW (staff, 900px+; 12 Oct 2026, from The Complete Player). Only ever under html.t365-wide, so members and tablets keep the phone layout. */
+@media (min-width:900px){
+  html.t365-wide .app{max-width:1180px}
+  html.t365-wide .member-profile-overlay,html.t365-wide .prof-overlay,html.t365-wide [data-msg-screen],html.t365-wide [style*="max-width: 480px"]{max-width:820px!important}
+  html.t365-wide .adm-wrap{padding:22px 32px}
+  html.t365-wide .tab-btn{font-size:10.5px;padding:15px 12px}
+  html.t365-wide [data-top-tabs] button{font-size:10.5px!important;padding:15px 12px!important}
+  html.t365-wide [data-swipe-hint]{visibility:hidden}
+  /* Screen by screen (12 Oct 2026): lists that read badly at 1180px wide get a centred ~760px column. */
+  html.t365-wide .app-body>:is([data-classes-hdr],.sp-toggle,.week-nav,.day-strip,.cal-grid,.cls-wrap,.well-wrap){max-width:760px;margin-left:auto;margin-right:auto}
+  html.t365-wide .app-body>.sp-toggle{margin-left:auto!important;margin-right:auto!important;padding-left:16px;padding-right:16px}
+  html.t365-wide .adm-wrap:is([data-adm-seg="members"],[data-adm-seg="leads"],[data-adm-seg="functions"],[data-adm-seg="sections"]){max-width:824px;margin-left:auto;margin-right:auto}
+}
 </style>
 </head>
 <body>
@@ -4218,7 +4240,7 @@ function AdminView({aqNew,bookings,setBookings,showToast,isAdmin,isMaster,mFlags
   // block list (mFlags.scAdminHide) — same combination pattern already used for Workout
   // Program access via mFlags.wk / mFlags.wkAdminHide above. Master always has access.
   const canScBuild=isMaster||(mFlags.sc!==false&&!(mFlags.scAdminHide||[]).includes(selfEmail));
-  return React.createElement("div",{className:"adm-wrap"},
+  return React.createElement("div",{className:"adm-wrap","data-adm-seg":admSeg},
     selectedMember&&isMaster&&subMap[String(selectedMember.email||"").toLowerCase()]&&React.createElement(SubscriberProfileOverlay,{member:selectedMember,sub:subMap[String(selectedMember.email||"").toLowerCase()],onClose:()=>setSelectedMember(null),showToast,onChanged:async()=>{await loadSubs();await reloadMembersList();}}),
     selectedMember&&!(isMaster&&subMap[String(selectedMember.email||"").toLowerCase()])&&React.createElement(MemberProfileOverlay,{onGrantSubscriber:isMaster?grantSubscriber:null,member:selectedMember,bookings,onClose:()=>setSelectedMember(null),currentUserIsAdmin:isAdmin,mfWk:mFlags.wk,isMaster,mfPasteAI:mFlags.pasteAI,selfEmail,setBookingExcused,setBookingCheckedIn,wellnessOn:wellnessEnabled,remindersOn:remindersEnabled,confirmationsOn:confirmationsEnabled,canManageWk:(isMaster||(mFlags.wk!==false&&!(mFlags.wkAdminHide||[]).includes(selfEmail))),track:lights?(lights[String(selectedMember.email||"").toLowerCase()]||{}):null,onTrackChanged:reloadLights,
       ...(()=>{const em=String(selectedMember.email||"").toLowerCase();
@@ -14382,16 +14404,33 @@ function App(){
   const [bookMonth,setBookMonth]=useState(()=>{const d=new Date();return new Date(d.getFullYear(),d.getMonth(),1);});
   const [tab,setTab]=useState(()=>T365_DEEP_LINK==="library"?"admin":(T365_DEEP_LINK==="community"||T365_DEEP_LINK==="my")?T365_DEEP_LINK:ssGet("t365-tab","community"));
   useEffect(()=>{ssSet("t365-tab",tab);},[tab]);
-  // Keep the active tab scrolled into view in both nav bars whenever the tab changes
+  // Keep the active tab centred in the TOP nav bar; the bottom bar follows via the mirror below (12 Oct 2026).
   useEffect(()=>{
-    try{
-      document.querySelectorAll('[data-tab="'+tab+'"]').forEach(el=>{
-        const c=el.parentElement;if(!c)return;
-        const er=el.getBoundingClientRect(),cr=c.getBoundingClientRect();
-        c.scrollTo({left:c.scrollLeft+(er.left-cr.left)-(cr.width/2)+(er.width/2),behavior:"smooth"});
-      });
-    }catch(e){}
+    try{const all=[...document.querySelectorAll('[data-tab="'+tab+'"]')];
+      const el=all.find(x=>x.parentElement&&x.parentElement.matches("[data-top-tabs]"))||all[0];
+      if(el){const c=el.parentElement;const er=el.getBoundingClientRect(),cr=c.getBoundingClientRect();
+        c.scrollTo({left:c.scrollLeft+(er.left-cr.left)-(cr.width/2)+(er.width/2),behavior:"smooth"});}}catch(e){}
   },[tab]);
+  // TOP and BOTTOM tab bars mirror each other (from The Complete Player, 12 Oct 2026).
+  // No dependency array on purpose: re-attaches when the bottom bar comes back after admin mode.
+  useEffect(()=>{
+    const top=document.querySelector("[data-top-tabs]"),bot=document.querySelector("[data-bottom-tabs]");
+    if(!top||!bot)return;
+    let lead=null,timer=null;
+    const follow=(from,to)=>()=>{
+      if(lead&&lead!==from)return;
+      lead=from;clearTimeout(timer);timer=setTimeout(()=>{lead=null;},150);
+      const mf=from.scrollWidth-from.clientWidth,mt=to.scrollWidth-to.clientWidth;
+      to.scrollLeft=mf>0?from.scrollLeft/mf*mt:0;
+    };
+    const a=follow(top,bot),b=follow(bot,top);
+    top.addEventListener("scroll",a,{passive:true});bot.addEventListener("scroll",b,{passive:true});
+    return()=>{clearTimeout(timer);top.removeEventListener("scroll",a);bot.removeEventListener("scroll",b);};
+  });
+  // COMPUTER VIEW (staff, 900px+ screens; 12 Oct 2026, from The Complete Player). On by default, remembered per computer.
+  const [deskPref,setDeskPref]=useState(()=>lsGet("t365-desktop",true)!==false);
+  const [wideScreen,setWideScreen]=useState(()=>typeof window!=="undefined"&&window.innerWidth>=900);
+  useEffect(()=>{const f=()=>setWideScreen(window.innerWidth>=900);window.addEventListener("resize",f);return()=>window.removeEventListener("resize",f);},[]);
   const ADMIN_SEG_ORDER=["members","leads","classes","wellness","scbuilder","sections","challenge","functions","onboarding","coaching"];
   // "possible" was this tab's first name; anyone whose browser still has it
   // stored would otherwise land on an admin screen with nothing on it.
@@ -14501,6 +14540,7 @@ function App(){
   const touchStartX=useRef(null);
   const touchStartY=useRef(null);
   const isAdmin=session?.email===ADMIN_EMAIL||memberData?.is_admin===true;
+  try{document.documentElement.classList.toggle("t365-wide",!!(isAdmin&&deskPref&&wideScreen));}catch(e){}
   const isMaster=session?.email===ADMIN_EMAIL;
   const [mFlags,setMFlags]=useState({wk:true,welladm:true,sc:true,aibuild:true});
   const [concCheckins,setConcCheckins]=useState(0);
@@ -15006,6 +15046,7 @@ const navLabel=t=>(t.dot&&noticeNew>0&&effTab!=="community")?React.createElement
     const dy=e.changedTouches[0].clientY-touchStartY.current;
     touchStartX.current=null;touchStartY.current=null;
     if(msgOpen||thread)return; // Messages cover the app: a swipe there never changes tab underneath
+    if(e.target&&e.target.closest&&e.target.closest(".no-sb,.day-strip,input,textarea"))return; // sliding a nav bar never changes the page
     if(Math.abs(dx)<50||Math.abs(dx)<Math.abs(dy)*1.5)return;
     if(tab==="admin"){
       const ai=ADMIN_SEG_ORDER.indexOf(admSeg);
@@ -15683,12 +15724,12 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
           )
         )
       ),
-      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:10,marginLeft:-20,marginRight:-20,width:"calc(100% + 40px)",padding:"5px 0 4px"},onClick:e=>e.stopPropagation()},
+      React.createElement("div",{"data-swipe-hint":"1",style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:10,marginLeft:-20,marginRight:-20,width:"calc(100% + 40px)",padding:"5px 0 4px"},onClick:e=>e.stopPropagation()},
         React.createElement("span",{style:{color:"#1d9bf0",fontSize:11,lineHeight:1}},"‹"),
         React.createElement("span",{style:{color:"#1d9bf0",fontSize:7,letterSpacing:"0.22em",fontWeight:600}},"SWIPE FOR MORE"),
         React.createElement("span",{style:{color:"#1d9bf0",fontSize:11,lineHeight:1}},"›")
       ),
-      React.createElement("div",{className:"no-sb",style:{display:"flex",marginLeft:-20,marginRight:-20,width:"calc(100% + 40px)",borderTop:"1px solid #888",borderBottom:"1px solid #888",background:"#141414",overflowX:"auto"},onClick:e=>e.stopPropagation()},
+      React.createElement("div",{className:"no-sb","data-top-tabs":"1",style:{display:"flex",marginLeft:-20,marginRight:-20,width:"calc(100% + 40px)",borderTop:"1px solid #888",borderBottom:"1px solid #888",background:"#141414",overflowX:"auto"},onClick:e=>e.stopPropagation()},
         NAV_TABS.map((t,ti)=>React.createElement(React.Fragment,{key:t.id},
           React.createElement("button",{"data-tab":t.id,
             style:{flex:"1 0 auto",minWidth:56,padding:"12px 10px",background:effTab===t.id?"#fff":"none",border:"none",borderTop:`1px solid ${effTab===t.id?"#fff":"#888"}`,borderBottom:`1px solid ${effTab===t.id?"#fff":"#888"}`,borderLeft:"1px solid transparent",borderRight:"1px solid transparent",marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8.5px",letterSpacing:"0.1em",color:effTab===t.id?"#000":"#555",fontWeight:600,whiteSpace:"nowrap",position:"relative"},
@@ -15962,12 +16003,12 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     ),
     effTab==="admin"&&isAdmin&&React.createElement(AdminView,{aqNew,bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:"",challengeEnabled,saveChallengeSetting,dmEnabled,saveDmSetting,openMsgsTo:canOpenMsgs?openThreadDirect:null}),
     ),
-    !(effTab==="admin"&&isAdmin)&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
+    !(effTab==="admin"&&isAdmin)&&React.createElement("div",{"data-swipe-hint":"1",style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:7,letterSpacing:"0.22em",fontWeight:600,cursor:"pointer"}},"SWIPE FOR MORE"),
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"›")
     ),
-    !(effTab==="admin"&&isAdmin)&&React.createElement("div",{className:"tab-bar no-sb",style:{marginTop:0}},
+    !(effTab==="admin"&&isAdmin)&&React.createElement("div",{className:"tab-bar no-sb","data-bottom-tabs":"1",style:{marginTop:0}},
       NAV_TABS.map((t,ti)=>React.createElement(React.Fragment,{key:t.id},
         React.createElement("button",{"data-tab":t.id,className:`tab-btn${effTab===t.id?" ta":""}`,style:t.dot?{position:"relative"}:undefined,
           onClick:e=>tabClick(t,e,true)},
@@ -15980,6 +16021,11 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       // ADMIN quick-access button — admins only, bottom-right for the thumb (6 Oct 2026).
       isAdmin&&!maintActive&&React.createElement(AdminQuickButton,{open:!!aqOpen,alerts:aqAlerts,onPress:aqToggle}),
       isAdmin&&!maintActive&&React.createElement(AdminRefreshButton,{footer:true}),
+      // COMPUTER VIEW / MOBILE VIEW switch — staff on 900px+ screens, bottom-left (12 Oct 2026).
+      isAdmin&&wideScreen&&React.createElement("button",{type:"button","data-view-switch":deskPref?"computer":"mobile",title:"Switch between the computer and phone layout",
+        onClick:()=>{const v=!deskPref;setDeskPref(v);lsSet("t365-desktop",v);},
+        style:{...AQ_CORNER_S,position:"absolute",top:9,left:6,zIndex:3,whiteSpace:"nowrap",width:"auto",paddingLeft:8,paddingRight:8}},
+        React.createElement("span",null,deskPref?"MOBILE VIEW":"COMPUTER VIEW")),
       React.createElement("div",{className:"foot",style:{fontSize:"7px",letterSpacing:"0.18em"}},"LAMONT FITNESS APPLICATIONS"),
       React.createElement("div",{style:{marginTop:2,paddingBottom:20,fontSize:"7px",letterSpacing:"0.06em",color:"#999"}},
         React.createElement("span",null,"POWERED BY "),React.createElement("a",{href:"https://www.lamontcollective.com",target:"_blank",rel:"noopener",style:{color:"#1d9bf0",textDecoration:"none"}},"WWW.LAMONTCOLLECTIVE.COM")
