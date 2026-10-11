@@ -3532,9 +3532,20 @@ function AdminBar({label,isMaster,onDetails,onExit}){
         "EXIT",
         React.createElement("span",{"aria-hidden":"true",style:{position:"absolute",top:-12,bottom:-12,left:-10,right:-10}}))));
 }
-function AdminView({aqNew,bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail,challengeEnabled,saveChallengeSetting,dmEnabled,saveDmSetting,openMsgsTo}){
+function AdminView({admJump,aqNew,bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail,challengeEnabled,saveChallengeSetting,dmEnabled,saveDmSetting,openMsgsTo}){
   const [expandedTier,setExpandedTier]=useState(null);
-  const [admDate,setAdmDate]=useState(new Date());
+  const [admDate,setAdmDate]=useState(()=>admJump&&admJump.d?new Date(admJump.d+"T00:00:00"):new Date());
+  // A tapped booking alert lands on the booking's day, with the newest bookings (12 Oct 2026).
+  const admJumpSeen=useRef(admJump?admJump.n:0);
+  useEffect(()=>{
+    if(!admJump||admJump.n===admJumpSeen.current)return;
+    admJumpSeen.current=admJump.n;
+    setAdmDate(new Date(admJump.d+"T00:00:00"));setExpanded({});
+    if(admSeg==="wellness"){
+      const from=toDS(new Date());const to=bookingHorizonDS();
+      sbGet("wellness_bookings",`date_key=gte.${from}&date_key=lte.${to}&select=email,name,date_key,time`).then(data=>{setWellAdmBks(data||[]);setWellAdmLoaded(true);});
+    }
+  },[admJump]);
   const [expanded,setExpanded]=useState({});
   const [members,setMembers]=useState([]);
   const [membersLoaded,setMembersLoaded]=useState(false);
@@ -14145,7 +14156,11 @@ function SubscriberApproveBox({member,onApproved,showToast}){
 // opens the right screen when one is tapped. The VAPID private key lives in
 // Supabase Vault only; the public key is read from push_public_key().
 // Deep link from a tapped notification: /?goto=messages&c=<thread>|&dm=<email>, ?goto=community, ?goto=my
-const T365_DL=(()=>{try{const p=new URLSearchParams(window.location.search);return {goto:p.get("goto"),c:p.get("c"),dm:p.get("dm")};}catch(e){return {};}})();
+const T365_DL=(()=>{try{const p=new URLSearchParams(window.location.search);return {goto:p.get("goto"),c:p.get("c"),dm:p.get("dm"),d:p.get("d")};}catch(e){return {};}})();
+// Booking alerts (12 Oct 2026): /?goto=adm-classes&d=YYYY-MM-DD or /?goto=adm-wellness&d=… opens
+// Admin → CLASSES / WELLNESS on that day. T365_ADM_SEG is the section, or null.
+const T365_ADM_SEG=T365_DL.goto==="adm-classes"?"classes":T365_DL.goto==="adm-wellness"?"wellness":null;
+const t365DayOk=d=>/^\d{4}-\d{2}-\d{2}$/.test(String(d||""));
 function pushEnv(){
   const ua=(typeof navigator!=="undefined"&&navigator.userAgent)||"";
   const ios=/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&typeof navigator!=="undefined"&&navigator.maxTouchPoints>1);
@@ -14352,7 +14367,7 @@ function PushFunctions({showToast,onFlags}){
   async function load(){
     const ff=await sbGet("feature_flags","id=eq.1&select=push_messages,push_notices,push_reminders,push_email_fallback");
     if(Array.isArray(ff)&&ff.length)setF(ff[0]);
-    const [a,m]=await Promise.all([sbGet("members","is_admin=eq.true&select=email,name,push_staff_alerts"),sbGet("members",`email=eq.${encodeURIComponent(ADMIN_EMAIL)}&select=email,name,push_staff_alerts`)]);
+    const [a,m]=await Promise.all([sbGet("members","is_admin=eq.true&select=email,name,push_booking_alerts"),sbGet("members",`email=eq.${encodeURIComponent(ADMIN_EMAIL)}&select=email,name,push_booking_alerts`)]);
     const map={};[...(Array.isArray(m)?m:[]),...(Array.isArray(a)?a:[])].forEach(x=>{if(x&&x.email)map[String(x.email).toLowerCase()]=x;});
     setAdmins(Object.values(map).sort((x,y)=>String(x.name||"").localeCompare(String(y.name||""))));
   }
@@ -14362,10 +14377,12 @@ function PushFunctions({showToast,onFlags}){
     if(ok){setF(p=>({...p,[k]:next}));if(onFlags)onFlags(k,next);}
     showToast(!ok?"Couldn't change it — try again":(label+(next?" on ✓":" off")));
   }
+  // WHO GETS BOOKING ALERTS (12 Oct 2026): the master is ON unless switched off; other admins OFF until switched on.
+  const bkOn=a=>String(a.email||"").toLowerCase()===String(ADMIN_EMAIL).toLowerCase()?a.push_booking_alerts!==false:a.push_booking_alerts===true;
   async function flipAdmin(a,next){
-    const ok=await sbPatch("members",`email=eq.${encodeURIComponent(a.email)}`,{push_staff_alerts:next});
-    if(ok)setAdmins(p=>p.map(x=>x.email===a.email?{...x,push_staff_alerts:next}:x));
-    showToast(!ok?"Couldn't change it — try again":next?(a.name||a.email)+" will be notified ✓":(a.name||a.email)+" won't be notified");
+    const ok=await sbPatch("members",`email=eq.${encodeURIComponent(a.email)}`,{push_booking_alerts:next});
+    if(ok)setAdmins(p=>p.map(x=>x.email===a.email?{...x,push_booking_alerts:next}:x));
+    showToast(!ok?"Couldn't change it — try again":next?(a.name||a.email)+" will get booking alerts ✓":(a.name||a.email)+" won't get booking alerts");
   }
   const rows=[
     {k:"push_messages",t:"MESSAGE NOTIFICATIONS",d:"Coach messages and member-to-member messages",on:"ON — \"New message from …\" (name only, never the message)",off:"OFF — nobody gets message notifications"},
@@ -14383,6 +14400,17 @@ function PushFunctions({showToast,onFlags}){
           React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},r.d),
           React.createElement("div",{style:{fontSize:9,color:on?"#1d9bf0":"#555",marginTop:3,letterSpacing:"0.04em",fontWeight:on?600:400,lineHeight:1.5}},on?r.on:r.off)),
         React.createElement("button",{onClick:()=>flip(r.k,!on,r.t.charAt(0)+r.t.slice(1).toLowerCase()),
+          style:{background:on?"#fff":"#222",color:on?"#000":"#1d9bf0",border:"1px solid "+(on?"#fff":"#1d9bf0"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},on?"ON":"OFF"));}),
+    lbl("WHO GETS BOOKING ALERTS"),
+    React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,margin:"-4px 0 10px"}},
+      "A phone notification when a guest books a class or wellness on the website, or a member books wellness in the app. Tap it to open that day in Admin. If nobody's phone gets it, the booking email goes to support@ instead."),
+    !admins?React.createElement("div",{style:{fontSize:10,color:"#444"}},"LOADING…"):admins.map(a=>{const on=bkOn(a);
+      return React.createElement("div",{key:a.email,"data-booking-alert-admin":a.email,style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(on?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
+        React.createElement("div",{style:{paddingRight:10,minWidth:0}},
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff",textTransform:"uppercase"}},a.name||a.email),
+          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em",overflow:"hidden",textOverflow:"ellipsis"}},a.email),
+          React.createElement("div",{style:{fontSize:9,color:on?"#1d9bf0":"#555",marginTop:3,letterSpacing:"0.04em",fontWeight:on?600:400}},on?"ON — gets booking alerts on their phone":"OFF — no booking alerts")),
+        React.createElement("button",{onClick:()=>flipAdmin(a,!on),
           style:{background:on?"#fff":"#222",color:on?"#000":"#1d9bf0",border:"1px solid "+(on?"#fff":"#1d9bf0"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},on?"ON":"OFF"));})
   );
 }
@@ -14402,7 +14430,7 @@ function App(){
   const [bookMode,setBookMode]=useState(()=>{try{return sessionStorage.getItem("t365-bookmode")||"week";}catch(e){return "week";}});
   useEffect(()=>{try{sessionStorage.setItem("t365-bookmode",bookMode);}catch(e){}},[bookMode]);
   const [bookMonth,setBookMonth]=useState(()=>{const d=new Date();return new Date(d.getFullYear(),d.getMonth(),1);});
-  const [tab,setTab]=useState(()=>T365_DEEP_LINK==="library"?"admin":(T365_DEEP_LINK==="community"||T365_DEEP_LINK==="my")?T365_DEEP_LINK:ssGet("t365-tab","community"));
+  const [tab,setTab]=useState(()=>(T365_DEEP_LINK==="library"||T365_ADM_SEG)?"admin":(T365_DEEP_LINK==="community"||T365_DEEP_LINK==="my")?T365_DEEP_LINK:ssGet("t365-tab","community"));
   useEffect(()=>{ssSet("t365-tab",tab);},[tab]);
   // Keep the active tab centred in the TOP nav bar; the bottom bar follows via the mirror below (12 Oct 2026).
   useEffect(()=>{
@@ -14434,9 +14462,12 @@ function App(){
   const ADMIN_SEG_ORDER=["members","leads","classes","wellness","scbuilder","sections","challenge","functions","onboarding","coaching"];
   // "possible" was this tab's first name; anyone whose browser still has it
   // stored would otherwise land on an admin screen with nothing on it.
-  const [admSeg,setAdmSeg]=useState(()=>T365_DEEP_LINK==="library"?"coaching"
+  const [admSeg,setAdmSeg]=useState(()=>T365_DEEP_LINK==="library"?"coaching":T365_ADM_SEG?T365_ADM_SEG
     :(s=>s==="possible"?"leads":s)(lsGet("t365-admseg","members")));
   useEffect(()=>{lsSet("t365-admseg",admSeg);},[admSeg]);
+  // A tapped booking alert: which day Admin → CLASSES / WELLNESS should show (12 Oct 2026).
+  const [admJump,setAdmJump]=useState(()=>T365_ADM_SEG&&t365DayOk(T365_DL.d)?{d:T365_DL.d,n:1}:null);
+  useEffect(()=>{if(tab!=="admin"&&admJump)setAdmJump(null);},[tab]);   // next visit to Admin starts on today again
   // Keep the active admin sub-section scrolled into view when it changes
   useEffect(()=>{
     try{
@@ -15003,6 +15034,12 @@ const navLabel=t=>(t.dot&&noticeNew>0&&effTab!=="community")?React.createElement
     const g=p.get("goto");
     if(g==="messages"){if(canOpenMsgs)openMsgsTo({c:p.get("c"),dm:p.get("dm")});}
     else if(g==="community"||g==="my"){setThread(null);if(msgOpenRef.current){if(window.history.state&&window.history.state.overlay==="messages")window.history.back();else setMsgOpen(false);}setTab(g);}
+    else if(g==="adm-classes"||g==="adm-wellness"){   // booking alert (12 Oct 2026)
+      setThread(null);if(msgOpenRef.current){if(window.history.state&&window.history.state.overlay==="messages")window.history.back();else setMsgOpen(false);}
+      setTab("admin");setAdmSeg(g==="adm-wellness"?"wellness":"classes");
+      const d=p.get("d");if(t365DayOk(d))setAdmJump({d,n:Date.now()});
+      try{refreshBookings();}catch(e){}
+    }
   }
   const dlDone=useRef(false);
   useEffect(()=>{
@@ -15014,7 +15051,7 @@ const navLabel=t=>(t.dot&&noticeNew>0&&effTab!=="community")?React.createElement
   useEffect(()=>{
     if(typeof navigator==="undefined"||!("serviceWorker" in navigator))return;
     const h=e=>{const d=e&&e.data;if(!d||!d.t365)return;
-      if(d.t365==="push")ptMsgNotify();                       // refresh straight away
+      if(d.t365==="push"){ptMsgNotify();if(String(d.tag||"").indexOf("t365-bk-")===0){try{refreshBookings();}catch(e){}}}   // refresh straight away
       else if(d.t365==="open")goFromNote(d.url);
       else if(d.t365==="resubscribe")pushTurnOn();            // permission already granted: no prompt
     };
@@ -16001,7 +16038,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         ?React.createElement(CoachingView,{showToast,restricted:true,selfEmail:session.email,subscriber:true})
         :React.createElement("div",{className:"no-bk"},subRow&&subRow.status==="suspended"?"YOUR SUBSCRIPTION IS PAUSED — PLEASE CONTACT TEAM 365":subRow&&subRow.status==="pending"?"YOUR SUBSCRIPTION IS AWAITING APPROVAL — TEAM 365 WILL BE IN TOUCH":"DETAILS IS CURRENTLY UNAVAILABLE")
     ),
-    effTab==="admin"&&isAdmin&&React.createElement(AdminView,{aqNew,bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:"",challengeEnabled,saveChallengeSetting,dmEnabled,saveDmSetting,openMsgsTo:canOpenMsgs?openThreadDirect:null}),
+    effTab==="admin"&&isAdmin&&React.createElement(AdminView,{admJump,aqNew,bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:"",challengeEnabled,saveChallengeSetting,dmEnabled,saveDmSetting,openMsgsTo:canOpenMsgs?openThreadDirect:null}),
     ),
     !(effTab==="admin"&&isAdmin)&&React.createElement("div",{"data-swipe-hint":"1",style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
