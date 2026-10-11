@@ -1431,6 +1431,20 @@ function NudgeFunctions({showToast}){
           style:{background:dirty?"#1d9bf0":"#222",color:dirty?"#fff":"#555",border:"none",padding:"6px 14px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:dirty?"pointer":"default",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},saving?"SAVING…":"SAVE"))));
 }
 function isConcessionActive(m){return !!(m&&m.concession===true&&!m.membership_type);}
+// The membership line in the header, under the name (12 Oct 2026, Sam): what the member's card in
+// Admin → Members shows, joined with " / ". Plan name (short: "SIGNATURE - 12 months" → SIGNATURE),
+// or CONCESSION, then the training tag (ONLINE TRAINING → ONLINE, PT). Subscribers: SUBSCRIBER.
+// The card's expiry badge stays Admin-only.
+function headerMemberLabel(m,isSub){
+  if(isSub)return "SUBSCRIBER";
+  if(!m)return "";
+  const parts=[];
+  const plan=String(m.membership_type||"").replace(/\s*[-–]\s*\d[\s\S]*$/i,"").replace(/\s*\bMEMBER\b\s*$/i,"").trim().toUpperCase();
+  if(plan)parts.push(plan);else if(isConcessionActive(m))parts.push("CONCESSION");
+  const t=trainingLabel(m);
+  if(t)parts.push(t==="ONLINE TRAINING"?"ONLINE":String(t).toUpperCase());
+  return parts.join(" / ");
+}
 // Training-type tag (PT / ONLINE TRAINING). Independent of membership, so it can show
 // on its own (health-screening client) OR alongside a studio plan (member who also trains
 // online). "NONE" = explicitly hidden. Blank = defaults to PT only when they have no plan.
@@ -15882,7 +15896,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       React.createElement("div",{style:{display:"flex",alignItems:"center",padding:"30px 4px 30px",position:"relative",minHeight:140}},
         React.createElement("div",{style:{flex:1,paddingLeft:0,zIndex:1}},
           React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:8,fontWeight:700,color:"#fff",letterSpacing:"0.04em",lineHeight:1.3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},session.name.toUpperCase()),
-          React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:7,color:"#1d9bf0",letterSpacing:"0.04em",marginTop:4,lineHeight:1.4,whiteSpace:"nowrap"}},((memberData?.membership_type||"").replace(/\s*[-–]\s*\d[\s\S]*$/i,"").replace(/\s*\bMEMBER\b\s*$/i,"").trim()).toUpperCase()),
+          React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:7,color:"#1d9bf0",letterSpacing:"0.04em",marginTop:4,lineHeight:1.4,whiteSpace:"nowrap"},"data-hdr-membership":"1"},headerMemberLabel(memberData,isSubscriber)),
           memberData?.joined_at?React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:7,color:"#777",letterSpacing:"0.04em",marginTop:3,whiteSpace:"nowrap"}},("JOINED "+new Date(memberData.joined_at).toLocaleDateString("en-US",{month:"short",year:"numeric"})).toUpperCase()):null
         ),
         React.createElement("div",{style:{position:"absolute",left:0,right:0,marginTop:18,display:"flex",flexDirection:"column",alignItems:"center",pointerEvents:"none",zIndex:2}},
