@@ -5936,7 +5936,8 @@ function stImgTranslationFor(lib,langKey,row){
   const t=lib&&lib[langKey];
   return (t&&t[EX])||"";
 }
-// ---- Kids workout image (admin "KIDS IMAGE" button). Same board as above, but each card shows
+// ---- Youth workout image (admin "YOUTH IMAGE" button; called KIDS until 12 Oct 2026, so the code and the
+// lib.kids data key keep the "kids" name). Same board as above, but each card shows
 // the library's optional Kids exercise name (lib.kids = {"EXERCISE NAME":"KIDS NAME"}, inside the
 // same __HIIT_LIB__ row as the translations) and one WORK box instead of reps + three pillars.
 // Work = station length minus 30 s, so kids stop at the 30-second alarm (1:00 -> 0:30, 3:00 -> 2:30).
@@ -5964,7 +5965,34 @@ function stImgKidsWorkLabel(dur){
   if(m===0)return "WORK FOR "+t+" SECONDS";
   return "WORK FOR "+t+((m===1&&sec===0)?" MINUTE":" MINUTES");
 }
-function stImgDrawKidsCard(ctx,x,y,w,h,r,stnum,exSize,name){
+// YOUTH REPS (12 Oct 2026): optional, per exercise + station length, in the Library
+// (lib.presc["EXERCISE|1:00"].youthReps). When set, the youth card shows the reps instead of the
+// work time. A plain number or range ("10", "8-10") gets " REPS"; anything else shows as typed.
+function stImgYouthRepsFor(lib,row){
+  const EX=(row.exercise||"").trim().toUpperCase();
+  const p=lib&&lib.presc&&lib.presc[EX+"|"+(row.duration||"")];
+  const v=p&&p.youthReps?String(p.youthReps).trim().toUpperCase():"";
+  if(!v)return "";
+  return /^\d+(\s*[-–]\s*\d+)?$/.test(v)?v+" REPS":v;
+}
+// Colour runs for the youth box: numbers white, words Team 365 blue ("10 REPS", "5 EACH LEG").
+function stImgYouthRepsParts(text){
+  const runs=[];
+  String(text).split(/(\s+)/).forEach(tok=>{
+    if(!tok)return;
+    const col=/^\s+$/.test(tok)?(runs.length?runs[runs.length-1][1]:"#1d9bf0"):(/^[0-9][0-9:.\-–\/xX×]*$/.test(tok)?"#fff":"#1d9bf0");
+    if(runs.length&&runs[runs.length-1][1]===col)runs[runs.length-1][0]+=tok;else runs.push([tok,col]);
+  });
+  return runs;
+}
+// Draws coloured pieces as one centred line, with the same 1px letter spacing between pieces
+// as inside them, so it sits exactly where one centred string would.
+function stImgFillPartsCentred(ctx,parts,cx,y,font){
+  const ws=parts.map(p=>stImgMeasureSpaced(ctx,p[0],font,1));
+  let px=cx-(ws.reduce((a,b)=>a+b,0)+Math.max(0,parts.length-1))/2;
+  parts.forEach((p,k)=>{stImgFillTextSpaced(ctx,p[0],px,y,1,font,p[1],"left");px+=ws[k]+1;});
+}
+function stImgDrawKidsCard(ctx,x,y,w,h,r,stnum,exSize,name,youthReps){
   const pad=12,topH=26,boxY=y+topH,boxH=h-topH;
   ctx.textBaseline="alphabetic";
   const labelFont="500 13px DM Sans, Arial, sans-serif";
@@ -5973,11 +6001,11 @@ function stImgDrawKidsCard(ctx,x,y,w,h,r,stnum,exSize,name){
   stImgFillTextSpaced(ctx,dur,x+w-pad,y+16,1.2,labelFont,"#c5c9cc","right");
   ctx.fillStyle="rgba(43,43,43,0.62)";ctx.fillRect(x,boxY,w,boxH);
   ctx.strokeStyle="#767676";ctx.lineWidth=1;ctx.strokeRect(x+0.5,boxY+0.5,w-1,boxH-1);
-  // "KIDS EXERCISE" + name as one block, centred in the box (cap heights: 12px DM Sans ~9px,
+  // "YOUTH EXERCISE" + name as one block, centred in the box (cap heights: 12px DM Sans ~9px,
   // Bebas Neue ~0.7em). No translation on the kids image.
   const lblH=9,gapH=12,nameH=Math.round(exSize*0.7);
   const blockTop=boxY+boxH/2-(lblH+gapH+nameH)/2;
-  stImgFillTextSpaced(ctx,"KIDS EXERCISE",x+w/2,blockTop+lblH,2,"600 12px DM Sans, Arial, sans-serif","#1d9bf0");
+  stImgFillTextSpaced(ctx,"YOUTH EXERCISE",x+w/2,blockTop+lblH,2,"600 12px DM Sans, Arial, sans-serif","#1d9bf0");
   stImgFillTextSpaced(ctx,name,x+w/2,blockTop+lblH+gapH+nameH,2,exSize+'px "Bebas Neue", Arial Narrow, sans-serif',"#fff");
   // One full-width box where the three pillar boxes sit on the adult card, with the work
   // time written inside it.
@@ -5986,17 +6014,17 @@ function stImgDrawKidsCard(ctx,x,y,w,h,r,stnum,exSize,name){
   ctx.fillStyle="rgba(10,26,42,0.62)";ctx.fillRect(bx,lv_y0+16,bw,40);
   ctx.strokeStyle="#565656";ctx.strokeRect(bx+0.5,lv_y0+16.5,bw-1,39);
   const work=stImgKidsWorkLabel(r.duration);
-  if(work){
+  if(youthReps){
+    // YOUTH REPS set in the Library: the reps instead of the work time. Numbers white, words blue.
+    const fs=stImgFitFontSpaced(ctx,[youthReps],bw-20,18,11,"bold","DM Sans, Arial, sans-serif",1);
+    stImgFillPartsCentred(ctx,stImgYouthRepsParts(youthReps),bx+bw/2,lv_y0+36+Math.round(fs*0.36),"bold "+fs+"px DM Sans, Arial, sans-serif");
+  }else if(work){
     const fs=stImgFitFontSpaced(ctx,[work],bw-20,18,11,"bold","DM Sans, Arial, sans-serif",1);
-    // "WORK FOR " and " MINUTES" in white, the time itself in Team 365 blue. Drawn as three
-    // left-aligned pieces with the same 1px letter spacing between them as inside them, so the
-    // line sits exactly where one centred string would.
+    // "WORK FOR " and " MINUTES" in Team 365 blue, the time itself in white (Sam, 12 Oct 2026;
+    // it was the other way round).
     const font="bold "+fs+"px DM Sans, Arial, sans-serif",ty=lv_y0+36+Math.round(fs*0.36);
     const t=stImgKidsWorkTime(r.duration),ti=work.indexOf(t);
-    const parts=[[work.slice(0,ti),"#fff"],[t,"#1d9bf0"],[work.slice(ti+t.length),"#fff"]];
-    const ws=parts.map(p=>stImgMeasureSpaced(ctx,p[0],font,1));
-    let px=bx+bw/2-(ws[0]+ws[1]+ws[2]+2)/2;
-    parts.forEach((p,k)=>{stImgFillTextSpaced(ctx,p[0],px,ty,1,font,p[1],"left");px+=ws[k]+1;});
+    stImgFillPartsCentred(ctx,[[work.slice(0,ti),"#1d9bf0"],[t,"#fff"],[work.slice(ti+t.length),"#1d9bf0"]],bx+bw/2,ty,font);
   }else{
     stImgFillTextSpaced(ctx,r.duration?"CHECK STATION TIME":"NO STATION TIME",bx+bw/2,lv_y0+41,1,"bold 13px DM Sans, Arial, sans-serif","#c9603f");
   }
@@ -6029,7 +6057,7 @@ async function stImgRenderCanvas(canvas,className,rows,lib,bgNum,langKey,langNam
   const SAFE=96,areaX=SAFE,areaW=1920-2*SAFE,areaY=SAFE,areaH=1080-2*SAFE;
   const nameStripH=40;
   ctx.textBaseline="alphabetic";
-  const nameDisplay=className.toUpperCase().replace(/(\d+)\s*$/,"($1)")+(kids?" KIDS":"");
+  const nameDisplay=className.toUpperCase().replace(/(\d+)\s*$/,"($1)");
   const affirmation=await affirmationPromise;
   const titleFont="700 26px DM Sans, Arial, sans-serif";
   // Affirmation (top-left) and the translation-language label (top-right) match the
@@ -6040,7 +6068,9 @@ async function stImgRenderCanvas(canvas,className,rows,lib,bgNum,langKey,langNam
   if(affirmation){
     stImgFillTextSpaced(ctx,affirmation.toUpperCase(),areaX,titleY,1.5,cornerFont,"#fff","left");
   }
-  if(!kids)stImgFillTextSpaced(ctx,langName.toUpperCase()+" TRANSLATION",areaX+areaW,titleY,1.5,cornerFont,"#fff","right");
+  // Youth image: "YOUTH" top-right, mirroring the affirmation top-left (Sam, 12 Oct 2026).
+  if(kids)stImgFillTextSpaced(ctx,"YOUTH",areaX+areaW,titleY,1.5,cornerFont,"#fff","right");
+  else stImgFillTextSpaced(ctx,langName.toUpperCase()+" TRANSLATION",areaX+areaW,titleY,1.5,cornerFont,"#fff","right");
 
   if(!group||!group.sts.length){
     stImgFillTextSpaced(ctx,"NO STATION ROUND FOUND IN THIS WORKOUT",960,540,1,"600 20px DM Sans, Arial, sans-serif","#c9603f","center");
@@ -6067,7 +6097,7 @@ async function stImgRenderCanvas(canvas,className,rows,lib,bgNum,langKey,langNam
   sts.forEach((r,i)=>{
     const col=i%cols,row=Math.floor(i/cols);
     const x=padX+col*(cardW+gap),y=top+row*(cardH+rowGap);
-    if(kids)stImgDrawKidsCard(ctx,x,y,cardW,cardH,r,i+1,exSize,names[i]);
+    if(kids)stImgDrawKidsCard(ctx,x,y,cardW,cardH,r,i+1,exSize,names[i],stImgYouthRepsFor(lib,r));
     else stImgDrawCard(ctx,x,y,cardW,cardH,r,i+1,exSize,translations[i]);
   });
 
@@ -6132,7 +6162,7 @@ function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose,langOptio
       const url=URL.createObjectURL(blob);
       const a=document.createElement("a");
       const slug=s=>(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
-      a.href=url;a.download=slug(className)+(kids?"-kids":"")+"-station-page.jpg";
+      a.href=url;a.download=slug(className)+(kids?"-youth":"")+"-station-page.jpg";
       document.body.appendChild(a);a.click();a.remove();
       setTimeout(()=>URL.revokeObjectURL(url),3000);
     },"image/jpeg",0.92);
@@ -6594,7 +6624,7 @@ function WorkoutDetailsEditor({className,showToast,restricted,subscriber}){
         !restricted&&React.createElement("button",{onClick:()=>setEditing(true),style:{flex:1,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"✎ EDIT WORKOUT"),
         rows.length>0&&React.createElement("button",{onClick:()=>{const u="tv.html?w="+encodeURIComponent(className);const w=window.open(u,"_blank");if(!w)window.location.href=u;},title:"Opens the full-screen TV page with a Cast button (uses the last SAVED version)",style:{flex:1,background:"#12331a",color:"#3ddc84",border:"1px solid #1d5a34",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"▸ PLAY"),
         rows.length>0&&stImgFirstStationRound(rows)&&React.createElement("button",{onClick:()=>setImgOpen(true),title:"Station-board image for this workout, same as the offline kit's Station Images tool",style:{flex:1,background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"▦ IMAGE"),
-        !subscriber&&rows.length>0&&stImgFirstStationRound(rows)&&React.createElement("button",{"data-kids-image":"1",onClick:()=>setKidsImgOpen(true),title:"Kids workout image: kids exercise names, no translation, work time = station length minus 30 seconds",style:{flex:1,background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer",whiteSpace:"nowrap"}},"▦ KIDS IMAGE")
+        !subscriber&&rows.length>0&&stImgFirstStationRound(rows)&&React.createElement("button",{"data-kids-image":"1",onClick:()=>setKidsImgOpen(true),title:"Youth workout image: youth exercise names, no translation, youth reps or work time (station length minus 30 seconds)",style:{flex:1,background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer",whiteSpace:"nowrap"}},"▦ YOUTH IMAGE")
       ),
       !restricted&&React.createElement(WarmupSection,{className,showToast}),
       legacy&&React.createElement("div",{style:{whiteSpace:"pre-wrap",fontSize:12,color:"#aaa",lineHeight:1.6,marginBottom:12}},legacy),
@@ -6740,7 +6770,7 @@ function LibraryDetailsEditor({showToast,allWorkoutNames}){
       const ex=k.slice(0,idx),dur=k.slice(idx+1),p=presc[k]||{};
       const pr=readPresc(p);
       map[ex]=map[ex]||{ex,name:ex,maori:maori[ex]||"",durs:[]};
-      map[ex].durs.push({dur,reps:pr.reps,c:pr.c,o:pr.o,d:pr.d});
+      map[ex].durs.push({dur,reps:pr.reps,c:pr.c,o:pr.o,d:pr.d,youth:String(p.youthReps||"")});
     });
     const arr=Object.values(map).sort((a,b)=>a.ex.localeCompare(b.ex));
     arr.forEach(it=>it.durs.sort((a,b)=>durVal(a.dur)-durVal(b.dur)));
@@ -6751,7 +6781,7 @@ function LibraryDetailsEditor({showToast,allWorkoutNames}){
   function removeExercise(ex){setItems(its=>its.filter(it=>it.ex!==ex));}
   const DUR_CHOICES=["0:30","1:00","1:30","2:00","2:30","3:00","4:00","5:00","6:00","8:00","10:00"];
   function addExercise(){const id="__NEW__"+Math.random().toString(36).slice(2,8);setItems(its=>[...(its||[]),{ex:id,name:"",maori:"",durs:[]}]);setOpen(o=>({...o,[id]:true}));setQ("");}
-  function addDuration(ex,dur){if(!dur)return;setItems(its=>its.map(it=>{if(it.ex!==ex)return it;if(it.durs.some(d=>d.dur===dur))return it;const durs=[...it.durs,{dur,reps:"",c:"",o:"",d:""}].sort((a,b)=>durVal(a.dur)-durVal(b.dur));return {...it,durs};}));}
+  function addDuration(ex,dur){if(!dur)return;setItems(its=>its.map(it=>{if(it.ex!==ex)return it;if(it.durs.some(d=>d.dur===dur))return it;const durs=[...it.durs,{dur,reps:"",c:"",o:"",d:"",youth:""}].sort((a,b)=>durVal(a.dur)-durVal(b.dur));return {...it,durs};}));}
   function removeDuration(ex,dur){setItems(its=>its.map(it=>it.ex===ex?{...it,durs:it.durs.filter(d=>d.dur!==dur)}:it));}
   async function save(){
     setSaving(true);
@@ -6761,7 +6791,7 @@ function LibraryDetailsEditor({showToast,allWorkoutNames}){
       if(!nm)return;
       delete kids[nm];if(it.kids&&(""+it.kids).trim())kids[nm]=(""+it.kids).trim().toUpperCase();
       if(it.maori&&it.maori.trim())maori[nm]=it.maori.trim();var _tr=it.tr||{};if(_tr.moriori&&(""+_tr.moriori).trim())moriori[nm]=(""+_tr.moriori).trim();(lang.bank||[]).forEach(function(b){var v=_tr[b.key];if(v&&(""+v).trim())bankMaps[b.key][nm]=(""+v).trim();});
-      it.durs.forEach(d=>{presc[nm+"|"+d.dur]={reps:(d.reps||"").trim(),c:(d.c||"").trim(),o:(d.o||"").trim(),d:(d.d||"").trim()};});
+      it.durs.forEach(d=>{const yr=(d.youth||"").trim().toUpperCase();presc[nm+"|"+d.dur]=Object.assign({reps:(d.reps||"").trim(),c:(d.c||"").trim(),o:(d.o||"").trim(),d:(d.d||"").trim()},yr?{youthReps:yr}:{});});
     });
     const newLib=Object.assign({maori:maori,presc:presc,moriori:moriori},bankMaps,{kids:kids});
     const ex=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(LIB_KEY)+"&select=class_name");
@@ -6818,7 +6848,7 @@ function LibraryDetailsEditor({showToast,allWorkoutNames}){
         isOpen&&React.createElement("div",{style:{padding:"12px",background:"#0b0b0b"}},
           React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3}},"EXERCISE NAME"),
           React.createElement("input",{value:it.name||"",onChange:e=>setField(it.ex,"name",e.target.value.toUpperCase()),placeholder:"Exercise name",style:{...inS,width:"100%",marginBottom:12,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.05em",fontSize:14}}),
-          React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3}},"KIDS EXERCISE NAME"),
+          React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3}},"YOUTH EXERCISE NAME"),
           React.createElement("input",{"data-kids-name":"1",value:it.kids||"",onChange:e=>setField(it.ex,"kids",e.target.value.toUpperCase()),placeholder:"— same as exercise name",style:{...inS,width:"100%",marginBottom:12,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:"0.05em",fontSize:14}}),
           React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3}},"MĀORI NAME"),
           React.createElement("input",{value:it.maori,onChange:e=>setField(it.ex,"maori",e.target.value),placeholder:"—",style:{...inS,width:"100%",marginBottom:12,color:"#1d9bf0",fontStyle:"italic"}}),React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3}},"MORIORI NAME"),React.createElement("input",{value:(it.tr&&it.tr.moriori)||"",onChange:e=>setTr(it.ex,"moriori",e.target.value),placeholder:"—",style:{...inS,width:"100%",marginBottom:12,color:lang.shades[1],fontStyle:"italic"}}),(lang.bank||[]).map(b=>React.createElement("div",{key:b.key},React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3}},(b.name||b.key).toUpperCase()+" NAME"),React.createElement("input",{value:(it.tr&&it.tr[b.key])||"",onChange:e=>setTr(it.ex,b.key,e.target.value),placeholder:"—",style:{...inS,width:"100%",marginBottom:12,color:lang.shades[2],fontStyle:"italic"}}))),
@@ -6830,6 +6860,8 @@ function LibraryDetailsEditor({showToast,allWorkoutNames}){
             ),
             React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3}},"REPS"),
             React.createElement("input",{value:d.reps,onChange:e=>setDur(it.ex,d.dur,"reps",e.target.value),placeholder:"e.g. 20 reps or x 4",style:{...inS,width:"100%",marginBottom:8,fontSize:12}}),
+            React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3}},"YOUTH REPS"),
+            React.createElement("input",{"data-youth-reps":d.dur,value:d.youth||"",onChange:e=>setDur(it.ex,d.dur,"youth",e.target.value.toUpperCase()),placeholder:"e.g. 10 — blank = WORK FOR … on the youth image",style:{...inS,width:"100%",marginBottom:8,fontSize:12}}),
             React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}},
               ["c","o","d"].map((k,i)=>React.createElement("div",{key:k},
                 React.createElement("div",{style:{fontSize:8,letterSpacing:"0.08em",color:"#555",fontWeight:600,marginBottom:3,textAlign:"center"}},["COMMITMENT","CONSISTENCY","DETERMINATION"][i]),
