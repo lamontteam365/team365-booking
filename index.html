@@ -73,6 +73,8 @@ html:has(.app) #root{height:100%}
 .d-dot{width:4px;height:4px;border-radius:50%;background:transparent}
 .day-btn.dhb .d-dot{background:#666}
 .day-btn.da.dhb .d-dot{background:#888}
+.d-cls{width:18px;height:2px;background:transparent}
+.d-cls.on{background:#1d9bf0}
 .no-classes{text-align:center;padding:52px 0;font-size:11px;letter-spacing:0.2em;color:#444;font-weight:600;line-height:2.2}
 .cls-wrap{flex:1;padding:14px 16px;display:flex;flex-direction:column;gap:7px}
 .day-hdr{font-size:9px;letter-spacing:0.22em;font-weight:600;margin-bottom:6px;line-height:1.6}
@@ -16050,6 +16052,8 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         weekDates.map((d,i)=>React.createElement("button",{key:i,onClick:()=>setSelDay(i),className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}${weekDots[i]?" dhb":""}`},
           React.createElement("div",{className:"d-name"},DAY_SHORT[i]),
           React.createElement("div",{className:"d-num"},d.getDate()),
+          // Blue line under the date = classes run that day (14 Oct 2026).
+          React.createElement("div",{className:"d-cls"+(timesOn(toDS(d)).length?" on":"")}),
           React.createElement("div",{className:"d-dot"})
         ))
       )),
