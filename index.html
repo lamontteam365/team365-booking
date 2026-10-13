@@ -2877,8 +2877,8 @@ async function pageHelpSave(page,content){
 function PageHelpButton({onPress}){
   return React.createElement("div",{"data-page-help-anchor":"1",style:{position:"relative",height:0,zIndex:40}},
     React.createElement("button",{type:"button","data-page-help-btn":"1","aria-label":"How this page works",title:"How this page works",onClick:onPress,
-      style:{position:"absolute",right:12,bottom:-21,width:24,height:24,borderRadius:"50%",background:"#4a4a4a",border:"1px solid #6a6a6a",
-        color:"#fff",fontFamily:"Georgia,'Times New Roman',serif",fontStyle:"italic",fontWeight:700,fontSize:14,lineHeight:"22px",padding:0,
+      style:{position:"absolute",right:12,bottom:-19,width:20,height:20,borderRadius:"50%",background:"#4a4a4a",border:"1px solid #6a6a6a",
+        color:"#fff",fontFamily:"Georgia,'Times New Roman',serif",fontStyle:"italic",fontWeight:700,fontSize:12,lineHeight:"18px",padding:0,
         textAlign:"center",cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,.55)",WebkitTapHighlightColor:"transparent"}},"i"));
 }
 function PageHelpSheet({page,onClose,showToast}){
@@ -2890,6 +2890,8 @@ function PageHelpSheet({page,onClose,showToast}){
   const [busy,setBusy]=useState(false);
   const [armRestore,setArmRestore]=useState(false);
   const hold=useRef(null);
+  // Bubble sits just above the (i) so the nav bar and the bottom of the app stay in view.
+  const [lift]=useState(()=>{try{const b=document.querySelector("[data-page-help-btn]");if(b){const r=b.getBoundingClientRect();return Math.max(60,Math.round(window.innerHeight-r.top+8));}}catch(e){}return 120;});
   useEffect(()=>{let live=true;pageHelpLoad(page).then(r=>{if(!live||!r.ok)return;setSaved(r.saved);setSecs(pageHelpMerge(page,r.saved));});return()=>{live=false;};},[page]);
   useEffect(()=>{const k=e=>{if(e.key==="Escape"&&!editing)onClose();};window.addEventListener("keydown",k);return()=>window.removeEventListener("keydown",k);},[editing]);
   const defOf=id=>def.sections.find(x=>x.id===id)||null;
@@ -2952,10 +2954,10 @@ function PageHelpSheet({page,onClose,showToast}){
         id!=="__new__"&&!d&&React.createElement("button",{type:"button","data-page-help-delete":id,onClick:()=>deleteOne(id),style:{...link,color:"#e0605a"}},"DELETE")));
   };
   return React.createElement("div",{"data-page-help":page,onClick:()=>{if(!editing)onClose();},
-      style:{position:"fixed",inset:0,zIndex:9000,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"flex-end",justifyContent:"center"}},
+      style:{position:"fixed",inset:0,zIndex:9000,background:"rgba(0,0,0,.55)",display:"flex",alignItems:"flex-end",justifyContent:"center",padding:"max(36px, calc(env(safe-area-inset-top) + 16px)) 0 "+lift+"px",boxSizing:"border-box"}},
     React.createElement("div",{"data-page-help-panel":"1",onClick:e=>e.stopPropagation(),
-        style:{width:"calc(100% - 28px)",maxWidth:460,maxHeight:"88vh",overflowY:"auto",background:"#141414",border:"1px solid #333",borderBottom:"none",borderRadius:"16px 16px 0 0",
-          padding:"0 18px calc(18px + env(safe-area-inset-bottom))",boxSizing:"border-box",boxShadow:"0 -8px 30px rgba(0,0,0,.6)"}},
+        style:{width:"calc(100% - 28px)",maxWidth:460,maxHeight:"100%",overflowY:"auto",background:"#141414",border:"1px solid #3a3a3a",borderRadius:"16px 16px 4px 16px",
+          padding:"0 18px 16px",boxSizing:"border-box",boxShadow:"0 10px 34px rgba(0,0,0,.7)"}},
       // Sticky header: (i), title + ▶, HOW IT WORKS, ✕ stay put while the sections scroll.
       React.createElement("div",{"data-page-help-head":"1",style:{display:"flex",alignItems:"center",gap:10,position:"sticky",top:0,zIndex:2,background:"#141414",margin:"0 -18px",padding:"14px 18px 10px",borderBottom:"1px solid #262626"}},
         React.createElement("div",{style:{width:26,height:26,borderRadius:"50%",background:"#4a4a4a",border:"1px solid #6a6a6a",color:"#fff",fontFamily:"Georgia,serif",fontStyle:"italic",fontWeight:700,fontSize:15,lineHeight:"24px",textAlign:"center",flexShrink:0}},"i"),
