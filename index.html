@@ -78,14 +78,10 @@ html:has(.app) #root{height:100%}
 .d-cls.has{background:#666}
 .d-cls.done{background:#1d9bf0}
 .d-cls.unwell{background:#e06040}
-/* PT Program MONTH view: number + one status dot per day */
-.cal-cell.cal-pt{min-height:46px;align-items:center;justify-content:center;gap:6px}
-.cal-cell.cal-pt .cal-num{padding-left:0}
-.cal-pt-dot{width:18px;height:2px;background:transparent}
-.cal-pt-dot.has{background:#666}
-.cal-cell.sel .cal-pt-dot.has{background:#888}
-.cal-pt-dot.done,.cal-cell.sel .cal-pt-dot.done{background:#1d9bf0}
-.cal-pt-dot.unwell,.cal-cell.sel .cal-pt-dot.unwell{background:#e06040}
+/* PT Program MONTH view (14 Oct 2026): the same boxes, date and side lines as
+   Bookings → Classes MONTH; only the line colour differs: grey = set, blue = done, red = unwell. */
+.cal-lbl.has{border-left-color:#666}
+.cal-lbl.unwell{border-left-color:#e06040}
 .d-cls{width:18px;height:2px;background:transparent}
 .d-cls.on{background:#1d9bf0}
 .no-classes{text-align:center;padding:52px 0;font-size:11px;letter-spacing:0.2em;color:#444;font-weight:600;line-height:2.2}
@@ -10992,12 +10988,20 @@ function MemberWorkoutsView({session,memberData,ttl}){
       React.createElement("div",{className:"cal-grid","data-pt-grid":"1",style:{paddingBottom:80}},
         MW_DAYS.map(d=>React.createElement("div",{key:d,className:"cal-dow"},d.toUpperCase())),
         ptCells.map((d,i)=>{const ds=toDS(d);const w=toDS(mondayOf(d));const di=i%7;
-          const st=dayStatus(monthData.prog[w],monthData.wts[w],monthData.tks[w],MW_DAYS[di],ds);
+          const dkey=MW_DAYS[di];const wts=monthData.wts[w]||{},tks=monthData.tks[w]||{};
+          const st=dayStatus(monthData.prog[w],wts,tks,dkey,ds);
+          // One row per workout, like one row per class: its name beside a line coloured by status.
+          const exDone=ex=>{const n=Math.max(1,parseInt(ex.sets)||1);for(let k=1;k<=n;k++){const kk=dkey+"__"+ex.id+"__s"+k;if(ex.log==="tick"?tks[kk]:((wts[kk]||"")+"").trim()!=="")return true;}return false;};
+          let rows=mwWorkouts(mwNormDay((monthData.prog[w]||{})[dkey])).filter(wo=>wo.exercises.length).map(wo=>({
+            name:(wo.name||(wo.exercises[0]&&wo.exercises[0].name)||"WORKOUT").toUpperCase(),
+            st:st==="unwell"?"unwell":(wo.exercises.every(exDone)?"done":"has")}));
+          if(!rows.length&&st==="unwell")rows=[{name:"UNWELL",st:"unwell"}];
           return React.createElement("button",{key:ds,type:"button","data-pt-day":ds,"data-pt-status":st||"none",
             onClick:()=>{setWeekStart(mondayOf(d));setSelDay(di);setPtMode("week");},
-            className:"cal-cell cal-pt"+(d.getMonth()!==ptMonth.getMonth()?" out":"")+(ds===selDS?" sel":"")+(isToday(d)?" today":"")},
+            className:"cal-cell"+(d.getMonth()!==ptMonth.getMonth()?" out":"")+(ds===selDS?" sel":"")+(isToday(d)?" today":"")},
             React.createElement("div",{className:"cal-num"},d.getDate()),
-            React.createElement("div",{className:"cal-pt-dot"+(st?" "+st:"")}));}))),
+            rows.slice(0,2).map((r,k)=>React.createElement("div",{key:k,className:"cal-lbl "+r.st,"data-pt-row":r.st},r.name)),
+            rows.length>2&&React.createElement("div",{className:"cal-more"},"+"+(rows.length-2)+" more"));}))),
     ptMode==="week"&&React.createElement(React.Fragment,null,
     React.createElement("div",{className:"week-nav",style:{paddingTop:0}},
       React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7))},"‹"),
@@ -11008,7 +11012,8 @@ function MemberWorkoutsView({session,memberData,ttl}){
       dayDates.map((d,i)=>React.createElement("button",{key:i,"data-pt-wday":toDS(d),onClick:()=>setSelDay(i),className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}`},
         React.createElement("div",{className:"d-name"},MW_DAYS[i]),
         React.createElement("div",{className:"d-num"},d.getDate()),
-        React.createElement("div",{className:"d-cls"+(st=>st?" "+st:"")(dayStatus(program,weights,ticks,MW_DAYS[i],toDS(d)))})
+        React.createElement("div",{className:"d-cls"+(st=>st?" "+st:"")(dayStatus(program,weights,ticks,MW_DAYS[i],toDS(d)))}),
+        React.createElement("div",{className:"d-dot"})
       ))
     )),
     ptMode==="week"&&React.createElement("div",{style:{padding:"14px 16px 80px"}},
