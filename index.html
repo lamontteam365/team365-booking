@@ -2833,19 +2833,38 @@ function msgEditBox({value,onChange,onSave,onCancel,saving,linkBtn}){
       React.createElement("button",{type:"button","data-edit-cancel":"1",onClick:onCancel,style:linkBtn},"CANCEL")));
 }
 const msgEditedEl=m=>m.edited_at?React.createElement("div",{"data-edited":"1",style:{textAlign:"right",fontSize:9,color:"#7a8a99",fontStyle:"italic",marginTop:3,whiteSpace:"normal"}},"Edited"):null;
-// ── PAGE GUIDE — master admin only (14 Oct 2026) ─────────────────────────────
-// A grey (i) above the bottom nav, bottom-right. Tap → a sheet explaining the page.
-// Hold a section ~½ s to edit the whole section (heading + points). Saved in
-// public.page_help (RLS: master only). Defaults live here; saved = {sections,removed}.
+// ── PAGE GUIDE (14 Oct 2026) ─────────────────────────────────────────────────
+// A grey (i) above the bottom nav, bottom-right. Tap → a bubble explaining the page.
+// The master always sees it; everyone else only when Admin → FUNCTIONS → PAGE GUIDES is ON
+// (mFlags.guides). Only the master can edit: hold a section ~½ s to edit the whole section.
+// Saved in public.page_help (RLS: everyone signed in reads, master writes). saved = {sections,removed}.
 // Default sections added to the code later still appear unless removed.
 const PAGE_HELP_DEFAULTS={
   community:{title:"NOTICE BOARD",sections:[
-    {id:"posting",h:"Posting",pts:["Every post goes to all members. Subscribers (online-only) can't see the Notice Board.","A new post sends everyone a push notification.","Anyone can reply to a post. Replies sit inside the post's card."]},
-    {id:"new",h:"For members",pts:["The NOTICE BOARD tab changes to a flashing NEW NOTICE while there's a post by someone else they haven't seen yet. It goes back to normal once they've scrolled past it.","Their own posts and replies never trigger NEW NOTICE."]},
+    {id:"posting",h:"Posting",pts:["Every post goes to all members.","A new post sends everyone a push notification.","Anyone can reply to a post. Replies sit inside the post's card."]},
+    {id:"new",h:"New notices",pts:["The NOTICE BOARD tab changes to a flashing NEW NOTICE when there's a post by someone else you haven't seen yet. It goes back to normal once you've scrolled past it.","Your own posts and replies never trigger NEW NOTICE."]},
     {id:"seen",h:"Seen",pts:["Under each post, a SEEN row shows the profile photos of everyone who's seen it (or their initials if they have no photo). Tap it to see names.","A post only counts as seen once it's actually been on someone's screen, not just because they opened the page.","The person who wrote the post is never listed under their own post."]},
     {id:"react",h:"Reactions",pts:["Tap the heart to add ♥. Hold it to pick ❤️ 👍 or 😂.","One reaction per person per post. Choosing another swaps it; choosing the same one again removes it.","Posts can have reactions; replies can't."]},
-    {id:"edit",h:"Editing and deleting",pts:["People can edit only their own posts and replies. Edited ones show a small grey \"Edited\" tag.","Members can delete their own posts. You can delete anyone's, but you can't edit other people's words."]},
-    {id:"pin",h:"Admin only",pts:["Pin keeps a post at the top. Only admins can pin."]}
+    {id:"edit",h:"Editing and deleting",pts:["You can edit your own posts and replies. Edited ones show a small grey \"Edited\" tag.","You can delete your own posts. Team 365 can delete any post, but can't edit anyone else's words."]},
+    {id:"pin",h:"Pinned posts",pts:["Team 365 can pin a post to keep it at the top."]}
+  ]},
+  my:{title:"MY BOOKINGS",sections:[
+    {id:"list",h:"Your bookings",pts:["Shows your upcoming classes and wellness sessions, with the day, time and class name.","A booking stays on the list until 30 minutes after it starts."]},
+    {id:"cancel",h:"Cancelling",pts:["Tap Cancel on any booking to free up your spot.","You can cancel right up until the class starts. There's no late-cancel fee."]},
+    {id:"more",h:"Booking more",pts:["Book classes and wellness from the BOOKINGS menu: CLASSES or WELLNESS."]}
+  ]},
+  classes:{title:"CLASSES",sections:[
+    {id:"book",h:"Booking a class",pts:["Pick a day in WEEK or MONTH view. You can book up to 12 weeks ahead.","Each class shows the spots left, or Full when it's full.","You can book the same class for several weeks in one go. Any weeks that are full are skipped."]},
+    {id:"limits",h:"Weekly limits",pts:["Your membership sets how many classes you can book each week (Monday to Sunday):","Core: 2 HIIT + 1 Strength.","Community, Essential and Foundation: 3 HIIT + 1 Strength.","Signature and Duo: unlimited.","Concession card: 10 classes, used in any week.","Once you've used your limit, the class shows Limit reached."]},
+    {id:"whanau",h:"Whānau classes",pts:["Classes marked * are free Whānau community sessions.","They don't use your weekly allowance or concession card, and don't count towards milestones.","Friends and whānau can book them too, through the Team 365 website."]},
+    {id:"after",h:"After you book",pts:["You'll get a confirmation email.","You can add the class to your calendar."]},
+    {id:"cancel",h:"Cancelling and no-shows",pts:["You can cancel right up until the class starts. There's no late-cancel fee.","If you book and don't turn up, the class still counts towards your weekly limit or concession card."]}
+  ]},
+  wellness:{title:"WELLNESS",sections:[
+    {id:"session",h:"Sauna + cold plunge",pts:["Each session is 90 minutes, one person per slot.","Book at least 12 hours ahead."]},
+    {id:"weekly",h:"Your weekly sessions",pts:["Your membership includes wellness sessions each week, already paid for:","Signature and Duo: 2 a week.","All other memberships: 1 a week.","Used them up? You can still book more. Extra sessions are paid for separately, here or through the Team 365 website."]},
+    {id:"after",h:"After you book",pts:["You'll get a confirmation email, and Team 365 is notified.","You can add the session to your calendar."]},
+    {id:"cancel",h:"Cancelling",pts:["Tap Cancel on the session here or in MY BOOKINGS."]}
   ]}
 };
 function pageHelpMerge(page,saved){
@@ -2881,7 +2900,7 @@ function PageHelpButton({onPress,open}){
         color:"#fff",fontFamily:"Georgia,'Times New Roman',serif",fontStyle:"italic",fontWeight:700,fontSize:12,lineHeight:"18px",padding:0,
         textAlign:"center",cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,.55)",WebkitTapHighlightColor:"transparent"}},"i"));
 }
-function PageHelpSheet({page,onClose,showToast}){
+function PageHelpSheet({page,onClose,showToast,canEdit,everyone}){
   const def=PAGE_HELP_DEFAULTS[page]||{title:"",sections:[]};
   const [saved,setSaved]=useState(null);
   const [secs,setSecs]=useState(()=>pageHelpMerge(page,null));
@@ -2907,7 +2926,7 @@ function PageHelpSheet({page,onClose,showToast}){
   }
   function startEdit(s){stopSpeakingIf("pagehelp-"+page);setArmRestore(false);setEditing(s.id);setDraft(pageHelpToText(s));}
   function holdStart(e,s){
-    if(editing)return;
+    if(editing||!canEdit)return;
     const x=e.clientX,y=e.clientY;
     holdEnd();hold.current={x,y,t:setTimeout(()=>{hold.current=null;try{navigator.vibrate&&navigator.vibrate(15);}catch(_){}startEdit(s);},500)};
   }
@@ -2966,22 +2985,22 @@ function PageHelpSheet({page,onClose,showToast}){
           React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
             React.createElement("div",{"data-page-help-title":"1",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:"0.08em",color:"#fff",lineHeight:1.1}},def.title||"THIS PAGE"),
             !editing&&React.createElement("span",{"data-page-help-play":"1",style:{display:"inline-flex",margin:"-6px 0"}},React.createElement(PlayBtn,{id:"pagehelp-"+page,lines:()=>[(def.title||"").toLowerCase(),...secs.flatMap(s=>[s.h,...s.pts])]}))),
-          React.createElement("div",{style:{fontSize:8,letterSpacing:"0.18em",color:"#777",fontWeight:600}},"HOW IT WORKS · ONLY YOU CAN SEE THIS")),
+          React.createElement("div",{"data-page-help-sub":"1",style:{fontSize:8,letterSpacing:"0.18em",color:"#777",fontWeight:600}},canEdit?(everyone?"HOW IT WORKS · EVERYONE CAN SEE THIS":"HOW IT WORKS · ONLY YOU CAN SEE THIS"):"HOW IT WORKS")),
         React.createElement("button",{type:"button","data-page-help-close":"1","aria-label":"Close",onClick:onClose,style:{background:"none",border:"none",color:"#aaa",fontSize:20,cursor:"pointer",padding:"4px 6px",lineHeight:1}},"✕")),
       React.createElement("div",{style:{height:12}}),
       secs.map(s=>editing===s.id?React.createElement(React.Fragment,{key:s.id},editBox(s.id)):
         React.createElement("div",{key:s.id,"data-page-help-sec":s.id,
             onPointerDown:e=>holdStart(e,s),onPointerMove:holdMove,onPointerUp:holdEnd,onPointerLeave:holdEnd,onPointerCancel:holdEnd,
             onContextMenu:e=>e.preventDefault(),
-            style:{padding:"8px 10px",margin:"0 -10px 6px",borderRadius:10,userSelect:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none",cursor:"default",opacity:editing?0.45:1}},
+            style:{padding:"8px 10px",margin:"0 -10px 6px",borderRadius:10,userSelect:canEdit?"none":"text",WebkitUserSelect:canEdit?"none":"text",WebkitTouchCallout:canEdit?"none":"default",cursor:"default",opacity:editing?0.45:1}},
           React.createElement("div",{"data-page-help-h":"1",style:{fontSize:11,letterSpacing:"0.12em",fontWeight:700,color:"#fff",textTransform:"uppercase",marginBottom:4}},s.h),
           React.createElement("ul",{style:{margin:0,paddingLeft:16,color:"#c8c8c8",fontSize:12.5,lineHeight:1.55}},
             s.pts.map((p,i)=>React.createElement("li",{key:i,style:{marginBottom:3}},p))))),
       editing==="__new__"&&editBox("__new__"),
-      !editing&&React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6,borderTop:"1px solid #262626",paddingTop:4}},
+      canEdit&&!editing&&React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6,borderTop:"1px solid #262626",paddingTop:4}},
         React.createElement("button",{type:"button","data-page-help-add":"1",onClick:()=>{setArmRestore(false);setDraft("");setEditing("__new__");},style:{...link,color:"#1d9bf0"}},"+ ADD SECTION"),
         customised&&React.createElement("button",{type:"button","data-page-help-restore":"1",onClick:restoreAll,style:{...link,color:armRestore?"#e0605a":"#999"}},armRestore?"TAP AGAIN TO RESTORE":"RESTORE ORIGINAL")),
-      !editing&&React.createElement("div",{"data-page-help-hint":"1",style:{textAlign:"center",fontSize:9,letterSpacing:"0.14em",color:"#5c5c5c",fontWeight:600,marginTop:4}},"HOLD ANY SECTION TO EDIT IT")));
+      canEdit&&!editing&&React.createElement("div",{"data-page-help-hint":"1",style:{textAlign:"center",fontSize:9,letterSpacing:"0.14em",color:"#5c5c5c",fontWeight:600,marginTop:4}},"HOLD ANY SECTION TO EDIT IT")));
 }
 function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
   const [posts,setPosts]=useState([]);
@@ -5333,6 +5352,14 @@ function AdminView({admJump,aqNew,bookings,setBookings,showToast,isAdmin,isMaste
           React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides it from admins")
         ),
         React.createElement("button",{onClick:()=>saveMFlag("welladm",!mFlags.welladm),style:{background:!mFlags.welladm?"#fff":"#222",color:!mFlags.welladm?"#000":"#555",border:"1px solid "+(!mFlags.welladm?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},!mFlags.welladm?"HIDE":"VISIBLE")
+      ),
+      // PAGE GUIDES (14 Oct 2026): ON = everyone sees the (i) guides. The master always does.
+      React.createElement("div",{"data-guides-switch":"1",style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(mFlags.guides?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"PAGE GUIDES (i)"),
+          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"ON = members & admins see the (i) guides. You always see them; only you can edit")
+        ),
+        React.createElement("button",{"data-guides-toggle":"1",onClick:()=>saveMFlag("guides",!mFlags.guides),style:{background:mFlags.guides?"#fff":"#222",color:mFlags.guides?"#000":"#555",border:"1px solid "+(mFlags.guides?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},mFlags.guides?"ON":"OFF")
       ),
       React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(mFlags.maint?"#c98a1e":"#222"),padding:"11px 14px",marginBottom:10}},
         React.createElement("div",null,
@@ -15391,6 +15418,13 @@ function App(){
   const TAB_ORDER=ALL_TABS.map(t=>t.id);
   const bookOpts=[...(showClasses?[{id:"classes",label:"CLASSES"}]:[]),...(showWellness?[{id:"wellness",label:"WELLNESS"}]:[])];
   const effBookSub=bookOpts.some(o=>o.id===bookSub)?bookSub:(bookOpts[0]&&bookOpts[0].id);
+  // Page guide (i): which guide this page has, if any, and whether this person sees it (14 Oct 2026).
+  const guideKey=(()=>{
+    if(isSubscriber||!(isMaster||mFlags.guides===true))return null;
+    const k=effTab==="book"?(effBookSub==="wellness"&&showWellness?"wellness":effBookSub==="classes"&&showClasses?"classes":null)
+      :effTab==="community"?(acc("community")?"community":null):effTab==="my"?(canBook?"my":null):null;
+    return k&&PAGE_HELP_DEFAULTS[k]?k:null;
+  })();
   const wkOpts=[...(showPT?[{id:"pt",label:wkTitles.pt||"PT PROGRAM"}]:[]),...(showStrength?[{id:"strength",label:"S & C CLASSES"}]:[]),...(showRoutines?[{id:"routines",label:wkTitles.rt||"ROUTINES"}]:[])];
   const effWkSub=wkOpts.some(o=>o.id===wkSub)?wkSub:(wkOpts[0]&&wkOpts[0].id);
   const renderSeg=(opts,cur,set)=>opts.length<=1?null:React.createElement("div",{className:"sp-toggle seg-nav",style:{marginTop:16,marginBottom:16,paddingLeft:20,paddingRight:20}},opts.map(o=>React.createElement("button",{key:o.id,className:`sp-toggle-btn${cur===o.id?" spta":""}`,style:{border:"1px solid #fff"},onClick:()=>set(o.id)},o.label)));
@@ -16546,9 +16580,10 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     ),
     effTab==="admin"&&isAdmin&&React.createElement(AdminView,{admJump,aqNew,bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:"",challengeEnabled,saveChallengeSetting,dmEnabled,saveDmSetting,openMsgsTo:canOpenMsgs?openThreadDirect:null}),
     ),
-    // Page guide (i) — master only, Notice Board for now (14 Oct 2026).
-    isMaster&&effTab==="community"&&acc("community")&&React.createElement(PageHelpButton,{open:helpPage==="community",onPress:()=>setHelpPage(h=>h==="community"?null:"community")}),
-    isMaster&&helpPage&&effTab===helpPage&&React.createElement(PageHelpSheet,{page:helpPage,onClose:()=>setHelpPage(null),showToast}),
+    // Page guide (i) — Notice Board, My Bookings, Classes, Wellness (14 Oct 2026). Master always;
+    // everyone else when FUNCTIONS → PAGE GUIDES is ON. Subscribers never.
+    guideKey&&React.createElement(PageHelpButton,{open:helpPage===guideKey,onPress:()=>setHelpPage(h=>h===guideKey?null:guideKey)}),
+    guideKey&&helpPage===guideKey&&React.createElement(PageHelpSheet,{key:guideKey,page:guideKey,onClose:()=>setHelpPage(null),showToast,canEdit:isMaster,everyone:mFlags.guides===true}),
     !(effTab==="admin"&&isAdmin)&&React.createElement("div",{"data-swipe-hint":"1",style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:7,letterSpacing:"0.22em",fontWeight:600,cursor:"pointer"}},"SWIPE FOR MORE"),
