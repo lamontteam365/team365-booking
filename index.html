@@ -1436,7 +1436,7 @@ function NudgeFunctions({showToast}){
     React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,margin:"22px 0 10px"}},"MEMBER NUDGES"),
     React.createElement("div",{"data-nudge-switch":on?"on":"off",style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(on?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
       React.createElement("div",{style:{paddingRight:10}},
-        React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"AUTOMATIC NUDGES"),
+        React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"AUTOMATIC NUDGES",React.createElement(FnInfo,{id:"nudges"})),
         React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"A message from Team 365 when a studio member turns yellow"),
         React.createElement("div",{style:{fontSize:9,color:on?"#1d9bf0":"#555",marginTop:3,letterSpacing:"0.04em",fontWeight:on?600:400,lineHeight:1.5}},
           on?"ON — sent once, around 10am on the morning they first show yellow (8 days). Coaches are never nudged"
@@ -2942,12 +2942,113 @@ const PAGE_HELP_DEFAULTS={
     {id:"each",h:"In each one",pts:["The onboarding process steps, the prices, and the form to send.","Tap ▶ beside a title to hear it read out. EDIT changes the steps."]},
     {id:"location",h:"Studio location",pts:["Sets the address used in booking emails."]}
   ]},
+  "adm-functions":{title:"FUNCTIONS",sections:[
+    {id:"what",h:"What this page is",pts:["Your master-only switches. Each one turns a feature on or off, or decides who can use it.","Tap the small i beside any function for what it does."]},
+    {id:"access",h:"What your coaches can use",pts:["Hide me from members, Workout Program, S & C Builder, + AI Build, Details (admins and subscribers), Paste from AI and Wellness.","You always keep access to everything."]},
+    {id:"app",h:"The whole app",pts:["PAGE GUIDES (i) shows these guides to everyone. MAINTENANCE MODE shows members and admins only the Notice Board."]},
+    {id:"emails",h:"Emails · Everyone",pts:["Pause or restart class reminders and booking confirmations for everyone."]},
+    {id:"msgs",h:"Messages and notifications",pts:["Member-to-member messages, phone notifications, the message email backup, and who gets booking alerts."]},
+    {id:"nudges",h:"Member nudges",pts:["An automatic message when a studio member starts to slip."]}
+  ]},
   "adm-coaching":{title:"DETAILS",sections:[
     {id:"what",h:"Workouts",pts:["The class workouts: each one's coaching notes and workout details."]},
     {id:"play",h:"Play and images",pts:["▶ PLAY runs a workout on the screen.","▦ IMAGE (and ▦ KIDS IMAGE) make the station images."]},
     {id:"library",h:"Library",pts:["LIBRARY DETAILS holds every exercise.","Only the master can edit workouts and the library. Coaches see Details read-only, unless it's hidden from them in FUNCTIONS."]}
   ]}
 };
+// ── FUNCTION BRIEFS (14 Oct 2026) ────────────────────────────────────────────
+// A small grey (i) beside each function's name in Admin → FUNCTIONS (master-only page).
+// Tap → a small bubble with that function's brief. Hold the brief ~½ s to edit it.
+// Saved in public.page_help as page "fn-<id>", content {lines:[...]}; defaults here.
+const FN_BRIEFS={
+  hideme:{t:"HIDE ME FROM MEMBERS",b:["Hides your own account from all members and admins, so you don't show up in their lists."]},
+  wk:{t:"WORKOUT PROGRAM",b:["The PT Program builder on each member's profile (Admin → Members → profile → PT PROGRAM).","HIDE takes it away from your admins. You always keep it."]},
+  wkwho:{t:"WHO CAN CREATE WORKOUTS",b:["Choose which admins can build PT programs.","Untick an admin to stop them. You always can."]},
+  sc:{t:"S & C BUILDER",b:["The Admin → S&C BUILDER section, where strength and conditioning cycles are built.","HIDE takes it away from your admins. You always keep it."]},
+  aibuild:{t:"+ AI BUILD",b:["The + AI BUILD button inside S&C Builder.","HIDE takes just that button away from your admins. The rest of S&C Builder stays."]},
+  scwho:{t:"WHO CAN CREATE S & C WORKOUTS",b:["Choose which admins can build S&C cycles.","Untick an admin to stop them. You always can."]},
+  dt:{t:"DETAILS · ADMINS",b:["Admin → DETAILS for your coaches: class workouts, coaching notes, Play and workout images.","HIDE takes Details and Play away from your admins. You always keep them.","When visible, coaches see Details read-only."]},
+  subdt:{t:"DETAILS · SUBSCRIBERS",b:["Whether subscriber gyms can use their DETAILS tab: workouts, Play and workout images.","When hidden, subscribers see that Details is unavailable.","You can also hide single workouts or rows for one subscriber, on their profile."]},
+  pasteAI:{t:"PASTE FROM AI",b:["Lets a coach paste in a program written by AI when building a member's PT program.","HIDE takes it away from your admins. You always keep it."]},
+  welladm:{t:"WELLNESS",b:["Admin → WELLNESS for your coaches.","HIDE takes it away from your admins. Members can still book wellness (that's set in SECTIONS)."]},
+  guides:{t:"PAGE GUIDES (i)",b:["Shows the (i) guides to members and admins on every page they can open.","You always see them, and only you can edit them."]},
+  maint:{t:"MAINTENANCE MODE",b:["While it's ON, members and admins see only the Notice Board. Handy while you're making changes.","You still see everything. Turn it OFF when you're done."]},
+  reminders:{t:"CLASS REMINDERS",b:["The reminder email sent the night before a booked class.","OFF pauses it for everyone, whatever each member's own setting says. Back ON, everyone's own setting applies again."]},
+  confirmations:{t:"BOOKING CONFIRMATIONS",b:["The email sent when someone books a class.","OFF pauses it for everyone. Back ON, each member's own setting applies again."]},
+  dm:{t:"MEMBER-TO-MEMBER MESSAGES",b:["ON: anyone can privately message anyone (except subscribers). You can read them all under Messages → ALL PRIVATE.","OFF: members only message Team 365. Earlier private conversations are hidden, not deleted."]},
+  push_messages:{t:"MESSAGE NOTIFICATIONS",b:["A phone notification when someone gets a coach or member message.","It shows the sender's name only, never the message."]},
+  push_notices:{t:"NOTICE BOARD NOTIFICATIONS",b:["A phone notification to everyone (except subscribers) when a new Notice Board post goes up."]},
+  push_reminders:{t:"CLASS REMINDER NOTIFICATIONS",b:["A phone notification with the night-before class reminder.","CLASS REMINDERS must be on too."]},
+  push_email_fallback:{t:"MESSAGE EMAIL BACKUP",b:["If a message is still unread after 15 minutes and the person has no device with notifications on, they get an email instead.","The email doesn't include the message itself."]},
+  bkalerts:{t:"WHO GETS BOOKING ALERTS",b:["Choose who gets a phone alert when a guest books a class or wellness on the website, or a member books wellness.","Tapping the alert opens that day in Admin.","If nobody's phone gets it, the booking email goes to support@ instead."]},
+  nudges:{t:"AUTOMATIC NUDGES",b:["Once a day, sends one Team 365 message to a studio member the first time they turn yellow.","Coaches are never nudged, and nothing is sent at red. Each nudge shows in their contact history as AUTO NUDGE.","Change the wording in THE MESSAGE. {name} becomes their first name."]}
+};
+function FnInfo({id}){
+  const [at,setAt]=useState(null);
+  if(!FN_BRIEFS[id])return null;
+  const open=e=>{e.stopPropagation();e.preventDefault();const r=e.currentTarget.getBoundingClientRect();setAt(a=>a?null:{top:r.top,bottom:r.bottom,left:r.left});};
+  const bubble=at&&React.createElement(FnBriefBubble,{id,at,onClose:()=>setAt(null)});
+  return React.createElement(React.Fragment,null,
+    React.createElement("span",{role:"button",tabIndex:0,"data-fn-info":id,title:"What this does","aria-label":"What this does",onClick:open,
+      onKeyDown:e=>{if(e.key==="Enter"||e.key===" ")open(e);},
+      style:{display:"inline-flex",alignItems:"center",justifyContent:"center",width:14,height:14,borderRadius:"50%",background:"#4a4a4a",border:"1px solid #6a6a6a",
+        color:"#fff",fontFamily:"Georgia,'Times New Roman',serif",fontStyle:"italic",fontWeight:700,fontSize:9,lineHeight:1,marginLeft:7,verticalAlign:"1px",
+        cursor:"pointer",boxSizing:"border-box",letterSpacing:0,flexShrink:0,WebkitTapHighlightColor:"transparent"}},"i"),
+    bubble&&(typeof ReactDOM!=="undefined"&&ReactDOM.createPortal?ReactDOM.createPortal(bubble,document.body):bubble));
+}
+function FnBriefBubble({id,at,onClose}){
+  const def=FN_BRIEFS[id];const key="fn-"+id;
+  const [lines,setLines]=useState(def.b);
+  const [custom,setCustom]=useState(false);
+  const [editing,setEditing]=useState(false);
+  const [draft,setDraft]=useState("");
+  const [busy,setBusy]=useState(false);
+  const hold=useRef(null);
+  useEffect(()=>{let live=true;pageHelpLoad(key).then(r=>{if(!live||!r.ok||!r.saved||!Array.isArray(r.saved.lines))return;setLines(r.saved.lines.map(String));setCustom(true);});return()=>{live=false;};},[id]);
+  useEffect(()=>{const k=e=>{if(e.key==="Escape"&&!editing)onClose();};window.addEventListener("keydown",k);return()=>window.removeEventListener("keydown",k);},[editing]);
+  function holdEnd(){if(hold.current){clearTimeout(hold.current.t);hold.current=null;}}
+  useEffect(()=>()=>holdEnd(),[]);
+  function holdStart(e){if(editing)return;const x=e.clientX,y=e.clientY;holdEnd();
+    hold.current={x,y,t:setTimeout(()=>{hold.current=null;try{navigator.vibrate&&navigator.vibrate(15);}catch(_){}setDraft(lines.join("\n"));setEditing(true);},500)};}
+  function holdMove(e){const h=hold.current;if(h&&(Math.abs(e.clientX-h.x)>10||Math.abs(e.clientY-h.y)>10))holdEnd();}
+  async function put(next,isCustom){
+    const prev=lines,prevC=custom;setLines(next);setCustom(isCustom);setEditing(false);setBusy(true);
+    const ok=await pageHelpSave(key,isCustom?{lines:next}:{});setBusy(false);
+    if(!ok){setLines(prev);setCustom(prevC);try{window.dispatchEvent(new CustomEvent("t365-toast",{detail:"Couldn't save that — try again"}));}catch(_){}}
+  }
+  function save(){
+    const next=String(draft||"").split("\n").map(l=>l.replace(/^\s*(?:[•\-*·]\s*)?/,"").trim()).filter(Boolean).map(l=>l.slice(0,600)).slice(0,20);
+    if(!next.length||JSON.stringify(next)===JSON.stringify(def.b)){put(def.b,false);return;}
+    if(JSON.stringify(next)===JSON.stringify(lines)){setEditing(false);return;}
+    put(next,true);
+  }
+  const below=at.top<window.innerHeight*0.55;
+  const pos=below?{top:Math.round(at.bottom+8)}:{bottom:Math.round(window.innerHeight-at.top+8)};
+  const link={background:"none",border:"none",color:"#999",fontSize:10,letterSpacing:"0.14em",fontWeight:600,cursor:"pointer",padding:"7px 4px",fontFamily:"'DM Sans',sans-serif"};
+  return React.createElement("div",{"data-fn-bubble-scrim":"1",onClick:()=>{if(!editing)onClose();},style:{position:"fixed",inset:0,zIndex:9500,background:"rgba(0,0,0,.35)"}},
+    React.createElement("div",{"data-fn-bubble":id,onClick:e=>e.stopPropagation(),
+        style:{position:"fixed",...pos,left:"50%",transform:"translateX(-50%)",width:"calc(100% - 40px)",maxWidth:340,maxHeight:"55vh",overflowY:"auto",
+          background:"#141414",border:"1px solid #3a3a3a",borderRadius:14,padding:"12px 14px 12px",boxSizing:"border-box",boxShadow:"0 10px 30px rgba(0,0,0,.7)",fontFamily:"'DM Sans',sans-serif"}},
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:8}},
+        React.createElement("div",{"data-fn-bubble-title":"1",style:{flex:1,minWidth:0,fontSize:11,fontWeight:700,letterSpacing:"0.1em",color:"#fff"}},def.t),
+        React.createElement("button",{type:"button","data-fn-bubble-close":"1","aria-label":"Close",onClick:onClose,style:{background:"none",border:"none",color:"#aaa",fontSize:16,cursor:"pointer",padding:"2px 4px",lineHeight:1}},"✕")),
+      editing
+        ?React.createElement("div",{"data-fn-bubble-edit":"1"},
+            React.createElement("textarea",{"data-fn-bubble-text":"1",value:draft,autoFocus:true,onChange:e=>setDraft(e.target.value),
+              rows:Math.min(12,Math.max(3,draft.split("\n").reduce((n,l)=>n+Math.max(1,Math.ceil(l.length/30)),0)+1)),
+              style:{width:"100%",boxSizing:"border-box",background:"#0b0b0b",color:"#fff",border:"1px solid #555",borderRadius:10,padding:"9px 11px",fontSize:16,lineHeight:1.45,fontFamily:"'DM Sans',sans-serif",resize:"vertical"}}),
+            React.createElement("div",{style:{fontSize:10,color:"#777",margin:"4px 2px 6px"}},"One point per line."),
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+              React.createElement("button",{type:"button","data-fn-bubble-save":"1",disabled:busy,onClick:save,style:{background:"#fff",color:"#000",border:"none",borderRadius:16,padding:"7px 16px",fontSize:10,letterSpacing:"0.14em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},"SAVE"),
+              React.createElement("button",{type:"button","data-fn-bubble-cancel":"1",onClick:()=>setEditing(false),style:link},"CANCEL"),
+              React.createElement("div",{style:{flex:1}}),
+              custom&&React.createElement("button",{type:"button","data-fn-bubble-reset":"1",onClick:()=>put(def.b,false),style:link},"RESET")))
+        :React.createElement(React.Fragment,null,
+            React.createElement("div",{"data-fn-bubble-body":"1",onPointerDown:holdStart,onPointerMove:holdMove,onPointerUp:holdEnd,onPointerLeave:holdEnd,onPointerCancel:holdEnd,
+                onContextMenu:e=>e.preventDefault(),style:{userSelect:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none"}},
+              lines.map((l,i)=>React.createElement("div",{key:i,style:{fontSize:12.5,lineHeight:1.55,color:"#c8c8c8",marginBottom:i<lines.length-1?6:0}},l))),
+            React.createElement("div",{"data-fn-bubble-hint":"1",style:{fontSize:8.5,letterSpacing:"0.14em",color:"#5c5c5c",fontWeight:600,marginTop:10,textAlign:"right"}},"HOLD TO EDIT"))));
+}
 function pageHelpMerge(page,saved){
   const def=(PAGE_HELP_DEFAULTS[page]||{sections:[]}).sections;
   const removed=new Set((saved&&Array.isArray(saved.removed))?saved.removed:[]);
@@ -5354,21 +5455,21 @@ function AdminView({admJump,aqNew,bookings,setBookings,showToast,isAdmin,isMaste
     admSeg==="functions"&&isMaster&&React.createElement(React.Fragment,null,
       React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(masterHidden?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10,marginTop:16}},
         React.createElement("div",null,
-          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"HIDE ME FROM MEMBERS"),
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"HIDE ME FROM MEMBERS",React.createElement(FnInfo,{id:"hideme"})),
           React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"Hides your account from all members & admins")
         ),
         React.createElement("button",{onClick:toggleMasterHidden,disabled:mhSaving,style:{background:masterHidden?"#fff":"#222",color:masterHidden?"#000":"#555",border:"1px solid "+(masterHidden?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},masterHidden?"HIDE":"VISIBLE")
       ),
       React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(!mFlags.wk?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
         React.createElement("div",null,
-          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"WORKOUT PROGRAM"),
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"WORKOUT PROGRAM",React.createElement(FnInfo,{id:"wk"})),
           React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides it from admins (master keeps access)")
         ),
         React.createElement("button",{onClick:()=>saveMFlag("wk",!mFlags.wk),style:{background:!mFlags.wk?"#fff":"#222",color:!mFlags.wk?"#000":"#555",border:"1px solid "+(!mFlags.wk?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},!mFlags.wk?"HIDE":"VISIBLE")
       ),
       React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #222",padding:"11px 14px",marginBottom:10}},
         React.createElement("div",{onClick:()=>setShowWkAdmins(v=>!v),style:{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",userSelect:"none"}},
-          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"WHO CAN CREATE WORKOUTS"),
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"WHO CAN CREATE WORKOUTS",React.createElement(FnInfo,{id:"wkwho"})),
           React.createElement("span",{style:{fontSize:11,color:"#1d9bf0",transform:showWkAdmins?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
         ),
         showWkAdmins&&React.createElement(React.Fragment,null,
@@ -5389,21 +5490,21 @@ function AdminView({admJump,aqNew,bookings,setBookings,showToast,isAdmin,isMaste
       // just scoped to the separate S&C Builder / AI Builder system instead.
       React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(!mFlags.sc?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
         React.createElement("div",null,
-          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"S & C BUILDER"),
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"S & C BUILDER",React.createElement(FnInfo,{id:"sc"})),
           React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides it from admins (master keeps access)")
         ),
         React.createElement("button",{onClick:()=>saveMFlag("sc",!mFlags.sc),style:{background:!mFlags.sc?"#fff":"#222",color:!mFlags.sc?"#000":"#555",border:"1px solid "+(!mFlags.sc?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},!mFlags.sc?"HIDE":"VISIBLE")
       ),
       React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(!mFlags.aibuild?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
         React.createElement("div",null,
-          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"+ AI BUILD"),
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"+ AI BUILD",React.createElement(FnInfo,{id:"aibuild"})),
           React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides just the AI Build button from admins, inside S&C Builder (master keeps access)")
         ),
         React.createElement("button",{onClick:()=>saveMFlag("aibuild",!mFlags.aibuild),style:{background:!mFlags.aibuild?"#fff":"#222",color:!mFlags.aibuild?"#000":"#555",border:"1px solid "+(!mFlags.aibuild?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},!mFlags.aibuild?"HIDE":"VISIBLE")
       ),
       React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #222",padding:"11px 14px",marginBottom:10}},
         React.createElement("div",{onClick:()=>setShowScAdmins(v=>!v),style:{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",userSelect:"none"}},
-          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"WHO CAN CREATE S & C WORKOUTS"),
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"WHO CAN CREATE S & C WORKOUTS",React.createElement(FnInfo,{id:"scwho"})),
           React.createElement("span",{style:{fontSize:11,color:"#1d9bf0",transform:showScAdmins?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
         ),
         showScAdmins&&React.createElement(React.Fragment,null,
@@ -5419,18 +5520,18 @@ function AdminView({admJump,aqNew,bookings,setBookings,showToast,isAdmin,isMaste
               })
         )
       ),
-      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(mFlags.dt?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},React.createElement("div",null,React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"DETAILS · ADMINS"),React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides Details and Play from admins (master keeps access)")),React.createElement("button",{onClick:()=>saveMFlag("dt",!mFlags.dt),style:{background:mFlags.dt?"#fff":"#222",color:mFlags.dt?"#000":"#555",border:"1px solid "+(mFlags.dt?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},mFlags.dt?"HIDE":"VISIBLE")),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(mFlags.dt?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},React.createElement("div",null,React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"DETAILS · ADMINS",React.createElement(FnInfo,{id:"dt"})),React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides Details and Play from admins (master keeps access)")),React.createElement("button",{onClick:()=>saveMFlag("dt",!mFlags.dt),style:{background:mFlags.dt?"#fff":"#222",color:mFlags.dt?"#000":"#555",border:"1px solid "+(mFlags.dt?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},mFlags.dt?"HIDE":"VISIBLE")),
       React.createElement(SubscriberDetailsSwitch,{showToast}),
       React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(!mFlags.pasteAI?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
         React.createElement("div",null,
-          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"PASTE FROM AI"),
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"PASTE FROM AI",React.createElement(FnInfo,{id:"pasteAI"})),
           React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides it from admins (master keeps access)")
         ),
         React.createElement("button",{onClick:()=>saveMFlag("pasteAI",!mFlags.pasteAI),style:{background:!mFlags.pasteAI?"#fff":"#222",color:!mFlags.pasteAI?"#000":"#555",border:"1px solid "+(!mFlags.pasteAI?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},!mFlags.pasteAI?"HIDE":"VISIBLE")
       ),
       React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(!mFlags.welladm?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
         React.createElement("div",null,
-          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"WELLNESS"),
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"WELLNESS",React.createElement(FnInfo,{id:"welladm"})),
           React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides it from admins")
         ),
         React.createElement("button",{onClick:()=>saveMFlag("welladm",!mFlags.welladm),style:{background:!mFlags.welladm?"#fff":"#222",color:!mFlags.welladm?"#000":"#555",border:"1px solid "+(!mFlags.welladm?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},!mFlags.welladm?"HIDE":"VISIBLE")
@@ -5438,14 +5539,14 @@ function AdminView({admJump,aqNew,bookings,setBookings,showToast,isAdmin,isMaste
       // PAGE GUIDES (14 Oct 2026): ON = everyone sees the (i) guides. The master always does.
       React.createElement("div",{"data-guides-switch":"1",style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(mFlags.guides?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
         React.createElement("div",null,
-          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"PAGE GUIDES (i)"),
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"PAGE GUIDES (i)",React.createElement(FnInfo,{id:"guides"})),
           React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"VISIBLE = members & admins see the (i) guides. You always see them; only you can edit")
         ),
         React.createElement("button",{"data-guides-toggle":"1",onClick:()=>saveMFlag("guides",!mFlags.guides),style:{background:mFlags.guides?"#fff":"#222",color:mFlags.guides?"#000":"#555",border:"1px solid "+(mFlags.guides?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},mFlags.guides?"VISIBLE":"HIDE")
       ),
       React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(mFlags.maint?"#c98a1e":"#222"),padding:"11px 14px",marginBottom:10}},
         React.createElement("div",null,
-          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"MAINTENANCE MODE"),
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"MAINTENANCE MODE",React.createElement(FnInfo,{id:"maint"})),
           React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"ON = members & admins see only the Notice Board")
         ),
         React.createElement("button",{onClick:()=>saveMFlag("maint",!mFlags.maint),style:{background:mFlags.maint?"#c98a1e":"#222",color:mFlags.maint?"#000":"#555",border:"1px solid "+(mFlags.maint?"#c98a1e":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},mFlags.maint?"ON":"OFF")
@@ -5468,7 +5569,7 @@ function AdminView({admJump,aqNew,bookings,setBookings,showToast,isAdmin,isMaste
         {key:"confirmations",title:"BOOKING CONFIRMATIONS",hint:"When they book a class",on:confirmationsEnabled,save:saveConfirmationsSetting}
       ].map(e=>React.createElement("div",{key:e.key,style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(e.on?"#222":"#1d9bf0"),padding:"11px 14px",marginBottom:10}},
         React.createElement("div",{style:{paddingRight:10}},
-          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},e.title),
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},e.title,React.createElement(FnInfo,{id:e.key})),
           React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},e.hint),
           React.createElement("div",{style:{fontSize:9,color:e.on?"#555":"#1d9bf0",marginTop:3,letterSpacing:"0.04em",fontWeight:e.on?400:600,lineHeight:1.5}},
             e.on?"Sending — each member’s own switch decides":"PAUSED — nobody receives this, whatever their own switch says")
@@ -5481,7 +5582,7 @@ function AdminView({admJump,aqNew,bookings,setBookings,showToast,isAdmin,isMaste
       isMaster&&React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,margin:"22px 0 10px"}},"MESSAGES · EVERYONE"),
       isMaster&&React.createElement("div",{"data-dm-switch":"1",style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(dmEnabled?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
         React.createElement("div",{style:{paddingRight:10}},
-          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"MEMBER-TO-MEMBER MESSAGES"),
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"MEMBER-TO-MEMBER MESSAGES",React.createElement(FnInfo,{id:"dm"})),
           React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"Lets everyone privately message anyone (except subscribers)"),
           React.createElement("div",{style:{fontSize:9,color:dmEnabled?"#1d9bf0":"#555",marginTop:3,letterSpacing:"0.04em",fontWeight:dmEnabled?600:400,lineHeight:1.5}},
             dmEnabled?"ON — anyone can message anyone. You can read them all under Messages → ALL PRIVATE"
@@ -14275,7 +14376,7 @@ function SubscriberDetailsSwitch({showToast}){
   }
   return React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(!on?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
     React.createElement("div",null,
-      React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"DETAILS · SUBSCRIBERS"),
+      React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"DETAILS · SUBSCRIBERS",React.createElement(FnInfo,{id:"subdt"})),
       React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"HIDE = ON hides Details and Play from every subscriber")
     ),
     React.createElement("button",{onClick:toggle,disabled:busy,style:{background:!on?"#fff":"#222",color:!on?"#000":"#555",border:"1px solid "+(!on?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},busy?"...":(!on?"HIDE":"VISIBLE"))
@@ -14949,12 +15050,12 @@ function PushFunctions({showToast,onFlags}){
     !f?React.createElement("div",{style:{fontSize:10,color:"#444"}},"LOADING…"):rows.map(r=>{const on=f[r.k]!==false;
       return React.createElement("div",{key:r.k,"data-push-flag":r.k,style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(on?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
         React.createElement("div",{style:{paddingRight:10}},
-          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},r.t),
+          React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},r.t,React.createElement(FnInfo,{id:r.k})),
           React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},r.d),
           React.createElement("div",{style:{fontSize:9,color:on?"#1d9bf0":"#555",marginTop:3,letterSpacing:"0.04em",fontWeight:on?600:400,lineHeight:1.5}},on?r.on:r.off)),
         React.createElement("button",{onClick:()=>flip(r.k,!on,r.t.charAt(0)+r.t.slice(1).toLowerCase()),
           style:{background:on?"#fff":"#222",color:on?"#000":"#1d9bf0",border:"1px solid "+(on?"#fff":"#1d9bf0"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}},on?"ON":"OFF"));}),
-    lbl("WHO GETS BOOKING ALERTS"),
+    React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,margin:"22px 0 10px",display:"flex",alignItems:"center"}},"WHO GETS BOOKING ALERTS",React.createElement(FnInfo,{id:"bkalerts"})),
     React.createElement("div",{style:{fontSize:9,color:"#555",letterSpacing:"0.04em",lineHeight:1.6,margin:"-4px 0 10px"}},
       "A phone notification when a guest books a class or wellness on the website, or a member books wellness in the app. Tap it to open that day in Admin. If nobody's phone gets it, the booking email goes to support@ instead."),
     !admins?React.createElement("div",{style:{fontSize:10,color:"#444"}},"LOADING…"):admins.map(a=>{const on=bkOn(a);
@@ -15508,7 +15609,7 @@ function App(){
     // Admin pages: "adm-<section>", only where this admin can open the section (FUNCTIONS comes later).
     if(effTab==="admin"){
       if(!isAdmin)return null;
-      const ok={members:1,leads:1,classes:1,sections:1,challenge:1,onboarding:1,
+      const ok={members:1,leads:1,classes:1,sections:1,challenge:1,onboarding:1,functions:isMaster,
         wellness:isMaster||mFlags.welladm!==false,
         scbuilder:isMaster||(mFlags.sc!==false&&!(mFlags.scAdminHide||[]).includes(session&&session.email)),
         coaching:isMaster||!mFlags.dt};
@@ -15772,6 +15873,7 @@ const navLabel=t=>(t.dot&&noticeNew>0&&effTab!=="community")?React.createElement
   const briefFor=(dk,time)=>classBriefs[(getDayClassName(dk,time)||"").toUpperCase()]||"";
   const myUpcoming=session?bookings.filter(b=>b.email===session.email&&bookingUpcoming(b)).sort((a,b)=>a.date_key.localeCompare(b.date_key)||a.time.localeCompare(b.time)):[];
   function showToast(msg){setToast({msg,show:true});setTimeout(()=>setToast(t=>({...t,show:false})),2200);}
+  useEffect(()=>{const h=e=>showToast(e.detail);window.addEventListener("t365-toast",h);return()=>window.removeEventListener("t365-toast",h);},[]);
   async function handleAuth(){
     const{name,email,phone,password}=authForm;const em=email.toLowerCase().trim();
     if(!em||!password){setAuthErr("Email and password are required.");return;}
