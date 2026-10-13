@@ -3493,15 +3493,16 @@ function BookMenu({pos,opts,current,onPick,onClose,name}){
     return ()=>{document.removeEventListener("keydown",k);window.removeEventListener("resize",r);};
   },[]);
   return React.createElement(React.Fragment,null,
-    React.createElement("div",{"data-book-scrim":"1",onClick:onClose,style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:450}}),
+    // The dim stops at the nav bar, so the (now white) tab stays bright above it.
+    React.createElement("div",{"data-book-scrim":"1",onClick:onClose,style:{position:"fixed",left:0,right:0,top:pos.top!=null?pos.top-4:0,bottom:pos.bottom!=null?pos.bottom-4:0,background:"rgba(0,0,0,0.45)",zIndex:450}}),
     React.createElement("div",{role:"menu","aria-label":wk?"Workouts":"Bookings",[wk?"data-wk-menu":"data-book-menu"]:"1",
         style:{position:"fixed",left:pos.left,top:pos.top,bottom:pos.bottom,width:pos.width,background:"#0c0c0c",border:"1px solid #888",zIndex:451,
                display:"flex",flexDirection:"column",transformOrigin:pos.top!=null?"top center":"bottom center",animation:"aqRise .16s ease"}},
       opts.map(o=>{const on=current===o.id;
         return React.createElement("button",{key:o.id,type:"button",role:"menuitem",[wk?"data-wk-pick":"data-book-pick"]:o.id,onClick:()=>onPick(o.id),
-            style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"15px 14px",background:on?"#fff":"none",
+            style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"13px 14px",background:on?"#fff":"none",
                    border:"none",borderBottom:"1px solid #3a3a3a",cursor:"pointer",textAlign:"left",color:on?"#000":"#fff",boxSizing:"border-box"}},
-          React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:"0.12em",lineHeight:1,whiteSpace:"nowrap"}},o.label),
+          React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",lineHeight:1,whiteSpace:"nowrap"}},o.label),
           React.createElement("span",{style:{fontSize:8,color:on?"#000":"#555",fontWeight:600}},"›"));}))
   );
 }
@@ -11096,7 +11097,7 @@ function DayNoteBox({initial,placeholder,onSave}){
         rows:4,
         onChange:e=>setV(e.target.value),
         onBlur:e=>onSave(e.target.value),
-        style:{width:"100%",display:"block",background:"#141414",border:"1px solid #fff",borderRadius:0,color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:13,lineHeight:1.6,padding:"10px 12px",outline:"none",resize:"vertical",boxSizing:"border-box",...(VOICE_SR?{paddingRight:46}:{})}}),
+        style:{width:"100%",display:"block",background:"#141414",border:"0.5px solid #fff",borderRadius:0,color:"#ddd",fontFamily:"'DM Sans',sans-serif",fontSize:13,lineHeight:1.6,padding:"10px 12px",outline:"none",resize:"vertical",boxSizing:"border-box",...(VOICE_SR?{paddingRight:46}:{})}}),
       React.createElement(MicBtn,{talk,kind:"journal",style:{position:"absolute",right:6,bottom:8}})),
     React.createElement(MicErr,{talk}));
 }
@@ -14702,7 +14703,8 @@ function App(){
   useEffect(()=>{ssSet("t365-tab",tab);},[tab]);
   // Keep the active tab centred in the TOP nav bar; the bottom bar follows via the mirror below (12 Oct 2026).
   useEffect(()=>{
-    try{const all=[...document.querySelectorAll('[data-tab="'+tab+'"]')];
+    try{const tid=(tab==="my"&&!document.querySelector('[data-tab="my"]'))?"book":tab;   // MY BOOKINGS sits under BOOKINGS
+      const all=[...document.querySelectorAll('[data-tab="'+tid+'"]')];
       const el=all.find(x=>x.parentElement&&x.parentElement.matches("[data-top-tabs]"))||all[0];
       if(el){const c=el.parentElement;const er=el.getBoundingClientRect(),cr=c.getBoundingClientRect();
         c.scrollTo({left:c.scrollLeft+(er.left-cr.left)-(cr.width/2)+(er.width/2),behavior:"smooth"});}}catch(e){}
@@ -15197,15 +15199,20 @@ function App(){
     window.addEventListener("popstate",onPop);
     return ()=>window.removeEventListener("popstate",onPop);
   },[]);
-  const NAV_TABS=isSubscriber?[{id:"details",label:"DETAILS"}]:maintActive?[{id:"community",label:"NOTICE BOARD",dot:true}]:[
+  // Order (14 Oct 2026): NOTICE BOARD, BOOKINGS, WORKOUTS, CHALLENGE, PROGRESS.
+  // MY BOOKINGS lives in the BOOKINGS dropdown when there is a BOOKINGS tab; it is still
+  // a page ("my") in TAB_ORDER, so swipes, deep links and the tab checks keep working.
+  const ALL_TABS=isSubscriber?[{id:"details",label:"DETAILS"}]:maintActive?[{id:"community",label:"NOTICE BOARD",dot:true}]:[
     ...(acc("community")?[{id:"community",label:"NOTICE BOARD",dot:true}]:[]),
     ...(canBook?[{id:"my",label:"MY BOOKINGS"}]:[]),
     ...((showClasses||showWellness)?[{id:"book",label:"BOOKINGS"}]:[]),
-    ...(acc("progress")?[{id:"progress",label:"PROGRESS"}]:[]),
     ...((showPT||showStrength||showRoutines)?[{id:"workouts",label:"WORKOUTS"}]:[]),
     ...(showChallenge?[{id:"challenge",label:"CHALLENGE"}]:[]),
+    ...(acc("progress")?[{id:"progress",label:"PROGRESS"}]:[]),
   ];
-  const TAB_ORDER=NAV_TABS.map(t=>t.id);
+  const myInBookMenu=ALL_TABS.some(t=>t.id==="book")&&ALL_TABS.some(t=>t.id==="my");
+  const NAV_TABS=myInBookMenu?ALL_TABS.filter(t=>t.id!=="my"):ALL_TABS;
+  const TAB_ORDER=ALL_TABS.map(t=>t.id);
   const bookOpts=[...(showClasses?[{id:"classes",label:"CLASSES"}]:[]),...(showWellness?[{id:"wellness",label:"WELLNESS"}]:[])];
   const effBookSub=bookOpts.some(o=>o.id===bookSub)?bookSub:(bookOpts[0]&&bookOpts[0].id);
   const wkOpts=[...(showPT?[{id:"pt",label:wkTitles.pt||"PT PROGRAM"}]:[]),...(showStrength?[{id:"strength",label:"S & C CLASSES"}]:[]),...(showRoutines?[{id:"routines",label:wkTitles.rt||"ROUTINES"}]:[])];
@@ -15276,15 +15283,20 @@ function App(){
     return ()=>{live=false;off();window.removeEventListener("t365-notice-changed",h);window.removeEventListener("t365-msgs-changed",h);};
   },[session&&session.email,isSubscriber,joinedMs]);
   // BOOKINGS opens the CLASSES / WELLNESS menu when both are on (10 Oct 2026).
-const bookHasMenu=bookOpts.length>1;
+const bookMenuOpts=myInBookMenu?[{id:"my",label:"MY BOOKINGS"},...bookOpts]:bookOpts;
+const bookHasMenu=bookMenuOpts.length>1;
+// A tab shows white when it's the page you're on, or while its dropdown is open (14 Oct 2026).
+const tabOn=t=>bookMenu?t.id==="book":wkMenu?t.id==="workouts":(effTab===t.id||(t.id==="book"&&myInBookMenu&&effTab==="my"));
 // WORKOUTS works the same way when more than one of PT PROGRAM / S & C CLASSES / ROUTINES is on (14 Oct 2026).
 const wkHasMenu=wkOpts.length>1;
 const openBookMenu=(e,up,set=setBookMenu)=>{const r=e.currentTarget.getBoundingClientRect();const w=Math.max(170,Math.round(r.width));
   const left=Math.max(6,Math.min(Math.round(r.left+r.width/2-w/2),window.innerWidth-w-6));
   set(up?{left,width:w,bottom:Math.round(window.innerHeight-r.top+4)}:{left,width:w,top:Math.round(r.bottom+4)});};
 const tabClick=(t,e,up)=>{setMsgOpen(false);
-  if(t.id==="book"&&bookHasMenu){openBookMenu(e,up);return;}
-  if(t.id==="workouts"&&wkHasMenu){openBookMenu(e,up,setWkMenu);return;}
+  // The nav bar stays tappable while a menu is open: the same tab closes it, another tab goes there.
+  const wasB=!!bookMenu,wasW=!!wkMenu;setBookMenu(null);setWkMenu(null);
+  if(t.id==="book"&&bookHasMenu){if(!wasB)openBookMenu(e,up);return;}
+  if(t.id==="workouts"&&wkHasMenu){if(!wasW)openBookMenu(e,up,setWkMenu);return;}
   setTab(t.id);if(t.id==="community")lsSet("t365-last-read",Date.now());};
 const navLabelB=t=>(t.id==="book"&&bookHasMenu)||(t.id==="workouts"&&wkHasMenu)
   ?React.createElement(React.Fragment,null,navLabel(t),React.createElement("span",{[t.id==="book"?"data-book-caret":"data-wk-caret"]:"1",style:{marginLeft:4,fontSize:"7px",display:"inline-block",transform:(t.id==="book"?bookMenu:wkMenu)?"rotate(180deg)":"none",transition:"transform .15s"}},"\u25be"))
@@ -16083,7 +16095,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       React.createElement("div",{className:"no-sb","data-top-tabs":"1",style:{display:"flex",marginLeft:-20,marginRight:-20,width:"calc(100% + 40px)",borderTop:"1px solid #888",borderBottom:"1px solid #888",background:"#141414",overflowX:"auto"},onClick:e=>e.stopPropagation()},
         NAV_TABS.map((t,ti)=>React.createElement(React.Fragment,{key:t.id},
           React.createElement("button",{"data-tab":t.id,
-            style:{flex:"1 0 auto",minWidth:56,padding:"12px 10px",background:effTab===t.id?"#fff":"none",border:"none",borderTop:`1px solid ${effTab===t.id?"#fff":"#888"}`,borderBottom:`1px solid ${effTab===t.id?"#fff":"#888"}`,borderLeft:"1px solid transparent",borderRight:"1px solid transparent",marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8.5px",letterSpacing:"0.1em",color:effTab===t.id?"#000":"#555",fontWeight:600,whiteSpace:"nowrap",position:"relative"},
+            style:{flex:"1 0 auto",minWidth:56,padding:"12px 10px",background:tabOn(t)?"#fff":"none",border:"none",borderTop:`1px solid ${tabOn(t)?"#fff":"#888"}`,borderBottom:`1px solid ${tabOn(t)?"#fff":"#888"}`,borderLeft:"1px solid transparent",borderRight:"1px solid transparent",marginTop:-1,marginBottom:-1,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"8.5px",letterSpacing:"0.1em",color:tabOn(t)?"#000":"#555",fontWeight:600,whiteSpace:"nowrap",position:"relative"},
             onClick:e=>tabClick(t,e,false)},
             navLabelB(t)
           ),
@@ -16091,8 +16103,8 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
         ))
       )
     ),
-    bookMenu&&bookHasMenu&&React.createElement(BookMenu,{pos:bookMenu,opts:bookOpts,current:effTab==="book"?effBookSub:null,
-      onPick:id=>{setBookSub(id);setTab("book");setBookMenu(null);},onClose:()=>setBookMenu(null)}),
+    bookMenu&&bookHasMenu&&React.createElement(BookMenu,{pos:bookMenu,opts:bookMenuOpts,current:effTab==="my"?"my":effTab==="book"?effBookSub:null,
+      onPick:id=>{if(id==="my"){setTab("my");}else{setBookSub(id);setTab("book");}setBookMenu(null);},onClose:()=>setBookMenu(null)}),
     wkMenu&&wkHasMenu&&React.createElement(BookMenu,{name:"wk",pos:wkMenu,opts:wkOpts,current:effTab==="workouts"?effWkSub:null,
       onPick:id=>{setWkSub(id);setTab("workouts");setWkMenu(null);},onClose:()=>setWkMenu(null)}),
     aqOpen&&isAdmin&&React.createElement(AdminQuickMenu,{pos:aqOpen,current:effTab==="admin"?admSeg:null,alerts:aqAlerts,isMaster,
@@ -16365,7 +16377,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     ),
     !(effTab==="admin"&&isAdmin)&&React.createElement("div",{className:"tab-bar no-sb","data-bottom-tabs":"1",style:{marginTop:0}},
       NAV_TABS.map((t,ti)=>React.createElement(React.Fragment,{key:t.id},
-        React.createElement("button",{"data-tab":t.id,className:`tab-btn${effTab===t.id?" ta":""}`,style:t.dot?{position:"relative"}:undefined,
+        React.createElement("button",{"data-tab":t.id,className:`tab-btn${tabOn(t)?" ta":""}`,style:t.dot?{position:"relative"}:undefined,
           onClick:e=>tabClick(t,e,true)},
           navLabelB(t)
         ),
