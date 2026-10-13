@@ -2877,8 +2877,8 @@ async function pageHelpSave(page,content){
 function PageHelpButton({onPress}){
   return React.createElement("div",{"data-page-help-anchor":"1",style:{position:"relative",height:0,zIndex:40}},
     React.createElement("button",{type:"button","data-page-help-btn":"1","aria-label":"How this page works",title:"How this page works",onClick:onPress,
-      style:{position:"absolute",right:12,bottom:8,width:30,height:30,borderRadius:"50%",background:"#4a4a4a",border:"1px solid #6a6a6a",
-        color:"#fff",fontFamily:"Georgia,'Times New Roman',serif",fontStyle:"italic",fontWeight:700,fontSize:17,lineHeight:"28px",padding:0,
+      style:{position:"absolute",right:12,bottom:-21,width:24,height:24,borderRadius:"50%",background:"#4a4a4a",border:"1px solid #6a6a6a",
+        color:"#fff",fontFamily:"Georgia,'Times New Roman',serif",fontStyle:"italic",fontWeight:700,fontSize:14,lineHeight:"22px",padding:0,
         textAlign:"center",cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,.55)",WebkitTapHighlightColor:"transparent"}},"i"));
 }
 function PageHelpSheet({page,onClose,showToast}){
@@ -2902,7 +2902,7 @@ function PageHelpSheet({page,onClose,showToast}){
     if(!ok){setSecs(prevSecs);setSaved(prevSaved);showToast&&showToast("Couldn't save that — try again");}
     return ok;
   }
-  function startEdit(s){setArmRestore(false);setEditing(s.id);setDraft(pageHelpToText(s));}
+  function startEdit(s){stopSpeakingIf("pagehelp-"+page);setArmRestore(false);setEditing(s.id);setDraft(pageHelpToText(s));}
   function holdStart(e,s){
     if(editing)return;
     const x=e.clientX,y=e.clientY;
@@ -2910,7 +2910,7 @@ function PageHelpSheet({page,onClose,showToast}){
   }
   function holdMove(e){const h=hold.current;if(h&&(Math.abs(e.clientX-h.x)>10||Math.abs(e.clientY-h.y)>10))holdEnd();}
   function holdEnd(){if(hold.current){clearTimeout(hold.current.t);hold.current=null;}}
-  useEffect(()=>()=>holdEnd(),[]);
+  useEffect(()=>()=>{holdEnd();stopSpeakingIf("pagehelp-"+page);},[]);
   function save(){
     const parsed=pageHelpFromText(draft);
     if(editing==="__new__"){
@@ -2954,15 +2954,18 @@ function PageHelpSheet({page,onClose,showToast}){
   return React.createElement("div",{"data-page-help":page,onClick:()=>{if(!editing)onClose();},
       style:{position:"fixed",inset:0,zIndex:9000,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"flex-end",justifyContent:"center"}},
     React.createElement("div",{"data-page-help-panel":"1",onClick:e=>e.stopPropagation(),
-        style:{width:"100%",maxWidth:520,maxHeight:"80vh",overflowY:"auto",background:"#141414",borderTop:"1px solid #333",borderRadius:"16px 16px 0 0",
-          padding:"14px 18px calc(18px + env(safe-area-inset-bottom))",boxSizing:"border-box",boxShadow:"0 -8px 30px rgba(0,0,0,.6)"}},
-      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:2}},
+        style:{width:"calc(100% - 28px)",maxWidth:460,maxHeight:"88vh",overflowY:"auto",background:"#141414",border:"1px solid #333",borderBottom:"none",borderRadius:"16px 16px 0 0",
+          padding:"0 18px calc(18px + env(safe-area-inset-bottom))",boxSizing:"border-box",boxShadow:"0 -8px 30px rgba(0,0,0,.6)"}},
+      // Sticky header: (i), title + ▶, HOW IT WORKS, ✕ stay put while the sections scroll.
+      React.createElement("div",{"data-page-help-head":"1",style:{display:"flex",alignItems:"center",gap:10,position:"sticky",top:0,zIndex:2,background:"#141414",margin:"0 -18px",padding:"14px 18px 10px",borderBottom:"1px solid #262626"}},
         React.createElement("div",{style:{width:26,height:26,borderRadius:"50%",background:"#4a4a4a",border:"1px solid #6a6a6a",color:"#fff",fontFamily:"Georgia,serif",fontStyle:"italic",fontWeight:700,fontSize:15,lineHeight:"24px",textAlign:"center",flexShrink:0}},"i"),
         React.createElement("div",{style:{flex:1,minWidth:0}},
-          React.createElement("div",{"data-page-help-title":"1",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:"0.08em",color:"#fff",lineHeight:1.1}},def.title||"THIS PAGE"),
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+            React.createElement("div",{"data-page-help-title":"1",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:"0.08em",color:"#fff",lineHeight:1.1}},def.title||"THIS PAGE"),
+            !editing&&React.createElement("span",{"data-page-help-play":"1",style:{display:"inline-flex",margin:"-6px 0"}},React.createElement(PlayBtn,{id:"pagehelp-"+page,lines:()=>[(def.title||"").toLowerCase(),...secs.flatMap(s=>[s.h,...s.pts])]}))),
           React.createElement("div",{style:{fontSize:8,letterSpacing:"0.18em",color:"#777",fontWeight:600}},"HOW IT WORKS · ONLY YOU CAN SEE THIS")),
         React.createElement("button",{type:"button","data-page-help-close":"1","aria-label":"Close",onClick:onClose,style:{background:"none",border:"none",color:"#aaa",fontSize:20,cursor:"pointer",padding:"4px 6px",lineHeight:1}},"✕")),
-      React.createElement("div",{style:{fontSize:10,color:"#666",margin:"6px 0 12px"}},"Hold a section to edit it."),
+      React.createElement("div",{style:{height:12}}),
       secs.map(s=>editing===s.id?React.createElement(React.Fragment,{key:s.id},editBox(s.id)):
         React.createElement("div",{key:s.id,"data-page-help-sec":s.id,
             onPointerDown:e=>holdStart(e,s),onPointerMove:holdMove,onPointerUp:holdEnd,onPointerLeave:holdEnd,onPointerCancel:holdEnd,
@@ -2974,7 +2977,8 @@ function PageHelpSheet({page,onClose,showToast}){
       editing==="__new__"&&editBox("__new__"),
       !editing&&React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6,borderTop:"1px solid #262626",paddingTop:4}},
         React.createElement("button",{type:"button","data-page-help-add":"1",onClick:()=>{setArmRestore(false);setDraft("");setEditing("__new__");},style:{...link,color:"#1d9bf0"}},"+ ADD SECTION"),
-        customised&&React.createElement("button",{type:"button","data-page-help-restore":"1",onClick:restoreAll,style:{...link,color:armRestore?"#e0605a":"#999"}},armRestore?"TAP AGAIN TO RESTORE":"RESTORE ORIGINAL"))));
+        customised&&React.createElement("button",{type:"button","data-page-help-restore":"1",onClick:restoreAll,style:{...link,color:armRestore?"#e0605a":"#999"}},armRestore?"TAP AGAIN TO RESTORE":"RESTORE ORIGINAL")),
+      !editing&&React.createElement("div",{"data-page-help-hint":"1",style:{textAlign:"center",fontSize:9,letterSpacing:"0.14em",color:"#5c5c5c",fontWeight:600,marginTop:4}},"HOLD ANY SECTION TO EDIT IT")));
 }
 function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
   const [posts,setPosts]=useState([]);
