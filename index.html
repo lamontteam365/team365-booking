@@ -2895,6 +2895,57 @@ const PAGE_HELP_DEFAULTS={
     {id:"pbs",h:"My personal bests",pts:["Record your best lift for each exercise, with the date. Tap SET or EDIT."]},
     {id:"community",h:"Community personal bests",pts:["The best lift in the Team 365 community for each exercise, for men and women, with the record holder.","Team 365 keeps these up to date."]},
     {id:"milestones",h:"My milestones",pts:["Milestones unlock as you attend classes: your first class, then set numbers of classes.","Only classes you were checked in to count. Free Whānau classes don't count."]}
+  ]},
+  // ── Admin pages (14 Oct 2026) ──
+  "adm-members":{title:"MEMBERS",sections:[
+    {id:"list",h:"The list",pts:["Every member, with studio members who've been away longest at the top.","Filter by ALL, STUDIO, ONLINE or PT.","A NEW tag marks members who joined since you last looked."]},
+    {id:"lights",h:"Blue, yellow, red",pts:["Each studio member's card is coloured by how regularly they've been coming. Tap ⓘ KEY for what each colour means.","Members never see their colour.","Mark check-ins at every class, or members will look absent."]},
+    {id:"msg",h:"Messages",pts:["Tap a member's photo to open your conversation with them.","It flashes NEW MESSAGE when they've sent you something you haven't read."]},
+    {id:"profile",h:"Member profile",pts:["Tap a card to open their profile: bookings, counts, attendance, emails, no-shows, health screening, PT program, challenge and more.","In ATTENDANCE you can log a call or text, see contact history, and reset their count."]},
+    {id:"subs",h:"Subscribers",pts:["Subscribers sit in a closed SUBSCRIBERS bar at the bottom. Only the master sees them."]}
+  ]},
+  "adm-leads":{title:"LEADS",sections:[
+    {id:"who",h:"Who's here",pts:["People who booked through the website without an account, plus anyone added with + ADD A LEAD."]},
+    {id:"boxes",h:"The boxes",pts:["LEADS: everyone on the list. CONVERTED: how many became members. CONVERSION: the percentage."]},
+    {id:"tick",h:"Converted",pts:["Someone who becomes a member is marked converted automatically and stays on the list.","Tap ✓ to mark someone converted or not."]},
+    {id:"remove",h:"Removing",pts:["Tap ✕ to take someone off the list."]}
+  ]},
+  "adm-classes":{title:"CLASSES",sections:[
+    {id:"day",h:"Each day",pts:["Pick a day to see every class, who's booked and the spots left.","Mark each person checked in at every class. Check-ins count towards concession cards, milestones and the member colours."]},
+    {id:"change",h:"Changing a class",pts:["Open a class to change its spots or name, make it a free Whānau class, or hide it for just that date or every week."]},
+    {id:"new",h:"New classes",pts:["+ NEW CLASS: name it, pick HIIT or STRENGTH, and tick the days it runs."]},
+    {id:"setup",h:"Set-up",pts:["BASE TIMETABLE: the standing weekly timetable.","SESSION BRIEFS: one brief per workout style, shown to members on the class.","MEMBERSHIP ALLOWANCES: the weekly class limits for each membership."]}
+  ]},
+  "adm-wellness":{title:"WELLNESS",sections:[
+    {id:"day",h:"Each day",pts:["Pick a day to see the sauna + cold plunge sessions and who's booked."]},
+    {id:"times",h:"Session times",pts:["Add a time or hide a session for one date.","BASE TIMETABLE sets the standing weekly times."]},
+    {id:"notes",h:"Good to know",pts:["Admins can book without the 12-hour notice.","Every wellness booking sends a phone alert (who gets it is set in FUNCTIONS)."]}
+  ]},
+  "adm-scbuilder":{title:"S&C BUILDER",sections:[
+    {id:"cycles",h:"Cycles",pts:["Build strength and conditioning blocks for each session type (Lower, Upper, Full).","CREATE CYCLE: name it, pick the session type, the number of weeks and the go-live date."]},
+    {id:"ex",h:"Exercises",pts:["Add exercises week by week, in sections: Core, Main, Mobility, Accessories, Cardio.","BULK EDIT applies a change across several weeks."]},
+    {id:"ai",h:"Building with AI",pts:["COPY PROMPT, build the program with AI, then paste it back and IMPORT & CREATE CLASS."]},
+    {id:"queue",h:"The queue",pts:["CURRENT CYCLE is live for members, COMING UP is next, COMPLETED CYCLES are finished.","MEMBER LOGS shows what members have logged."]}
+  ]},
+  "adm-sections":{title:"SECTIONS",sections:[
+    {id:"what",h:"What this does",pts:["Turns whole parts of the app on or off for everyone: HIIT classes, Strength classes, Wellness, Challenge, and Add to Calendar.","Off hides it from members straight away."]}
+  ]},
+  "adm-challenge":{title:"CHALLENGE",sections:[
+    {id:"list",h:"Your challenges",pts:["Every challenge you've created, newest first: RUNNING, UPCOMING or FINISHED.","Two challenges can't overlap."]},
+    {id:"new",h:"New challenge",pts:["+ NEW CHALLENGE carries over the content (themes, questions, examples), but not the dates or who's in it."]},
+    {id:"setup",h:"Inside a challenge",pts:["WHO IS IN THIS CHALLENGE, ABOUT THIS CHALLENGE, INTAKE, WEEKLY CHALLENGE and JOURNEY (weeks, themes and questions)."]},
+    {id:"remove",h:"Removing",pts:["REMOVE CHALLENGE (two taps) removes the set-up only. Everything members logged is kept."]},
+    {id:"tab",h:"The member tab",pts:["Turn the CHALLENGE tab on or off in SECTIONS."]}
+  ]},
+  "adm-onboarding":{title:"ONBOARDING",sections:[
+    {id:"groups",h:"By client type",pts:["STUDIO, TRAINING & COACHING, CONCESSIONS, and SUBSCRIBERS (master only)."]},
+    {id:"each",h:"In each one",pts:["The onboarding process steps, the prices, and the form to send.","Tap ▶ beside a title to hear it read out. EDIT changes the steps."]},
+    {id:"location",h:"Studio location",pts:["Sets the address used in booking emails."]}
+  ]},
+  "adm-coaching":{title:"DETAILS",sections:[
+    {id:"what",h:"Workouts",pts:["The class workouts: each one's coaching notes and workout details."]},
+    {id:"play",h:"Play and images",pts:["▶ PLAY runs a workout on the screen.","▦ IMAGE (and ▦ KIDS IMAGE) make the station images."]},
+    {id:"library",h:"Library",pts:["LIBRARY DETAILS holds every exercise.","Only the master can edit workouts and the library. Coaches see Details read-only, unless it's hidden from them in FUNCTIONS."]}
   ]}
 };
 function pageHelpMerge(page,saved){
@@ -2923,10 +2974,10 @@ async function pageHelpSave(page,content){
       body:JSON.stringify({page,content,updated_at:new Date().toISOString()})});
     return r.ok;}catch(e){return false;}
 }
-function PageHelpButton({onPress,open}){
+function PageHelpButton({onPress,open,admin}){
   return React.createElement("div",{"data-page-help-anchor":"1",style:{position:"relative",height:0,zIndex:open?9001:40}},
     React.createElement("button",{type:"button","data-page-help-btn":"1","aria-label":"How this page works",title:"How this page works",onClick:onPress,
-      style:{position:"absolute",right:12,bottom:-19,width:20,height:20,borderRadius:"50%",background:"#4a4a4a",border:"1px solid #6a6a6a",
+      style:{position:"absolute",right:12,bottom:admin?6:-19,width:20,height:20,borderRadius:"50%",background:"#4a4a4a",border:"1px solid #6a6a6a",
         color:"#fff",fontFamily:"Georgia,'Times New Roman',serif",fontStyle:"italic",fontWeight:700,fontSize:12,lineHeight:"18px",padding:0,
         textAlign:"center",cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,.55)",WebkitTapHighlightColor:"transparent"}},"i"));
 }
@@ -15454,6 +15505,16 @@ function App(){
   // Page guide (i): which guide this page has, if any, and whether this person sees it (14 Oct 2026).
   const guideKey=(()=>{
     if(isSubscriber||!(isMaster||mFlags.guides===true))return null;
+    // Admin pages: "adm-<section>", only where this admin can open the section (FUNCTIONS comes later).
+    if(effTab==="admin"){
+      if(!isAdmin)return null;
+      const ok={members:1,leads:1,classes:1,sections:1,challenge:1,onboarding:1,
+        wellness:isMaster||mFlags.welladm!==false,
+        scbuilder:isMaster||(mFlags.sc!==false&&!(mFlags.scAdminHide||[]).includes(session&&session.email)),
+        coaching:isMaster||!mFlags.dt};
+      const ak="adm-"+admSeg;
+      return ok[admSeg]&&PAGE_HELP_DEFAULTS[ak]?ak:null;
+    }
     const k=effTab==="book"?(effBookSub==="wellness"&&showWellness?"wellness":effBookSub==="classes"&&showClasses?"classes":null)
       :effTab==="workouts"?(effWkSub==="pt"&&showPT?"pt":effWkSub==="strength"&&showStrength?"strength":effWkSub==="routines"&&showRoutines?"routines":null)
       :effTab==="community"?(acc("community")?"community":null):effTab==="my"?(canBook?"my":null)
@@ -16617,7 +16678,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     ),
     // Page guide (i) — Notice Board, My Bookings, Classes, Wellness (14 Oct 2026). Master always;
     // everyone else when FUNCTIONS → PAGE GUIDES is ON. Subscribers never.
-    guideKey&&React.createElement(PageHelpButton,{open:helpPage===guideKey,onPress:()=>setHelpPage(h=>h===guideKey?null:guideKey)}),
+    guideKey&&React.createElement(PageHelpButton,{admin:effTab==="admin",open:helpPage===guideKey,onPress:()=>setHelpPage(h=>h===guideKey?null:guideKey)}),
     guideKey&&helpPage===guideKey&&React.createElement(PageHelpSheet,{key:guideKey,page:guideKey,title:guideTitle,onClose:()=>setHelpPage(null),showToast,canEdit:isMaster,everyone:mFlags.guides===true}),
     !(effTab==="admin"&&isAdmin)&&React.createElement("div",{"data-swipe-hint":"1",style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
