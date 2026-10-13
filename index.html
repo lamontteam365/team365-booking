@@ -2865,6 +2865,36 @@ const PAGE_HELP_DEFAULTS={
     {id:"weekly",h:"Your weekly sessions",pts:["Your membership includes wellness sessions each week, already paid for:","Signature and Duo: 2 a week.","All other memberships: 1 a week.","Used them up? You can still book more. Extra sessions are paid for separately, here or through the Team 365 website."]},
     {id:"after",h:"After you book",pts:["You'll get a confirmation email, and Team 365 is notified.","You can add the session to your calendar."]},
     {id:"cancel",h:"Cancelling",pts:["Tap Cancel on the session here or in MY BOOKINGS."]}
+  ]},
+  pt:{title:"PT PROGRAM",sections:[
+    {id:"program",h:"Your program",pts:["Your coach sets your workouts for each day.","Tap a day to see it. Use ‹ › to change week, or switch to MONTH to see the whole month. In MONTH, tap a day to open it.","GO TO TODAY jumps back to today."]},
+    {id:"lines",h:"The lines under each day",pts:["Grey: a workout is set.","Blue: done.","Red: you marked the day unwell.","No line: nothing set."]},
+    {id:"log",h:"Logging",pts:["Tap an exercise to enter your weight or distance for each set, or tick each set off.","A workout gets a green tick once every exercise in it has something logged.","Your coach can see what you log."]},
+    {id:"notes",h:"My notes",pts:["One note a day: how it went, energy, sleep, soreness, nutrition. It saves when you leave the box.","On a rest day, use it as your journal.","Tap ▶ to hear your note read out."]},
+    {id:"unwell",h:"Unwell",pts:["Tap UNWELL to mark the day you're on as unwell. Tap it again to undo.","The count beside it shows your unwell days this year. Tap it to see the dates."]}
+  ]},
+  strength:{title:"S & C CLASSES",sections:[
+    {id:"current",h:"Current classes",pts:["Shows the strength and conditioning blocks running now. Tap one to open it.","Each block runs over a set number of weeks (W1, W2…). The current week opens first."]},
+    {id:"log",h:"Logging",pts:["Log your weight for each set, or tick each set off.","Tap ▶ to play the session full-screen."]},
+    {id:"previous",h:"Previous classes",pts:["Finished blocks move here, with everything you logged."]}
+  ]},
+  routines:{title:"TIMED EXERCISES",sections:[
+    {id:"list",h:"Your timed exercises",pts:["Your coach adds timed routines for you here.","Tap a routine to open it and see its exercises."]},
+    {id:"play",h:"Video view",pts:["▶ VIDEO VIEW plays the routine full-screen with the exercise videos."]},
+    {id:"times",h:"Your times",pts:["Tap + ADD TIME to log your time for today.","Your best time shows on the routine's bar.","Tap ✕ to remove a time."]},
+    {id:"pillars",h:"Commitment, Consistency, Determination",pts:["Some routines have three levels. Pick the one you did when you add your time."]}
+  ]},
+  challenge:{title:"CHALLENGE",sections:[
+    {id:"open",h:"Your challenge",pts:["Tap the white challenge bar to open it. It shows your day, streak and progress.","Everyone in the challenge is on the same day, counted from the start date.","The details button tells you about the challenge. Tap ▶ beside it to hear it read out."]},
+    {id:"day",h:"Each day",pts:["Tap a day under DAILY REFLECTION to fill it in, or TODAY to open today.","Commitment: tick any 2 of cardio, strength and recovery to earn the day.","Then add your nutrition, hydration, consistency, determination, biggest win, and answer the day's reflection question.","You can go back and fill in or change any day up to today. Future days stay locked."]},
+    {id:"journeys",h:"Your journeys",pts:["NOURISHMENT JOURNEY shows your nutrition and hydration across the challenge. They're observations, not scores, and don't affect your commitment.","COMMITMENT JOURNEY shows the days you've earned."]},
+    {id:"weekly",h:"Weekly challenge",pts:["Each week has a weekly challenge. Tick it off and add your time."]},
+    {id:"end",h:"When it ends",pts:["You have 7 more days to catch up anything you missed.","The completion screen shows your whole challenge, with your first and last answers side by side.","Past challenges stay here so you can look back."]}
+  ]},
+  progress:{title:"PROGRESS",sections:[
+    {id:"pbs",h:"My personal bests",pts:["Record your best lift for each exercise, with the date. Tap SET or EDIT."]},
+    {id:"community",h:"Community personal bests",pts:["The best lift in the Team 365 community for each exercise, for men and women, with the record holder.","Team 365 keeps these up to date."]},
+    {id:"milestones",h:"My milestones",pts:["Milestones unlock as you attend classes: your first class, then set numbers of classes.","Only classes you were checked in to count. Free Whānau classes don't count."]}
   ]}
 };
 function pageHelpMerge(page,saved){
@@ -2900,8 +2930,9 @@ function PageHelpButton({onPress,open}){
         color:"#fff",fontFamily:"Georgia,'Times New Roman',serif",fontStyle:"italic",fontWeight:700,fontSize:12,lineHeight:"18px",padding:0,
         textAlign:"center",cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,.55)",WebkitTapHighlightColor:"transparent"}},"i"));
 }
-function PageHelpSheet({page,onClose,showToast,canEdit,everyone}){
-  const def=PAGE_HELP_DEFAULTS[page]||{title:"",sections:[]};
+function PageHelpSheet({page,title,onClose,showToast,canEdit,everyone}){
+  const def0=PAGE_HELP_DEFAULTS[page]||{title:"",sections:[]};
+  const def=title?{...def0,title}:def0;
   const [saved,setSaved]=useState(null);
   const [secs,setSecs]=useState(()=>pageHelpMerge(page,null));
   const [editing,setEditing]=useState(null);   // section id, or "__new__"
@@ -5357,9 +5388,9 @@ function AdminView({admJump,aqNew,bookings,setBookings,showToast,isAdmin,isMaste
       React.createElement("div",{"data-guides-switch":"1",style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(mFlags.guides?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
         React.createElement("div",null,
           React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"PAGE GUIDES (i)"),
-          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"ON = members & admins see the (i) guides. You always see them; only you can edit")
+          React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"VISIBLE = members & admins see the (i) guides. You always see them; only you can edit")
         ),
-        React.createElement("button",{"data-guides-toggle":"1",onClick:()=>saveMFlag("guides",!mFlags.guides),style:{background:mFlags.guides?"#fff":"#222",color:mFlags.guides?"#000":"#555",border:"1px solid "+(mFlags.guides?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},mFlags.guides?"ON":"OFF")
+        React.createElement("button",{"data-guides-toggle":"1",onClick:()=>saveMFlag("guides",!mFlags.guides),style:{background:mFlags.guides?"#fff":"#222",color:mFlags.guides?"#000":"#555",border:"1px solid "+(mFlags.guides?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},mFlags.guides?"VISIBLE":"HIDE")
       ),
       React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(mFlags.maint?"#c98a1e":"#222"),padding:"11px 14px",marginBottom:10}},
         React.createElement("div",null,
@@ -15418,15 +15449,19 @@ function App(){
   const TAB_ORDER=ALL_TABS.map(t=>t.id);
   const bookOpts=[...(showClasses?[{id:"classes",label:"CLASSES"}]:[]),...(showWellness?[{id:"wellness",label:"WELLNESS"}]:[])];
   const effBookSub=bookOpts.some(o=>o.id===bookSub)?bookSub:(bookOpts[0]&&bookOpts[0].id);
+  const wkOpts=[...(showPT?[{id:"pt",label:wkTitles.pt||"PT PROGRAM"}]:[]),...(showStrength?[{id:"strength",label:"S & C CLASSES"}]:[]),...(showRoutines?[{id:"routines",label:wkTitles.rt||"ROUTINES"}]:[])];
+  const effWkSub=wkOpts.some(o=>o.id===wkSub)?wkSub:(wkOpts[0]&&wkOpts[0].id);
   // Page guide (i): which guide this page has, if any, and whether this person sees it (14 Oct 2026).
   const guideKey=(()=>{
     if(isSubscriber||!(isMaster||mFlags.guides===true))return null;
     const k=effTab==="book"?(effBookSub==="wellness"&&showWellness?"wellness":effBookSub==="classes"&&showClasses?"classes":null)
-      :effTab==="community"?(acc("community")?"community":null):effTab==="my"?(canBook?"my":null):null;
+      :effTab==="workouts"?(effWkSub==="pt"&&showPT?"pt":effWkSub==="strength"&&showStrength?"strength":effWkSub==="routines"&&showRoutines?"routines":null)
+      :effTab==="community"?(acc("community")?"community":null):effTab==="my"?(canBook?"my":null)
+      :effTab==="challenge"?(showChallenge?"challenge":null):effTab==="progress"?(acc("progress")?"progress":null):null;
     return k&&PAGE_HELP_DEFAULTS[k]?k:null;
   })();
-  const wkOpts=[...(showPT?[{id:"pt",label:wkTitles.pt||"PT PROGRAM"}]:[]),...(showStrength?[{id:"strength",label:"S & C CLASSES"}]:[]),...(showRoutines?[{id:"routines",label:wkTitles.rt||"ROUTINES"}]:[])];
-  const effWkSub=wkOpts.some(o=>o.id===wkSub)?wkSub:(wkOpts[0]&&wkOpts[0].id);
+  // PT and Timed Exercises can be renamed (per member or for everyone); the guide uses the same name.
+  const guideTitle=guideKey==="pt"?(wkTitles.pt||"").toUpperCase():guideKey==="routines"?(wkTitles.rt||"").toUpperCase():"";
   const renderSeg=(opts,cur,set)=>opts.length<=1?null:React.createElement("div",{className:"sp-toggle seg-nav",style:{marginTop:16,marginBottom:16,paddingLeft:20,paddingRight:20}},opts.map(o=>React.createElement("button",{key:o.id,className:`sp-toggle-btn${cur===o.id?" spta":""}`,style:{border:"1px solid #fff"},onClick:()=>set(o.id)},o.label)));
   // If the current tab isn't available to this member, snap to the first available one.
   // PT messages: unread counts for the NEW MESSAGE alert (every 60 s on screen, and
@@ -16583,7 +16618,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     // Page guide (i) — Notice Board, My Bookings, Classes, Wellness (14 Oct 2026). Master always;
     // everyone else when FUNCTIONS → PAGE GUIDES is ON. Subscribers never.
     guideKey&&React.createElement(PageHelpButton,{open:helpPage===guideKey,onPress:()=>setHelpPage(h=>h===guideKey?null:guideKey)}),
-    guideKey&&helpPage===guideKey&&React.createElement(PageHelpSheet,{key:guideKey,page:guideKey,onClose:()=>setHelpPage(null),showToast,canEdit:isMaster,everyone:mFlags.guides===true}),
+    guideKey&&helpPage===guideKey&&React.createElement(PageHelpSheet,{key:guideKey,page:guideKey,title:guideTitle,onClose:()=>setHelpPage(null),showToast,canEdit:isMaster,everyone:mFlags.guides===true}),
     !(effTab==="admin"&&isAdmin)&&React.createElement("div",{"data-swipe-hint":"1",style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:7,letterSpacing:"0.22em",fontWeight:600,cursor:"pointer"}},"SWIPE FOR MORE"),
