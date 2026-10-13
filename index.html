@@ -73,6 +73,16 @@ html:has(.app) #root{height:100%}
 .d-dot{width:4px;height:4px;border-radius:50%;background:transparent}
 .day-btn.dhb .d-dot{background:#666}
 .day-btn.da.dhb .d-dot{background:#888}
+/* PT Program: blue dot = that day's workouts are all done (14 Oct 2026) */
+.day-btn.dhd .d-dot,.day-btn.da.dhd .d-dot{background:#1d9bf0}
+/* PT Program MONTH view: number + one status dot per day */
+.cal-cell.cal-pt{min-height:46px;align-items:center;justify-content:center;gap:6px}
+.cal-cell.cal-pt .cal-num{padding-left:0}
+.cal-pt-dot{width:5px;height:5px;border-radius:50%;background:transparent}
+.cal-pt-dot.has{background:#666}
+.cal-cell.sel .cal-pt-dot.has{background:#888}
+.cal-pt-dot.done,.cal-cell.sel .cal-pt-dot.done{background:#1d9bf0}
+.cal-pt-dot.unwell,.cal-cell.sel .cal-pt-dot.unwell{background:#e06040}
 .d-cls{width:18px;height:2px;background:transparent}
 .d-cls.on{background:#1d9bf0}
 .no-classes{text-align:center;padding:52px 0;font-size:11px;letter-spacing:0.2em;color:#444;font-weight:600;line-height:2.2}
@@ -464,8 +474,7 @@ html:has(.app) #root{height:100%}
 .cal-num{font-family:'Bebas Neue',sans-serif;font-size:18px;color:#777;line-height:1;padding-left:2px}
 .cal-cell.today .cal-num{color:#fff}
 .cal-cell.sel .cal-num{color:#000}
-.cal-lbl{font-size:7px;letter-spacing:0.02em;color:#999;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:2px solid #1d9bf0;padding-left:3px;line-height:1.4}
-.cal-cell.today .cal-lbl{color:#ccc}
+.cal-lbl{font-size:7px;letter-spacing:0.02em;color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:2px solid #1d9bf0;padding-left:3px;line-height:1.4}
 .cal-cell.sel .cal-lbl{color:#000}
 .cal-more{font-size:7px;color:#777;padding-left:3px}
 .cal-cell.sel .cal-more{color:#555}
@@ -10795,6 +10804,11 @@ function MemberWorkoutsView({session,memberData,ttl}){
   const [openW,setOpenW]=useState(new Set());
   const [wNotes,setWNotes]=useState({});
   const [loading,setLoading]=useState(true);
+  // WEEK | MONTH (14 Oct 2026). MONTH shows a dot per day: grey = workout set,
+  // blue = all of that day's workouts done, red = marked unwell. Tapping a day opens that week on that day.
+  const [ptMode,setPtMode]=useState("week");
+  const [ptMonth,setPtMonth]=useState(()=>{const d=new Date();return new Date(d.getFullYear(),d.getMonth(),1);});
+  const [monthData,setMonthData]=useState({prog:{},wts:{},tks:{}});
   const weekDS=toDS(weekStart);
   const key=mwKey(session.email,weekStart);
   const notesKey="__MWN__"+session.email+"__"+weekDS;
@@ -10880,6 +10894,35 @@ function MemberWorkoutsView({session,memberData,ttl}){
   // or a tick) — the same rule the admin Member View uses for "x of y done".
   const exLogged=ex=>{const n=Math.max(1,parseInt(ex.sets)||1);for(let i=1;i<=n;i++){const k=dk+"__"+ex.id+"__s"+i;if(ex.log==="tick"?ticks[k]:((weights[k]||"")+"").trim()!=="")return true;}return false;};
   const wComplete=w=>w.exercises.length>0&&w.exercises.every(exLogged);
+  // Same "complete" rule as exLogged/wComplete, for any day of any loaded week.
+  const dayStatus=(prog,wts,tks,dkey,ds)=>{
+    if(unwell.includes(ds))return "unwell";
+    const exs=mwNormDay((prog||{})[dkey]);if(!exs.length)return "";
+    const done=exs.every(ex=>{const n=Math.max(1,parseInt(ex.sets)||1);for(let i=1;i<=n;i++){const k=dkey+"__"+ex.id+"__s"+i;if(ex.log==="tick"?(tks||{})[k]:(((wts||{})[k]||"")+"").trim()!=="")return true;}return false;});
+    return done?"done":"has";
+  };
+  const ptCells=(()=>{if(ptMode!=="month")return [];const g0=mondayOf(ptMonth);const cells=Array.from({length:42},(_,i)=>addDays(g0,i));
+    const lastRow=cells.findIndex((d,i)=>i%7===0&&d.getMonth()!==ptMonth.getMonth()&&d>ptMonth);
+    return lastRow>0?cells.slice(0,lastRow):cells;})();
+  const ptMonthKey=toDS(ptMonth);
+  useEffect(()=>{
+    if(ptMode!=="month")return;
+    let live=true;
+    const g0=mondayOf(ptMonth);const wks=[];for(let d=g0;d.getMonth()===ptMonth.getMonth()||d<ptMonth;d=addDays(d,7))wks.push(toDS(d));
+    const pKeys=wks.map(w=>"__MW__"+session.email+"__"+w);
+    Promise.all([
+      sbGet("coaching_notes",`class_name=in.(${pKeys.map(k=>encodeURIComponent('"'+k+'"')).join(",")})&select=class_name,content`),
+      sbGet("member_weights",`email=eq.${encodeURIComponent(session.email)}&session_type=eq.PW&month_year=in.(${wks.join(",")})&select=month_year,exercise,weight&limit=10000`)
+    ]).then(([pr,lg])=>{
+      if(!live)return;
+      const prog={},wts={},tks={};
+      (pr||[]).forEach(r=>{const w=r.class_name.slice(-10);try{prog[w]=JSON.parse(r.content)||{};}catch{prog[w]={};}});
+      (lg||[]).forEach(r=>{const w=r.month_year;wts[w]=wts[w]||{};tks[w]=tks[w]||{};
+        if(r.exercise.endsWith("__tick")){if(r.weight==="1")tks[w][r.exercise.slice(0,-6)]=true;}else wts[w][r.exercise]=r.weight;});
+      setMonthData({prog,wts,tks});
+    });
+    return()=>{live=false;};
+  },[ptMode,ptMonthKey]);
   const selDS=toDS(dayDates[selDay]);
   const isUnwell=unwell.includes(selDS);
   const unwellYear=unwell.filter(x=>x.slice(0,4)===String(new Date().getFullYear()));
@@ -10934,19 +10977,37 @@ function MemberWorkoutsView({session,memberData,ttl}){
   }
   return React.createElement("div",{className:"well-wrap"},
     React.createElement("div",{className:"well-hdr"},React.createElement("div",{className:"well-title"},ttl||"PT PROGRAM")),
+    React.createElement("div",{className:"sp-toggle seg-nav",style:{margin:"0 20px 14px"}},
+      [["week","WEEK"],["month","MONTH"]].map(([k,l])=>React.createElement("button",{key:k,"data-pt-mode":k,className:"sp-toggle-btn"+(ptMode===k?" spta":""),style:{border:"1px solid #fff"},
+        onClick:()=>{setPtMode(k);if(k==="month"){const d=addDays(weekStart,selDay);setPtMonth(new Date(d.getFullYear(),d.getMonth(),1));}}},l))),
+    ptMode==="month"&&React.createElement(React.Fragment,null,
+      React.createElement("div",{className:"week-nav",style:{paddingTop:0,marginBottom:10}},
+        React.createElement("button",{className:"wk-arrow",onClick:()=>setPtMonth(m=>new Date(m.getFullYear(),m.getMonth()-1,1))},"‹"),
+        React.createElement("div",{className:"wk-label","data-pt-month-lbl":"1"},MONTHS_FULL[ptMonth.getMonth()]+" "+ptMonth.getFullYear()),
+        React.createElement("button",{className:"wk-arrow",onClick:()=>setPtMonth(m=>new Date(m.getFullYear(),m.getMonth()+1,1))},"›")),
+      React.createElement("div",{className:"cal-grid","data-pt-grid":"1",style:{paddingBottom:80}},
+        MW_DAYS.map(d=>React.createElement("div",{key:d,className:"cal-dow"},d.toUpperCase())),
+        ptCells.map((d,i)=>{const ds=toDS(d);const w=toDS(mondayOf(d));const di=i%7;
+          const st=dayStatus(monthData.prog[w],monthData.wts[w],monthData.tks[w],MW_DAYS[di],ds);
+          return React.createElement("button",{key:ds,type:"button","data-pt-day":ds,"data-pt-status":st||"none",
+            onClick:()=>{setWeekStart(mondayOf(d));setSelDay(di);setPtMode("week");},
+            className:"cal-cell cal-pt"+(d.getMonth()!==ptMonth.getMonth()?" out":"")+(ds===selDS?" sel":"")+(isToday(d)?" today":"")},
+            React.createElement("div",{className:"cal-num"},d.getDate()),
+            React.createElement("div",{className:"cal-pt-dot"+(st?" "+st:"")}));}))),
+    ptMode==="week"&&React.createElement(React.Fragment,null,
     React.createElement("div",{className:"week-nav",style:{paddingTop:0}},
       React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,-7))},"‹"),
       React.createElement("div",{className:"wk-label"},weekLabel),
       React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,7))},"›")
     ),
     React.createElement("div",{className:"day-strip"},
-      dayDates.map((d,i)=>React.createElement("button",{key:i,onClick:()=>setSelDay(i),className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}${mwNormDay(program[MW_DAYS[i]]).length?" dhb":""}`},
+      dayDates.map((d,i)=>React.createElement("button",{key:i,"data-pt-wday":toDS(d),onClick:()=>setSelDay(i),className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}${mwNormDay(program[MW_DAYS[i]]).length?" dhb":""}${!loading&&dayStatus(program,weights,ticks,MW_DAYS[i],toDS(d))==="done"?" dhd":""}`},
         React.createElement("div",{className:"d-name"},MW_DAYS[i]),
         React.createElement("div",{className:"d-num"},d.getDate()),
         React.createElement("div",{className:"d-dot",style:unwell.includes(toDS(d))?{background:"#e06040"}:undefined})
       ))
-    ),
-    React.createElement("div",{style:{padding:"14px 16px 80px"}},
+    )),
+    ptMode==="week"&&React.createElement("div",{style:{padding:"14px 16px 80px"}},
       React.createElement("div",{className:"day-hdr",style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}},React.createElement("span",null,MW_DAY_FULL[dk]),
         // GO TO TODAY — only when away from today; jumps back to this week with today selected
         !isToday(dayDates[selDay])&&React.createElement("button",{onClick:()=>{const m=mondayOf(new Date());setWeekStart(w=>toDS(w)===toDS(m)?w:m);setSelDay(()=>{const d=new Date().getDay();return d===0?6:d-1;});},
