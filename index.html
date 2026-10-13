@@ -2833,6 +2833,149 @@ function msgEditBox({value,onChange,onSave,onCancel,saving,linkBtn}){
       React.createElement("button",{type:"button","data-edit-cancel":"1",onClick:onCancel,style:linkBtn},"CANCEL")));
 }
 const msgEditedEl=m=>m.edited_at?React.createElement("div",{"data-edited":"1",style:{textAlign:"right",fontSize:9,color:"#7a8a99",fontStyle:"italic",marginTop:3,whiteSpace:"normal"}},"Edited"):null;
+// ── PAGE GUIDE — master admin only (14 Oct 2026) ─────────────────────────────
+// A grey (i) above the bottom nav, bottom-right. Tap → a sheet explaining the page.
+// Hold a section ~½ s to edit the whole section (heading + points). Saved in
+// public.page_help (RLS: master only). Defaults live here; saved = {sections,removed}.
+// Default sections added to the code later still appear unless removed.
+const PAGE_HELP_DEFAULTS={
+  community:{title:"NOTICE BOARD",sections:[
+    {id:"posting",h:"Posting",pts:["Every post goes to all members. Subscribers (online-only) can't see the Notice Board.","A new post sends everyone a push notification.","Anyone can reply to a post. Replies sit inside the post's card."]},
+    {id:"new",h:"For members",pts:["The NOTICE BOARD tab changes to a flashing NEW NOTICE while there's a post by someone else they haven't seen yet. It goes back to normal once they've scrolled past it.","Their own posts and replies never trigger NEW NOTICE."]},
+    {id:"seen",h:"Seen",pts:["Under each post, a SEEN row shows the profile photos of everyone who's seen it (or their initials if they have no photo). Tap it to see names.","A post only counts as seen once it's actually been on someone's screen, not just because they opened the page.","The person who wrote the post is never listed under their own post."]},
+    {id:"react",h:"Reactions",pts:["Tap the heart to add ♥. Hold it to pick ❤️ 👍 or 😂.","One reaction per person per post. Choosing another swaps it; choosing the same one again removes it.","Posts can have reactions; replies can't."]},
+    {id:"edit",h:"Editing and deleting",pts:["People can edit only their own posts and replies. Edited ones show a small grey \"Edited\" tag.","Members can delete their own posts. You can delete anyone's, but you can't edit other people's words."]},
+    {id:"pin",h:"Admin only",pts:["Pin keeps a post at the top. Only admins can pin."]}
+  ]}
+};
+function pageHelpMerge(page,saved){
+  const def=(PAGE_HELP_DEFAULTS[page]||{sections:[]}).sections;
+  const removed=new Set((saved&&Array.isArray(saved.removed))?saved.removed:[]);
+  const s=(saved&&Array.isArray(saved.sections))?saved.sections.filter(x=>x&&x.id):null;
+  if(!s)return def.filter(x=>!removed.has(x.id)).map(x=>({...x,pts:[...x.pts]}));
+  const have=new Set(s.map(x=>x.id));
+  return [...s.map(x=>({id:x.id,h:String(x.h||""),pts:Array.isArray(x.pts)?x.pts.map(String):[]})),
+    ...def.filter(x=>!have.has(x.id)&&!removed.has(x.id)).map(x=>({...x,pts:[...x.pts]}))];
+}
+const pageHelpToText=s=>[s.h,...s.pts.map(p=>"• "+p)].join("\n");
+function pageHelpFromText(t){
+  const lines=String(t||"").split("\n").map(l=>l.replace(/^\s*(?:[•\-*·]\s*)?/,"").trim()).filter(Boolean);
+  if(!lines.length)return null;
+  return {h:lines[0].slice(0,80),pts:lines.slice(1).map(l=>l.slice(0,600)).slice(0,30)};
+}
+const pageHelpSame=(a,b)=>!!a&&!!b&&a.h===b.h&&JSON.stringify(a.pts)===JSON.stringify(b.pts);
+async function pageHelpLoad(page){
+  try{const r=await fetch(`${SB_URL}/rest/v1/page_help?page=eq.${encodeURIComponent(page)}&select=content`,{headers:SB_HDR});
+    if(!r.ok)return {ok:false};const j=await r.json();return {ok:true,saved:(j&&j[0])?j[0].content:null};}catch(e){return {ok:false};}
+}
+async function pageHelpSave(page,content){
+  try{const r=await fetch(`${SB_URL}/rest/v1/page_help?on_conflict=page`,{method:"POST",
+      headers:{...SB_HDR,Prefer:"resolution=merge-duplicates,return=minimal"},
+      body:JSON.stringify({page,content,updated_at:new Date().toISOString()})});
+    return r.ok;}catch(e){return false;}
+}
+function PageHelpButton({onPress}){
+  return React.createElement("div",{"data-page-help-anchor":"1",style:{position:"relative",height:0,zIndex:40}},
+    React.createElement("button",{type:"button","data-page-help-btn":"1","aria-label":"How this page works",title:"How this page works",onClick:onPress,
+      style:{position:"absolute",right:12,bottom:8,width:30,height:30,borderRadius:"50%",background:"#4a4a4a",border:"1px solid #6a6a6a",
+        color:"#fff",fontFamily:"Georgia,'Times New Roman',serif",fontStyle:"italic",fontWeight:700,fontSize:17,lineHeight:"28px",padding:0,
+        textAlign:"center",cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,.55)",WebkitTapHighlightColor:"transparent"}},"i"));
+}
+function PageHelpSheet({page,onClose,showToast}){
+  const def=PAGE_HELP_DEFAULTS[page]||{title:"",sections:[]};
+  const [saved,setSaved]=useState(null);
+  const [secs,setSecs]=useState(()=>pageHelpMerge(page,null));
+  const [editing,setEditing]=useState(null);   // section id, or "__new__"
+  const [draft,setDraft]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [armRestore,setArmRestore]=useState(false);
+  const hold=useRef(null);
+  useEffect(()=>{let live=true;pageHelpLoad(page).then(r=>{if(!live||!r.ok)return;setSaved(r.saved);setSecs(pageHelpMerge(page,r.saved));});return()=>{live=false;};},[page]);
+  useEffect(()=>{const k=e=>{if(e.key==="Escape"&&!editing)onClose();};window.addEventListener("keydown",k);return()=>window.removeEventListener("keydown",k);},[editing]);
+  const defOf=id=>def.sections.find(x=>x.id===id)||null;
+  const removedNow=()=>(saved&&Array.isArray(saved.removed))?saved.removed:[];
+  async function commit(nextSecs,nextRemoved){
+    const prevSecs=secs,prevSaved=saved;
+    const content={sections:nextSecs,removed:nextRemoved};
+    setSecs(nextSecs);setSaved(content);setEditing(null);setBusy(true);
+    const ok=await pageHelpSave(page,content);setBusy(false);
+    if(!ok){setSecs(prevSecs);setSaved(prevSaved);showToast&&showToast("Couldn't save that — try again");}
+    return ok;
+  }
+  function startEdit(s){setArmRestore(false);setEditing(s.id);setDraft(pageHelpToText(s));}
+  function holdStart(e,s){
+    if(editing)return;
+    const x=e.clientX,y=e.clientY;
+    holdEnd();hold.current={x,y,t:setTimeout(()=>{hold.current=null;try{navigator.vibrate&&navigator.vibrate(15);}catch(_){}startEdit(s);},500)};
+  }
+  function holdMove(e){const h=hold.current;if(h&&(Math.abs(e.clientX-h.x)>10||Math.abs(e.clientY-h.y)>10))holdEnd();}
+  function holdEnd(){if(hold.current){clearTimeout(hold.current.t);hold.current=null;}}
+  useEffect(()=>()=>holdEnd(),[]);
+  function save(){
+    const parsed=pageHelpFromText(draft);
+    if(editing==="__new__"){
+      if(!parsed){setEditing(null);return;}
+      commit([...secs,{id:"c"+Date.now().toString(36),...parsed}],removedNow());return;
+    }
+    const id=editing;
+    if(!parsed){ // emptied → remove the section
+      const rem=defOf(id)?[...new Set([...removedNow(),id])]:removedNow();
+      commit(secs.filter(x=>x.id!==id),rem);return;
+    }
+    const cur=secs.find(x=>x.id===id);
+    if(cur&&pageHelpSame(cur,parsed)){setEditing(null);return;}
+    commit(secs.map(x=>x.id===id?{id,...parsed}:x),removedNow());
+  }
+  function resetOne(id){const d=defOf(id);if(!d)return;commit(secs.map(x=>x.id===id?{...d,pts:[...d.pts]}:x),removedNow());}
+  function deleteOne(id){commit(secs.filter(x=>x.id!==id),defOf(id)?[...new Set([...removedNow(),id])]:removedNow());}
+  async function restoreAll(){
+    if(!armRestore){setArmRestore(true);return;}
+    setArmRestore(false);
+    const fresh=pageHelpMerge(page,null);
+    await commit(fresh,[]);
+  }
+  const customised=!!saved&&(removedNow().length>0||JSON.stringify(secs)!==JSON.stringify(pageHelpMerge(page,null)));
+  const link={background:"none",border:"none",color:"#999",fontSize:10,letterSpacing:"0.14em",fontWeight:600,cursor:"pointer",padding:"8px 4px",fontFamily:"'DM Sans',sans-serif"};
+  const editBox=(id)=>{
+    const d=id!=="__new__"?defOf(id):null;const cur=secs.find(x=>x.id===id);
+    return React.createElement("div",{"data-page-help-edit":id,style:{margin:"4px 0 14px"}},
+      React.createElement("textarea",{"data-page-help-text":"1",value:draft,autoFocus:true,onChange:e=>setDraft(e.target.value),
+        rows:Math.min(16,Math.max(4,draft.split("\n").reduce((n,l)=>n+Math.max(1,Math.ceil(l.length/34)),0)+1)),
+        placeholder:"Heading on the first line\n• then one point per line",
+        style:{width:"100%",boxSizing:"border-box",background:"#0b0b0b",color:"#fff",border:"1px solid #555",borderRadius:10,padding:"10px 12px",fontSize:16,lineHeight:1.45,fontFamily:"'DM Sans',sans-serif",resize:"vertical"}}),
+      React.createElement("div",{style:{fontSize:10,color:"#777",margin:"4px 2px 6px"}},"First line is the heading. Each line after it is a point. Clear it all and save to remove the section."),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}},
+        React.createElement("button",{type:"button","data-page-help-save":"1",disabled:busy,onClick:save,style:{background:"#fff",color:"#000",border:"none",borderRadius:16,padding:"7px 16px",fontSize:10,letterSpacing:"0.14em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},"SAVE"),
+        React.createElement("button",{type:"button","data-page-help-cancel":"1",onClick:()=>setEditing(null),style:link},"CANCEL"),
+        React.createElement("div",{style:{flex:1}}),
+        d&&cur&&!pageHelpSame(cur,d)&&React.createElement("button",{type:"button","data-page-help-reset":id,onClick:()=>resetOne(id),style:link},"RESET"),
+        id!=="__new__"&&!d&&React.createElement("button",{type:"button","data-page-help-delete":id,onClick:()=>deleteOne(id),style:{...link,color:"#e0605a"}},"DELETE")));
+  };
+  return React.createElement("div",{"data-page-help":page,onClick:()=>{if(!editing)onClose();},
+      style:{position:"fixed",inset:0,zIndex:9000,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"flex-end",justifyContent:"center"}},
+    React.createElement("div",{"data-page-help-panel":"1",onClick:e=>e.stopPropagation(),
+        style:{width:"100%",maxWidth:520,maxHeight:"80vh",overflowY:"auto",background:"#141414",borderTop:"1px solid #333",borderRadius:"16px 16px 0 0",
+          padding:"14px 18px calc(18px + env(safe-area-inset-bottom))",boxSizing:"border-box",boxShadow:"0 -8px 30px rgba(0,0,0,.6)"}},
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:2}},
+        React.createElement("div",{style:{width:26,height:26,borderRadius:"50%",background:"#4a4a4a",border:"1px solid #6a6a6a",color:"#fff",fontFamily:"Georgia,serif",fontStyle:"italic",fontWeight:700,fontSize:15,lineHeight:"24px",textAlign:"center",flexShrink:0}},"i"),
+        React.createElement("div",{style:{flex:1,minWidth:0}},
+          React.createElement("div",{"data-page-help-title":"1",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:"0.08em",color:"#fff",lineHeight:1.1}},def.title||"THIS PAGE"),
+          React.createElement("div",{style:{fontSize:8,letterSpacing:"0.18em",color:"#777",fontWeight:600}},"HOW IT WORKS · ONLY YOU CAN SEE THIS")),
+        React.createElement("button",{type:"button","data-page-help-close":"1","aria-label":"Close",onClick:onClose,style:{background:"none",border:"none",color:"#aaa",fontSize:20,cursor:"pointer",padding:"4px 6px",lineHeight:1}},"✕")),
+      React.createElement("div",{style:{fontSize:10,color:"#666",margin:"6px 0 12px"}},"Hold a section to edit it."),
+      secs.map(s=>editing===s.id?React.createElement(React.Fragment,{key:s.id},editBox(s.id)):
+        React.createElement("div",{key:s.id,"data-page-help-sec":s.id,
+            onPointerDown:e=>holdStart(e,s),onPointerMove:holdMove,onPointerUp:holdEnd,onPointerLeave:holdEnd,onPointerCancel:holdEnd,
+            onContextMenu:e=>e.preventDefault(),
+            style:{padding:"8px 10px",margin:"0 -10px 6px",borderRadius:10,userSelect:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none",cursor:"default",opacity:editing?0.45:1}},
+          React.createElement("div",{"data-page-help-h":"1",style:{fontSize:11,letterSpacing:"0.12em",fontWeight:700,color:"#fff",textTransform:"uppercase",marginBottom:4}},s.h),
+          React.createElement("ul",{style:{margin:0,paddingLeft:16,color:"#c8c8c8",fontSize:12.5,lineHeight:1.55}},
+            s.pts.map((p,i)=>React.createElement("li",{key:i,style:{marginBottom:3}},p))))),
+      editing==="__new__"&&editBox("__new__"),
+      !editing&&React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6,borderTop:"1px solid #262626",paddingTop:4}},
+        React.createElement("button",{type:"button","data-page-help-add":"1",onClick:()=>{setArmRestore(false);setDraft("");setEditing("__new__");},style:{...link,color:"#1d9bf0"}},"+ ADD SECTION"),
+        customised&&React.createElement("button",{type:"button","data-page-help-restore":"1",onClick:restoreAll,style:{...link,color:armRestore?"#e0605a":"#999"}},armRestore?"TAP AGAIN TO RESTORE":"RESTORE ORIGINAL"))));
+}
 function CommunityView({session,isAdmin,showToast,memberPhotos,allMemberNames}){
   const [posts,setPosts]=useState([]);
   const [loading,setLoading]=useState(true);
@@ -14868,6 +15011,7 @@ function App(){
   const isAdmin=session?.email===ADMIN_EMAIL||memberData?.is_admin===true;
   try{document.documentElement.classList.toggle("t365-wide",!!(isAdmin&&deskPref&&wideScreen));}catch(e){}
   const isMaster=session?.email===ADMIN_EMAIL;
+  const [helpPage,setHelpPage]=useState(null);
   const [mFlags,setMFlags]=useState({wk:true,welladm:true,sc:true,aibuild:true});
   const [concCheckins,setConcCheckins]=useState(0);
   const [myCommunity,setMyCommunity]=useState(0);
@@ -16395,6 +16539,9 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     ),
     effTab==="admin"&&isAdmin&&React.createElement(AdminView,{admJump,aqNew,bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:"",challengeEnabled,saveChallengeSetting,dmEnabled,saveDmSetting,openMsgsTo:canOpenMsgs?openThreadDirect:null}),
     ),
+    // Page guide (i) — master only, Notice Board for now (14 Oct 2026).
+    isMaster&&effTab==="community"&&acc("community")&&React.createElement(PageHelpButton,{onPress:()=>setHelpPage("community")}),
+    isMaster&&helpPage&&effTab===helpPage&&React.createElement(PageHelpSheet,{page:helpPage,onClose:()=>setHelpPage(null),showToast}),
     !(effTab==="admin"&&isAdmin)&&React.createElement("div",{"data-swipe-hint":"1",style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:7,letterSpacing:"0.22em",fontWeight:600,cursor:"pointer"}},"SWIPE FOR MORE"),
