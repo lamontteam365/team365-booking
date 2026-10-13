@@ -487,8 +487,8 @@ html:has(.app) #root{height:100%}
 .play-btn.on{color:#1d9bf0}
 .play-btn.on svg{margin-left:0}
 /* MY JOURNAL ▶ a little smaller (14 Oct 2026) */
-[data-note-play] .play-btn{width:20px;height:20px}
-[data-note-play] .play-btn svg{width:12px;height:12px}
+[data-note-play] .play-btn,[data-chabout-play] .play-btn{width:20px;height:20px}
+[data-note-play] .play-btn svg,[data-chabout-play] .play-btn svg{width:12px;height:12px}
 .fp-section{margin-top:16px;padding:14px;background:#0a0a0a;border:1px solid #888;border-radius:0}
 .fp-title{font-size:10px;letter-spacing:0.16em;color:#aaa;font-weight:600;margin-bottom:12px}
 .fp-msg{font-size:11px;color:#1d9bf0;letter-spacing:0.04em;margin-top:10px;line-height:1.6}
@@ -1164,6 +1164,8 @@ function PlayBtn({id,lines}){
 const sectionLines=(heading,list)=>[heading,...(list||[]).flatMap(s=>[s.title,...String(s.body||"").split(/\n+/)])].filter(x=>String(x||"").trim());
 // The open onboarding panel's title (custom name if renamed), for the ▶ heading.
 const PanelTitleCtx=React.createContext("");
+// A step list inside an OnboardingPanel hands its ▶ up to the panel, which shows it beside the title (14 Oct 2026).
+const PanelPlayCtx=React.createContext(null);
 const dateStr=d=>`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 // ── Add to Calendar ───────────────────────────────────────────────────────────
 // Studio location records, edited in Admin > Onboarding > Studio Location.
@@ -5242,6 +5244,7 @@ function AdminView({admJump,aqNew,bookings,setBookings,showToast,isAdmin,isMaste
 // storageKey: key in coaching_notes table  defaultSteps: fallback if nothing saved  toastMsg: save confirmation
 function StepListEditor({storageKey,defaultSteps,toastMsg,showToast,loadFn,saveFn,addLabel,bodyRows,bodyPlaceholder,titlePlaceholder,title}){
   const panelTitle=React.useContext(PanelTitleCtx);
+  const setPanelPlay=React.useContext(PanelPlayCtx);
   const playId="steps-"+storageKey;
   useEffect(()=>()=>stopSpeakingIf(playId),[playId]);   // closing the panel stops the voice
   const [steps,setSteps]=useState([]);
@@ -5297,8 +5300,9 @@ function StepListEditor({storageKey,defaultSteps,toastMsg,showToast,loadFn,saveF
     );
   }
   return React.createElement("div",null,
+    setPanelPlay&&React.createElement(PanelPlayReg,{set:setPanelPlay,on:steps.length>0,id:playId,lines:()=>sectionLines(title||panelTitle,steps)}),
     React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}},
-      steps.length?React.createElement(PlayBtn,{id:playId,lines:()=>sectionLines(title||panelTitle,steps)}):React.createElement("span"),
+      (steps.length&&!setPanelPlay)?React.createElement(PlayBtn,{id:playId,lines:()=>sectionLines(title||panelTitle,steps)}):React.createElement("span"),
       React.createElement("button",{onClick:()=>{stopSpeaking();setDraft(steps.map(s=>({...s})));setEditing(true);},style:{background:"none",border:"1px solid #333",borderRadius:0,padding:"4px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT")
     ),
     steps.length===0&&React.createElement("div",{style:{fontSize:10,color:"#333",letterSpacing:"0.1em",textAlign:"center",padding:"20px 0"}},"NO STEPS YET · TAP EDIT TO ADD"),
@@ -5649,16 +5653,27 @@ function TierEditor({showToast}){
     })
   );
 }
+// Registers a step list's ▶ with its panel while the list is shown in read mode; removes it otherwise.
+function PanelPlayReg({set,on,id,lines}){
+  const ref=useRef(lines);ref.current=lines;
+  useEffect(()=>{set(on?{id,lines:()=>ref.current()}:null);},[on,id]);
+  useEffect(()=>()=>set(null),[]);
+  return null;
+}
 function OnboardingPanel({id,title,children,openPanel,setOpenPanel,titles,onSaveTitle}){
   const open=openPanel===id;
   const shown=(titles&&titles[id])||title;
+  const [play,setPlay]=useState(null);
   const [editing,setEditing]=useState(false);
   const [draft,setDraft]=useState(shown);
   return React.createElement("div",{style:{background:"#0e0e0e",border:"1px solid #1e1e1e",borderRadius:0,marginBottom:8,overflow:"hidden"}},
     React.createElement("div",{style:{width:"100%",padding:"14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
       editing
         ?React.createElement("input",{value:draft,autoFocus:true,onChange:e=>setDraft(e.target.value),onKeyDown:e=>{if(e.key==="Enter"){onSaveTitle&&onSaveTitle(id,draft.trim()||title);setEditing(false);}},style:{flex:1,background:"#141414",border:"1px solid #1d3a5a",borderRadius:0,color:"#fff",fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.08em",padding:"4px 8px",outline:"none"}})
-        :React.createElement("div",{onClick:()=>setOpenPanel(open?null:id),style:{flex:1,fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.08em",color:"#fff",cursor:"pointer"}},shown),
+        :React.createElement("div",{onClick:()=>setOpenPanel(open?null:id),style:{flex:1,fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:"0.08em",color:"#fff",cursor:"pointer"}},
+            shown,
+            // Inline, so it follows the last word even when the title wraps.
+            open&&play&&React.createElement("span",{"data-panel-play":"1",style:{display:"inline-flex",verticalAlign:"middle",margin:"-8px 0 -6px 6px"}},React.createElement(PlayBtn,{id:play.id,lines:play.lines}))),
       editing
         ?React.createElement("button",{onClick:()=>{onSaveTitle&&onSaveTitle(id,draft.trim()||title);setEditing(false);},style:{background:"#1d9bf0",color:"#fff",border:"none",borderRadius:0,fontSize:11,letterSpacing:"0.1em",fontWeight:700,padding:"6px 14px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},"SAVE")
         :React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12}},
@@ -5666,7 +5681,7 @@ function OnboardingPanel({id,title,children,openPanel,setOpenPanel,titles,onSave
             React.createElement("div",{onClick:()=>setOpenPanel(open?null:id),style:{color:"#444",fontSize:14,transition:"transform .2s",transform:open?"rotate(180deg)":"rotate(0deg)",lineHeight:1,cursor:"pointer"}},"▾")
           )
     ),
-    open&&React.createElement("div",{style:{padding:"0 14px 14px"}},React.createElement(PanelTitleCtx.Provider,{value:shown},children))
+    open&&React.createElement("div",{style:{padding:"0 14px 14px"}},React.createElement(PanelTitleCtx.Provider,{value:shown},React.createElement(PanelPlayCtx.Provider,{value:setPlay},children)))
   );
 }
 // ── Studio location ──────────────────────────────────────────────────────────
@@ -12557,6 +12572,7 @@ function ChallengeComplete({cfg,entries,showRecord,onToggleRecord,openDay,onOpen
 // its name and its words come from the challenge setup.
 function ChallengeAbout({cfg}){
   const [open,setOpen]=useState(false);
+  useEffect(()=>()=>stopSpeakingIf("chabout-"+(cfg.id||chShowN(cfg.aboutTitle,cfg.days).trim())),[]);
   const N=cfg.days;
   const title=chShowN(cfg.aboutTitle,N).trim();
   const a=chAboutOf(cfg);
@@ -12578,6 +12594,14 @@ function ChallengeAbout({cfg}){
     React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.12em",color:"#1d9bf0",lineHeight:1.1,marginBottom:5}},wkc.title),
     React.createElement("div",{"data-chabout-weekly-how":"1",style:body},sh(wkc.how)));
   const moveAt=secs.findIndex(x=>x.move);
+  // Read aloud ▶ after the name (14 Oct 2026): everything in the details, in the order it's shown.
+  const playId="chabout-"+(cfg.id||title);
+  const aboutLines=()=>{const L=[title,...tl,sh(a.details)];
+    secs.forEach((x,i)=>{L.push(sh(x.h),sh(x.t));
+      if(x.move)(cfg.movement||[]).forEach(m=>L.push(m.label,sh(m.desc)));
+      if(i===moveAt||(moveAt<0&&i===secs.length-1)){if(weeklySec)L.push(wkc.title,sh(wkc.how));}});
+    if(!secs.length&&weeklySec)L.push(wkc.title,sh(wkc.how));
+    return [...L,...cl].map(x=>String(x||"").trim()).filter(Boolean);};
   return React.createElement("div",{"data-chabout":"1",style:{marginBottom:12}},
     // Set like the boxes under it: the same dark box and grey border, the name
     // in blue Bebas on the left and the arrow on the right, as on the white
@@ -12588,7 +12612,8 @@ function ChallengeAbout({cfg}){
       // type the subtitle had on the home button. Drops under the name if both
       // don't fit on one line.
       React.createElement("span",{"data-chabout-name-row":"1",style:{minWidth:0,display:"flex",flexWrap:"wrap",alignItems:"baseline",columnGap:8,rowGap:2}},
-        React.createElement("span",null,title.toUpperCase()),
+        React.createElement("span",{style:{display:"inline-flex",alignItems:"center",gap:6}},title.toUpperCase(),
+          React.createElement("span",{"data-chabout-play":"1",style:{display:"inline-flex",margin:"-8px 0",alignSelf:"center"}},React.createElement(PlayBtn,{id:playId,lines:aboutLines}))),
         String(cfg.subtitle||"").trim()?React.createElement("span",{"data-chsubtitle":"1",style:{fontFamily:"'DM Sans',sans-serif",fontSize:9,letterSpacing:"0.1em",color:"#999",fontWeight:600,lineHeight:1.2}},String(cfg.subtitle).trim().toUpperCase()):null),
       React.createElement("span",{style:{fontSize:11,letterSpacing:0,color:"#1d9bf0",flexShrink:0,transform:open?"none":"rotate(-90deg)",transition:"transform .15s"}},"▾")
     ),
