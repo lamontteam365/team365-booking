@@ -4016,13 +4016,20 @@ function AdminBackButton({onBack}){
     React.createElement("span",{style:{display:"inline-block",lineHeight:1,marginTop:-2}},"\u2039"),
     React.createElement("span",{"aria-hidden":"true",style:{position:"absolute",top:-12,bottom:-12,left:-6,right:-3}}));
 }
-function AdminBar({label,isMaster,onDetails,onExit,onBack}){
+function AdminBar({label,isMaster,onDetails,onExit,onBack,prev,next,onGo}){
+  // ‹ › either side of the title: the section before / after in the ADMIN menu (14 Oct 2026). Hidden at the ends.
+  const chev=(dir,to)=>React.createElement("button",{type:"button","data-admin-chev":dir,"aria-label":to?(dir==="prev"?"Previous: ":"Next: ")+to[1]:"",title:to?to[1]:"",disabled:!to,onClick:()=>to&&onGo&&onGo(to[0]),
+      style:{background:"none",border:"none",color:"#bbb",fontSize:24,lineHeight:1,padding:"0 1px",margin:0,cursor:to?"pointer":"default",visibility:to?"visible":"hidden",flexShrink:0,fontFamily:"'DM Sans',sans-serif",fontWeight:300,position:"relative",top:3}},
+    dir==="prev"?"\u2039":"\u203a",React.createElement("span",{"aria-hidden":"true",style:{position:"absolute",top:-10,bottom:-10,left:-8,right:-8}}));
   return React.createElement("div",{"data-admin-bar":"1",style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"14px 12px 12px",background:AQ_GREY,borderBottom:"1px solid "+AQ_GREY_LINE,position:"relative",flexShrink:0}},
     React.createElement("div",{style:{width:74,display:"flex",justifyContent:"flex-start"}},
       isMaster&&React.createElement(AdminDetailsShortcut,{onPress:onDetails,inBar:true})),
     React.createElement("div",{style:{textAlign:"center",flex:1,minWidth:0}},
       React.createElement("div",{style:{fontFamily:"'Syncopate',sans-serif",fontSize:6,fontWeight:700,letterSpacing:"0.2em",color:"#1d9bf0"}},"ADMIN"),
-      React.createElement("div",{"data-admin-bar-title":"1",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:"0.14em",lineHeight:1.1,marginTop:3,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},label)),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:3,marginTop:3}},
+        chev("prev",prev),
+        React.createElement("div",{"data-admin-bar-title":"1",style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(15px, calc(10vw - 19px), 20px)",letterSpacing:"0.14em",lineHeight:1.1,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",minWidth:0}},label),
+        chev("next",next))),
     React.createElement("div",{style:{width:74,display:"flex",justifyContent:"flex-end",gap:6}},
       React.createElement(AdminBackButton,{onBack}),
       React.createElement("button",{type:"button","data-admin-exit":"1",onClick:onExit,"aria-label":"Exit admin",
@@ -5537,12 +5544,12 @@ function AdminView({admJump,aqNew,bookings,setBookings,showToast,isAdmin,isMaste
         React.createElement("button",{onClick:()=>saveMFlag("welladm",!mFlags.welladm),style:{background:!mFlags.welladm?"#fff":"#222",color:!mFlags.welladm?"#000":"#555",border:"1px solid "+(!mFlags.welladm?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},!mFlags.welladm?"HIDE":"VISIBLE")
       ),
       // PAGE GUIDES (14 Oct 2026): ON = everyone sees the (i) guides. The master always does.
-      React.createElement("div",{"data-guides-switch":"1",style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(mFlags.guides?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
+      React.createElement("div",{"data-guides-switch":"1",style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(!mFlags.guides?"#1d9bf0":"#222"),padding:"11px 14px",marginBottom:10}},
         React.createElement("div",null,
           React.createElement("div",{style:{fontSize:11,fontWeight:600,letterSpacing:"0.08em",color:"#fff"}},"PAGE GUIDES (i)",React.createElement(FnInfo,{id:"guides"})),
           React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:2,letterSpacing:"0.04em"}},"VISIBLE = members & admins see the (i) guides. You always see them; only you can edit")
         ),
-        React.createElement("button",{"data-guides-toggle":"1",onClick:()=>saveMFlag("guides",!mFlags.guides),style:{background:mFlags.guides?"#fff":"#222",color:mFlags.guides?"#000":"#555",border:"1px solid "+(mFlags.guides?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},mFlags.guides?"VISIBLE":"HIDE")
+        React.createElement("button",{"data-guides-toggle":"1",onClick:()=>saveMFlag("guides",!mFlags.guides),style:{background:!mFlags.guides?"#fff":"#222",color:!mFlags.guides?"#000":"#555",border:"1px solid "+(!mFlags.guides?"#fff":"#333"),padding:"6px 18px",fontSize:10,letterSpacing:"0.12em",fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},mFlags.guides?"VISIBLE":"HIDE")
       ),
       React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e0e0e",border:"1px solid "+(mFlags.maint?"#c98a1e":"#222"),padding:"11px 14px",marginBottom:10}},
         React.createElement("div",null,
@@ -15504,6 +15511,10 @@ function App(){
     setAqOpen({bottom:Math.max(6,Math.round(window.innerHeight-r.top+6)),right:Math.max(6,Math.round(window.innerWidth-r.right))});
     aqLoad.current&&aqLoad.current();
   }
+  // The admin sections this person can open, in menu order (used by the ADMIN menu and the ‹ › in the admin bar).
+  const aqVisible=AQ_SECTIONS.filter(([id])=>id==="wellness"?(isMaster||mFlags.welladm):id==="scbuilder"?(isMaster||(mFlags.sc!==false&&!(mFlags.scAdminHide||[]).includes(session?session.email:""))):id==="functions"?isMaster:id==="coaching"?(isMaster||!mFlags.dt):true);
+  const aqIdx=aqVisible.findIndex(x=>x[0]===admSeg);
+  const aqPrev=aqIdx>0?aqVisible[aqIdx-1]:null,aqNext=aqIdx>=0&&aqIdx<aqVisible.length-1?aqVisible[aqIdx+1]:null;
   function aqGo(id){
     if(tab==="admin"&&id!==admSeg&&!t365AdmLeaveOk())return;
     if(tab!=="admin"){
@@ -16443,7 +16454,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
   );
   return React.createElement("div",{className:"app","data-admin-mode":(effTab==="admin"&&isAdmin)?"1":undefined,onTouchStart:handleTouchStart,onTouchEnd:handleTouchEnd},
     cropSrc&&React.createElement(ImageCropper,{imageSrc:cropSrc,onSave:handleCropSave,onCancel:()=>setCropSrc(null)}),
-    (effTab==="admin"&&isAdmin)?React.createElement(AdminBar,{isMaster,onDetails:()=>aqGo("coaching"),label:((AQ_SECTIONS.find(x=>x[0]===admSeg)||[0,"MEMBERS"])[1]),onExit:aqExit,onBack:aqBack}):React.createElement("div",{className:"hdr",style:{paddingBottom:0,position:"relative",...heroStyle(profileBg,"rgba(8,8,8,0.80),rgba(8,8,8,0.80)","center top")}},
+    (effTab==="admin"&&isAdmin)?React.createElement(AdminBar,{isMaster,prev:aqPrev,next:aqNext,onGo:aqGo,onDetails:()=>aqGo("coaching"),label:((AQ_SECTIONS.find(x=>x[0]===admSeg)||[0,"MEMBERS"])[1]),onExit:aqExit,onBack:aqBack}):React.createElement("div",{className:"hdr",style:{paddingBottom:0,position:"relative",...heroStyle(profileBg,"rgba(8,8,8,0.80),rgba(8,8,8,0.80)","center top")}},
       // DETAILS shortcut — master only, mirrors the BG picker (6 Oct 2026).
       isMaster&&React.createElement(AdminDetailsShortcut,{onPress:()=>aqGo("coaching")}),
       // Background picker — master admin only. Absolutely positioned so the
@@ -16516,7 +16527,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     wkMenu&&wkHasMenu&&React.createElement(BookMenu,{name:"wk",pos:wkMenu,opts:wkOpts,current:effTab==="workouts"?effWkSub:null,
       onPick:id=>{setWkSub(id);setTab("workouts");setWkMenu(null);},onClose:()=>setWkMenu(null)}),
     aqOpen&&isAdmin&&React.createElement(AdminQuickMenu,{pos:aqOpen,current:effTab==="admin"?admSeg:null,alerts:aqAlerts,isMaster,
-      sections:AQ_SECTIONS.filter(([id])=>id==="wellness"?(isMaster||mFlags.welladm):id==="scbuilder"?(isMaster||(mFlags.sc!==false&&!(mFlags.scAdminHide||[]).includes(session?session.email:""))):id==="functions"?isMaster:id==="coaching"?(isMaster||!mFlags.dt):true),
+      sections:aqVisible,
       onPick:aqGo,onClose:()=>setAqOpen(null),onExit:effTab==="admin"?aqExit:null}),
     // Messages, full screen over the whole app (5 Oct 2026). The app underneath stays as it was.
     msgOpen&&canOpenMsgs&&React.createElement("div",{className:"t365-msg-screen","data-msg-screen":"1",role:"dialog","aria-label":"Messages",style:{...MSG_SCREEN_S,zIndex:400}},
