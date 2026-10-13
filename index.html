@@ -2874,8 +2874,8 @@ async function pageHelpSave(page,content){
       body:JSON.stringify({page,content,updated_at:new Date().toISOString()})});
     return r.ok;}catch(e){return false;}
 }
-function PageHelpButton({onPress}){
-  return React.createElement("div",{"data-page-help-anchor":"1",style:{position:"relative",height:0,zIndex:40}},
+function PageHelpButton({onPress,open}){
+  return React.createElement("div",{"data-page-help-anchor":"1",style:{position:"relative",height:0,zIndex:open?9001:40}},
     React.createElement("button",{type:"button","data-page-help-btn":"1","aria-label":"How this page works",title:"How this page works",onClick:onPress,
       style:{position:"absolute",right:12,bottom:-19,width:20,height:20,borderRadius:"50%",background:"#4a4a4a",border:"1px solid #6a6a6a",
         color:"#fff",fontFamily:"Georgia,'Times New Roman',serif",fontStyle:"italic",fontWeight:700,fontSize:12,lineHeight:"18px",padding:0,
@@ -2890,7 +2890,8 @@ function PageHelpSheet({page,onClose,showToast}){
   const [busy,setBusy]=useState(false);
   const [armRestore,setArmRestore]=useState(false);
   const hold=useRef(null);
-  // Bubble sits just above the (i) so the nav bar and the bottom of the app stay in view.
+  // Bubble ends just above the (i) (nav bar + bottom of the app stay in view) and starts ~72px down,
+  // so it sits in the middle of the phone. The (i) stays on top of the dim and toggles it shut (14 Oct 2026).
   const [lift]=useState(()=>{try{const b=document.querySelector("[data-page-help-btn]");if(b){const r=b.getBoundingClientRect();return Math.max(60,Math.round(window.innerHeight-r.top+8));}}catch(e){}return 120;});
   useEffect(()=>{let live=true;pageHelpLoad(page).then(r=>{if(!live||!r.ok)return;setSaved(r.saved);setSecs(pageHelpMerge(page,r.saved));});return()=>{live=false;};},[page]);
   useEffect(()=>{const k=e=>{if(e.key==="Escape"&&!editing)onClose();};window.addEventListener("keydown",k);return()=>window.removeEventListener("keydown",k);},[editing]);
@@ -2954,7 +2955,7 @@ function PageHelpSheet({page,onClose,showToast}){
         id!=="__new__"&&!d&&React.createElement("button",{type:"button","data-page-help-delete":id,onClick:()=>deleteOne(id),style:{...link,color:"#e0605a"}},"DELETE")));
   };
   return React.createElement("div",{"data-page-help":page,onClick:()=>{if(!editing)onClose();},
-      style:{position:"fixed",inset:0,zIndex:9000,background:"rgba(0,0,0,.55)",display:"flex",alignItems:"flex-end",justifyContent:"center",padding:"max(36px, calc(env(safe-area-inset-top) + 16px)) 0 "+lift+"px",boxSizing:"border-box"}},
+      style:{position:"fixed",inset:0,zIndex:9000,background:"rgba(0,0,0,.55)",display:"flex",alignItems:"flex-end",justifyContent:"center",padding:"max(72px, calc(env(safe-area-inset-top) + 52px)) 0 "+lift+"px",boxSizing:"border-box"}},
     React.createElement("div",{"data-page-help-panel":"1",onClick:e=>e.stopPropagation(),
         style:{width:"calc(100% - 28px)",maxWidth:460,maxHeight:"100%",overflowY:"auto",background:"#141414",border:"1px solid #3a3a3a",borderRadius:"16px 16px 4px 16px",
           padding:"0 18px 16px",boxSizing:"border-box",boxShadow:"0 10px 34px rgba(0,0,0,.7)"}},
@@ -16546,7 +16547,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     effTab==="admin"&&isAdmin&&React.createElement(AdminView,{admJump,aqNew,bookings,setBookings,showToast,isAdmin,isMaster,mFlags,saveMFlag,getMaxSpots,classOf,classTypeOf,baseTimes,saveBaseTimes,wellBaseTimes,saveWellBaseTimes,tierOverrides,saveTierOverrides,setBookingExcused,setBookingCheckedIn,saveClassLimit,deleteClass,cancelClass,restoreClass,classLimits,wellnessEnabled,saveWellnessSetting,classesEnabled,strengthEnabled,saveClassesSetting,saveStrengthSetting,calendarEnabled,saveCalendarSetting,remindersEnabled,saveRemindersSetting,confirmationsEnabled,saveConfirmationsSetting,dowNames,saveDowName,dowSlotNames,saveDowSlotName,saveDowSlotLimit,dowLimits,saveDowLimit,slotNames,saveSlotName,saveSlotWhanau,saveDowWhanau,wellSlots,saveWellSlots,wellDow,saveWellDow,classDow,saveClassDow,classBriefs,saveClassBriefs,milestoneConfig,saveMilestoneConfig,admSeg,setAdmSeg,selfEmail:session?session.email:"",challengeEnabled,saveChallengeSetting,dmEnabled,saveDmSetting,openMsgsTo:canOpenMsgs?openThreadDirect:null}),
     ),
     // Page guide (i) — master only, Notice Board for now (14 Oct 2026).
-    isMaster&&effTab==="community"&&acc("community")&&React.createElement(PageHelpButton,{onPress:()=>setHelpPage("community")}),
+    isMaster&&effTab==="community"&&acc("community")&&React.createElement(PageHelpButton,{open:helpPage==="community",onPress:()=>setHelpPage(h=>h==="community"?null:"community")}),
     isMaster&&helpPage&&effTab===helpPage&&React.createElement(PageHelpSheet,{page:helpPage,onClose:()=>setHelpPage(null),showToast}),
     !(effTab==="admin"&&isAdmin)&&React.createElement("div",{"data-swipe-hint":"1",style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
