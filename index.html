@@ -73,12 +73,15 @@ html:has(.app) #root{height:100%}
 .d-dot{width:4px;height:4px;border-radius:50%;background:transparent}
 .day-btn.dhb .d-dot{background:#666}
 .day-btn.da.dhb .d-dot{background:#888}
-/* PT Program: blue dot = that day's workouts are all done (14 Oct 2026) */
-.day-btn.dhd .d-dot,.day-btn.da.dhd .d-dot{background:#1d9bf0}
+/* PT Program: a line under the date, like the class line (14 Oct 2026):
+   grey = workout set, blue = all done, red = unwell. */
+.d-cls.has{background:#666}
+.d-cls.done{background:#1d9bf0}
+.d-cls.unwell{background:#e06040}
 /* PT Program MONTH view: number + one status dot per day */
 .cal-cell.cal-pt{min-height:46px;align-items:center;justify-content:center;gap:6px}
 .cal-cell.cal-pt .cal-num{padding-left:0}
-.cal-pt-dot{width:5px;height:5px;border-radius:50%;background:transparent}
+.cal-pt-dot{width:18px;height:2px;background:transparent}
 .cal-pt-dot.has{background:#666}
 .cal-cell.sel .cal-pt-dot.has{background:#888}
 .cal-pt-dot.done,.cal-cell.sel .cal-pt-dot.done{background:#1d9bf0}
@@ -3482,7 +3485,8 @@ function AdminQuickButton({open,alerts,onPress,inBar}){
 }
 // BOOKINGS dropdown (10 Oct 2026): CLASSES / WELLNESS, opened from the BOOKINGS tab.
 // pos = {left, top} under the top nav bar, or {left, bottom} above the bottom one.
-function BookMenu({pos,opts,current,onPick,onClose}){
+function BookMenu({pos,opts,current,onPick,onClose,name}){
+  const wk=name==="wk";   // the same menu serves WORKOUTS (14 Oct 2026)
   useEffect(()=>{
     const k=e=>{if(e.key==="Escape")onClose();};
     const r=()=>onClose();
@@ -3491,11 +3495,11 @@ function BookMenu({pos,opts,current,onPick,onClose}){
   },[]);
   return React.createElement(React.Fragment,null,
     React.createElement("div",{"data-book-scrim":"1",onClick:onClose,style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:450}}),
-    React.createElement("div",{role:"menu","aria-label":"Bookings","data-book-menu":"1",
+    React.createElement("div",{role:"menu","aria-label":wk?"Workouts":"Bookings",[wk?"data-wk-menu":"data-book-menu"]:"1",
         style:{position:"fixed",left:pos.left,top:pos.top,bottom:pos.bottom,width:pos.width,background:"#0c0c0c",border:"1px solid #888",zIndex:451,
                display:"flex",flexDirection:"column",transformOrigin:pos.top!=null?"top center":"bottom center",animation:"aqRise .16s ease"}},
       opts.map(o=>{const on=current===o.id;
-        return React.createElement("button",{key:o.id,type:"button",role:"menuitem","data-book-pick":o.id,onClick:()=>onPick(o.id),
+        return React.createElement("button",{key:o.id,type:"button",role:"menuitem",[wk?"data-wk-pick":"data-book-pick"]:o.id,onClick:()=>onPick(o.id),
             style:{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"15px 14px",background:on?"#fff":"none",
                    border:"none",borderBottom:"1px solid #3a3a3a",cursor:"pointer",textAlign:"left",color:on?"#000":"#fff",boxSizing:"border-box"}},
           React.createElement("span",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:"0.12em",lineHeight:1,whiteSpace:"nowrap"}},o.label),
@@ -10977,7 +10981,7 @@ function MemberWorkoutsView({session,memberData,ttl}){
   }
   return React.createElement("div",{className:"well-wrap"},
     React.createElement("div",{className:"well-hdr"},React.createElement("div",{className:"well-title"},ttl||"PT PROGRAM")),
-    React.createElement("div",{className:"sp-toggle seg-nav",style:{margin:"0 20px 14px"}},
+    React.createElement("div",{className:"sp-toggle seg-nav",style:{margin:"12px 20px 14px"}},
       [["week","WEEK"],["month","MONTH"]].map(([k,l])=>React.createElement("button",{key:k,"data-pt-mode":k,className:"sp-toggle-btn"+(ptMode===k?" spta":""),style:{border:"1px solid #fff"},
         onClick:()=>{setPtMode(k);if(k==="month"){const d=addDays(weekStart,selDay);setPtMonth(new Date(d.getFullYear(),d.getMonth(),1));}}},l))),
     ptMode==="month"&&React.createElement(React.Fragment,null,
@@ -11001,10 +11005,10 @@ function MemberWorkoutsView({session,memberData,ttl}){
       React.createElement("button",{className:"wk-arrow",onClick:()=>setWeekStart(w=>addDays(w,7))},"›")
     ),
     React.createElement("div",{className:"day-strip"},
-      dayDates.map((d,i)=>React.createElement("button",{key:i,"data-pt-wday":toDS(d),onClick:()=>setSelDay(i),className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}${mwNormDay(program[MW_DAYS[i]]).length?" dhb":""}${!loading&&dayStatus(program,weights,ticks,MW_DAYS[i],toDS(d))==="done"?" dhd":""}`},
+      dayDates.map((d,i)=>React.createElement("button",{key:i,"data-pt-wday":toDS(d),onClick:()=>setSelDay(i),className:`day-btn${i===selDay?" da":""}${isToday(d)?" dt":""}`},
         React.createElement("div",{className:"d-name"},MW_DAYS[i]),
         React.createElement("div",{className:"d-num"},d.getDate()),
-        React.createElement("div",{className:"d-dot",style:unwell.includes(toDS(d))?{background:"#e06040"}:undefined})
+        React.createElement("div",{className:"d-cls"+(st=>st?" "+st:"")(dayStatus(program,weights,ticks,MW_DAYS[i],toDS(d)))})
       ))
     )),
     ptMode==="week"&&React.createElement("div",{style:{padding:"14px 16px 80px"}},
@@ -13855,7 +13859,7 @@ function RoutinesView({session,ttl,isAdmin}){
   }
   const PILS=[["c","COMMITMENT"],["o","CONSISTENCY"],["d","DETERMINATION"]];
   const hdrStyle={width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",color:"#000",borderRadius:0,padding:"9px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.14em",cursor:"pointer",userSelect:"none",marginBottom:10};
-  return React.createElement("div",{className:"well-wrap",style:{padding:"14px 16px 80px"}},
+  return React.createElement("div",{className:"well-wrap",style:{padding:"0 16px 80px"}},
     tv&&React.createElement(RoutineTV,{routines:tv,onClose:()=>setTv(null)}),
     React.createElement("div",{className:"well-hdr",style:{marginBottom:18}},React.createElement("div",{className:"well-title"},ttl||"ROUTINES")),
     loading?React.createElement("div",{style:{fontSize:11,color:"#555",letterSpacing:"0.1em",padding:"20px 0",textAlign:"center"}},"LOADING...")
@@ -14839,6 +14843,7 @@ function App(){
   const routinesEnabled=memberData?.routines_enabled===true;
   const [bookSub,setBookSub]=useState(()=>ssGet("t365-booksub","classes"));
   const [bookMenu,setBookMenu]=useState(null);   // BOOKINGS dropdown position, or null
+  const [wkMenu,setWkMenu]=useState(null);       // WORKOUTS dropdown position, or null (14 Oct 2026)
   const [wkSub,setWkSub]=useState(()=>ssGet("t365-wksub","pt"));
   const [wkTitles,setWkTitles]=useState({pt:"",rt:""});
   useEffect(()=>{
@@ -15259,14 +15264,17 @@ function App(){
   },[session&&session.email,isSubscriber,joinedMs]);
   // BOOKINGS opens the CLASSES / WELLNESS menu when both are on (10 Oct 2026).
 const bookHasMenu=bookOpts.length>1;
-const openBookMenu=(e,up)=>{const r=e.currentTarget.getBoundingClientRect();const w=Math.max(170,Math.round(r.width));
+// WORKOUTS works the same way when more than one of PT PROGRAM / S & C CLASSES / ROUTINES is on (14 Oct 2026).
+const wkHasMenu=wkOpts.length>1;
+const openBookMenu=(e,up,set=setBookMenu)=>{const r=e.currentTarget.getBoundingClientRect();const w=Math.max(170,Math.round(r.width));
   const left=Math.max(6,Math.min(Math.round(r.left+r.width/2-w/2),window.innerWidth-w-6));
-  setBookMenu(up?{left,width:w,bottom:Math.round(window.innerHeight-r.top+4)}:{left,width:w,top:Math.round(r.bottom+4)});};
+  set(up?{left,width:w,bottom:Math.round(window.innerHeight-r.top+4)}:{left,width:w,top:Math.round(r.bottom+4)});};
 const tabClick=(t,e,up)=>{setMsgOpen(false);
   if(t.id==="book"&&bookHasMenu){openBookMenu(e,up);return;}
+  if(t.id==="workouts"&&wkHasMenu){openBookMenu(e,up,setWkMenu);return;}
   setTab(t.id);if(t.id==="community")lsSet("t365-last-read",Date.now());};
-const navLabelB=t=>t.id==="book"&&bookHasMenu
-  ?React.createElement(React.Fragment,null,navLabel(t),React.createElement("span",{"data-book-caret":"1",style:{marginLeft:4,fontSize:"7px",display:"inline-block",transform:bookMenu?"rotate(180deg)":"none",transition:"transform .15s"}},"\u25be"))
+const navLabelB=t=>(t.id==="book"&&bookHasMenu)||(t.id==="workouts"&&wkHasMenu)
+  ?React.createElement(React.Fragment,null,navLabel(t),React.createElement("span",{[t.id==="book"?"data-book-caret":"data-wk-caret"]:"1",style:{marginLeft:4,fontSize:"7px",display:"inline-block",transform:(t.id==="book"?bookMenu:wkMenu)?"rotate(180deg)":"none",transition:"transform .15s"}},"\u25be"))
   :navLabel(t);
 const navLabel=t=>(t.dot&&noticeNew>0&&effTab!=="community")?React.createElement("span",{className:"t365-ringtext","data-new-notice":"1"},"NEW NOTICE"):t.label;
   // Messages live behind the profile photo: tap it to open the messages screen, tap it
@@ -16072,6 +16080,8 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     ),
     bookMenu&&bookHasMenu&&React.createElement(BookMenu,{pos:bookMenu,opts:bookOpts,current:effTab==="book"?effBookSub:null,
       onPick:id=>{setBookSub(id);setTab("book");setBookMenu(null);},onClose:()=>setBookMenu(null)}),
+    wkMenu&&wkHasMenu&&React.createElement(BookMenu,{name:"wk",pos:wkMenu,opts:wkOpts,current:effTab==="workouts"?effWkSub:null,
+      onPick:id=>{setWkSub(id);setTab("workouts");setWkMenu(null);},onClose:()=>setWkMenu(null)}),
     aqOpen&&isAdmin&&React.createElement(AdminQuickMenu,{pos:aqOpen,current:effTab==="admin"?admSeg:null,alerts:aqAlerts,isMaster,
       sections:AQ_SECTIONS.filter(([id])=>id==="wellness"?(isMaster||mFlags.welladm):id==="scbuilder"?(isMaster||(mFlags.sc!==false&&!(mFlags.scAdminHide||[]).includes(session?session.email:""))):id==="functions"?isMaster:id==="coaching"?(isMaster||!mFlags.dt):true),
       onPick:aqGo,onClose:()=>setAqOpen(null),onExit:effTab==="admin"?aqExit:null}),
@@ -16320,8 +16330,8 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     ),
     effTab==="community"&&acc("community")&&React.createElement(CommunityView,{session,isAdmin,showToast,memberPhotos,allMemberNames}),
     effTab==="workouts"&&React.createElement(React.Fragment,null,
-      renderSeg(wkOpts,effWkSub,setWkSub),
       effWkSub==="pt"&&showPT&&React.createElement(MemberWorkoutsView,{session,memberData,ttl:wkTitles.pt}),
+      effWkSub==="strength"&&showStrength&&React.createElement("div",{className:"well-hdr","data-sc-hdr":"1"},React.createElement("div",{className:"well-title"},"S & C CLASSES")),
       effWkSub==="strength"&&showStrength&&React.createElement("div",{className:"sp-main-wrap"},React.createElement(StrengthTabRouter,{session,isAdmin,showToast,bookings,memberData})),
       effWkSub==="routines"&&showRoutines&&React.createElement(RoutinesView,{session,ttl:wkTitles.rt,isAdmin})
     ),
