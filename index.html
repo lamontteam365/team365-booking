@@ -487,8 +487,12 @@ html:has(.app) #root{height:100%}
 .play-btn.on{color:#1d9bf0}
 .play-btn.on svg{margin-left:0}
 /* MY JOURNAL ▶ a little smaller (14 Oct 2026) */
-[data-note-play] .play-btn,[data-chabout-play] .play-btn,[data-brief-play] .play-btn{width:20px;height:20px}
-[data-note-play] .play-btn svg,[data-chabout-play] .play-btn svg,[data-brief-play] .play-btn svg{width:12px;height:12px}
+[data-note-play] .play-btn,[data-chabout-play] .play-btn{width:20px;height:20px}
+[data-note-play] .play-btn svg,[data-chabout-play] .play-btn svg{width:12px;height:12px}
+/* SESSION BRIEF ▶: smaller again, same grey as the label; blue ■ while reading (14 Oct 2026) */
+[data-brief-play] .play-btn{width:16px;height:16px;color:#555}
+[data-brief-play] .play-btn svg{width:10px;height:10px}
+[data-brief-play] .play-btn.on{color:#1d9bf0}
 .fp-section{margin-top:16px;padding:14px;background:#0a0a0a;border:1px solid #888;border-radius:0}
 .fp-title{font-size:10px;letter-spacing:0.16em;color:#aaa;font-weight:600;margin-bottom:12px}
 .fp-msg{font-size:11px;color:#1d9bf0;letter-spacing:0.04em;margin-top:10px;line-height:1.6}

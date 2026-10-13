@@ -58,7 +58,12 @@ html,body{margin:0;background:#080808;color:#fff;font-family:'DM Sans',sans-seri
 .no-classes{text-align:center;padding:52px 0;font-size:11px;letter-spacing:0.2em;color:#444;font-weight:600;line-height:2.2}
 .slot-list{display:flex;flex-direction:column;gap:7px;margin-bottom:20px}
 .slot-brief{background:#0e0e0e;border:1px solid #333;border-top:none;padding:11px 14px;margin-top:-7px}
-.slot-brief-lbl{font-size:7px;letter-spacing:0.14em;color:#555;font-weight:600;margin-bottom:5px}
+.slot-brief-lbl{font-size:7px;letter-spacing:0.14em;color:#555;font-weight:600;margin-bottom:5px;display:flex;align-items:center;gap:4px}
+/* SESSION BRIEF ▶ read aloud (14 Oct 2026): grey like the label, blue ■ while reading */
+.play-btn{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin:-4px 0;background:none;color:#555;cursor:pointer;flex-shrink:0}
+.play-btn svg{width:9px;height:9px;margin-left:1px}
+.play-btn.on{color:#1d9bf0}
+.play-btn.on svg{margin-left:0}
 .slot-brief-txt{font-size:11px;color:#999;line-height:1.7;font-weight:300;white-space:pre-line}
 /* Guest slots */
 .slot-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#141414;border:1px solid #666;border-radius:0;cursor:pointer;transition:all .15s}
@@ -384,6 +389,38 @@ async function notifyGuest(data){
   try{await fetch(`${SB_URL}/functions/v1/booking-confirm`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({guest:true,email:data.guestEmail,bookingRef:data.bookingRef,bookingType:data.bookingType,payment:data.payment})});}catch(e){}
 }
 // ── Main Widget ───────────────────────────────────────────────────────────────
+// ── Read aloud (14 Oct 2026, same code as the app) ── ▶ beside SESSION BRIEF.
+const SPEECH=(typeof window!=="undefined"&&window.speechSynthesis&&typeof window.SpeechSynthesisUtterance!=="undefined")?window.speechSynthesis:null;
+let SPEAK_ID=null;const SPEAK_SUBS=new Set();
+const speakNotify=()=>SPEAK_SUBS.forEach(f=>f());
+// The voice list loads late on some phones, so this runs at tap time, not at load.
+function pickVoice(){const vs=(SPEECH&&SPEECH.getVoices())||[];
+  return vs.find(v=>/en-NZ/i.test(v.lang))||vs.find(v=>/en-AU/i.test(v.lang))||vs.find(v=>/en-GB/i.test(v.lang))||vs.find(v=>/^en/i.test(v.lang))||null;}
+const speechText=t=>String(t||"").replace(/^\s*\d+[.)]\s+/,"").replace(/\s*[→·]\s*/g,", ").replace(/_{3,}/g," to be decided ").replace(/(\d)\s*[–-]\s*(\d)/g,"$1 to $2").replace(/\*\*/g,"").replace(/\s+/g," ").replace(/\s+([.,])/g,"$1").replace(/\.{2,}/g,".").trim();
+function stopSpeaking(){if(SPEECH)SPEECH.cancel();SPEAK_ID=null;speakNotify();}
+// Stop only if it's this panel that's reading (closing one panel doesn't silence another).
+function stopSpeakingIf(id){if(SPEAK_ID===id)stopSpeaking();}
+function speakLines(id,lines){
+  if(!SPEECH)return;SPEECH.cancel();SPEAK_ID=id;speakNotify();
+  const v=pickVoice();const list=lines.map(speechText).filter(Boolean);
+  if(!list.length){SPEAK_ID=null;speakNotify();return;}
+  // One utterance per line: iPhones cut off long passages.
+  list.forEach((t,k)=>{const u=new SpeechSynthesisUtterance(t);if(v)u.voice=v;u.lang=v?v.lang:"en-NZ";u.rate=0.95;
+    if(k===list.length-1){u.onend=u.onerror=()=>{if(SPEAK_ID===id){SPEAK_ID=null;speakNotify();}};}
+    SPEECH.speak(u);});
+}
+function useSpeaking(id){const [,f]=useState(0);useEffect(()=>{const l=()=>f(x=>x+1);SPEAK_SUBS.add(l);return()=>{SPEAK_SUBS.delete(l);};},[]);return SPEAK_ID===id;}
+// ▶ / ■ button. lines = array of strings, or a function returning one (read at tap time, so it's always current).
+// iPhone needs a real tap to start speech, so speaking starts inside the click handler.
+function PlayBtn({id,lines}){
+  const on=useSpeaking(id);
+  if(!SPEECH)return null;
+  const go=e=>{e.stopPropagation();if(on)stopSpeaking();else speakLines(id,typeof lines==="function"?lines():lines);};
+  return React.createElement("span",{role:"button",tabIndex:0,className:"play-btn"+(on?" on":""),"data-play":id,title:on?"Stop":"Read aloud","aria-label":on?"Stop reading":"Read aloud",
+    onClick:go,onKeyDown:e=>{if(e.key==="Enter"||e.key===" ")go(e);}},
+    on?React.createElement("svg",{width:16,height:16,viewBox:"0 0 10 10"},React.createElement("rect",{x:1.5,y:1.5,width:7,height:7,fill:"currentColor"}))
+      :React.createElement("svg",{width:16,height:16,viewBox:"0 0 10 10"},React.createElement("path",{d:"M2 1l7 4-7 4z",fill:"currentColor"})));
+}
 function ClassWidget(){
   // Always 'guest'. The website widget is for people who do not have the app;
   // members book in the app, which is where WHO'S ATTENDING lives.
@@ -523,6 +560,8 @@ function ClassWidget(){
     const nm=((getSlotName(time,dateKey)||"")+"").trim().toUpperCase();
     return (nm&&classBriefs[nm])||"";
   }
+  // A brief being read aloud stops when it's closed, or on another day or screen (14 Oct 2026).
+  useEffect(()=>{if(SPEAK_ID)stopSpeaking();},[openBrief,selDK,step,selTime]);
 
   // Visible times for selected day: base times + any extras added in class_limits, filtered to exclude hidden (max_spots=0)
   const dayBaseTimes=baseTimesFor(baseTimes,selDK);
@@ -690,7 +729,7 @@ function ClassWidget(){
               )
               ),
               brief&&React.createElement("div",{className:"slot-brief"},
-                React.createElement("div",{className:"slot-brief-lbl"},"SESSION BRIEF"),
+                React.createElement("div",{className:"slot-brief-lbl"},"SESSION BRIEF",React.createElement(PlayBtn,{id:"brief-"+selDK+"-"+time,lines:()=>[getSlotName(time,selDK)||"",...String(brief||"").split(/\n+/)]})),
                 React.createElement("div",{className:"slot-brief-txt"},brief)
               ),
               openBrief===time&&React.createElement("div",{className:"att-wrap"},
@@ -753,7 +792,7 @@ function ClassWidget(){
                   :React.createElement("button",{className:"slot-btn sb-book",onClick:e=>{e.stopPropagation();setSelTime(time);}},"Book")
                 ),
                 brief&&React.createElement("div",{className:"slot-brief"},
-                  React.createElement("div",{className:"slot-brief-lbl"},"SESSION BRIEF"),
+                  React.createElement("div",{className:"slot-brief-lbl"},"SESSION BRIEF",React.createElement(PlayBtn,{id:"brief-"+selDK+"-"+time,lines:()=>[getSlotName(time,selDK)||"",...String(brief||"").split(/\n+/)]})),
                   React.createElement("div",{className:"slot-brief-txt"},brief)
                 )
               );
