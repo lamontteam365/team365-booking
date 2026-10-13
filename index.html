@@ -487,8 +487,8 @@ html:has(.app) #root{height:100%}
 .play-btn.on{color:#1d9bf0}
 .play-btn.on svg{margin-left:0}
 /* MY JOURNAL ▶ a little smaller (14 Oct 2026) */
-[data-note-play] .play-btn,[data-chabout-play] .play-btn{width:20px;height:20px}
-[data-note-play] .play-btn svg,[data-chabout-play] .play-btn svg{width:12px;height:12px}
+[data-note-play] .play-btn,[data-chabout-play] .play-btn,[data-brief-play] .play-btn{width:20px;height:20px}
+[data-note-play] .play-btn svg,[data-chabout-play] .play-btn svg,[data-brief-play] .play-btn svg{width:12px;height:12px}
 .fp-section{margin-top:16px;padding:14px;background:#0a0a0a;border:1px solid #888;border-radius:0}
 .fp-title{font-size:10px;letter-spacing:0.16em;color:#aaa;font-weight:600;margin-bottom:12px}
 .fp-msg{font-size:11px;color:#1d9bf0;letter-spacing:0.04em;margin-top:10px;line-height:1.6}
@@ -15882,6 +15882,11 @@ const navLabel=t=>(t.dot&&noticeNew>0&&effTab!=="community")?React.createElement
   // the same ingredients in a different order, so a brief written for the style
   // stays true every week and needs no per-class upkeep.
   const briefFor=(dk,time)=>classBriefs[(getDayClassName(dk,time)||"").toUpperCase()]||"";
+  // A session brief being read aloud stops when its class is closed, or on
+  // moving to another day, class or tab (14 Oct 2026).
+  const briefKeep=effTab==="book"&&effBookSub==="classes"&&expandedClass?"brief-"+selDK+"-"+expandedClass:null;
+  useEffect(()=>{if(SPEAK_ID&&SPEAK_ID.startsWith("brief-")&&SPEAK_ID!==briefKeep)stopSpeaking();},[briefKeep]);
+  useEffect(()=>()=>{if(SPEAK_ID&&SPEAK_ID.startsWith("brief-"))stopSpeaking();},[]);
   const myUpcoming=session?bookings.filter(b=>b.email===session.email&&bookingUpcoming(b)).sort((a,b)=>a.date_key.localeCompare(b.date_key)||a.time.localeCompare(b.time)):[];
   function showToast(msg){setToast({msg,show:true});setTimeout(()=>setToast(t=>({...t,show:false})),2200);}
   useEffect(()=>{const h=e=>showToast(e.detail);window.addEventListener("t365-toast",h);return()=>window.removeEventListener("t365-toast",h);},[]);
@@ -16645,7 +16650,10 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
                 const brief=briefFor(selDK,time);
                 if(!brief)return null;
                 return React.createElement("div",{style:{padding:"12px 13px",borderBottom:"1px solid #1a1a1a"}},
-                  React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,marginBottom:6}},"SESSION BRIEF"),
+                  // ▶ reads the brief aloud: the class name, then the brief (14 Oct 2026).
+                  React.createElement("div",{style:{fontSize:9,letterSpacing:"0.14em",color:"#555",fontWeight:600,marginBottom:6,display:"flex",alignItems:"center",gap:4}},"SESSION BRIEF",
+                    React.createElement("span",{"data-brief-play":"1",style:{display:"inline-flex",margin:"-8px 0"}},
+                      React.createElement(PlayBtn,{id:"brief-"+selDK+"-"+time,lines:()=>[slotNames[`${selDK}:${time}`]||getDayClassName(selDK,time)||"",...String(briefFor(selDK,time)||"").split(/\n+/)]}))),
                   React.createElement("div",{style:{fontSize:12,color:"#aaa",lineHeight:1.7,fontWeight:300,whiteSpace:"pre-line"}},brief)
                 );
               })(),
