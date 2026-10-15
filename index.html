@@ -6681,8 +6681,13 @@ function cardPal(inv){
 }
 function cardFont(sz,w,fam){return (w?w+" ":"")+sz+"px "+(fam||CARD_SANS);}
 // Draws one card's worth of design units at (x,y), scaled by K.
-function cardAt(ctx,x,y,K,draw){
-  ctx.save();ctx.translate(x,y);ctx.scale(K,K);ctx.textBaseline="alphabetic";draw();ctx.restore();
+// With rot, the card is turned a quarter turn clockwise and (x,y) is still its top-left on the
+// page — that is how two A5 cards fit a PORTRAIT A4 (see cardRenderSheet).
+function cardAt(ctx,x,y,K,draw,rot){
+  ctx.save();
+  if(rot){ctx.translate(x+CARD_U_H*K,y);ctx.rotate(Math.PI/2);}
+  else ctx.translate(x,y);
+  ctx.scale(K,K);ctx.textBaseline="alphabetic";draw();ctx.restore();
 }
 // ONE name size for the whole pack, from the longest name in it — ten cards laid out on the
 // floor with ten different name sizes would look wrong. Names are never wrapped (Sam, 15 Oct),
@@ -6880,9 +6885,12 @@ function cardCropMarks(ctx,x,y,w,h){
 // to a portrait A4, or two A5 to a LANDSCAPE A4 (two A5 side by side ARE an A4 landscape).
 // On A6 the exercise name prints about 6.6mm tall, on A5 about 9.3mm — that height is set by
 // the one-line rule, since the longest name in the pack has to fit the card's width.
+// Both sheets are a PORTRAIT A4 (Sam, 15 Oct) — switching size should not flip the page you are
+// looking at, or the way you feed the printer. A6 puts four cards up the right way; A5 puts two
+// cards turned a quarter turn, stacked, which is the only way two A5 fit a portrait A4.
 const CARD_SIZES={
-  a6:{single:[1240,1748],sheet:[2480,3508],cols:2,rows:2},
-  a5:{single:[1748,2480],sheet:[3508,2480],cols:2,rows:1}
+  a6:{single:[1240,1748],sheet:[2480,3508],cols:2,rows:2,rot:false},
+  a5:{single:[1748,2480],sheet:[2480,3508],cols:1,rows:2,rot:true}
 };
 function cardSizeOf(size){return CARD_SIZES[size]||CARD_SIZES.a6;}
 function cardPerSheet(size){const z=cardSizeOf(size);return z.cols*z.rows;}
@@ -6904,10 +6912,12 @@ function cardRenderSheet(canvas,pal,items,size){
   ctx.fillStyle="#ffffff";ctx.fillRect(0,0,canvas.width,canvas.height);
   const M=CARD_SHEET_MARGIN;
   const cw=(canvas.width-2*M)/z.cols,ch=(canvas.height-2*M)/z.rows;
-  const K=Math.min(cw/CARD_U_W,ch/CARD_U_H),dw=CARD_U_W*K,dh=CARD_U_H*K;
+  // A turned card is as wide as the design is tall, so the fit is measured the other way round.
+  const K=z.rot?Math.min(cw/CARD_U_H,ch/CARD_U_W):Math.min(cw/CARD_U_W,ch/CARD_U_H);
+  const dw=(z.rot?CARD_U_H:CARD_U_W)*K,dh=(z.rot?CARD_U_W:CARD_U_H)*K;
   items.slice(0,z.cols*z.rows).forEach((it,i)=>{
     const x=M+(i%z.cols)*cw+(cw-dw)/2,y=M+Math.floor(i/z.cols)*ch+(ch-dh)/2;
-    cardAt(ctx,x,y,K,()=>it.draw(ctx,pal));
+    cardAt(ctx,x,y,K,()=>it.draw(ctx,pal),z.rot);
     cardCropMarks(ctx,x,y,dw,dh);
   });
 }
@@ -7024,50 +7034,71 @@ function StationCardsOverlay({className,rows,lib,onClose,langOptions,youth}){
     if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5)goTo(dx<0?cur+1:cur-1);
   }
   // minWidth 0 + shrink so a narrow phone squeezes the pickers instead of wrapping the row.
+  // The overlay is position:fixed, so it spans the whole WINDOW even when the app itself is in
+  // mobile view on a computer. That is why this splits on the window width: narrow (a real
+  // phone) puts the pickers above the sheet and the paging and downloads underneath it; wide
+  // (either computer view) puts the lot on one centred line.
+  const [narrow,setNarrow]=useState(false);
+  useEffect(()=>{
+    const chk=()=>{try{setNarrow(window.innerWidth<700);}catch(e){}};
+    chk();
+    window.addEventListener("resize",chk);
+    window.addEventListener("orientationchange",chk);
+    return()=>{window.removeEventListener("resize",chk);window.removeEventListener("orientationchange",chk);};
+  },[]);
   const selStyle={background:"#fff",color:"#000",border:"none",borderRadius:0,fontSize:10,height:22,padding:"0 3px",minWidth:0,flexShrink:1};
   const btnStyle={background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"6px 8px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.08em",cursor:"pointer",whiteSpace:"nowrap"};
-  const rowStyle={display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"};
-  // Bare arrows either side of the sheet indicator — the indicator is the thing that looks
-  // like a button, not the chevrons (Sam, 15 Oct).
+  // Bare arrows either side of the sheet indicator — the indicator is the thing that looks like
+  // a button, not the chevrons (Sam, 15 Oct).
   const chevStyle=off=>({background:"none",border:"none",padding:"0 4px",fontSize:20,lineHeight:1,
     color:off?"#2d4256":"#8cd0ff",cursor:off?"default":"pointer"});
+  const group={display:"inline-flex",gap:6,alignItems:"center",whiteSpace:"nowrap"};
+  const line=extra=>({display:"flex",gap:12,alignItems:"center",justifyContent:"center",flexWrap:"wrap",...extra});
+
+  const pickers=React.createElement("span",{key:"pick","data-cards-pickers":"1",style:group},
+    React.createElement("select",{"data-cards-version":"1",value:inverse?"inv":"std",onChange:e=>setInverse(e.target.value==="inv"),style:selStyle},
+      React.createElement("option",{value:"std"},"STANDARD"),
+      React.createElement("option",{value:"inv"},"INVERSE")),
+    React.createElement("select",{"data-cards-size":"1",value:size,onChange:e=>{setSize(e.target.value);setPage(0);},style:selStyle},
+      React.createElement("option",{value:"a6"},"A6 \u00b7 4 UP"),
+      React.createElement("option",{value:"a5"},"A5 \u00b7 2 UP")),
+    !youth&&React.createElement("select",{"data-cards-lang":"1",value:langKey,onChange:e=>setLangKey(e.target.value),style:{...selStyle,maxWidth:84}},
+      opts.map(o=>React.createElement("option",{key:o.key,value:o.key},o.name))));
+
+  const paging=sheets.length>1&&React.createElement("span",{key:"page","data-cards-paging":"1",style:{...group,gap:2}},
+    React.createElement("button",{"data-cards-prev":"1",onClick:()=>goTo(cur-1),disabled:cur===0,style:chevStyle(cur===0)},"\u2039"),
+    React.createElement("span",{"data-cards-page":"1",style:{...btnStyle,cursor:"default",display:"inline-block"}},"SHEET "+(cur+1)+" / "+sheets.length),
+    React.createElement("button",{"data-cards-next":"1",onClick:()=>goTo(cur+1),disabled:cur>=sheets.length-1,style:chevStyle(cur>=sheets.length-1)},"\u203a"));
+
+  const actions=React.createElement("span",{key:"act","data-cards-actions":"1",style:group},
+    React.createElement("button",{"data-cards-dl-sheets":"1",onClick:downloadSheets,style:btnStyle},"\u2b07 SHEETS"),
+    React.createElement("button",{"data-cards-dl-singles":"1",onClick:downloadSingles,style:btnStyle},"\u2b07 CARDS"),
+    busy&&React.createElement("span",{style:{fontSize:10,color:"#8cd0ff",letterSpacing:"0.08em"}},busy));
+
+  const canvas=React.createElement("canvas",{key:"cv",ref:canvasRef,
+    onTouchStart:onTouchStart,onTouchEnd:onTouchEnd,
+    width:cardSizeOf(size).sheet[0],height:cardSizeOf(size).sheet[1],
+    // Fitted to what is left of the window, so a portrait A4 is fully on screen and fills as
+    // much of a computer screen as the controls leave. Swipe sideways to change sheet.
+    style:{display:items.length?"block":"none",margin:"0 auto",maxWidth:"100%",maxHeight:narrow?"calc(100vh - 170px)":"calc(100vh - 128px)",background:"#fff",touchAction:"pan-y"}});
+
+  const states=[
+    !briefs&&React.createElement("div",{key:"load",style:{color:"#444",fontSize:11,padding:"20px 0",textAlign:"center"}},"Loading..."),
+    briefs&&!items.length&&React.createElement("div",{key:"none",style:{color:"#c9603f",fontSize:11,padding:"20px 0",textAlign:"center",letterSpacing:"0.08em"}},"NO STATION ROUND FOUND IN THIS WORKOUT")
+  ];
+
   return React.createElement("div",{className:"scb-poster-overlay",onClick:onClose},
     React.createElement("div",{className:"scb-poster-outerframe",onClick:e=>e.stopPropagation()},
-      React.createElement("div",{className:"scb-poster-frame",style:{padding:10,display:"block"}},
-        // Two deliberate rows (Sam, 15 Oct): the pickers and the ✕ on top, then paging and the
-        // downloads. Left to wrap on its own the controls landed in a different order on every
-        // screen — the chevrons ended up split across two lines on a phone.
-        React.createElement("div",{"data-cards-row1":"1",style:{...rowStyle,marginBottom:6}},
-          React.createElement("select",{"data-cards-version":"1",value:inverse?"inv":"std",onChange:e=>setInverse(e.target.value==="inv"),style:selStyle},
-            React.createElement("option",{value:"std"},"STANDARD"),
-            React.createElement("option",{value:"inv"},"INVERSE")),
-          React.createElement("select",{"data-cards-size":"1",value:size,onChange:e=>{setSize(e.target.value);setPage(0);},style:selStyle},
-            React.createElement("option",{value:"a6"},"A6 \u00b7 4 UP"),
-            React.createElement("option",{value:"a5"},"A5 \u00b7 2 UP")),
-          !youth&&React.createElement("select",{"data-cards-lang":"1",value:langKey,onChange:e=>setLangKey(e.target.value),style:{...selStyle,maxWidth:84}},
-            opts.map(o=>React.createElement("option",{key:o.key,value:o.key},o.name))),
-          React.createElement("span",{"data-cards-count":"1",style:{fontSize:9,color:"#666",letterSpacing:"0.08em",whiteSpace:"nowrap"}},items.length+" CARDS"),
-          React.createElement("div",{style:{flex:"1 1 auto",minWidth:4}}),
-          React.createElement("button",{"data-cards-close":"1",onClick:onClose,title:"Close",style:{...btnStyle,padding:"4px 9px",fontSize:13}},"\u2715")
-        ),
-        React.createElement("div",{"data-cards-row2":"1",style:{...rowStyle,marginBottom:8}},
-          sheets.length>1&&React.createElement("span",{style:{display:"inline-flex",gap:2,alignItems:"center",whiteSpace:"nowrap"}},
-            React.createElement("button",{"data-cards-prev":"1",onClick:()=>goTo(cur-1),disabled:cur===0,style:chevStyle(cur===0)},"\u2039"),
-            React.createElement("span",{"data-cards-page":"1",style:{...btnStyle,cursor:"default",display:"inline-block"}},"SHEET "+(cur+1)+" / "+sheets.length),
-            React.createElement("button",{"data-cards-next":"1",onClick:()=>goTo(cur+1),disabled:cur>=sheets.length-1,style:chevStyle(cur>=sheets.length-1)},"\u203a")),
-          React.createElement("button",{"data-cards-dl-sheets":"1",onClick:downloadSheets,style:btnStyle},"\u2b07 SHEETS"),
-          React.createElement("button",{"data-cards-dl-singles":"1",onClick:downloadSingles,style:btnStyle},"\u2b07 CARDS"),
-          busy&&React.createElement("span",{style:{fontSize:10,color:"#8cd0ff",letterSpacing:"0.08em",whiteSpace:"nowrap"}},busy)
-        ),
-        !briefs&&React.createElement("div",{style:{color:"#444",fontSize:11,padding:"20px 0",textAlign:"center"}},"Loading..."),
-        briefs&&!items.length&&React.createElement("div",{style:{color:"#c9603f",fontSize:11,padding:"20px 0",textAlign:"center",letterSpacing:"0.08em"}},"NO STATION ROUND FOUND IN THIS WORKOUT"),
-        // The sheet is fitted to what is left of the window instead of being given the full
-        // width — a portrait A4 is taller than it is wide, so at 100% width the bottom half of
-        // the page fell off the screen. Swipe sideways to change sheet on a touch screen.
-        React.createElement("canvas",{ref:canvasRef,
-          onTouchStart:onTouchStart,onTouchEnd:onTouchEnd,
-          width:cardSizeOf(size).sheet[0],height:cardSizeOf(size).sheet[1],
-          style:{display:items.length?"block":"none",margin:"0 auto",maxWidth:"100%",maxHeight:"calc(100vh - 128px)",background:"#fff",touchAction:"pan-y"}})
+      React.createElement("div",{className:"scb-poster-frame",style:{padding:10,display:"block",position:"relative"}},
+        React.createElement("button",{"data-cards-close":"1",onClick:onClose,title:"Close",
+          style:{position:"absolute",top:4,right:6,background:"none",border:"none",color:"#e5484d",
+            fontSize:15,lineHeight:1,padding:"2px 5px",cursor:"pointer",zIndex:3}},"\u2715"),
+        narrow
+          ? [React.createElement("div",{key:"top","data-cards-controls":"top",style:line({marginBottom:8,paddingRight:22})},pickers),
+             states,canvas,
+             React.createElement("div",{key:"bot","data-cards-controls":"bottom",style:line({marginTop:10})},paging,actions)]
+          : [React.createElement("div",{key:"one","data-cards-controls":"one",style:line({marginBottom:8,paddingRight:22})},pickers,paging,actions),
+             states,canvas]
       )
     )
   );
