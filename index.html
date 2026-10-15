@@ -558,11 +558,18 @@ html:has(.app) #root{height:100%}
 .scb-play-sq{background:#1d9bf0;border:none;color:#fff;width:15px;height:15px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:7px;padding:0}
 /* Workout Details buttons: six of them, all the same width, with a white border.
    !important because each button carries an inline flex:1 and border from the
-   component. Six equal across on a computer; exactly three per row below 860px, where
-   the label also steps down a size so nothing is clipped at phone width. */
-.wd-btnrow>button,.app[data-admin-mode] .adm-wrap .wd-btnrow>button{flex:1 1 0 !important;min-width:0;border:1px solid #fff !important}
-@media (max-width:860px){.wd-btnrow>button,.app[data-admin-mode] .adm-wrap .wd-btnrow>button{flex:0 0 calc((100% - 16px)/3) !important;font-size:11px !important;letter-spacing:0.05em !important}}
-@media (max-width:420px){.wd-btnrow>button,.app[data-admin-mode] .adm-wrap .wd-btnrow>button{font-size:10px !important;letter-spacing:0.03em !important}}
+   component, and because admin mode rewrites dark inline borders to #888 with a
+   selector that would otherwise out-specify this one.
+   The split is a CONTAINER query, not a media query: 'mobile view' on a computer is a
+   narrow frame inside a wide window, so viewport rules never fire there and six
+   buttons used to squeeze into a phone-width frame. The label is 11px and wraps to a
+   second line rather than running off the button. */
+.wd-btnrow{container-type:inline-size}
+.wd-btnrow>button,.app[data-admin-mode] .adm-wrap .wd-btnrow>button{flex:1 1 0 !important;min-width:0;border:1px solid #fff !important;font-size:11px !important;letter-spacing:0.04em !important;white-space:normal !important;line-height:1.2;padding:7px 4px !important}
+@container (max-width:700px){.wd-btnrow>button,.app[data-admin-mode] .adm-wrap .wd-btnrow>button{flex:0 0 calc((100% - 16px)/3) !important}}
+@supports not (container-type:inline-size){
+  @media (max-width:700px){.wd-btnrow>button,.app[data-admin-mode] .adm-wrap .wd-btnrow>button{flex:0 0 calc((100% - 16px)/3) !important}}
+}
 .scb-poster-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.97);z-index:9999;display:flex;align-items:center;justify-content:center;padding:8px;box-sizing:border-box}
 .scb-poster-outerframe{width:100%;max-width:966px;max-height:96dvh;background:#000;padding:10px;box-sizing:border-box}
 .scb-poster-frame{width:100%;height:auto;background:#000;border:1px solid rgba(255,255,255,0.35);overflow-y:auto;position:relative;padding:32px 16px 36px;box-sizing:border-box;display:flex;flex-direction:column}
@@ -6700,13 +6707,10 @@ function cardWrap(ctx,text,font,maxW){
   if(cur)lines.push(cur);
   return lines;
 }
-// Centres a stack of items vertically in a band. Each item is {h, draw(topY)}.
-function cardStack(items,gap,top,bot){
-  const list=items.filter(Boolean);
-  const total=list.reduce((s,i)=>s+i.h,0)+gap*Math.max(0,list.length-1);
-  let y=top+(bot-top-total)/2;
-  list.forEach(it=>{it.draw(y);y+=it.h+gap;});
-}
+// The exercise name sits on the SAME baseline on every card in the pack (Sam, 15 Oct) — reps
+// hang above it and the translation below, so a card with reps no longer pushes the name down
+// and the names line up when the cards are laid out side by side.
+const CARD_NAME_BASE=310;
 // Numbers in the foreground colour, words in Team 365 blue — the youth board's rule since
 // 12 Oct, reused here so the printed card matches the screen.
 function cardParts(text,pal){
@@ -6746,11 +6750,9 @@ function cardDrawStation(ctx,pal,o){
   cardHeader(ctx,pal,"STATION",o.dur||"");
   stImgFillTextSpaced(ctx,String(o.num),CARD_U_W/2,147,2.64,cardFont(132,"",CARD_BEBAS),pal.fg,"center");
   cardRule(ctx,pal,168);
-  cardStack([
-    o.reps?{h:22,draw:y=>stImgFillTextSpaced(ctx,o.reps,CARD_U_W/2,y+17,1.32,cardFont(22,"700"),pal.acc,"center")}:null,
-    {h:o.nameSize,draw:y=>stImgFillTextSpaced(ctx,o.name,CARD_U_W/2,y+o.nameSize*0.78,o.nameSize*0.03,cardFont(o.nameSize,"",CARD_BEBAS),pal.fg,"center")},
-    o.tr?{h:15,draw:y=>stImgFillTextSpaced(ctx,o.tr,CARD_U_W/2,y+12,0.6,cardFont(15,"600"),pal.acc,"center")}:null
-  ],10,171,435);
+  if(o.reps)stImgFillTextSpaced(ctx,o.reps,CARD_U_W/2,CARD_NAME_BASE-o.nameSize*0.9-14,1.32,cardFont(22,"700"),pal.acc,"center");
+  stImgFillTextSpaced(ctx,o.name,CARD_U_W/2,CARD_NAME_BASE,o.nameSize*0.03,cardFont(o.nameSize,"",CARD_BEBAS),pal.fg,"center");
+  if(o.tr)stImgFillTextSpaced(ctx,o.tr,CARD_U_W/2,CARD_NAME_BASE+26,0.6,cardFont(15,"600"),pal.acc,"center");
   const cw=(CARD_INNER-14)/3;
   [["COMMITMENT",o.lv[0]],["CONSISTENCY",o.lv[1]],["DETERMINATION",o.lv[2]]].forEach((c,i)=>{
     const x=CARD_PADX+i*(cw+7);
@@ -6772,10 +6774,9 @@ function cardDrawYouth(ctx,pal,o){
   cardHeader(ctx,pal,"STATION","YOUTH");
   stImgFillTextSpaced(ctx,String(o.num),CARD_U_W/2,147,2.64,cardFont(132,"",CARD_BEBAS),pal.fg,"center");
   cardRule(ctx,pal,168);
-  cardStack([
-    {h:14,draw:y=>stImgFillTextSpaced(ctx,"YOUTH EXERCISE",CARD_U_W/2,y+11,1.96,cardFont(14,"700"),pal.acc,"center")},
-    {h:o.nameSize,draw:y=>stImgFillTextSpaced(ctx,o.name,CARD_U_W/2,y+o.nameSize*0.78,o.nameSize*0.03,cardFont(o.nameSize,"",CARD_BEBAS),pal.fg,"center")}
-  ],12,171,420);
+  // Same baseline as the adult card, so an adult and a youth card read alike side by side.
+  stImgFillTextSpaced(ctx,"YOUTH EXERCISE",CARD_U_W/2,CARD_NAME_BASE-o.nameSize*0.9-12,1.96,cardFont(14,"700"),pal.acc,"center");
+  stImgFillTextSpaced(ctx,o.name,CARD_U_W/2,CARD_NAME_BASE,o.nameSize*0.03,cardFont(o.nameSize,"",CARD_BEBAS),pal.fg,"center");
   ctx.fillStyle=pal.boxBg;ctx.fillRect(CARD_PADX,430,CARD_INNER,64);
   ctx.strokeStyle=pal.boxLine;ctx.lineWidth=1;ctx.strokeRect(CARD_PADX+0.5,430.5,CARD_INNER-1,63);
   if(o.work)cardPartsCentred(ctx,cardParts(o.work,pal),CARD_U_W/2,469,cardFont(20,"600"));
@@ -7026,6 +7027,10 @@ function StationCardsOverlay({className,rows,lib,onClose,langOptions,youth}){
   const selStyle={background:"#fff",color:"#000",border:"none",borderRadius:0,fontSize:10,height:22,padding:"0 3px",minWidth:0,flexShrink:1};
   const btnStyle={background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"6px 8px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.08em",cursor:"pointer",whiteSpace:"nowrap"};
   const rowStyle={display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"};
+  // Bare arrows either side of the sheet indicator — the indicator is the thing that looks
+  // like a button, not the chevrons (Sam, 15 Oct).
+  const chevStyle=off=>({background:"none",border:"none",padding:"0 4px",fontSize:20,lineHeight:1,
+    color:off?"#2d4256":"#8cd0ff",cursor:off?"default":"pointer"});
   return React.createElement("div",{className:"scb-poster-overlay",onClick:onClose},
     React.createElement("div",{className:"scb-poster-outerframe",onClick:e=>e.stopPropagation()},
       React.createElement("div",{className:"scb-poster-frame",style:{padding:10,display:"block"}},
@@ -7046,10 +7051,10 @@ function StationCardsOverlay({className,rows,lib,onClose,langOptions,youth}){
           React.createElement("button",{"data-cards-close":"1",onClick:onClose,title:"Close",style:{...btnStyle,padding:"4px 9px",fontSize:13}},"\u2715")
         ),
         React.createElement("div",{"data-cards-row2":"1",style:{...rowStyle,marginBottom:8}},
-          sheets.length>1&&React.createElement("span",{style:{display:"inline-flex",gap:6,alignItems:"center",whiteSpace:"nowrap"}},
-            React.createElement("button",{"data-cards-prev":"1",onClick:()=>goTo(cur-1),disabled:cur===0,style:btnStyle},"\u2039"),
-            React.createElement("span",{"data-cards-page":"1",style:{fontSize:10,color:"#8cd0ff",letterSpacing:"0.08em"}},"SHEET "+(cur+1)+" / "+sheets.length),
-            React.createElement("button",{"data-cards-next":"1",onClick:()=>goTo(cur+1),disabled:cur>=sheets.length-1,style:btnStyle},"\u203a")),
+          sheets.length>1&&React.createElement("span",{style:{display:"inline-flex",gap:2,alignItems:"center",whiteSpace:"nowrap"}},
+            React.createElement("button",{"data-cards-prev":"1",onClick:()=>goTo(cur-1),disabled:cur===0,style:chevStyle(cur===0)},"\u2039"),
+            React.createElement("span",{"data-cards-page":"1",style:{...btnStyle,cursor:"default",display:"inline-block"}},"SHEET "+(cur+1)+" / "+sheets.length),
+            React.createElement("button",{"data-cards-next":"1",onClick:()=>goTo(cur+1),disabled:cur>=sheets.length-1,style:chevStyle(cur>=sheets.length-1)},"\u203a")),
           React.createElement("button",{"data-cards-dl-sheets":"1",onClick:downloadSheets,style:btnStyle},"\u2b07 SHEETS"),
           React.createElement("button",{"data-cards-dl-singles":"1",onClick:downloadSingles,style:btnStyle},"\u2b07 CARDS"),
           busy&&React.createElement("span",{style:{fontSize:10,color:"#8cd0ff",letterSpacing:"0.08em",whiteSpace:"nowrap"}},busy)
@@ -7062,7 +7067,7 @@ function StationCardsOverlay({className,rows,lib,onClose,langOptions,youth}){
         React.createElement("canvas",{ref:canvasRef,
           onTouchStart:onTouchStart,onTouchEnd:onTouchEnd,
           width:cardSizeOf(size).sheet[0],height:cardSizeOf(size).sheet[1],
-          style:{display:items.length?"block":"none",margin:"0 auto",maxWidth:"100%",maxHeight:"72vh",background:"#fff",touchAction:"pan-y"}})
+          style:{display:items.length?"block":"none",margin:"0 auto",maxWidth:"100%",maxHeight:"calc(100vh - 128px)",background:"#fff",touchAction:"pan-y"}})
       )
     )
   );
