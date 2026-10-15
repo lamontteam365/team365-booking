@@ -6831,45 +6831,53 @@ function cardDrawYouth(ctx,pal,o){
 // Same skeleton as a station card — header row, big line where the number goes, rule, one
 // full-width box (the youth card's "one box instead of three"), footer — so the pack reads as
 // one family. o = {label, title, right, para, bullets, foot}
+// A brief card reads straight down the middle (Sam, 16 Oct): the workout's NAME at the top,
+// the blue rule tight under it, then the WORKOUT BRIEF / SESSION BRIEF label centred, then the
+// text. The label used to sit in the top-left corner where cardHeader puts it; there is no
+// header on a brief card now.
+//
+// The label and the text are measured and centred as ONE block in the space under the rule, so
+// the label always sits the same distance above the first line however long the text runs.
+const CARD_BRIEF_LABEL_H=17;   // the label's own line
+const CARD_BRIEF_LABEL_GAP=15; // label baseline to the first line of text
 function cardDrawBrief(ctx,pal,o){
   cardFrame(ctx,pal);
-  cardHeader(ctx,pal,o.label,o.right||"",true);
   // The workout's name has to fit the card too — "RISE UP (1)" at 64 runs off the edge.
   const ts=cardFitName(ctx,[o.title],CARD_INNER,40,22);
-  stImgFillTextSpaced(ctx,o.title,CARD_U_W/2,62+ts*0.44,ts*0.03,cardFont(ts,"",CARD_BEBAS),pal.fg,"center");
-  cardRule(ctx,pal,118);
-  // No box on a brief card (Sam, 15 Oct): the text sits straight on the card. The workout
-  // brief is centred both ways; the session brief keeps its bullets left-aligned.
-  const bx=CARD_PADX,by=135,bw=CARD_INNER,bh=494-135;
-  const f=cardFont(15,""),tx=bx+6,tw=bw-12;
-  if(o.bullets&&o.bullets.length){
-    const blocks=o.bullets.map(b=>cardWrap(ctx,b,f,tw-15));
-    const total=blocks.reduce((s,l)=>s+l.length*22,0)+7*Math.max(0,blocks.length-1);
-    let y=by+(bh-total)/2;
-    blocks.forEach(lines=>{
-      lines.forEach((ln,i)=>{
+  const tb=62+ts*0.44;
+  stImgFillTextSpaced(ctx,o.title,CARD_U_W/2,tb,ts*0.03,cardFont(ts,"",CARD_BEBAS),pal.fg,"center");
+  // Tight under the name, rather than parked at a fixed 118 well below it.
+  const ruleY=Math.round(tb+15);
+  cardRule(ctx,pal,ruleY);
+  // No box on a brief card (Sam, 15 Oct): the text sits straight on the card. A bulleted brief
+  // is left-aligned — adult and youth alike; a prose brief is centred.
+  const by=ruleY+26,bh=494-(ruleY+26);
+  const f=cardFont(15,""),lf=cardFont(12,"600"),tx=CARD_PADX+6,tw=CARD_INNER-12;
+  const bulleted=!!(o.bullets&&o.bullets.length);
+  const lineH=bulleted?22:23;
+  const blocks=bulleted
+    ?o.bullets.map(b=>cardWrap(ctx,b,f,tw-15))
+    :[cardWrap(ctx,o.para||"",f,tw)];
+  const textH=blocks.reduce((s,l)=>s+l.length*lineH,0)+7*Math.max(0,blocks.length-1);
+  const label=String(o.label||"");
+  const labelH=label?CARD_BRIEF_LABEL_H+CARD_BRIEF_LABEL_GAP:0;
+  let y=by+(bh-(labelH+textH))/2;
+  if(label){
+    stImgFillTextSpaced(ctx,label,CARD_U_W/2,y+12,1.92,lf,pal.acc,"center");
+    y+=labelH;
+  }
+  blocks.forEach(lines=>{
+    lines.forEach((ln,i)=>{
+      if(bulleted){
         if(i===0)stImgFillTextSpaced(ctx,"•",tx,y+11,0,f,pal.acc,"left");
         stImgFillTextSpaced(ctx,ln,tx+15,y+11,0,f,pal.fg,"left");
-        y+=22;
-      });
-      y+=7;
+      }else{
+        stImgFillTextSpaced(ctx,ln,CARD_U_W/2,y+11,0,f,pal.fg,"center");
+      }
+      y+=lineH;
     });
-  }else if(o.paras&&o.paras.length){
-    // The YOUTH session brief (16 Oct): a paragraph rather than bullets, centred both ways like
-    // the workout brief. Sam's own line breaks are kept, so each line is its own centred block
-    // with the same 7-unit gap the adult bullets use.
-    const blocks=o.paras.map(p=>cardWrap(ctx,p,f,tw));
-    const total=blocks.reduce((s,l)=>s+l.length*23,0)+7*Math.max(0,blocks.length-1);
-    let y=by+(bh-total)/2;
-    blocks.forEach(lines=>{
-      lines.forEach(ln=>{stImgFillTextSpaced(ctx,ln,CARD_U_W/2,y+11,0,f,pal.fg,"center");y+=23;});
-      y+=7;
-    });
-  }else{
-    const lines=cardWrap(ctx,o.para||"",f,tw);
-    let y=by+(bh-lines.length*23)/2;
-    lines.forEach(ln=>{stImgFillTextSpaced(ctx,ln,CARD_U_W/2,y+11,0,f,pal.fg,"center");y+=23;});
-  }
+    y+=7;
+  });
   cardFooter(ctx,pal,o.foot);
 }
 // ---- building a pack from a workout ----
@@ -6889,17 +6897,16 @@ function cardBuildPack(className,rows,lib,langKey,briefs,youth){
   const mc=document.createElement("canvas").getContext("2d");
   const nameSize=cardFitName(mc,names,CARD_INNER,youth?34:36,22);
   const items=[];
-  // Briefs lead BOTH packs (16 Oct). The youth pack carries its own wording, and its brief
-  // cards are titled by STYLE plus YOUTH with the number dropped — RISE UP YOUTH, not
-  // RISE UP (1) YOUTH — because one youth brief covers every workout of that style. A workout
-  // with no youth text gets NO brief card rather than a blank laminate, which is what keeps
-  // Strength Lower and Strength Upper (deliberately youth-free) printing stations only.
-  const bTitle=youth?String(className||"").replace(/\s*\d+\s*$/,"").trim().toUpperCase()+" YOUTH":title;
+  // Briefs lead BOTH packs (16 Oct). A youth brief card is titled "<WORKOUT> YOUTH" —
+  // RISE UP (1) YOUTH, the number kept, matching the youth station cards' own footer. The
+  // WORDING is still one per style; only the title names the workout. A workout with no youth
+  // text gets NO brief card rather than a blank laminate, which is what keeps Strength Lower
+  // and Strength Upper (deliberately youth-free) printing stations only.
+  const bTitle=youth?title+" YOUTH":title;
   if(briefs&&briefs.workout)items.push({slug:base+"-workout-brief",draw:(ctx,pal)=>cardDrawBrief(ctx,pal,{
     label:"WORKOUT BRIEF",title:bTitle,right:"",para:briefs.workout,foot:"EVERY DAY. ALL YEAR ROUND"})});
   if(briefs&&briefs.session&&briefs.session.length)items.push({slug:base+"-session-brief",draw:(ctx,pal)=>cardDrawBrief(ctx,pal,{
-    label:"SESSION BRIEF",title:bTitle,right:"",
-    bullets:youth?null:briefs.session,paras:youth?briefs.session:null,
+    label:"SESSION BRIEF",title:bTitle,right:"",bullets:briefs.session,
     foot:"EVERY DAY. ALL YEAR ROUND"})});
   sts.forEach((r,i)=>{
     // The station number the admin sees in Workout Details wins; otherwise count down the round.
@@ -6925,16 +6932,20 @@ function cardBuildPack(className,rows,lib,langKey,briefs,youth){
   return items;
 }
 // ---- rendering ----
-function cardCropMarks(ctx,x,y,w,h){
+// One set of marks for the whole grid: a tick on every cut line, drawn OUTSIDE the block of
+// cards (Sam, 16 Oct). Per-card marks used to spray each card's four corners outward, which
+// with flush cards would have drawn grey ticks across the neighbouring card's face.
+function cardCropMarks(ctx,gx,gy,dw,dh,cols,rows){
   ctx.save();ctx.strokeStyle="#9a9a9a";ctx.lineWidth=2;
-  const L=28,G=10;
-  [[x,y,-1,-1],[x+w,y,1,-1],[x,y+h,-1,1],[x+w,y+h,1,1]].forEach(c=>{
-    ctx.beginPath();
-    ctx.moveTo(c[0]+c[2]*G,c[1]);ctx.lineTo(c[0]+c[2]*(G+L),c[1]);
-    ctx.moveTo(c[0],c[1]+c[3]*G);ctx.lineTo(c[0],c[1]+c[3]*(G+L));
-    ctx.stroke();
-  });
-  ctx.restore();
+  const L=28,G=10,x2=gx+dw*cols,y2=gy+dh*rows;
+  ctx.beginPath();
+  for(let c=0;c<=cols;c++){const x=gx+c*dw;
+    ctx.moveTo(x,gy-G);ctx.lineTo(x,gy-G-L);
+    ctx.moveTo(x,y2+G);ctx.lineTo(x,y2+G+L);}
+  for(let r=0;r<=rows;r++){const y=gy+r*dh;
+    ctx.moveTo(gx-G,y);ctx.lineTo(gx-G-L,y);
+    ctx.moveTo(x2+G,y);ctx.lineTo(x2+G+L,y);}
+  ctx.stroke();ctx.restore();
 }
 // ---- paper ----
 // A5 and A6 are the SAME SHAPE, so one design serves both and only the paper changes: four A6
@@ -6971,11 +6982,15 @@ function cardRenderSheet(canvas,pal,items,size){
   // A turned card is as wide as the design is tall, so the fit is measured the other way round.
   const K=z.rot?Math.min(cw/CARD_U_H,ch/CARD_U_W):Math.min(cw/CARD_U_W,ch/CARD_U_H);
   const dw=(z.rot?CARD_U_H:CARD_U_W)*K,dh=(z.rot?CARD_U_W:CARD_U_H)*K;
+  // The cards sit FLUSH in both directions (Sam, 16 Oct). Each card used to be centred inside
+  // its own cell, which left a white band between the rows — the columns already touched,
+  // because the card fills the cell's width exactly. The leftover page space now collects at
+  // the edges, with the whole block centred on the sheet.
+  const gx=M+((canvas.width-2*M)-dw*z.cols)/2,gy=M+((canvas.height-2*M)-dh*z.rows)/2;
   items.slice(0,z.cols*z.rows).forEach((it,i)=>{
-    const x=M+(i%z.cols)*cw+(cw-dw)/2,y=M+Math.floor(i/z.cols)*ch+(ch-dh)/2;
-    cardAt(ctx,x,y,K,()=>it.draw(ctx,pal),z.rot);
-    cardCropMarks(ctx,x,y,dw,dh);
+    cardAt(ctx,gx+(i%z.cols)*dw,gy+Math.floor(i/z.cols)*dh,K,()=>it.draw(ctx,pal),z.rot);
   });
+  cardCropMarks(ctx,gx,gy,dw,dh,z.cols,z.rows);
 }
 function cardSheetsOf(items,size){
   const per=cardPerSheet(size),out=[];
