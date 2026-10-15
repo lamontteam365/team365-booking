@@ -7050,12 +7050,17 @@ function StationCardsOverlay({className,rows,lib,onClose,langOptions,youth}){
   // and minWidth:0 so a long option can't push its own share wider than the rest.
   // The rows are CSS grid, not flex: a flex row gave a bordered button and a borderless select
   // outer widths 4px apart, where equal grid columns are exactly equal (Sam, 15 Oct).
-  const share={minWidth:0,boxSizing:"border-box",width:"100%"};
-  const selStyle={...share,background:"#fff",color:"#000",border:"none",borderRadius:0,fontSize:10,height:24,padding:"0 3px"};
-  const btnStyle={...share,background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"6px 4px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.08em",cursor:"pointer",whiteSpace:"nowrap",textAlign:"center"};
+  const share={minWidth:0,boxSizing:"border-box",width:"100%",height:30};
+  const selStyle={...share,background:"#fff",color:"#000",border:"none",borderRadius:0,fontSize:10,padding:"0 3px"};
+  const btnStyle={...share,background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"0 4px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.08em",cursor:"pointer",whiteSpace:"nowrap",textAlign:"center",display:"flex",alignItems:"center",justifyContent:"center"};
   // Bare arrows — the sheet indicator is the thing that looks like a button, not the chevrons.
+  // On a phone the arrows are the row's height too — the box is invisible but the tap target
+  // matches everything beside it.
   const chevStyle=(off,big)=>({background:"none",border:"none",padding:big?"0 6px":"0 2px",
+    ...(big?{}:{height:30,boxSizing:"border-box"}),
     fontSize:big?40:22,lineHeight:1,color:off?"#2d4256":"#8cd0ff",cursor:off?"default":"pointer"});
+  const closeStyle={background:"none",border:"1px solid #e5484d",borderRadius:0,color:"#e5484d",
+    fontSize:13,lineHeight:1,padding:"0 9px",height:24,cursor:"pointer"};
   const rowStyle=(cols,extra)=>({display:"grid",gridAutoFlow:"column",gridAutoColumns:"1fr",
     ...(cols?{gridTemplateColumns:cols,gridAutoFlow:"row"}:{}),gap:8,alignItems:"center",width:"100%",...extra});
 
@@ -7089,9 +7094,12 @@ function StationCardsOverlay({className,rows,lib,onClose,langOptions,youth}){
     briefs&&!items.length&&React.createElement("div",{key:"none",style:{color:"#c9603f",fontSize:11,padding:"20px 0",textAlign:"center",letterSpacing:"0.08em"}},"NO STATION ROUND FOUND IN THIS WORKOUT")
   ];
 
+  const closeRow=narrow&&React.createElement("div",{key:"x",style:{display:"flex",justifyContent:"flex-end",marginBottom:6}},
+    React.createElement("button",{"data-cards-close":"1",onClick:onClose,title:"Close",style:closeStyle},"\u2715"));
+
   const body=narrow
-    ? [React.createElement("div",{key:"top","data-cards-controls":"top",style:rowStyle(null,{marginBottom:8,paddingRight:22})},verSel,sizeSel,langSel),
-       states,canvas,busyTag,
+    ? [React.createElement("div",{key:"top","data-cards-controls":"top",style:rowStyle(null,{marginBottom:6})},verSel,sizeSel,langSel),
+       closeRow,states,canvas,busyTag,
        // The chevrons bookend the row: ‹ at the far left, › after CARDS at the far right,
        // with the three buttons between them sharing the rest equally.
        React.createElement("div",{key:"bot","data-cards-controls":"bottom",
@@ -7108,9 +7116,8 @@ function StationCardsOverlay({className,rows,lib,onClose,langOptions,youth}){
   return React.createElement("div",{className:"scb-poster-overlay",onClick:onClose},
     React.createElement("div",{className:"scb-poster-outerframe",onClick:e=>e.stopPropagation()},
       React.createElement("div",{className:"scb-poster-frame",style:{padding:10,display:"block",position:"relative"}},
-        React.createElement("button",{"data-cards-close":"1",onClick:onClose,title:"Close",
-          style:{position:"absolute",top:4,right:6,background:"none",border:"none",color:"#e5484d",
-            fontSize:15,lineHeight:1,padding:"2px 5px",cursor:"pointer",zIndex:3}},"\u2715"),
+        !narrow&&React.createElement("button",{"data-cards-close":"1",onClick:onClose,title:"Close",
+          style:{...closeStyle,position:"absolute",top:4,right:6,zIndex:3}},"\u2715"),
         body
       )
     )
