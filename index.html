@@ -556,6 +556,11 @@ html:has(.app) #root{height:100%}
 .scb-play-ex{display:flex;align-items:baseline;gap:4px;padding:3px 0;border-bottom:1px solid #1a1a1a;font-size:10px;color:#eee}
 .scb-edit-hdr{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#fff;font-weight:600;cursor:pointer;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #222}
 .scb-play-sq{background:#1d9bf0;border:none;color:#fff;width:15px;height:15px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:7px;padding:0}
+/* Workout Details buttons: six of them. !important because each button carries an
+   inline flex:1 from the component, and min-width:max-content so a label is never
+   clipped. One row on a computer; two rows of three on a phone. */
+.wd-btnrow>button{flex:1 1 auto !important;min-width:max-content}
+@media (max-width:860px){.wd-btnrow>button{flex:1 1 28% !important}}
 .scb-poster-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.97);z-index:9999;display:flex;align-items:center;justify-content:center;padding:8px;box-sizing:border-box}
 .scb-poster-outerframe{width:100%;max-width:966px;max-height:96dvh;background:#000;padding:10px;box-sizing:border-box}
 .scb-poster-frame{width:100%;height:auto;background:#000;border:1px solid rgba(255,255,255,0.35);overflow-y:auto;position:relative;padding:32px 16px 36px;box-sizing:border-box;display:flex;flex-direction:column}
@@ -6633,6 +6638,405 @@ async function stImgRenderCanvas(canvas,className,rows,lib,bgNum,langKey,langNam
 
   stImgDrawFooter(ctx);
 }
+// ── Station cards · A6 print cards (admin "▦ CARDS" / "▦ YOUTH CARDS", 15 Oct 2026) ─────────
+// One printable card per station, to put on the floor at each station. Nothing new is stored:
+// the cards are drawn from the station rows (exercise, duration, reps, pillar targets) plus the
+// exercise library (translations, youth names, youth reps) and the two briefs.
+//
+// Every number below is in A6 DESIGN UNITS — 397x559, the shape of a real A6 — and cardAt()
+// translates + scales the context, so the same drawing code renders a 300dpi A6 on its own
+// (K=3.12) or a quarter of an A4 sheet (K=2.97). Change a number once, both follow.
+//
+// STANDARD is the app's black card. INVERSE is white with black text: roughly a ninth of the
+// toner, and no glare off a laminated card lying on the floor. Sam prints one set standard and
+// the other inverse so the adult and youth packs can never be mixed up — which is why the
+// youth card has no shade of its own.
+//
+// A pack = workout brief + session brief + one card per station in the FIRST station round
+// (later rounds aren't cards, same rule the station board already follows). A 10-station
+// workout makes 12 cards, which is exactly 3 A4 sheets of 4.
+//
+// ⚠ stationimages.html (the offline kit) carries its own copy of all of this. Keep in step.
+const CARD_U_W=397,CARD_U_H=559;          // A6 design units
+const CARD_A6_W=1240,CARD_A6_H=1748;      // A6 at 300dpi (105x148mm)
+const CARD_A4_W=2480,CARD_A4_H=3508;      // A4 at 300dpi (210x297mm)
+const CARD_SHEET_MARGIN=59;               // 5mm — every desk printer can reach this
+const CARD_PADX=28;
+const CARD_INNER=CARD_U_W-2*CARD_PADX;    // 341
+const CARD_SANS="DM Sans, Arial, sans-serif";
+const CARD_BEBAS='"Bebas Neue", Arial Narrow, sans-serif';
+function cardPal(inv){
+  return inv
+    ?{bg:"#ffffff",frame:"#141413",fg:"#141413",dim:"#4a4a48",acc:"#0d6ca8",boxBg:"#f1efe9",boxLine:"#141413",rule:"#c9c6bd"}
+    :{bg:"#080808",frame:"rgba(255,255,255,0.35)",fg:"#ffffff",dim:"#9fb3c4",acc:"#1d9bf0",boxBg:"#0a1a2a",boxLine:"#6c7580",rule:"#343434"};
+}
+function cardFont(sz,w,fam){return (w?w+" ":"")+sz+"px "+(fam||CARD_SANS);}
+// Draws one card's worth of design units at (x,y), scaled by K.
+function cardAt(ctx,x,y,K,draw){
+  ctx.save();ctx.translate(x,y);ctx.scale(K,K);ctx.textBaseline="alphabetic";draw();ctx.restore();
+}
+// ONE name size for the whole pack, from the longest name in it — ten cards laid out on the
+// floor with ten different name sizes would look wrong. Names are never wrapped (Sam, 15 Oct),
+// so a very long name shrinks the whole set; below 22 the answer is a shorter name in the
+// Library, not smaller type.
+function cardFitName(ctx,names,maxW,maxSize,minSize){
+  for(let s=maxSize;s>minSize;s--){
+    const f=cardFont(s,"",CARD_BEBAS),sp=s*0.03;
+    if(names.every(n=>stImgMeasureSpaced(ctx,String(n||""),f,sp)<=maxW))return s;
+  }
+  return minSize;
+}
+// Word-wraps to maxW at font, returning the lines.
+function cardWrap(ctx,text,font,maxW){
+  ctx.font=font;
+  const words=String(text||"").split(/\s+/).filter(Boolean),lines=[];
+  let cur="";
+  words.forEach(w=>{
+    const t=cur?cur+" "+w:w;
+    if(!cur||ctx.measureText(t).width<=maxW)cur=t;else{lines.push(cur);cur=w;}
+  });
+  if(cur)lines.push(cur);
+  return lines;
+}
+// Centres a stack of items vertically in a band. Each item is {h, draw(topY)}.
+function cardStack(items,gap,top,bot){
+  const list=items.filter(Boolean);
+  const total=list.reduce((s,i)=>s+i.h,0)+gap*Math.max(0,list.length-1);
+  let y=top+(bot-top-total)/2;
+  list.forEach(it=>{it.draw(y);y+=it.h+gap;});
+}
+// Numbers in the foreground colour, words in Team 365 blue — the youth board's rule since
+// 12 Oct, reused here so the printed card matches the screen.
+function cardParts(text,pal){
+  const runs=[];
+  String(text).split(/(\s+)/).forEach(tok=>{
+    if(!tok)return;
+    const col=/^\s+$/.test(tok)?(runs.length?runs[runs.length-1][1]:pal.acc):(/^[0-9][0-9:.\-–\/xX×]*$/.test(tok)?pal.fg:pal.acc);
+    if(runs.length&&runs[runs.length-1][1]===col)runs[runs.length-1][0]+=tok;else runs.push([tok,col]);
+  });
+  return runs;
+}
+function cardPartsCentred(ctx,parts,cx,y,font){
+  const ws=parts.map(p=>stImgMeasureSpaced(ctx,p[0],font,1));
+  let px=cx-(ws.reduce((a,b)=>a+b,0)+Math.max(0,parts.length-1))/2;
+  parts.forEach((p,k)=>{stImgFillTextSpaced(ctx,p[0],px,y,1,font,p[1],"left");px+=ws[k]+1;});
+}
+// ---- the shared card furniture: frame, header row, big line, rule, footer ----
+function cardFrame(ctx,pal){
+  ctx.fillStyle=pal.bg;ctx.fillRect(0,0,CARD_U_W,CARD_U_H);
+  ctx.strokeStyle=pal.frame;ctx.lineWidth=2;ctx.strokeRect(1,1,CARD_U_W-2,CARD_U_H-2);
+}
+function cardHeader(ctx,pal,left,right,leftAcc){
+  const f=cardFont(12,"600");
+  stImgFillTextSpaced(ctx,left,CARD_PADX,34,1.92,f,leftAcc?pal.acc:pal.dim,"left");
+  if(right)stImgFillTextSpaced(ctx,right,CARD_U_W-CARD_PADX,34,1.92,f,pal.dim,"right");
+}
+function cardRule(ctx,pal,y){ctx.fillStyle=pal.acc;ctx.fillRect((CARD_U_W-54)/2,y,54,3);}
+function cardFooter(ctx,pal,right){
+  ctx.fillStyle=pal.rule;ctx.fillRect(CARD_PADX,508,CARD_INNER,1);
+  stImgFillTextSpaced(ctx,"TEAM 365",CARD_PADX,532,1.56,cardFont(13,"700"),pal.fg,"left");
+  if(right)stImgFillTextSpaced(ctx,right,CARD_U_W-CARD_PADX,532,0.48,cardFont(12,"600"),pal.dim,"right");
+}
+// ---- the station card ----
+// o = {num, dur, name, nameSize, reps, tr, lv:[commitment,consistency,determination], foot}
+function cardDrawStation(ctx,pal,o){
+  cardFrame(ctx,pal);
+  cardHeader(ctx,pal,"STATION",o.dur||"");
+  stImgFillTextSpaced(ctx,String(o.num),CARD_U_W/2,147,2.64,cardFont(132,"",CARD_BEBAS),pal.fg,"center");
+  cardRule(ctx,pal,168);
+  cardStack([
+    o.reps?{h:22,draw:y=>stImgFillTextSpaced(ctx,o.reps,CARD_U_W/2,y+17,1.32,cardFont(22,"700"),pal.acc,"center")}:null,
+    {h:o.nameSize,draw:y=>stImgFillTextSpaced(ctx,o.name,CARD_U_W/2,y+o.nameSize*0.78,o.nameSize*0.03,cardFont(o.nameSize,"",CARD_BEBAS),pal.fg,"center")},
+    o.tr?{h:15,draw:y=>stImgFillTextSpaced(ctx,o.tr,CARD_U_W/2,y+12,0.6,cardFont(15,"600"),pal.acc,"center")}:null
+  ],10,171,435);
+  const cw=(CARD_INNER-14)/3;
+  [["COMMITMENT",o.lv[0]],["CONSISTENCY",o.lv[1]],["DETERMINATION",o.lv[2]]].forEach((c,i)=>{
+    const x=CARD_PADX+i*(cw+7);
+    const lf=cardFont(12,"600");
+    // DETERMINATION is the one that can outgrow its column; drop the tracking before the size.
+    const sp=stImgMeasureSpaced(ctx,c[0],lf,0.48)<=cw?0.48:0;
+    stImgFillTextSpaced(ctx,c[0],x+cw/2,443,sp,lf,pal.fg,"center");
+    ctx.fillStyle=pal.boxBg;ctx.fillRect(x,450,cw,44);
+    ctx.strokeStyle=pal.boxLine;ctx.lineWidth=1;ctx.strokeRect(x+0.5,450.5,cw-1,43);
+    stImgFillTextSpaced(ctx,String(c[1]||""),x+cw/2,478,0,cardFont(15,"500"),pal.fg,"center");
+  });
+  cardFooter(ctx,pal,o.foot);
+}
+// ---- the youth card ----
+// One full-width box instead of reps + three pillars: the youth reps when the Library has them,
+// otherwise WORK FOR <station length minus 0:30>. No translation, by design (7 Oct).
+function cardDrawYouth(ctx,pal,o){
+  cardFrame(ctx,pal);
+  cardHeader(ctx,pal,"STATION","YOUTH");
+  stImgFillTextSpaced(ctx,String(o.num),CARD_U_W/2,147,2.64,cardFont(132,"",CARD_BEBAS),pal.fg,"center");
+  cardRule(ctx,pal,168);
+  cardStack([
+    {h:14,draw:y=>stImgFillTextSpaced(ctx,"YOUTH EXERCISE",CARD_U_W/2,y+11,1.96,cardFont(14,"700"),pal.acc,"center")},
+    {h:o.nameSize,draw:y=>stImgFillTextSpaced(ctx,o.name,CARD_U_W/2,y+o.nameSize*0.78,o.nameSize*0.03,cardFont(o.nameSize,"",CARD_BEBAS),pal.fg,"center")}
+  ],12,171,420);
+  ctx.fillStyle=pal.boxBg;ctx.fillRect(CARD_PADX,430,CARD_INNER,64);
+  ctx.strokeStyle=pal.boxLine;ctx.lineWidth=1;ctx.strokeRect(CARD_PADX+0.5,430.5,CARD_INNER-1,63);
+  if(o.work)cardPartsCentred(ctx,cardParts(o.work,pal),CARD_U_W/2,469,cardFont(20,"600"));
+  else stImgFillTextSpaced(ctx,o.flag||"CHECK STATION TIME",CARD_U_W/2,469,0.8,cardFont(18,"600"),"#c9603f","center");
+  cardFooter(ctx,pal,o.foot);
+}
+// ---- the two brief cards ----
+// Same skeleton as a station card — header row, big line where the number goes, rule, one
+// full-width box (the youth card's "one box instead of three"), footer — so the pack reads as
+// one family. o = {label, title, right, para, bullets, foot}
+function cardDrawBrief(ctx,pal,o){
+  cardFrame(ctx,pal);
+  cardHeader(ctx,pal,o.label,o.right||"",true);
+  // The workout's name has to fit the card too — "RISE UP (1)" at 64 runs off the edge.
+  const ts=cardFitName(ctx,[o.title],CARD_INNER,40,22);
+  stImgFillTextSpaced(ctx,o.title,CARD_U_W/2,62+ts*0.44,ts*0.03,cardFont(ts,"",CARD_BEBAS),pal.fg,"center");
+  cardRule(ctx,pal,118);
+  const bx=CARD_PADX,by=135,bw=CARD_INNER,bh=494-135;
+  ctx.fillStyle=pal.boxBg;ctx.fillRect(bx,by,bw,bh);
+  ctx.strokeStyle=pal.boxLine;ctx.lineWidth=1;ctx.strokeRect(bx+0.5,by+0.5,bw-1,bh-1);
+  const f=cardFont(15,""),tx=bx+18,tw=bw-36;
+  if(o.bullets&&o.bullets.length){
+    const blocks=o.bullets.map(b=>cardWrap(ctx,b,f,tw-15));
+    const total=blocks.reduce((s,l)=>s+l.length*22,0)+7*Math.max(0,blocks.length-1);
+    let y=by+(bh-total)/2;
+    blocks.forEach(lines=>{
+      lines.forEach((ln,i)=>{
+        if(i===0)stImgFillTextSpaced(ctx,"•",tx,y+11,0,f,pal.acc,"left");
+        stImgFillTextSpaced(ctx,ln,tx+15,y+11,0,f,pal.fg,"left");
+        y+=22;
+      });
+      y+=7;
+    });
+  }else{
+    const lines=cardWrap(ctx,o.para||"",f,tw);
+    let y=by+(bh-lines.length*23)/2;
+    lines.forEach(ln=>{stImgFillTextSpaced(ctx,ln,tx,y+11,0,f,pal.fg,"left");y+=23;});
+  }
+  cardFooter(ctx,pal,o.foot);
+}
+// ---- building a pack from a workout ----
+// Returns [{slug, draw(ctx,pal)}] in print order: workout brief, session brief, then the
+// stations. `briefs` = {workout, session:[bullet,…] or null}.
+function cardBuildPack(className,rows,lib,langKey,briefs,youth){
+  const group=stImgFirstStationRound(rows);
+  const sts=(group&&group.sts)||[];
+  const title=String(className||"").toUpperCase().replace(/(\d+)\s*$/,"($1)");
+  const slugOf=s=>String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+  const base=slugOf(className)+(youth?"-youth":"");
+  const names=sts.map(r=>{
+    const y=youth?stImgKidsNameFor(lib,r):"";
+    return y||String(r.exercise||"").toUpperCase();
+  });
+  // One measuring context, so the size is settled before anything is drawn.
+  const mc=document.createElement("canvas").getContext("2d");
+  const nameSize=cardFitName(mc,names,CARD_INNER,youth?34:36,22);
+  const items=[];
+  // Briefs lead the adult pack only: they carry no youth variant, so printing them twice
+  // would just be two more laminations of the same card.
+  if(!youth&&briefs&&briefs.workout)items.push({slug:base+"-workout-brief",draw:(ctx,pal)=>cardDrawBrief(ctx,pal,{
+    label:"WORKOUT BRIEF",title,right:"",para:briefs.workout,foot:"EVERY DAY. ALL YEAR ROUND"})});
+  if(!youth&&briefs&&briefs.session&&briefs.session.length)items.push({slug:base+"-session-brief",draw:(ctx,pal)=>cardDrawBrief(ctx,pal,{
+    label:"SESSION BRIEF",title,right:"",bullets:briefs.session,foot:"EVERY DAY. ALL YEAR ROUND"})});
+  sts.forEach((r,i)=>{
+    // The station number the admin sees in Workout Details wins; otherwise count down the round.
+    const m=String(r.station||"").match(/(\d+)/);
+    const num=m?m[1]:String(i+1);
+    const dur=r.duration?stImgFmtDurClock(r.duration):"";
+    if(youth){
+      const yr=stImgYouthRepsFor(lib,r);
+      items.push({slug:base+"-station-"+num,draw:(ctx,pal)=>cardDrawYouth(ctx,pal,{
+        num,name:names[i],nameSize,
+        work:yr||stImgKidsWorkLabel(r.duration),
+        flag:r.duration?"CHECK STATION TIME":"NO STATION TIME",
+        foot:title+" YOUTH"})});
+    }else{
+      let reps=String(r.reps||"").toUpperCase();
+      if(reps&&reps.indexOf("REP")<0)reps+=" REPS";
+      items.push({slug:base+"-station-"+num+(langKey&&langKey!=="maori"?"-"+slugOf(langKey):""),draw:(ctx,pal)=>cardDrawStation(ctx,pal,{
+        num,dur,name:names[i],nameSize,reps,
+        tr:stImgTranslationFor(lib,langKey,r),
+        lv:[r.c,r.o,r.d],foot:title})});
+    }
+  });
+  return items;
+}
+// ---- rendering ----
+function cardCropMarks(ctx,x,y,w,h){
+  ctx.save();ctx.strokeStyle="#9a9a9a";ctx.lineWidth=2;
+  const L=28,G=10;
+  [[x,y,-1,-1],[x+w,y,1,-1],[x,y+h,-1,1],[x+w,y+h,1,1]].forEach(c=>{
+    ctx.beginPath();
+    ctx.moveTo(c[0]+c[2]*G,c[1]);ctx.lineTo(c[0]+c[2]*(G+L),c[1]);
+    ctx.moveTo(c[0],c[1]+c[3]*G);ctx.lineTo(c[0],c[1]+c[3]*(G+L));
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+// ---- paper ----
+// A5 and A6 are the SAME SHAPE, so one design serves both and only the paper changes: four A6
+// to a portrait A4, or two A5 to a LANDSCAPE A4 (two A5 side by side ARE an A4 landscape).
+// On A6 the exercise name prints about 6.6mm tall, on A5 about 9.3mm — that height is set by
+// the one-line rule, since the longest name in the pack has to fit the card's width.
+const CARD_SIZES={
+  a6:{single:[1240,1748],sheet:[2480,3508],cols:2,rows:2},
+  a5:{single:[1748,2480],sheet:[3508,2480],cols:2,rows:1}
+};
+function cardSizeOf(size){return CARD_SIZES[size]||CARD_SIZES.a6;}
+function cardPerSheet(size){const z=cardSizeOf(size);return z.cols*z.rows;}
+// One card on its own, at 300dpi.
+function cardRenderSingle(canvas,pal,item,size){
+  const z=cardSizeOf(size);
+  canvas.width=z.single[0];canvas.height=z.single[1];
+  const ctx=canvas.getContext("2d");
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  cardAt(ctx,0,0,z.single[0]/CARD_U_W,()=>item.draw(ctx,pal));
+}
+// A print sheet, with a 5mm printable margin and crop marks to cut to. The cards come out a
+// touch under their true size so the margin exists at all — on a floor card that is invisible,
+// and it means every desk printer can manage the sheet.
+function cardRenderSheet(canvas,pal,items,size){
+  const z=cardSizeOf(size);
+  canvas.width=z.sheet[0];canvas.height=z.sheet[1];
+  const ctx=canvas.getContext("2d");
+  ctx.fillStyle="#ffffff";ctx.fillRect(0,0,canvas.width,canvas.height);
+  const M=CARD_SHEET_MARGIN;
+  const cw=(canvas.width-2*M)/z.cols,ch=(canvas.height-2*M)/z.rows;
+  const K=Math.min(cw/CARD_U_W,ch/CARD_U_H),dw=CARD_U_W*K,dh=CARD_U_H*K;
+  items.slice(0,z.cols*z.rows).forEach((it,i)=>{
+    const x=M+(i%z.cols)*cw+(cw-dw)/2,y=M+Math.floor(i/z.cols)*ch+(ch-dh)/2;
+    cardAt(ctx,x,y,K,()=>it.draw(ctx,pal));
+    cardCropMarks(ctx,x,y,dw,dh);
+  });
+}
+function cardSheetsOf(items,size){
+  const per=cardPerSheet(size),out=[];
+  for(let i=0;i<items.length;i+=per)out.push(items.slice(i,i+per));
+  return out;
+}
+// ---- the overlay ----
+// Admin -> Details -> workout -> Workout Details -> "▦ CARDS" / "▦ YOUTH CARDS".
+// Shows the A4 sheet it will print, with the standard/inverse pick and the language picker,
+// and downloads either the sheets or the cards one at a time.
+function StationCardsOverlay({className,rows,lib,onClose,langOptions,youth}){
+  const canvasRef=useRef(null);
+  const [inverse,setInverse]=useState(false);
+  const opts=(langOptions&&langOptions.length)?langOptions:[{key:"maori",name:"Māori"}];
+  const [langKey,setLangKey]=useState("maori");
+  const [briefs,setBriefs]=useState(null);
+  const [page,setPage]=useState(0);
+  const [size,setSize]=useState("a6");
+  const [busy,setBusy]=useState("");
+  // The two briefs live apart from the workout. The WORKOUT brief is one per STYLE, written in
+  // Admin -> Classes -> SESSION BRIEFS (__CLASS_BRIEFS__, keyed "RISE UP") — so Rise Up 1 and
+  // Rise Up 2 share the text and differ only by the card's title. The SESSION brief is the
+  // section titled SESSION BRIEF inside this workout's own coaching notes. The app's labels
+  // for those two are crossed over; these are Sam's names and the ones on the cards.
+  useEffect(()=>{(async()=>{
+    const style=String(className||"").replace(/\s*\d+\s*$/,"").trim().toUpperCase();
+    let workout="",session=null;
+    try{
+      const r=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__CLASS_BRIEFS__")+"&select=content");
+      if(r&&r.length&&r[0].content){const o=JSON.parse(r[0].content)||{};workout=String(o[style]||"").trim();}
+    }catch(e){}
+    try{
+      const r=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(className)+"&select=content");
+      if(r&&r.length&&r[0].content){
+        const secs=JSON.parse(r[0].content);
+        if(Array.isArray(secs)){
+          const s=secs.find(x=>String((x&&x.title)||"").trim().toUpperCase()==="SESSION BRIEF");
+          if(s&&s.body){
+            // The brief is written as lines, most already bulleted. The first line is the
+            // workout's own name, which the card's title already carries, so it's dropped.
+            // "RISE UP 1", "Rise Up (1)" and "RISE UP (1)" are all the same heading.
+            const key=x=>String(x).toUpperCase().replace(/[^A-Z0-9]/g,"");
+            const t=key(className);
+            session=String(s.body).split(/\n+/)
+              .map(x=>x.replace(/^\s*[•·\-]\s*/,"").trim())
+              .filter(Boolean)
+              .filter(x=>key(x)!==t);
+          }
+        }
+      }
+    }catch(e){}
+    setBriefs({workout,session});
+  })();},[className]);
+  const pal=cardPal(inverse);
+  const items=briefs?cardBuildPack(className,rows,lib,langKey,briefs,!!youth):[];
+  const sheets=cardSheetsOf(items,size);
+  const cur=Math.min(page,Math.max(0,sheets.length-1));
+  useEffect(()=>{
+    if(canvasRef.current&&sheets.length)cardRenderSheet(canvasRef.current,pal,sheets[cur],size);
+  },[briefs,inverse,langKey,cur,className,rows,lib,youth,size]);
+  const slug=s=>String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+  const langSlug=(!youth&&langKey&&langKey!=="maori")?"-"+slug(langKey):"";
+  // One at a time with a gap, the way the offline kit's DOWNLOAD ALL does it — a browser drops
+  // a burst of downloads fired together.
+  function saveCanvas(cv,name,done){
+    cv.toBlob(blob=>{
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url;a.download=name;
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),3000);
+      setTimeout(done,350);
+    },"image/jpeg",0.94);
+  }
+  function downloadSheets(){
+    if(busy||!sheets.length)return;
+    const cv=document.createElement("canvas");
+    let i=0;
+    const next=()=>{
+      if(i>=sheets.length){setBusy("");return;}
+      setBusy("SHEET "+(i+1)+" / "+sheets.length);
+      cardRenderSheet(cv,pal,sheets[i],size);
+      const n=slug(className)+(youth?"-youth":"")+"-cards-"+size+langSlug+"-sheet-"+(i+1)+".jpg";
+      i++;saveCanvas(cv,n,next);
+    };
+    next();
+  }
+  function downloadSingles(){
+    if(busy||!items.length)return;
+    const cv=document.createElement("canvas");
+    let i=0;
+    const next=()=>{
+      if(i>=items.length){setBusy("");return;}
+      setBusy("CARD "+(i+1)+" / "+items.length);
+      cardRenderSingle(cv,pal,items[i],size);
+      const n=items[i].slug+"-"+size+".jpg";
+      i++;saveCanvas(cv,n,next);
+    };
+    next();
+  }
+  const selStyle={background:"#fff",color:"#000",border:"none",borderRadius:0,fontSize:10,height:22,padding:"0 3px"};
+  const btnStyle={background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"6px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",cursor:"pointer"};
+  return React.createElement("div",{className:"scb-poster-overlay",onClick:onClose},
+    React.createElement("div",{className:"scb-poster-outerframe",onClick:e=>e.stopPropagation()},
+      React.createElement("div",{className:"scb-poster-frame",style:{padding:10,display:"block"}},
+        React.createElement("button",{className:"scb-poster-close",onClick:onClose},"✕"),
+        React.createElement("div",{style:{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",marginBottom:8,paddingRight:34}},
+          React.createElement("select",{"data-cards-version":"1",value:inverse?"inv":"std",onChange:e=>setInverse(e.target.value==="inv"),style:selStyle},
+            React.createElement("option",{value:"std"},"STANDARD"),
+            React.createElement("option",{value:"inv"},"INVERSE")),
+          React.createElement("select",{"data-cards-size":"1",value:size,onChange:e=>{setSize(e.target.value);setPage(0);},style:selStyle},
+            React.createElement("option",{value:"a6"},"A6 \u00b7 4 UP"),
+            React.createElement("option",{value:"a5"},"A5 \u00b7 2 UP")),
+          !youth&&React.createElement("select",{"data-cards-lang":"1",value:langKey,onChange:e=>setLangKey(e.target.value),style:{...selStyle,maxWidth:84}},
+            opts.map(o=>React.createElement("option",{key:o.key,value:o.key},o.name))),
+          sheets.length>1&&React.createElement("button",{"data-cards-prev":"1",onClick:()=>setPage(Math.max(0,cur-1)),disabled:cur===0,style:btnStyle},"‹"),
+          sheets.length>1&&React.createElement("span",{"data-cards-page":"1",style:{fontSize:10,color:"#8cd0ff",letterSpacing:"0.08em"}},"SHEET "+(cur+1)+" / "+sheets.length),
+          sheets.length>1&&React.createElement("button",{"data-cards-next":"1",onClick:()=>setPage(Math.min(sheets.length-1,cur+1)),disabled:cur>=sheets.length-1,style:btnStyle},"›"),
+          React.createElement("button",{"data-cards-dl-sheets":"1",onClick:downloadSheets,style:btnStyle},"⬇ SHEETS"),
+          React.createElement("button",{"data-cards-dl-singles":"1",onClick:downloadSingles,style:btnStyle},"⬇ SINGLE CARDS"),
+          busy&&React.createElement("span",{style:{fontSize:10,color:"#8cd0ff",letterSpacing:"0.08em"}},busy),
+          React.createElement("span",{"data-cards-count":"1",style:{fontSize:10,color:"#555",letterSpacing:"0.08em"}},items.length+" CARDS")
+        ),
+        !briefs&&React.createElement("div",{style:{color:"#444",fontSize:11,padding:"20px 0",textAlign:"center"}},"Loading..."),
+        briefs&&!items.length&&React.createElement("div",{style:{color:"#c9603f",fontSize:11,padding:"20px 0",textAlign:"center",letterSpacing:"0.08em"}},"NO STATION ROUND FOUND IN THIS WORKOUT"),
+        React.createElement("canvas",{ref:canvasRef,width:cardSizeOf(size).sheet[0],height:cardSizeOf(size).sheet[1],style:{width:"100%",height:"auto",display:items.length?"block":"none",background:"#fff"}})
+      )
+    )
+  );
+}
 function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose,langOptions,kids}){
   const frameRef=useRef(null);
   const mobileOuterRef=useRef(null);
@@ -7001,6 +7405,8 @@ function WorkoutDetailsEditor({className,showToast,restricted,subscriber}){
   const [dragOverId,setDragOverId]=useState(null);
   const [imgOpen,setImgOpen]=useState(false);
   const [kidsImgOpen,setKidsImgOpen]=useState(false);
+  const [cardsOpen,setCardsOpen]=useState(false);
+  const [youthCardsOpen,setYouthCardsOpen]=useState(false);
   const [imgBg,setImgBg]=useState("");
   const wdGenId=()=>Math.random().toString(36).slice(2,9);
   function mapRow(r){
@@ -7154,11 +7560,13 @@ function WorkoutDetailsEditor({className,showToast,restricted,subscriber}){
   if(!editing||restricted){
     let curSec=null;
     return React.createElement("div",null,
-      React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}},
+      React.createElement("div",{className:"wd-btnrow",style:{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}},
         !restricted&&React.createElement("button",{onClick:()=>setEditing(true),style:{flex:1,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"✎ EDIT WORKOUT"),
         rows.length>0&&React.createElement("button",{onClick:()=>{const u="tv.html?w="+encodeURIComponent(className);const w=window.open(u,"_blank");if(!w)window.location.href=u;},title:"Opens the full-screen TV page with a Cast button (uses the last SAVED version)",style:{flex:1,background:"#12331a",color:"#3ddc84",border:"1px solid #1d5a34",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"▸ PLAY"),
         rows.length>0&&stImgFirstStationRound(rows)&&React.createElement("button",{onClick:()=>setImgOpen(true),title:"Station-board image for this workout, same as the offline kit's Station Images tool",style:{flex:1,background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"▦ IMAGE"),
-        !subscriber&&rows.length>0&&stImgFirstStationRound(rows)&&React.createElement("button",{"data-kids-image":"1",onClick:()=>setKidsImgOpen(true),title:"Youth workout image: youth exercise names, no translation, youth reps or work time (station length minus 30 seconds)",style:{flex:1,background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer",whiteSpace:"nowrap"}},"▦ YOUTH IMAGE")
+        !subscriber&&rows.length>0&&stImgFirstStationRound(rows)&&React.createElement("button",{"data-kids-image":"1",onClick:()=>setKidsImgOpen(true),title:"Youth workout image: youth exercise names, no translation, youth reps or work time (station length minus 30 seconds)",style:{flex:1,background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer",whiteSpace:"nowrap"}},"▦ YOUTH IMAGE"),
+        rows.length>0&&stImgFirstStationRound(rows)&&React.createElement("button",{"data-cards-btn":"1",onClick:()=>setCardsOpen(true),title:"A6 print cards — one per station, plus the workout brief and session brief. Four to an A4 sheet, standard or inverse.",style:{flex:1,background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer",whiteSpace:"nowrap"}},"▦ CARDS"),
+        !subscriber&&rows.length>0&&stImgFirstStationRound(rows)&&React.createElement("button",{"data-youth-cards-btn":"1",onClick:()=>setYouthCardsOpen(true),title:"The same cards with youth exercise names and youth reps or work time. Print this set in the opposite shade to the adult pack so the two can't be mixed up.",style:{flex:1,background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer",whiteSpace:"nowrap"}},"▦ YOUTH CARDS")
       ),
       !restricted&&React.createElement(WarmupSection,{className,showToast}),
       legacy&&React.createElement("div",{style:{whiteSpace:"pre-wrap",fontSize:12,color:"#aaa",lineHeight:1.6,marginBottom:12}},legacy),
@@ -7201,7 +7609,9 @@ function WorkoutDetailsEditor({className,showToast,restricted,subscriber}){
         React.createElement("button",{onClick:()=>setEditing(true),style:{flex:1,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"✎ EDIT WORKOUT")
       ),
       imgOpen&&React.createElement(StationImageOverlay,{className,rows,lib,bg:imgBg,onBgChange:restricted?setImgBg:saveImgBg,onClose:()=>setImgOpen(false),langOptions:[{key:"maori",name:"Māori"}].concat(langCfg.morioriOn?[{key:"moriori",name:"Moriori"}]:[]).concat((langCfg.bank||[]).map(b=>({key:b.key,name:b.name||b.key})))}),
-      !subscriber&&kidsImgOpen&&React.createElement(StationImageOverlay,{kids:true,className,rows,lib,bg:imgBg,onBgChange:restricted?setImgBg:saveImgBg,onClose:()=>setKidsImgOpen(false),langOptions:[{key:"maori",name:"Māori"}].concat(langCfg.morioriOn?[{key:"moriori",name:"Moriori"}]:[]).concat((langCfg.bank||[]).map(b=>({key:b.key,name:b.name||b.key})))})
+      !subscriber&&kidsImgOpen&&React.createElement(StationImageOverlay,{kids:true,className,rows,lib,bg:imgBg,onBgChange:restricted?setImgBg:saveImgBg,onClose:()=>setKidsImgOpen(false),langOptions:[{key:"maori",name:"Māori"}].concat(langCfg.morioriOn?[{key:"moriori",name:"Moriori"}]:[]).concat((langCfg.bank||[]).map(b=>({key:b.key,name:b.name||b.key})))}),
+      cardsOpen&&React.createElement(StationCardsOverlay,{className,rows,lib,onClose:()=>setCardsOpen(false),langOptions:[{key:"maori",name:"Māori"}].concat(langCfg.morioriOn?[{key:"moriori",name:"Moriori"}]:[]).concat((langCfg.bank||[]).map(b=>({key:b.key,name:b.name||b.key})))}),
+      !subscriber&&youthCardsOpen&&React.createElement(StationCardsOverlay,{youth:true,className,rows,lib,onClose:()=>setYouthCardsOpen(false),langOptions:[{key:"maori",name:"Māori"}].concat(langCfg.morioriOn?[{key:"moriori",name:"Moriori"}]:[]).concat((langCfg.bank||[]).map(b=>({key:b.key,name:b.name||b.key})))})
     );
   }
   const inS={background:"#141414",border:"1px solid #2a2a2a",borderRadius:0,color:"#ddd",fontSize:13,fontFamily:"'DM Sans',sans-serif",padding:"7px 9px",outline:"none",boxSizing:"border-box"};
