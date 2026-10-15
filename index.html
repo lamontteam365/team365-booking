@@ -7059,7 +7059,8 @@ function StationCardsOverlay({className,rows,lib,onClose,langOptions,youth}){
   const chevStyle=(off,big)=>({background:"none",border:"none",padding:big?"0 6px":"0 2px",
     ...(big?{}:{height:30,boxSizing:"border-box"}),
     fontSize:big?40:22,lineHeight:1,color:off?"#2d4256":"#8cd0ff",cursor:off?"default":"pointer"});
-  const closeStyle={background:"none",border:"1px solid #e5484d",borderRadius:0,color:"#e5484d",
+  // Outlined but faded, so it reads as "close" without shouting over the controls.
+  const closeStyle={background:"none",border:"1px solid #7a3034",borderRadius:0,color:"#b05056",
     fontSize:13,lineHeight:1,padding:"0 9px",height:24,cursor:"pointer"};
   const rowStyle=(cols,extra)=>({display:"grid",gridAutoFlow:"column",gridAutoColumns:"1fr",
     ...(cols?{gridTemplateColumns:cols,gridAutoFlow:"row"}:{}),gap:8,alignItems:"center",width:"100%",...extra});
@@ -7094,17 +7095,18 @@ function StationCardsOverlay({className,rows,lib,onClose,langOptions,youth}){
     briefs&&!items.length&&React.createElement("div",{key:"none",style:{color:"#c9603f",fontSize:11,padding:"20px 0",textAlign:"center",letterSpacing:"0.08em"}},"NO STATION ROUND FOUND IN THIS WORKOUT")
   ];
 
-  const closeRow=narrow&&React.createElement("div",{key:"x",style:{display:"flex",justifyContent:"flex-end",marginBottom:6}},
+  const closeRow=narrow&&React.createElement("div",{key:"x",style:{display:"flex",justifyContent:"flex-end",marginTop:8}},
     React.createElement("button",{"data-cards-close":"1",onClick:onClose,title:"Close",style:closeStyle},"\u2715"));
 
   const body=narrow
     ? [React.createElement("div",{key:"top","data-cards-controls":"top",style:rowStyle(null,{marginBottom:6})},verSel,sizeSel,langSel),
-       closeRow,states,canvas,busyTag,
+       states,canvas,busyTag,
        // The chevrons bookend the row: ‹ at the far left, › after CARDS at the far right,
        // with the three buttons between them sharing the rest equally.
        React.createElement("div",{key:"bot","data-cards-controls":"bottom",
          style:rowStyle(many?"auto 1fr 1fr 1fr auto":"1fr 1fr",{marginTop:10})},
-         many&&prevBtn(false),pageLbl,dlSheets,dlCards,many&&nextBtn(false))]
+         many&&prevBtn(false),pageLbl,dlSheets,dlCards,many&&nextBtn(false)),
+       closeRow]
     : [React.createElement("div",{key:"one","data-cards-controls":"one",style:rowStyle(null,{marginBottom:8,maxWidth:880,marginLeft:"auto",marginRight:"auto",paddingRight:22})},
          verSel,sizeSel,langSel,pageLbl,dlSheets,dlCards),
        states,
@@ -7117,7 +7119,7 @@ function StationCardsOverlay({className,rows,lib,onClose,langOptions,youth}){
     React.createElement("div",{className:"scb-poster-outerframe",onClick:e=>e.stopPropagation()},
       React.createElement("div",{className:"scb-poster-frame",style:{padding:10,display:"block",position:"relative"}},
         !narrow&&React.createElement("button",{"data-cards-close":"1",onClick:onClose,title:"Close",
-          style:{...closeStyle,position:"absolute",top:4,right:6,zIndex:3}},"\u2715"),
+          style:{...closeStyle,position:"absolute",top:13,right:6,zIndex:3}},"\u2715"),
         body
       )
     )
