@@ -6322,6 +6322,7 @@ function CoachingNoteEditor({className,showToast,restricted}){
             style:{flex:1,background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:0,color:"#ccc",fontSize:12,padding:"6px 10px",fontFamily:"'DM Sans',sans-serif",outline:"none",letterSpacing:"0.06em"}}),
           React.createElement("button",{onClick:()=>setDraft(d=>d.filter((_,idx)=>idx!==i)),style:{background:"none",border:"1px solid #2a2a2a",borderRadius:0,padding:"3px 8px",color:"#555",fontSize:11,cursor:"pointer",flexShrink:0}},"✕")
         ),
+        noteFixedNote(s.title,className)&&React.createElement("div",{"data-note-fixed":"1",style:NOTE_FIXED_STYLE},noteFixedNote(s.title,className)),
         React.createElement(VoiceTextarea,{value:s.body,onChange:v=>updateDraft(i,"body",v),kind:"coach-note",placeholder:"Notes for this section",rows:4,
           style:{width:"100%",background:"#0e0e0e",border:"1px solid #2a2a2a",borderRadius:0,color:"#888",fontSize:12,padding:"8px 10px",fontFamily:"'DM Sans',sans-serif",lineHeight:1.6,resize:"vertical",boxSizing:"border-box",outline:"none"}})
       )),
@@ -6336,11 +6337,22 @@ function CoachingNoteEditor({className,showToast,restricted}){
     sections.length===0&&React.createElement("div",{style:{fontSize:10,color:"#333",letterSpacing:"0.1em",textAlign:"center",padding:"20px 0"}},restricted?"NO NOTES YET":"NO NOTES YET · TAP EDIT TO ADD"),
     sections.map((s,i)=>React.createElement("div",{key:i,style:{marginBottom:16,paddingBottom:16,borderBottom:i<sections.length-1?"1px solid #141414":"none"}},
       React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",color:"#fff",marginBottom:s.body?6:0}},s.title),
+      noteFixedNote(s.title,className)&&React.createElement("div",{"data-note-fixed":"1",style:NOTE_FIXED_STYLE},noteFixedNote(s.title,className)),
       s.body&&React.createElement("div",{"data-aq-note":"coach",style:{fontSize:12,color:"#777",lineHeight:1.7,fontWeight:300,whiteSpace:"pre-wrap"}},s.body)
     )),
     !restricted&&React.createElement(FinalPageEditor,{className,showToast})
   );
 }
+// A YOUTH SESSION BRIEF is written per workout but carries the same wording for every workout
+// of that style. That reminder is drawn here, under the section title, instead of living as a
+// line inside the body where it could be deleted by accident (Sam, 16 Oct). It is not part of
+// the text: it cannot be edited or deleted, and it never reaches a card.
+function noteFixedNote(title,className){
+  if(String(title||"").trim().toUpperCase()!=="YOUTH SESSION BRIEF")return null;
+  const style=String(className||"").replace(/\s*\d+\s*$/,"").trim().toUpperCase();
+  return style?"This is the same for every "+style+" workout.":"This is the same for every workout of this style.";
+}
+const NOTE_FIXED_STYLE={fontSize:9,color:"#666",letterSpacing:"0.06em",lineHeight:1.6,fontStyle:"italic",marginBottom:7};
 function renderBoldText(str){
   const parts=str.split(/(\*\*[^*]+\*\*)/g);
   return parts.map((p,i)=>p.startsWith("**")&&p.endsWith("**")
@@ -8098,9 +8110,10 @@ function ClassBriefEditor({names,briefs,saveBriefs,showToast}){
       const isYouth=/ YOUTH$/.test(name);
       const isOpen=open===name;
       const has=!!(briefs&&briefs[name]);
-      // The youth row sits indented directly under its style, and the pair is grouped by
-      // putting the gap after the youth row rather than between the two.
-      return React.createElement("div",{key:name,style:{border:"1px solid "+(isOpen?"#333":"#1e1e1e"),borderRadius:0,marginBottom:isYouth?14:3,marginLeft:isYouth?14:0,background:"#0e0e0e"}},
+      // The youth row is the SAME SIZE as its style row (Sam, 16 Oct) — no indent, full width.
+      // The pair is grouped by the gap: tight between a style and its youth row, wider after
+      // the youth row before the next style. Spacing costs no width.
+      return React.createElement("div",{key:name,style:{border:"1px solid "+(isOpen?"#333":"#1e1e1e"),borderRadius:0,marginBottom:isYouth?14:3,background:"#0e0e0e"}},
         React.createElement("div",{onClick:()=>setOpen(isOpen?"":name),
           style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"11px 13px",cursor:"pointer"}},
           React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.1em",color:"#fff"}},name),
