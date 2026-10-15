@@ -6271,7 +6271,7 @@ function FinalPageEditor({className,showToast}){
     )
   );
 }
-function CoachingNoteEditor({className,showToast,restricted}){
+function CoachingNoteEditor({className,showToast,restricted,subscriber}){
   const [sections,setSections]=useState([]);
   const [editing,setEditing]=useState(false);
   const [draft,setDraft]=useState([]);
@@ -6310,6 +6310,9 @@ function CoachingNoteEditor({className,showToast,restricted}){
   }
   function updateDraft(i,field,val){setDraft(d=>d.map((s,idx)=>idx===i?{...s,[field]:val}:s));}
   if(!loaded)return React.createElement("div",{style:{fontSize:10,color:"#444",letterSpacing:"0.1em",padding:"10px 0"}},"LOADING...");
+  // What this viewer may see. `sections` itself is left whole, so nothing a subscriber cannot
+  // see can be lost by a save.
+  const shown=subscriber?sections.filter(s=>!noteYouthSection(s&&s.title)):sections;
   if(editing&&!restricted){
     return React.createElement("div",null,
       React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:14}},
@@ -6330,12 +6333,12 @@ function CoachingNoteEditor({className,showToast,restricted}){
     );
   }
   return React.createElement("div",null,
-    (!restricted||sections.length>0)&&React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}},
-      sections.length?React.createElement(PlayBtn,{id:"notes-"+className,lines:()=>sectionLines(className,sections)}):React.createElement("span"),
+    (!restricted||shown.length>0)&&React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}},
+      shown.length?React.createElement(PlayBtn,{id:"notes-"+className,lines:()=>sectionLines(className,shown)}):React.createElement("span"),
       !restricted&&React.createElement("button",{onClick:()=>{stopSpeaking();setDraft(sections.map(s=>({...s})));setEditing(true);},style:{background:"none",border:"1px solid #333",borderRadius:0,padding:"4px 12px",color:"#aaa",fontSize:10,letterSpacing:"0.1em",cursor:"pointer"}},"EDIT")
     ),
-    sections.length===0&&React.createElement("div",{style:{fontSize:10,color:"#333",letterSpacing:"0.1em",textAlign:"center",padding:"20px 0"}},restricted?"NO NOTES YET":"NO NOTES YET · TAP EDIT TO ADD"),
-    sections.map((s,i)=>React.createElement("div",{key:i,style:{marginBottom:16,paddingBottom:16,borderBottom:i<sections.length-1?"1px solid #141414":"none"}},
+    shown.length===0&&React.createElement("div",{style:{fontSize:10,color:"#333",letterSpacing:"0.1em",textAlign:"center",padding:"20px 0"}},restricted?"NO NOTES YET":"NO NOTES YET · TAP EDIT TO ADD"),
+    shown.map((s,i)=>React.createElement("div",{key:i,style:{marginBottom:16,paddingBottom:16,borderBottom:i<shown.length-1?"1px solid #141414":"none"}},
       React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:"0.1em",color:"#fff",marginBottom:s.body?6:0}},s.title),
       noteFixedNote(s.title,className)&&React.createElement("div",{"data-note-fixed":"1",style:NOTE_FIXED_STYLE},noteFixedNote(s.title,className)),
       s.body&&React.createElement("div",{"data-aq-note":"coach",style:{fontSize:12,color:"#777",lineHeight:1.7,fontWeight:300,whiteSpace:"pre-wrap"}},s.body)
@@ -6343,6 +6346,11 @@ function CoachingNoteEditor({className,showToast,restricted}){
     !restricted&&React.createElement(FinalPageEditor,{className,showToast})
   );
 }
+// Youth material is for coaches, not subscribers — they get no YOUTH IMAGE or YOUTH CARDS
+// button and no youth tiles, and a YOUTH section of the coaching notes is the same (Sam,
+// 16 Oct). Any section whose title starts with YOUTH is hidden from them, so a YOUTH WARM-UP
+// added later is covered without another change.
+function noteYouthSection(title){return /^YOUTH\b/.test(String(title||"").trim().toUpperCase());}
 // A YOUTH SESSION BRIEF is written per workout but carries the same wording for every workout
 // of that style. That reminder is drawn here, under the section title, instead of living as a
 // line inside the body where it could be deleted by accident (Sam, 16 Oct). It is not part of
@@ -8508,7 +8516,7 @@ function CoachingView({showToast,restricted,selfEmail,subscriber}){
                    fontSize:13,letterSpacing:"0.12em",cursor:"pointer",transition:"all .15s"}},"WORKOUT DETAILS")
         ),
         subTab==="notes"
-          ? React.createElement(CoachingNoteEditor,{className:selectedClass,showToast,restricted})
+          ? React.createElement(CoachingNoteEditor,{className:selectedClass,showToast,restricted,subscriber:!!subscriber})
           : React.createElement(WorkoutDetailsEditor,{className:selectedClass,showToast,restricted,subscriber:!!subscriber})
       )
     );
