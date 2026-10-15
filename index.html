@@ -6799,10 +6799,10 @@ function cardDrawBrief(ctx,pal,o){
   const ts=cardFitName(ctx,[o.title],CARD_INNER,40,22);
   stImgFillTextSpaced(ctx,o.title,CARD_U_W/2,62+ts*0.44,ts*0.03,cardFont(ts,"",CARD_BEBAS),pal.fg,"center");
   cardRule(ctx,pal,118);
+  // No box on a brief card (Sam, 15 Oct): the text sits straight on the card. The workout
+  // brief is centred both ways; the session brief keeps its bullets left-aligned.
   const bx=CARD_PADX,by=135,bw=CARD_INNER,bh=494-135;
-  ctx.fillStyle=pal.boxBg;ctx.fillRect(bx,by,bw,bh);
-  ctx.strokeStyle=pal.boxLine;ctx.lineWidth=1;ctx.strokeRect(bx+0.5,by+0.5,bw-1,bh-1);
-  const f=cardFont(15,""),tx=bx+18,tw=bw-36;
+  const f=cardFont(15,""),tx=bx+6,tw=bw-12;
   if(o.bullets&&o.bullets.length){
     const blocks=o.bullets.map(b=>cardWrap(ctx,b,f,tw-15));
     const total=blocks.reduce((s,l)=>s+l.length*22,0)+7*Math.max(0,blocks.length-1);
@@ -6818,7 +6818,7 @@ function cardDrawBrief(ctx,pal,o){
   }else{
     const lines=cardWrap(ctx,o.para||"",f,tw);
     let y=by+(bh-lines.length*23)/2;
-    lines.forEach(ln=>{stImgFillTextSpaced(ctx,ln,tx,y+11,0,f,pal.fg,"left");y+=23;});
+    lines.forEach(ln=>{stImgFillTextSpaced(ctx,ln,CARD_U_W/2,y+11,0,f,pal.fg,"center");y+=23;});
   }
   cardFooter(ctx,pal,o.foot);
 }
@@ -7033,11 +7033,11 @@ function StationCardsOverlay({className,rows,lib,onClose,langOptions,youth}){
     // Sideways only, so scrolling the sheet up and down never changes the page.
     if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5)goTo(dx<0?cur+1:cur-1);
   }
-  // minWidth 0 + shrink so a narrow phone squeezes the pickers instead of wrapping the row.
   // The overlay is position:fixed, so it spans the whole WINDOW even when the app itself is in
   // mobile view on a computer. That is why this splits on the window width: narrow (a real
   // phone) puts the pickers above the sheet and the paging and downloads underneath it; wide
-  // (either computer view) puts the lot on one centred line.
+  // (either computer view) puts the controls on one line and hangs the chevrons either side of
+  // the sheet, so you page through it like a document.
   const [narrow,setNarrow]=useState(false);
   useEffect(()=>{
     const chk=()=>{try{setNarrow(window.innerWidth<700);}catch(e){}};
@@ -7046,46 +7046,64 @@ function StationCardsOverlay({className,rows,lib,onClose,langOptions,youth}){
     window.addEventListener("orientationchange",chk);
     return()=>{window.removeEventListener("resize",chk);window.removeEventListener("orientationchange",chk);};
   },[]);
-  const selStyle={background:"#fff",color:"#000",border:"none",borderRadius:0,fontSize:10,height:22,padding:"0 3px",minWidth:0,flexShrink:1};
-  const btnStyle={background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"6px 8px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.08em",cursor:"pointer",whiteSpace:"nowrap"};
-  // Bare arrows either side of the sheet indicator — the indicator is the thing that looks like
-  // a button, not the chevrons (Sam, 15 Oct).
-  const chevStyle=off=>({background:"none",border:"none",padding:"0 4px",fontSize:20,lineHeight:1,
-    color:off?"#2d4256":"#8cd0ff",cursor:off?"default":"pointer"});
-  const group={display:"inline-flex",gap:6,alignItems:"center",whiteSpace:"nowrap"};
-  const line=extra=>({display:"flex",gap:12,alignItems:"center",justifyContent:"center",flexWrap:"wrap",...extra});
+  // Every control on a line is one equal share of it (Sam, 15 Oct), so flex:1 1 0 everywhere
+  // and minWidth:0 so a long option can't push its own share wider than the rest.
+  // The rows are CSS grid, not flex: a flex row gave a bordered button and a borderless select
+  // outer widths 4px apart, where equal grid columns are exactly equal (Sam, 15 Oct).
+  const share={minWidth:0,boxSizing:"border-box",width:"100%"};
+  const selStyle={...share,background:"#fff",color:"#000",border:"none",borderRadius:0,fontSize:10,height:24,padding:"0 3px"};
+  const btnStyle={...share,background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"6px 4px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.08em",cursor:"pointer",whiteSpace:"nowrap",textAlign:"center"};
+  // Bare arrows — the sheet indicator is the thing that looks like a button, not the chevrons.
+  const chevStyle=(off,big)=>({background:"none",border:"none",padding:big?"0 6px":"0 2px",
+    fontSize:big?40:22,lineHeight:1,color:off?"#2d4256":"#8cd0ff",cursor:off?"default":"pointer"});
+  const rowStyle=(cols,extra)=>({display:"grid",gridAutoFlow:"column",gridAutoColumns:"1fr",
+    ...(cols?{gridTemplateColumns:cols,gridAutoFlow:"row"}:{}),gap:8,alignItems:"center",width:"100%",...extra});
 
-  const pickers=React.createElement("span",{key:"pick","data-cards-pickers":"1",style:group},
-    React.createElement("select",{"data-cards-version":"1",value:inverse?"inv":"std",onChange:e=>setInverse(e.target.value==="inv"),style:selStyle},
-      React.createElement("option",{value:"std"},"STANDARD"),
-      React.createElement("option",{value:"inv"},"INVERSE")),
-    React.createElement("select",{"data-cards-size":"1",value:size,onChange:e=>{setSize(e.target.value);setPage(0);},style:selStyle},
-      React.createElement("option",{value:"a6"},"A6 \u00b7 4 UP"),
-      React.createElement("option",{value:"a5"},"A5 \u00b7 2 UP")),
-    !youth&&React.createElement("select",{"data-cards-lang":"1",value:langKey,onChange:e=>setLangKey(e.target.value),style:{...selStyle,maxWidth:84}},
-      opts.map(o=>React.createElement("option",{key:o.key,value:o.key},o.name))));
-
-  const paging=sheets.length>1&&React.createElement("span",{key:"page","data-cards-paging":"1",style:{...group,gap:2}},
-    React.createElement("button",{"data-cards-prev":"1",onClick:()=>goTo(cur-1),disabled:cur===0,style:chevStyle(cur===0)},"\u2039"),
-    React.createElement("span",{"data-cards-page":"1",style:{...btnStyle,cursor:"default",display:"inline-block"}},"SHEET "+(cur+1)+" / "+sheets.length),
-    React.createElement("button",{"data-cards-next":"1",onClick:()=>goTo(cur+1),disabled:cur>=sheets.length-1,style:chevStyle(cur>=sheets.length-1)},"\u203a"));
-
-  const actions=React.createElement("span",{key:"act","data-cards-actions":"1",style:group},
-    React.createElement("button",{"data-cards-dl-sheets":"1",onClick:downloadSheets,style:btnStyle},"\u2b07 SHEETS"),
-    React.createElement("button",{"data-cards-dl-singles":"1",onClick:downloadSingles,style:btnStyle},"\u2b07 CARDS"),
-    busy&&React.createElement("span",{style:{fontSize:10,color:"#8cd0ff",letterSpacing:"0.08em"}},busy));
+  const many=sheets.length>1;
+  const prevBtn=big=>React.createElement("button",{key:"prev","data-cards-prev":"1",onClick:()=>goTo(cur-1),
+    disabled:cur===0,title:"Previous sheet",style:chevStyle(cur===0,big)},"\u2039");
+  const nextBtn=big=>React.createElement("button",{key:"next","data-cards-next":"1",onClick:()=>goTo(cur+1),
+    disabled:cur>=sheets.length-1,title:"Next sheet",style:chevStyle(cur>=sheets.length-1,big)},"\u203a");
+  const verSel=React.createElement("select",{key:"ver","data-cards-version":"1",value:inverse?"inv":"std",onChange:e=>setInverse(e.target.value==="inv"),style:selStyle},
+    React.createElement("option",{value:"std"},"STANDARD"),
+    React.createElement("option",{value:"inv"},"INVERSE"));
+  const sizeSel=React.createElement("select",{key:"size","data-cards-size":"1",value:size,onChange:e=>{setSize(e.target.value);setPage(0);},style:selStyle},
+    React.createElement("option",{value:"a6"},"A6 \u00b7 4 UP"),
+    React.createElement("option",{value:"a5"},"A5 \u00b7 2 UP"));
+  const langSel=!youth&&React.createElement("select",{key:"lang","data-cards-lang":"1",value:langKey,onChange:e=>setLangKey(e.target.value),style:selStyle},
+    opts.map(o=>React.createElement("option",{key:o.key,value:o.key},o.name)));
+  const pageLbl=many&&React.createElement("span",{key:"pg","data-cards-page":"1",style:{...btnStyle,cursor:"default"}},"SHEET "+(cur+1)+" / "+sheets.length);
+  const dlSheets=React.createElement("button",{key:"dls","data-cards-dl-sheets":"1",onClick:downloadSheets,style:btnStyle},"\u2b07 SHEETS");
+  const dlCards=React.createElement("button",{key:"dlc","data-cards-dl-singles":"1",onClick:downloadSingles,style:btnStyle},"\u2b07 CARDS");
+  const busyTag=busy&&React.createElement("div",{key:"busy",style:{fontSize:10,color:"#8cd0ff",letterSpacing:"0.08em",textAlign:"center",marginTop:4}},busy);
 
   const canvas=React.createElement("canvas",{key:"cv",ref:canvasRef,
     onTouchStart:onTouchStart,onTouchEnd:onTouchEnd,
     width:cardSizeOf(size).sheet[0],height:cardSizeOf(size).sheet[1],
     // Fitted to what is left of the window, so a portrait A4 is fully on screen and fills as
     // much of a computer screen as the controls leave. Swipe sideways to change sheet.
-    style:{display:items.length?"block":"none",margin:"0 auto",maxWidth:"100%",maxHeight:narrow?"calc(100vh - 170px)":"calc(100vh - 128px)",background:"#fff",touchAction:"pan-y"}});
+    style:{display:items.length?"block":"none",margin:"0 auto",maxWidth:"100%",maxHeight:narrow?"calc(100vh - 180px)":"calc(100vh - 128px)",background:"#fff",touchAction:"pan-y"}});
 
   const states=[
     !briefs&&React.createElement("div",{key:"load",style:{color:"#444",fontSize:11,padding:"20px 0",textAlign:"center"}},"Loading..."),
     briefs&&!items.length&&React.createElement("div",{key:"none",style:{color:"#c9603f",fontSize:11,padding:"20px 0",textAlign:"center",letterSpacing:"0.08em"}},"NO STATION ROUND FOUND IN THIS WORKOUT")
   ];
+
+  const body=narrow
+    ? [React.createElement("div",{key:"top","data-cards-controls":"top",style:rowStyle(null,{marginBottom:8,paddingRight:22})},verSel,sizeSel,langSel),
+       states,canvas,busyTag,
+       // The chevrons bookend the row: ‹ at the far left, › after CARDS at the far right,
+       // with the three buttons between them sharing the rest equally.
+       React.createElement("div",{key:"bot","data-cards-controls":"bottom",
+         style:rowStyle(many?"auto 1fr 1fr 1fr auto":"1fr 1fr",{marginTop:10})},
+         many&&prevBtn(false),pageLbl,dlSheets,dlCards,many&&nextBtn(false))]
+    : [React.createElement("div",{key:"one","data-cards-controls":"one",style:rowStyle(null,{marginBottom:8,maxWidth:880,marginLeft:"auto",marginRight:"auto",paddingRight:22})},
+         verSel,sizeSel,langSel,pageLbl,dlSheets,dlCards),
+       states,
+       // Chevrons either side of the sheet, so a computer pages through it like a document.
+       React.createElement("div",{key:"sheet",style:{display:items.length?"flex":"none",alignItems:"center",justifyContent:"center",gap:4}},
+         many&&prevBtn(true),canvas,many&&nextBtn(true)),
+       busyTag];
 
   return React.createElement("div",{className:"scb-poster-overlay",onClick:onClose},
     React.createElement("div",{className:"scb-poster-outerframe",onClick:e=>e.stopPropagation()},
@@ -7093,12 +7111,7 @@ function StationCardsOverlay({className,rows,lib,onClose,langOptions,youth}){
         React.createElement("button",{"data-cards-close":"1",onClick:onClose,title:"Close",
           style:{position:"absolute",top:4,right:6,background:"none",border:"none",color:"#e5484d",
             fontSize:15,lineHeight:1,padding:"2px 5px",cursor:"pointer",zIndex:3}},"\u2715"),
-        narrow
-          ? [React.createElement("div",{key:"top","data-cards-controls":"top",style:line({marginBottom:8,paddingRight:22})},pickers),
-             states,canvas,
-             React.createElement("div",{key:"bot","data-cards-controls":"bottom",style:line({marginTop:10})},paging,actions)]
-          : [React.createElement("div",{key:"one","data-cards-controls":"one",style:line({marginBottom:8,paddingRight:22})},pickers,paging,actions),
-             states,canvas]
+        body
       )
     )
   );
