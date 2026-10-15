@@ -670,6 +670,12 @@ html:has(.app) #root{height:100%}
   html.t365-wide .dh-big{min-width:0;background:#101820;border:1px solid #1d3a5a;border-radius:0;color:#e8eef4;font-family:'Bebas Neue','Arial Narrow',sans-serif;padding:16px 6px;font-weight:400;text-align:center;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center}
   html.t365-wide .dh-big:hover{background:#15202b;border-color:#2d5a8a;color:#fff}
   html.t365-wide .dh-bigTitle{display:block;white-space:normal;overflow-wrap:break-word;text-align:center;line-height:1.2;font-size:clamp(9px,1vw,12px);letter-spacing:0.02em}
+  /* Round 2 (16 Oct 2026): the tiles sit in the middle of the screen, and staff get a
+     background photo bled out past the .adm-wrap padding. The height is measured in JS
+     (DetailsHomeView) because the padding above it differs between admin and subscriber. */
+  html.t365-wide [data-details-home]{display:flex;flex-direction:column;align-items:center;justify-content:center}
+  html.t365-wide [data-details-home][data-dh-bg]{background-size:cover;background-position:center;background-repeat:no-repeat}
+  html.t365-wide [data-details-home] .dh-wrap{width:100%;margin:0 auto}
 }
 </style>
 </head>
@@ -8102,12 +8108,52 @@ function useT365Wide(){
   },[]);
   return wide;
 }
-function DetailsHomeView({tiles,onPick}){
-  return React.createElement("div",{"data-details-home":"1",style:{marginTop:16}},
-    React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},"DETAILS"),
-    React.createElement("div",{className:"dh-grid"},
-      tiles.map(t=>React.createElement("button",{key:t.key,type:"button","data-dh-tile":t.key,className:"dh-big",onClick:()=>onPick(t.key)},
-        React.createElement("span",{className:"dh-bigTitle"},t.label)))
+/* T365 DETAILS HOME R2 (16 Oct 2026) */
+function DetailsHomeView({tiles,onPick,bgUrl}){
+  // Fill whatever is left of the scrolling middle below this point, so the tiles end up in the
+  // middle of the screen rather than at the top. Measured rather than guessed with a vh sum,
+  // because the chrome above it differs between admin mode and a subscriber's Details tab.
+  const ref=useRef(null);
+  const [box,setBox]=useState(null);
+  useEffect(()=>{
+    const fit=()=>{
+      try{
+        const el=ref.current;if(!el)return;
+        const body=el.closest(".app-body");if(!body)return;
+        const top=el.getBoundingClientRect().top-body.getBoundingClientRect().top;
+        // Bleed the background out past the .adm-wrap padding, and past the scroll-bar gutter
+        // the computer layout always keeps on the right, so there is no seam down the edge.
+        const wrap=el.parentElement;
+        const cs=wrap?getComputedStyle(wrap):null;
+        const pad=p=>cs?(parseFloat(cs["padding"+p])||0):0;
+        setBox({h:Math.max(0,Math.floor(body.clientHeight-top-8)),
+                l:pad("Left"),r:pad("Right"),t:pad("Top"),
+                gut:Math.max(0,body.offsetWidth-body.clientWidth)});
+      }catch(e){}
+    };
+    fit();
+    window.addEventListener("resize",fit);
+    const t=setTimeout(fit,250);   // after fonts and the header photo have settled
+    return()=>{window.removeEventListener("resize",fit);clearTimeout(t);};
+  },[tiles.length,bgUrl]);
+  // Equal buttons, capped so three tiles make a tidy centred block instead of three very wide
+  // ones. Six tiles still fill the 1180px app, the way the kit's row does.
+  const gridW=Math.min(1180,Math.max(360,tiles.length*200));
+  const st={};
+  if(box&&box.h)st.minHeight=box.h;
+  if(bgUrl&&box){
+    st.backgroundImage="linear-gradient(rgba(0,0,0,0.72),rgba(0,0,0,0.82)),url("+bgUrl+")";
+    st.marginTop=-box.t;st.paddingTop=box.t;
+    st.marginLeft=-box.l;st.paddingLeft=box.l;
+    st.marginRight=-(box.r+box.gut);st.paddingRight=box.r+box.gut;
+  }else st.marginTop=16;
+  return React.createElement("div",Object.assign({ref,"data-details-home":"1"},bgUrl?{"data-dh-bg":"1"}:{},{style:st}),
+    React.createElement("div",{className:"dh-wrap",style:{maxWidth:gridW}},
+      React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},"DETAILS"),
+      React.createElement("div",{className:"dh-grid"},
+        tiles.map(t=>React.createElement("button",{key:t.key,type:"button","data-dh-tile":t.key,className:"dh-big",onClick:()=>onPick(t.key)},
+          React.createElement("span",{className:"dh-bigTitle"},t.label)))
+      )
     )
   );
 }
@@ -8443,7 +8489,9 @@ function CoachingView({showToast,restricted,selfEmail,subscriber}){
   // the home screen rather than showing them something they shouldn't have.
   const secOk=(sec&&tiles.some(t=>t.key===sec))?sec:null;
   // In computer view, with no tile picked yet, Details is the home screen.
-  if(wide&&!secOk)return React.createElement(DetailsHomeView,{tiles,onPick:k=>{setSec(k);setShowLib(k==="library");}});
+  // Background photo for staff only — image 2 of the app's own numbered set, the same one the
+  // BG picker and the S&C posters pull from. Subscribers keep the plain black screen.
+  if(wide&&!secOk)return React.createElement(DetailsHomeView,{tiles,bgUrl:subscriber?null:scBgUrl(2),onPick:k=>{setSec(k);setShowLib(k==="library");}});
   if(wide&&(secOk==="images"||secOk==="youthimages"||secOk==="cards"||secOk==="youthcards"))
     return React.createElement(StationListView,{
       mode:(secOk==="cards"||secOk==="youthcards")?"cards":"image",
@@ -15931,7 +15979,8 @@ function App(){
   const touchStartY=useRef(null);
   const isAdmin=session?.email===ADMIN_EMAIL||memberData?.is_admin===true;
   // 16 Oct 2026: subscribers get computer view too (subRow loads above). Members never do.
-  try{document.documentElement.classList.toggle("t365-wide",!!((isAdmin||!!subRow)&&deskPref&&wideScreen));}catch(e){}
+  const wideOn=!!((isAdmin||!!subRow)&&deskPref&&wideScreen);
+  try{document.documentElement.classList.toggle("t365-wide",wideOn);}catch(e){}
   const isMaster=session?.email===ADMIN_EMAIL;
   const [helpPage,setHelpPage]=useState(null);
   const [mFlags,setMFlags]=useState({wk:true,welladm:true,sc:true,aibuild:true});
@@ -17488,7 +17537,9 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     effTab==="challenge"&&showChallenge&&React.createElement(ChallengeView,{session,showToast}),
     effTab==="progress"&&acc("progress")&&React.createElement(ProgressTab,{session,isAdmin,showToast,milestoneConfig,bookings,myAllBks,myStatsAdj,saveMilestoneConfig,memberData,dowNames}),
     effTab==="details"&&isSubscriber&&React.createElement("div",{className:"adm-wrap"},
-      React.createElement("div",{className:"adm-title"},"DETAILS"),
+      // In computer view the tab bar already says DETAILS, so the big title is dropped and only
+      // the small grey one above the tiles is kept (16 Oct 2026).
+      !wideOn&&React.createElement("div",{className:"adm-title"},"DETAILS"),
       subDetailsOn
         ?React.createElement(CoachingView,{showToast,restricted:true,selfEmail:session.email,subscriber:true})
         :React.createElement("div",{className:"no-bk"},subRow&&subRow.status==="suspended"?"YOUR SUBSCRIPTION IS PAUSED — PLEASE CONTACT TEAM 365":subRow&&subRow.status==="pending"?"YOUR SUBSCRIPTION IS AWAITING APPROVAL — TEAM 365 WILL BE IN TOUCH":"DETAILS IS CURRENTLY UNAVAILABLE")
@@ -17504,7 +17555,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:7,letterSpacing:"0.22em",fontWeight:600,cursor:"pointer"}},"SWIPE FOR MORE"),
       React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"›")
     ),
-    !(effTab==="admin"&&isAdmin)&&React.createElement("div",{className:"tab-bar no-sb","data-bottom-tabs":"1",style:{marginTop:0}},
+    !(effTab==="admin"&&isAdmin)&&!(isSubscriber&&wideOn)&&React.createElement("div",{className:"tab-bar no-sb","data-bottom-tabs":"1",style:{marginTop:0}},
       NAV_TABS.map((t,ti)=>React.createElement(React.Fragment,{key:t.id},
         React.createElement("button",{"data-tab":t.id,className:`tab-btn${tabOn(t)?" ta":""}`,style:t.dot?{position:"relative"}:undefined,
           onClick:e=>tabClick(t,e,true)},
