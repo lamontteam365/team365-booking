@@ -556,11 +556,13 @@ html:has(.app) #root{height:100%}
 .scb-play-ex{display:flex;align-items:baseline;gap:4px;padding:3px 0;border-bottom:1px solid #1a1a1a;font-size:10px;color:#eee}
 .scb-edit-hdr{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#fff;font-weight:600;cursor:pointer;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #222}
 .scb-play-sq{background:#1d9bf0;border:none;color:#fff;width:15px;height:15px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:7px;padding:0}
-/* Workout Details buttons: six of them. !important because each button carries an
-   inline flex:1 from the component, and min-width:max-content so a label is never
-   clipped. One row on a computer; two rows of three on a phone. */
-.wd-btnrow>button{flex:1 1 auto !important;min-width:max-content}
-@media (max-width:860px){.wd-btnrow>button{flex:1 1 28% !important}}
+/* Workout Details buttons: six of them, all the same width, with a white border.
+   !important because each button carries an inline flex:1 and border from the
+   component. Six equal across on a computer; exactly three per row below 860px, where
+   the label also steps down a size so nothing is clipped at phone width. */
+.wd-btnrow>button,.app[data-admin-mode] .adm-wrap .wd-btnrow>button{flex:1 1 0 !important;min-width:0;border:1px solid #fff !important}
+@media (max-width:860px){.wd-btnrow>button,.app[data-admin-mode] .adm-wrap .wd-btnrow>button{flex:0 0 calc((100% - 16px)/3) !important;font-size:11px !important;letter-spacing:0.05em !important}}
+@media (max-width:420px){.wd-btnrow>button,.app[data-admin-mode] .adm-wrap .wd-btnrow>button{font-size:10px !important;letter-spacing:0.03em !important}}
 .scb-poster-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.97);z-index:9999;display:flex;align-items:center;justify-content:center;padding:8px;box-sizing:border-box}
 .scb-poster-outerframe{width:100%;max-width:966px;max-height:96dvh;background:#000;padding:10px;box-sizing:border-box}
 .scb-poster-frame{width:100%;height:auto;background:#000;border:1px solid rgba(255,255,255,0.35);overflow-y:auto;position:relative;padding:32px 16px 36px;box-sizing:border-box;display:flex;flex-direction:column}
@@ -7007,13 +7009,30 @@ function StationCardsOverlay({className,rows,lib,onClose,langOptions,youth}){
     };
     next();
   }
-  const selStyle={background:"#fff",color:"#000",border:"none",borderRadius:0,fontSize:10,height:22,padding:"0 3px"};
-  const btnStyle={background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"6px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.1em",cursor:"pointer"};
+  // Paging, shared by the chevrons and by a swipe on the sheet.
+  const goTo=n=>setPage(Math.max(0,Math.min(sheets.length-1,n)));
+  const touch=useRef(null);
+  function onTouchStart(e){e.stopPropagation();const t=e.touches&&e.touches[0];touch.current=t?{x:t.clientX,y:t.clientY}:null;}
+  function onTouchEnd(e){
+    e.stopPropagation();
+    const t0=touch.current,t=e.changedTouches&&e.changedTouches[0];
+    touch.current=null;
+    if(!t0||!t)return;
+    const dx=t.clientX-t0.x,dy=t.clientY-t0.y;
+    // Sideways only, so scrolling the sheet up and down never changes the page.
+    if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5)goTo(dx<0?cur+1:cur-1);
+  }
+  // minWidth 0 + shrink so a narrow phone squeezes the pickers instead of wrapping the row.
+  const selStyle={background:"#fff",color:"#000",border:"none",borderRadius:0,fontSize:10,height:22,padding:"0 3px",minWidth:0,flexShrink:1};
+  const btnStyle={background:"#12202c",color:"#8cd0ff",border:"1px solid #26384a",borderRadius:0,padding:"6px 8px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:"0.08em",cursor:"pointer",whiteSpace:"nowrap"};
+  const rowStyle={display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"};
   return React.createElement("div",{className:"scb-poster-overlay",onClick:onClose},
     React.createElement("div",{className:"scb-poster-outerframe",onClick:e=>e.stopPropagation()},
       React.createElement("div",{className:"scb-poster-frame",style:{padding:10,display:"block"}},
-        React.createElement("button",{className:"scb-poster-close",onClick:onClose},"✕"),
-        React.createElement("div",{style:{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",marginBottom:8,paddingRight:34}},
+        // Two deliberate rows (Sam, 15 Oct): the pickers and the ✕ on top, then paging and the
+        // downloads. Left to wrap on its own the controls landed in a different order on every
+        // screen — the chevrons ended up split across two lines on a phone.
+        React.createElement("div",{"data-cards-row1":"1",style:{...rowStyle,marginBottom:6}},
           React.createElement("select",{"data-cards-version":"1",value:inverse?"inv":"std",onChange:e=>setInverse(e.target.value==="inv"),style:selStyle},
             React.createElement("option",{value:"std"},"STANDARD"),
             React.createElement("option",{value:"inv"},"INVERSE")),
@@ -7022,17 +7041,28 @@ function StationCardsOverlay({className,rows,lib,onClose,langOptions,youth}){
             React.createElement("option",{value:"a5"},"A5 \u00b7 2 UP")),
           !youth&&React.createElement("select",{"data-cards-lang":"1",value:langKey,onChange:e=>setLangKey(e.target.value),style:{...selStyle,maxWidth:84}},
             opts.map(o=>React.createElement("option",{key:o.key,value:o.key},o.name))),
-          sheets.length>1&&React.createElement("button",{"data-cards-prev":"1",onClick:()=>setPage(Math.max(0,cur-1)),disabled:cur===0,style:btnStyle},"‹"),
-          sheets.length>1&&React.createElement("span",{"data-cards-page":"1",style:{fontSize:10,color:"#8cd0ff",letterSpacing:"0.08em"}},"SHEET "+(cur+1)+" / "+sheets.length),
-          sheets.length>1&&React.createElement("button",{"data-cards-next":"1",onClick:()=>setPage(Math.min(sheets.length-1,cur+1)),disabled:cur>=sheets.length-1,style:btnStyle},"›"),
-          React.createElement("button",{"data-cards-dl-sheets":"1",onClick:downloadSheets,style:btnStyle},"⬇ SHEETS"),
-          React.createElement("button",{"data-cards-dl-singles":"1",onClick:downloadSingles,style:btnStyle},"⬇ SINGLE CARDS"),
-          busy&&React.createElement("span",{style:{fontSize:10,color:"#8cd0ff",letterSpacing:"0.08em"}},busy),
-          React.createElement("span",{"data-cards-count":"1",style:{fontSize:10,color:"#555",letterSpacing:"0.08em"}},items.length+" CARDS")
+          React.createElement("span",{"data-cards-count":"1",style:{fontSize:9,color:"#666",letterSpacing:"0.08em",whiteSpace:"nowrap"}},items.length+" CARDS"),
+          React.createElement("div",{style:{flex:"1 1 auto",minWidth:4}}),
+          React.createElement("button",{"data-cards-close":"1",onClick:onClose,title:"Close",style:{...btnStyle,padding:"4px 9px",fontSize:13}},"\u2715")
+        ),
+        React.createElement("div",{"data-cards-row2":"1",style:{...rowStyle,marginBottom:8}},
+          sheets.length>1&&React.createElement("span",{style:{display:"inline-flex",gap:6,alignItems:"center",whiteSpace:"nowrap"}},
+            React.createElement("button",{"data-cards-prev":"1",onClick:()=>goTo(cur-1),disabled:cur===0,style:btnStyle},"\u2039"),
+            React.createElement("span",{"data-cards-page":"1",style:{fontSize:10,color:"#8cd0ff",letterSpacing:"0.08em"}},"SHEET "+(cur+1)+" / "+sheets.length),
+            React.createElement("button",{"data-cards-next":"1",onClick:()=>goTo(cur+1),disabled:cur>=sheets.length-1,style:btnStyle},"\u203a")),
+          React.createElement("button",{"data-cards-dl-sheets":"1",onClick:downloadSheets,style:btnStyle},"\u2b07 SHEETS"),
+          React.createElement("button",{"data-cards-dl-singles":"1",onClick:downloadSingles,style:btnStyle},"\u2b07 CARDS"),
+          busy&&React.createElement("span",{style:{fontSize:10,color:"#8cd0ff",letterSpacing:"0.08em",whiteSpace:"nowrap"}},busy)
         ),
         !briefs&&React.createElement("div",{style:{color:"#444",fontSize:11,padding:"20px 0",textAlign:"center"}},"Loading..."),
         briefs&&!items.length&&React.createElement("div",{style:{color:"#c9603f",fontSize:11,padding:"20px 0",textAlign:"center",letterSpacing:"0.08em"}},"NO STATION ROUND FOUND IN THIS WORKOUT"),
-        React.createElement("canvas",{ref:canvasRef,width:cardSizeOf(size).sheet[0],height:cardSizeOf(size).sheet[1],style:{width:"100%",height:"auto",display:items.length?"block":"none",background:"#fff"}})
+        // The sheet is fitted to what is left of the window instead of being given the full
+        // width — a portrait A4 is taller than it is wide, so at 100% width the bottom half of
+        // the page fell off the screen. Swipe sideways to change sheet on a touch screen.
+        React.createElement("canvas",{ref:canvasRef,
+          onTouchStart:onTouchStart,onTouchEnd:onTouchEnd,
+          width:cardSizeOf(size).sheet[0],height:cardSizeOf(size).sheet[1],
+          style:{display:items.length?"block":"none",margin:"0 auto",maxWidth:"100%",maxHeight:"72vh",background:"#fff",touchAction:"pan-y"}})
       )
     )
   );
