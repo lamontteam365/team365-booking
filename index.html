@@ -663,6 +663,13 @@ html:has(.app) #root{height:100%}
   html.t365-wide .app-body>:is([data-classes-hdr],.sp-toggle,.week-nav,.day-strip,.cal-grid,.cls-wrap,.well-wrap){max-width:760px;margin-left:auto;margin-right:auto}
   html.t365-wide .app-body>.sp-toggle{margin-left:auto!important;margin-right:auto!important;padding-left:16px;padding-right:16px}
   html.t365-wide .adm-wrap:is([data-adm-seg="members"],[data-adm-seg="leads"],[data-adm-seg="functions"],[data-adm-seg="sections"]){max-width:824px;margin-left:auto;margin-right:auto}
+  /* Details home screen (16 Oct 2026) — the offline kit menu's button row, inside the app shell.
+     Keyed on the html.t365-wide class, not a media query, so a narrow MOBILE VIEW frame on a
+     wide window never picks it up. */
+  html.t365-wide .dh-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px;justify-content:center;align-items:stretch;width:100%}
+  html.t365-wide .dh-big{min-width:0;background:#101820;border:1px solid #1d3a5a;border-radius:0;color:#e8eef4;font-family:'Bebas Neue','Arial Narrow',sans-serif;padding:16px 6px;font-weight:400;text-align:center;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center}
+  html.t365-wide .dh-big:hover{background:#15202b;border-color:#2d5a8a;color:#fff}
+  html.t365-wide .dh-bigTitle{display:block;white-space:normal;overflow-wrap:break-word;text-align:center;line-height:1.2;font-size:clamp(9px,1vw,12px);letter-spacing:0.02em}
 }
 </style>
 </head>
@@ -6930,7 +6937,7 @@ function cardSheetsOf(items,size){
 // Admin -> Details -> workout -> Workout Details -> "▦ CARDS" / "▦ YOUTH CARDS".
 // Shows the A4 sheet it will print, with the standard/inverse pick and the language picker,
 // and downloads either the sheets or the cards one at a time.
-function StationCardsOverlay({className,rows,lib,onClose,langOptions,youth}){
+function StationCardsOverlay({className,rows,lib,onClose,langOptions,youth,autoDl}){
   const canvasRef=useRef(null);
   const [inverse,setInverse]=useState(false);
   const opts=(langOptions&&langOptions.length)?langOptions:[{key:"maori",name:"Māori"}];
@@ -7007,6 +7014,21 @@ function StationCardsOverlay({className,rows,lib,onClose,langOptions,youth}){
     };
     next();
   }
+  // DOWNLOAD pressed on the STATION CARDS list (16 Oct 2026): this overlay is mounted
+  // out of sight, saves every sheet, then closes itself. Waits for the briefs to land
+  // first, so a saved sheet is never missing its workout brief.
+  const dlFired=useRef(false),dlSeen=useRef(false);
+  useEffect(()=>{
+    if(!autoDl||dlFired.current||!sheets.length||briefs===null)return;
+    dlFired.current=true;downloadSheets();
+  },[autoDl,sheets.length,briefs]);
+  useEffect(()=>{
+    if(!autoDl)return;
+    if(busy){dlSeen.current=true;return;}
+    if(!dlSeen.current)return;
+    const t=setTimeout(()=>{try{onClose();}catch(e){}},250);
+    return()=>clearTimeout(t);
+  },[autoDl,busy]);
   function downloadSingles(){
     if(busy||!items.length)return;
     const cv=document.createElement("canvas");
@@ -7125,7 +7147,7 @@ function StationCardsOverlay({className,rows,lib,onClose,langOptions,youth}){
     )
   );
 }
-function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose,langOptions,kids}){
+function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose,langOptions,kids,autoDl}){
   const frameRef=useRef(null);
   const mobileOuterRef=useRef(null);
   const canvasRef=useRef(null);
@@ -7189,6 +7211,15 @@ function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose,langOptio
       setTimeout(()=>URL.revokeObjectURL(url),3000);
     },"image/jpeg",0.92);
   }
+  // DOWNLOAD pressed on the STATION IMAGES list (16 Oct 2026): mounted out of sight,
+  // saves the page once the canvas has been measured and drawn, then closes itself.
+  const dlFired=useRef(false);
+  useEffect(()=>{
+    if(!autoDl||dlFired.current||!dim.w||!dim.h||!canvasRef.current)return;
+    dlFired.current=true;
+    const t=setTimeout(()=>{try{download();}catch(e){}setTimeout(()=>{try{onClose();}catch(e){}},700);},700);
+    return()=>clearTimeout(t);
+  },[autoDl,dim.w,dim.h]);
   const bgSelect=React.createElement("select",{key:"bg",value:bg,onChange:e=>onBgChange(e.target.value),onClick:e=>e.stopPropagation(),style:{position:"absolute",top:8,left:38,background:"#fff",color:"#000",border:"none",borderRadius:0,fontSize:10,height:22,padding:"0 3px",zIndex:2}},
     React.createElement("option",{value:""},"BG"),
     Array.from({length:30},(_,i)=>i+1).map(n=>React.createElement("option",{key:n,value:n},n))
@@ -7470,6 +7501,76 @@ function AqFitLine({style,children}){
   return React.createElement("div",{ref:boxRef,"data-aq-name":"1",style:{...style,overflow:"hidden",whiteSpace:"nowrap"}},
     React.createElement("span",{ref:lineRef,style:{display:"inline-block",whiteSpace:"nowrap",transformOrigin:"left center",transform:k<1?"scale("+k.toFixed(3)+")":"none"}},children));
 }
+/* T365 DETAILS HOME (16 Oct 2026) */
+// ── Shared workout parsing + loading (16 Oct 2026) ───────────────────────────
+// Hoisted out of WorkoutDetailsEditor so the STATION IMAGES / STATION CARDS list
+// screens can build the same rows and library the overlays expect. The editor
+// calls these same functions, so there is only ever one copy of the parsing and a
+// printed card can't drift from what the editor shows.
+const wdGenId=()=>Math.random().toString(36).slice(2,9);
+// Split a level like "20 reps / 4-16 kgs" or "x 4 / 2-10 kgs" into {reps, weight}. No match -> reps blank, weight = original.
+function wdSplitReps(v){const m=(v||"").match(/^\s*((?:\d+(?:\s*-\s*\d+)?\s*reps?)|(?:x\s*\d+))\s*\/\s*(.+)$/i);return m?{reps:m[1].trim(),weight:m[2].trim()}:{reps:"",weight:(v||"")};}
+function wdReadPresc(p){if(!p)return{reps:"",c:"",o:"",d:""};if(p.reps!==undefined)return{reps:p.reps||"",c:p.c||"",o:p.o||"",d:p.d||""};const sc=wdSplitReps(p.c||""),so=wdSplitReps(p.o||""),sd=wdSplitReps(p.d||"");return{reps:(sc.reps||so.reps||sd.reps||""),c:sc.weight,o:so.weight,d:sd.weight};}
+function wdMapRow(r){
+  if(r.t==="h"||r.hdr!=null)return {id:wdGenId(),hdr:((r.label!=null?r.label:r.hdr)||""),hideTv:!!r.hideTv,dur:(r.dur!=null?r.dur:""),st:(r.st===true?true:(r.st===false?false:null)),split:(r.split===true)};
+  if(r.reps!=null)return {id:wdGenId(),duration:r.duration||"1:00",exercise:r.exercise||"",maori:r.maori||"",reps:r.reps||"",c:r.c||"",o:r.o||"",d:r.d||"",notes:r.notes||"",station:r.station||""};
+  const sc=wdSplitReps(r.c||""),so=wdSplitReps(r.o||""),sd=wdSplitReps(r.d||"");
+  return {id:wdGenId(),duration:r.duration||"1:00",exercise:r.exercise||"",maori:r.maori||"",reps:(sc.reps||so.reps||sd.reps||""),c:sc.weight,o:so.weight,d:sd.weight,notes:r.notes||"",station:r.station||""};
+}
+// Auto-number stations down each ROUND (Station 1..N), only where none set yet.
+function wdNumberStations(list){
+  let lbl="",n=0;
+  list.forEach(r=>{ if(r.hdr!=null){lbl=r.hdr;n=0;} else {n++; if(/round/i.test(lbl)&&!r.station)r.station="STATION "+n;} });
+  return list;
+}
+// Fill in each header's "stations" flag where it was never saved: a ROUND of more than
+// two segments that all share one duration is a station round.
+function wdInferHeaderSt(rws){
+  let hd=null,segs=[];
+  const flush=()=>{if(hd&&hd.st==null){const u={};segs.forEach(s=>{u[s.duration||""]=1;});hd.st=(/round/i.test(hd.hdr||"")&&Object.keys(u).length<=1&&segs.length>2);}hd=null;segs=[];};
+  rws.forEach(r=>{if(r.hdr!=null){flush();hd=r;}else segs.push(r);});
+  flush();
+  return rws;
+}
+// The same language list the editor hands the overlays: Māori always, then whatever the
+// exercise library's language settings have switched on and named.
+function wdLangOptions(LC){
+  const c=LC||{};
+  return [{key:"maori",name:"Māori"}]
+    .concat(c.morioriOn?[{key:"moriori",name:"Moriori"}]:[])
+    .concat((c.bank||[]).map(b=>({key:b.key,name:b.name||b.key})));
+}
+// Everything StationImageOverlay / StationCardsOverlay need for one workout. Read-only:
+// unlike the editor it never seeds the library back to the database, so a restricted
+// viewer (coach or subscriber) can call it safely.
+async function wdLoadBundle(className,opts){
+  const restricted=!!(opts&&opts.restricted);
+  let L=null;
+  const lr=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__HIIT_LIB__")+"&select=content");
+  if(lr&&lr.length&&lr[0].content){try{L=JSON.parse(lr[0].content);}catch(e){L=null;}}
+  if(!L||!L.maori)L=(typeof window!=="undefined"&&window.T365_HIIT_SEED)?window.T365_HIIT_SEED:{maori:{},presc:{}};
+  const lib=Object.assign({maori:{},presc:{}},L||{});
+  let LC={morioriOn:false,bank:[]};
+  try{
+    const lcr=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__LANGS__")+"&select=content");
+    if(lcr&&lcr.length&&lcr[0].content){try{LC=Object.assign(LC,JSON.parse(lcr[0].content));}catch(e){}}
+  }catch(e){}
+  if(typeof window!=="undefined"&&window.T365_WORKOUT_READY){try{await window.T365_WORKOUT_READY;}catch(e){}}
+  const seed=(typeof window!=="undefined"&&window.T365_WORKOUT_SEED&&window.T365_WORKOUT_SEED[className])||null;
+  const wr=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__WORKOUT__"+className)+"&select=content");
+  let rows=[];
+  if(wr&&wr.length&&wr[0].content){
+    const c=wr[0].content;let p=null;try{p=JSON.parse(c);}catch(e){p=null;}
+    rows=(Array.isArray(p)&&p.length)?p.map(wdMapRow):(seed?seed.map(wdMapRow):[]);
+  }else rows=seed?seed.map(wdMapRow):[];
+  wdNumberStations(rows);wdInferHeaderSt(rows);
+  let bg="";
+  try{
+    const bgr=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__BG__"+className)+"&select=content");
+    if(bgr&&bgr.length&&bgr[0].content)bg=bgr[0].content;
+  }catch(e){}
+  return {rows,lib,bg,langOptions:wdLangOptions(LC),restricted};
+}
 function WorkoutDetailsEditor({className,showToast,restricted,subscriber}){
   const storageKey="__WORKOUT__"+className;
   const LIB_KEY="__HIIT_LIB__";
@@ -7496,23 +7597,11 @@ function WorkoutDetailsEditor({className,showToast,restricted,subscriber}){
   const [cardsOpen,setCardsOpen]=useState(false);
   const [youthCardsOpen,setYouthCardsOpen]=useState(false);
   const [imgBg,setImgBg]=useState("");
-  const wdGenId=()=>Math.random().toString(36).slice(2,9);
-  function mapRow(r){
-    if(r.t==="h"||r.hdr!=null)return {id:wdGenId(),hdr:((r.label!=null?r.label:r.hdr)||""),hideTv:!!r.hideTv,dur:(r.dur!=null?r.dur:""),st:(r.st===true?true:(r.st===false?false:null)),split:(r.split===true)};
-    if(r.reps!=null)return {id:wdGenId(),duration:r.duration||"1:00",exercise:r.exercise||"",maori:r.maori||"",reps:r.reps||"",c:r.c||"",o:r.o||"",d:r.d||"",notes:r.notes||"",station:r.station||""};
-    const sc=splitReps(r.c||""),so=splitReps(r.o||""),sd=splitReps(r.d||"");
-    return {id:wdGenId(),duration:r.duration||"1:00",exercise:r.exercise||"",maori:r.maori||"",reps:(sc.reps||so.reps||sd.reps||""),c:sc.weight,o:so.weight,d:sd.weight,notes:r.notes||"",station:r.station||""};
-  }
+  const mapRow=wdMapRow;   // hoisted above (16 Oct 2026) and shared with the station list screens
   function recomb(reps,wt){reps=(reps||"").trim();wt=(wt||"").trim();return reps&&wt?reps+" / "+wt:(reps||wt);}
-  // Auto-number stations down each ROUND (Station 1..N), only where none set yet.
-  function numberStations(list){
-    let lbl="",n=0;
-    list.forEach(r=>{ if(r.hdr!=null){lbl=r.hdr;n=0;} else {n++; if(/round/i.test(lbl)&&!r.station)r.station="STATION "+n;} });
-    return list;
-  }
-  // Split a level like "20 reps / 4-16 kgs" or "x 4 / 2-10 kgs" into {reps, weight}. No match -> reps blank, weight = original.
-  function splitReps(v){const m=(v||"").match(/^\s*((?:\d+(?:\s*-\s*\d+)?\s*reps?)|(?:x\s*\d+))\s*\/\s*(.+)$/i);return m?{reps:m[1].trim(),weight:m[2].trim()}:{reps:"",weight:(v||"")};}
-  function readPresc(p){if(!p)return{reps:"",c:"",o:"",d:""};if(p.reps!==undefined)return{reps:p.reps||"",c:p.c||"",o:p.o||"",d:p.d||""};const sc=splitReps(p.c||""),so=splitReps(p.o||""),sd=splitReps(p.d||"");return{reps:(sc.reps||so.reps||sd.reps||""),c:sc.weight,o:so.weight,d:sd.weight};}
+  const numberStations=wdNumberStations;
+  const splitReps=wdSplitReps;
+  const readPresc=wdReadPresc;
   useEffect(()=>{(async()=>{
     setLoaded(false);
     let L=null;
@@ -7542,7 +7631,7 @@ function WorkoutDetailsEditor({className,showToast,restricted,subscriber}){
       else{if(!Array.isArray(p))leg=c;rws=seed?seed.map(mapRow):[];}
     }else{rws=seed?seed.map(mapRow):[];}
     numberStations(rws);
-    (function(){let hd=null,segs=[];const flush=()=>{if(hd&&hd.st==null){const u={};segs.forEach(s=>{u[s.duration||""]=1;});hd.st=(/round/i.test(hd.hdr||"")&&Object.keys(u).length<=1&&segs.length>2);}hd=null;segs=[];};rws.forEach(r=>{if(r.hdr!=null){flush();hd=r;}else segs.push(r);});flush();})();
+    wdInferHeaderSt(rws);
     const scr=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(SCROLL_KEY)+"&select=content");
     setScroll(scr&&scr.length&&scr[0].content?scr[0].content:"");
     const bgr=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent(BG_KEY)+"&select=content");
@@ -7997,8 +8086,74 @@ function ClassBriefEditor({names,briefs,saveBriefs,showToast}){
     })
   );
 }
+// ── Details home screen, computer view only (16 Oct 2026) ────────────────────
+// Modelled on the offline kit's menu.html landing page. Only ever shown while
+// html.t365-wide is set, so a phone, a tablet, and a computer in MOBILE VIEW all
+// keep the Details screen exactly as it was.
+function useT365Wide(){
+  const [wide,setWide]=useState(()=>{try{return document.documentElement.classList.contains("t365-wide");}catch(e){return false;}});
+  useEffect(()=>{
+    const read=()=>{try{setWide(document.documentElement.classList.contains("t365-wide"));}catch(e){}};
+    read();
+    let mo=null;
+    try{mo=new MutationObserver(read);mo.observe(document.documentElement,{attributes:true,attributeFilter:["class"]});}catch(e){}
+    window.addEventListener("resize",read);
+    return()=>{if(mo)mo.disconnect();window.removeEventListener("resize",read);};
+  },[]);
+  return wide;
+}
+function DetailsHomeView({tiles,onPick}){
+  return React.createElement("div",{"data-details-home":"1",style:{marginTop:16}},
+    React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600,marginBottom:16}},"DETAILS"),
+    React.createElement("div",{className:"dh-grid"},
+      tiles.map(t=>React.createElement("button",{key:t.key,type:"button","data-dh-tile":t.key,className:"dh-big",onClick:()=>onPick(t.key)},
+        React.createElement("span",{className:"dh-bigTitle"},t.label)))
+    )
+  );
+}
+// Every workout this person can see, each with VIEW and DOWNLOAD — the app's answer to the
+// kit's stationimages.html. `names` arrives already filtered for hidden workouts and rows.
+function StationListView({mode,youth,names,restricted,showToast,onBack}){
+  const [open,setOpen]=useState(null);
+  const [dl,setDl]=useState(null);
+  const [loading,setLoading]=useState("");
+  const title=(youth?"YOUTH ":"")+(mode==="cards"?"STATION CARDS":"STATION IMAGES");
+  async function load(n){
+    setLoading(n);
+    try{return await wdLoadBundle(n,{restricted});}
+    catch(e){if(showToast)showToast("Couldn't load "+n);return null;}
+    finally{setLoading("");}
+  }
+  async function view(n){const b=await load(n);if(b)setOpen({name:n,b});}
+  async function save(n){const b=await load(n);if(b)setDl({name:n,b});}
+  const ovl=(o,auto)=>mode==="cards"
+    ? React.createElement(StationCardsOverlay,{key:(auto?"dl-":"v-")+o.name,className:o.name,rows:o.b.rows,lib:o.b.lib,onClose:()=>{if(auto)setDl(null);else setOpen(null);},langOptions:o.b.langOptions,youth:!!youth,autoDl:!!auto})
+    : React.createElement(StationImageOverlay,{key:(auto?"dl-":"v-")+o.name,className:o.name,rows:o.b.rows,lib:o.b.lib,bg:o.b.bg,onBgChange:()=>{},onClose:()=>{if(auto)setDl(null);else setOpen(null);},langOptions:o.b.langOptions,kids:!!youth,autoDl:!!auto});
+  const btn=(extra)=>Object.assign({background:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.1em",padding:"6px 11px",cursor:"pointer",flexShrink:0},extra);
+  return React.createElement("div",{"data-station-list":mode+(youth?"-youth":""),style:{marginTop:16}},
+    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:16}},
+      React.createElement("button",{type:"button","data-dh-back":"1",onClick:onBack,style:btn({border:"1px solid #2a2a2a",color:"#666"})},"‹ BACK"),
+      React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600}},title)
+    ),
+    !names.length
+      ? React.createElement("div",{style:{fontSize:11,color:"#555",letterSpacing:"0.06em",padding:"30px 0",textAlign:"center"}},"No workouts to show.")
+      : React.createElement("div",null,names.map(n=>React.createElement("div",{key:n,"data-station-row":n,
+          style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:"#0e0e0e",border:"1px solid #1e1e1e",padding:"12px 14px",marginBottom:8}},
+          React.createElement("div",{style:{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:"0.08em",color:"#fff",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},n),
+          React.createElement("div",{style:{display:"flex",gap:8,flexShrink:0}},
+            React.createElement("button",{type:"button","data-station-view":n,disabled:loading===n,onClick:()=>view(n),style:btn({border:"1px solid #1d3a5a",color:"#1d9bf0"})},loading===n?"…":"VIEW"),
+            React.createElement("button",{type:"button","data-station-dl":n,disabled:loading===n||!!dl,onClick:()=>save(n),style:btn({border:"1px solid #2a2a2a",color:"#888"})},(dl&&dl.name===n)?"SAVING…":"DOWNLOAD")
+          )
+        ))),
+    open&&ovl(open,false),
+    dl&&React.createElement("div",{"data-station-dl-host":"1",style:{position:"fixed",inset:0,opacity:0,pointerEvents:"none"}},ovl(dl,true))
+  );
+}
 function CoachingView({showToast,restricted,selfEmail,subscriber}){
   const BASE_GROUPS=DETAILS_BASE_GROUPS;
+  // Computer view opens on the kit-style home screen (16 Oct 2026).
+  // Narrow screens and MOBILE VIEW ignore `sec` entirely and work exactly as before.
+  const wide=useT365Wide();
   const [extras,setExtras]=useState({});
   const [customGroups,setCustomGroups]=useState([]);
   // Admin BACK (12 Oct 2026): start where this admin was (history entry first — it survives a
@@ -8015,6 +8170,10 @@ function CoachingView({showToast,restricted,selfEmail,subscriber}){
   const [savingRow,setSavingRow]=useState(false);
   const [removingGroup,setRemovingGroup]=useState(null);
   const [showLib,setShowLib]=useState(()=>!restricted&&((typeof window!=="undefined"&&typeof URLSearchParams!=="undefined"&&new URLSearchParams(window.location.search).get("goto")==="library")||!!(admInit&&admInit.lib)));
+  // Which part of Details computer view is showing; null = the kit-style home screen.
+  // A deep link (the offline kit's LIBRARY EDITOR button, ?goto=library) or a place restored
+  // by Admin BACK has to land where it meant to, not on the home screen.
+  const [sec,setSec]=useState(()=>showLib?"library":((admInit&&admInit.cls)?"studio":null));
   useEffect(()=>{
     if(subscriber)return;
     T365_ADM.place={...T365_ADM.place,seg:"coaching",lib:!!(showLib&&!restricted),cls:selectedClass||null,sub:subTab};
@@ -8258,11 +8417,47 @@ function CoachingView({showToast,restricted,selfEmail,subscriber}){
     ...BASE_GROUPS.flatMap(g=>[...(g.base||[]),...(extras[g.label]||[])]),
     ...customGroups.flatMap(l=>(extras[l]||[]))
   ];
+  // Workouts this person may see, in Details order, with hidden rows and workouts taken out —
+  // the same filter renderGroup applies. Feeds the STATION IMAGES / STATION CARDS lists.
+  const visibleNames=(()=>{
+    const out=[];
+    const add=(label,base)=>{
+      if(restricted&&hiddenItems.rows.includes(String(label).toUpperCase()))return;
+      const ns=base?[...base,...(extras[label]||[])]:(extras[label]||[]);
+      ns.forEach(n=>{if(!restricted||!hiddenItems.workouts.includes(String(n).toUpperCase()))out.push(n);});
+    };
+    BASE_GROUPS.forEach(g=>add(g.label,g.base));
+    customGroups.forEach(l=>add(l,null));
+    return out;
+  })();
+  // The home screen's tiles. Only what actually lives in Details: STUDIO WORKOUTS is this
+  // workout list, the four station tiles are the new list screens, LIBRARY DETAILS is the
+  // master's library editor. Youth tiles are staff-only and the library is master-only, so a
+  // coach gets five tiles and a subscriber three.
+  const tiles=[{key:"studio",label:"STUDIO WORKOUTS"},{key:"images",label:"STATION IMAGES"}]
+    .concat(subscriber?[]:[{key:"youthimages",label:"YOUTH STATION IMAGES"}])
+    .concat([{key:"cards",label:"STATION CARDS"}])
+    .concat(subscriber?[]:[{key:"youthcards",label:"YOUTH STATION CARDS"}])
+    .concat(restricted?[]:[{key:"library",label:"LIBRARY DETAILS"}]);
+  // A section this person isn't allowed (a coach with a restored library place) falls back to
+  // the home screen rather than showing them something they shouldn't have.
+  const secOk=(sec&&tiles.some(t=>t.key===sec))?sec:null;
+  // In computer view, with no tile picked yet, Details is the home screen.
+  if(wide&&!secOk)return React.createElement(DetailsHomeView,{tiles,onPick:k=>{setSec(k);setShowLib(k==="library");}});
+  if(wide&&(secOk==="images"||secOk==="youthimages"||secOk==="cards"||secOk==="youthcards"))
+    return React.createElement(StationListView,{
+      mode:(secOk==="cards"||secOk==="youthcards")?"cards":"image",
+      youth:(secOk==="youthimages"||secOk==="youthcards"),
+      names:visibleNames,restricted,showToast,
+      onBack:()=>setSec(null)});
   return React.createElement("div",{style:{marginTop:16}},
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:16}},
-      React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600}},
-        "COACHING NOTES & WORKOUTS"),
-      !restricted&&React.createElement("button",{onClick:()=>setShowLib(v=>!v),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,minWidth:0}},
+        wide&&React.createElement("button",{type:"button","data-dh-back":"1",onClick:()=>{setSec(null);setShowLib(false);setSelectedClass(null);},
+          style:{background:"none",border:"1px solid #2a2a2a",borderRadius:0,color:"#666",fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.1em",padding:"6px 11px",cursor:"pointer",flexShrink:0}},"‹ BACK"),
+        React.createElement("div",{style:{fontSize:10,letterSpacing:"0.18em",color:"#555",fontWeight:600}},
+          (wide&&secOk==="library")?"LIBRARY DETAILS":"COACHING NOTES & WORKOUTS")),
+      !restricted&&!wide&&React.createElement("button",{onClick:()=>setShowLib(v=>!v),
         style:{background:showLib?"#0a1a2a":"none",border:"1px solid "+(showLib?"#1d3a5a":"#2a2a2a"),borderRadius:0,color:showLib?"#1d9bf0":"#666",fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.1em",padding:"6px 11px",cursor:"pointer",flexShrink:0}},
         showLib?"← BACK":"LIBRARY DETAILS")
     ),
@@ -15735,7 +15930,8 @@ function App(){
   const touchStartX=useRef(null);
   const touchStartY=useRef(null);
   const isAdmin=session?.email===ADMIN_EMAIL||memberData?.is_admin===true;
-  try{document.documentElement.classList.toggle("t365-wide",!!(isAdmin&&deskPref&&wideScreen));}catch(e){}
+  // 16 Oct 2026: subscribers get computer view too (subRow loads above). Members never do.
+  try{document.documentElement.classList.toggle("t365-wide",!!((isAdmin||!!subRow)&&deskPref&&wideScreen));}catch(e){}
   const isMaster=session?.email===ADMIN_EMAIL;
   const [helpPage,setHelpPage]=useState(null);
   const [mFlags,setMFlags]=useState({wk:true,welladm:true,sc:true,aibuild:true});
@@ -17325,7 +17521,7 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       // the REFRESH under the header logo was their only one and is gone. Shown in maintenance too.
       !isAdmin&&React.createElement(AdminRefreshButton,{footer:true,right:6}),
       // COMPUTER VIEW / MOBILE VIEW switch — staff on 900px+ screens, bottom-left (12 Oct 2026).
-      isAdmin&&wideScreen&&React.createElement("button",{type:"button","data-view-switch":deskPref?"computer":"mobile",title:"Switch between the computer and phone layout",
+      (isAdmin||isSubscriber)&&wideScreen&&React.createElement("button",{type:"button","data-view-switch":deskPref?"computer":"mobile",title:"Switch between the computer and phone layout",
         onClick:()=>{const v=!deskPref;setDeskPref(v);lsSet("t365-desktop",v);},
         style:{...AQ_CORNER_S,position:"absolute",top:9,left:6,zIndex:3,whiteSpace:"nowrap",width:"auto",paddingLeft:8,paddingRight:8}},
         React.createElement("span",null,deskPref?"MOBILE VIEW":"COMPUTER VIEW")),
