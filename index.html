@@ -6601,20 +6601,22 @@ function stImgDrawKidsCard(ctx,x,y,w,h,r,stnum,exSize,name,youthReps,adultName){
   stImgFillTextSpaced(ctx,String(stnum),x+w/2,boxY+(numStrip+numCap)/2,2,numFs+'px "Bebas Neue", Arial Narrow, sans-serif',"#fff");
   stImgFillTextSpaced(ctx,"YOUTH EXERCISE",x+w/2,blockTop+lblH,2,"600 12px DM Sans, Arial, sans-serif","#1d9bf0");
   stImgFillTextSpaced(ctx,name,x+w/2,blockTop+lblH+gapH+nameH,2,exSize+'px "Bebas Neue", Arial Narrow, sans-serif',"#fff");
-  // The ADULT exercise name under the youth name, in Team 365 blue at the YOUTH EXERCISE
-  // label's size, in the lighter blue (Sam, 16 Oct 2026). It sits in the empty strip between the bottom of the
-  // youth name and the box below, so nothing already on the card moves. Only when it is a
-  // DIFFERENT name (Sam, 16 Oct 2026) — e.g. youth STATIONARY SPRINT under adult ASSAULT BIKE.
-  // An exercise with no youth name in the Library shows its name once, as before. Shrinks
-  // (12 -> 9px) only if a very long name would otherwise run outside the card.
-  if(adultName&&adultName!==name){
-    const anFs=stImgFitFontSpaced(ctx,[adultName],w-24,12,9,"600","DM Sans, Arial, sans-serif",2);
-    stImgFillTextSpaced(ctx,adultName,x+w/2,blockTop+lblH+gapH+nameH+26,2,"600 "+anFs+"px DM Sans, Arial, sans-serif","#8cd0ff");
-  }
   // One full-width box where the three pillar boxes sit on the adult card, with the work
   // time written inside it.
   const lv_y0=boxY+boxH-66;
   const bx=x+pad,bw=w-2*pad;
+  // The ADULT exercise name, in the lighter blue at the YOUTH EXERCISE label's size, centred in
+  // the gap between the bottom of the youth name and the top of that box (Sam, 16 Oct 2026 — it
+  // used to sit tucked up under the youth name). Nothing already on the card moves: the name
+  // lives entirely inside that empty gap. Only when it is a DIFFERENT name — e.g. youth
+  // STATIONARY SPRINT under adult ASSAULT BIKE. An exercise with no youth name in the Library
+  // shows its name once, as before. Shrinks (12 -> 9px) only if a very long name would
+  // otherwise run outside the card. DM Sans caps are ~0.72em, which is what the centring uses.
+  if(adultName&&adultName!==name){
+    const anFs=stImgFitFontSpaced(ctx,[adultName],w-24,12,9,"600","DM Sans, Arial, sans-serif",2);
+    const anTop=blockTop+lblH+gapH+nameH,anGap=(lv_y0+16)-anTop,anCap=anFs*0.72;
+    stImgFillTextSpaced(ctx,adultName,x+w/2,anTop+(anGap+anCap)/2,2,"600 "+anFs+"px DM Sans, Arial, sans-serif","#8cd0ff");
+  }
   ctx.fillStyle="rgba(10,26,42,0.62)";ctx.fillRect(bx,lv_y0+16,bw,40);
   ctx.strokeStyle="#565656";ctx.strokeRect(bx+0.5,lv_y0+16.5,bw-1,39);
   const work=stImgKidsWorkLabel(r.duration);
