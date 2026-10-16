@@ -6584,24 +6584,29 @@ function stImgDrawKidsCard(ctx,x,y,w,h,r,stnum,exSize,name,youthReps,adultName){
   stImgFillTextSpaced(ctx,dur,x+w-pad,y+16,1.2,labelFont,"#c5c9cc","right");
   ctx.fillStyle="rgba(43,43,43,0.62)";ctx.fillRect(x,boxY,w,boxH);
   ctx.strokeStyle="#767676";ctx.lineWidth=1;ctx.strokeRect(x+0.5,boxY+0.5,w-1,boxH-1);
-  // Station number again, centred inside the TOP of the box in white, above YOUTH EXERCISE
-  // (Sam, 16 Oct 2026). The bare number, like the printed youth card. Nothing else moves: it
-  // sits in the empty strip above the centred name block.
-  stImgFillTextSpaced(ctx,String(stnum),x+w/2,boxY+32,2,'26px "Bebas Neue", Arial Narrow, sans-serif',"#fff");
   // "YOUTH EXERCISE" + name as one block, centred in the box (cap heights: 12px DM Sans ~9px,
   // Bebas Neue ~0.7em). No translation on the kids image.
   const lblH=9,gapH=12,nameH=Math.round(exSize*0.7);
   const blockTop=boxY+boxH/2-(lblH+gapH+nameH)/2;
+  // Station number again, big and white, centred in the empty strip between the top of the box
+  // and the top of YOUTH EXERCISE (Sam, 16 Oct 2026 — five times the first size). Nothing else
+  // moves: the number lives entirely inside that strip. 130px normally; on a short card (lots of
+  // stations, so three rows) it shrinks to whatever keeps a 10px gap top and bottom.
+  // Bebas Neue caps are ~0.7em, which is what the centring measures.
+  const numStrip=blockTop-boxY;
+  const numFs=Math.max(12,Math.min(130,Math.floor((numStrip-20)/0.7)));
+  const numCap=numFs*0.7;
+  stImgFillTextSpaced(ctx,String(stnum),x+w/2,boxY+(numStrip+numCap)/2,2,numFs+'px "Bebas Neue", Arial Narrow, sans-serif',"#fff");
   stImgFillTextSpaced(ctx,"YOUTH EXERCISE",x+w/2,blockTop+lblH,2,"600 12px DM Sans, Arial, sans-serif","#1d9bf0");
   stImgFillTextSpaced(ctx,name,x+w/2,blockTop+lblH+gapH+nameH,2,exSize+'px "Bebas Neue", Arial Narrow, sans-serif',"#fff");
   // The ADULT exercise name under the youth name, in Team 365 blue at the YOUTH EXERCISE
-  // label's size (Sam, 16 Oct 2026). It sits in the empty strip between the bottom of the
+  // label's size, in the lighter blue (Sam, 16 Oct 2026). It sits in the empty strip between the bottom of the
   // youth name and the box below, so nothing already on the card moves. Only drawn when the
   // Library has a youth name, so the card never says the same name twice. Shrinks (12 -> 9px)
   // only if a very long name would otherwise run outside the card.
   if(adultName&&adultName!==name){
     const anFs=stImgFitFontSpaced(ctx,[adultName],w-24,12,9,"600","DM Sans, Arial, sans-serif",2);
-    stImgFillTextSpaced(ctx,adultName,x+w/2,blockTop+lblH+gapH+nameH+26,2,"600 "+anFs+"px DM Sans, Arial, sans-serif","#1d9bf0");
+    stImgFillTextSpaced(ctx,adultName,x+w/2,blockTop+lblH+gapH+nameH+26,2,"600 "+anFs+"px DM Sans, Arial, sans-serif","#8cd0ff");
   }
   // One full-width box where the three pillar boxes sit on the adult card, with the work
   // time written inside it.
