@@ -6558,12 +6558,16 @@ function stImgYouthRepsFor(lib,row){
   if(!v)return "";
   return /^\d+(\s*[-–]\s*\d+)?$/.test(v)?v+" REPS":v;
 }
-// Colour runs for the youth box: numbers white, words Team 365 blue ("10 REPS", "5 EACH LEG").
+// The blue words inside the bottom box (WORK FOR / SECONDS / MINUTES / REPS / EACH SIDE) are
+// the Team 365 blue faded back (Sam, 16 Oct 2026) so the white time or rep number stands out.
+// Only the words: the white text is untouched.
+const STIMG_BOX_BLUE="rgba(29,155,240,0.65)";
+// Colour runs for the youth box: numbers white, words the faded blue ("10 REPS", "5 EACH LEG").
 function stImgYouthRepsParts(text){
   const runs=[];
   String(text).split(/(\s+)/).forEach(tok=>{
     if(!tok)return;
-    const col=/^\s+$/.test(tok)?(runs.length?runs[runs.length-1][1]:"#1d9bf0"):(/^[0-9][0-9:.\-–\/xX×]*$/.test(tok)?"#fff":"#1d9bf0");
+    const col=/^\s+$/.test(tok)?(runs.length?runs[runs.length-1][1]:STIMG_BOX_BLUE):(/^[0-9][0-9:.\-–\/xX×]*$/.test(tok)?"#fff":STIMG_BOX_BLUE);
     if(runs.length&&runs[runs.length-1][1]===col)runs[runs.length-1][0]+=tok;else runs.push([tok,col]);
   });
   return runs;
@@ -6632,7 +6636,7 @@ function stImgDrawKidsCard(ctx,x,y,w,h,r,stnum,exSize,name,youthReps,adultName){
     const font="bold "+fs+"px DM Sans, Arial, sans-serif",ty=lv_y0+36+Math.round(fs*0.36);
     const wordFont="500 "+fs+"px DM Sans, Arial, sans-serif";
     const t=stImgKidsWorkTime(r.duration),ti=work.indexOf(t);
-    stImgFillPartsCentred(ctx,[[work.slice(0,ti),"#1d9bf0",wordFont],[t,"#fff"],[work.slice(ti+t.length),"#1d9bf0",wordFont]],bx+bw/2,ty,font);
+    stImgFillPartsCentred(ctx,[[work.slice(0,ti),STIMG_BOX_BLUE,wordFont],[t,"#fff"],[work.slice(ti+t.length),STIMG_BOX_BLUE,wordFont]],bx+bw/2,ty,font);
   }else{
     stImgFillTextSpaced(ctx,r.duration?"CHECK STATION TIME":"NO STATION TIME",bx+bw/2,lv_y0+41,1,"bold 13px DM Sans, Arial, sans-serif","#c9603f");
   }
