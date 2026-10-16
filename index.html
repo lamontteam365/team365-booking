@@ -6571,9 +6571,11 @@ function stImgYouthRepsParts(text){
 // Draws coloured pieces as one centred line, with the same 1px letter spacing between pieces
 // as inside them, so it sits exactly where one centred string would.
 function stImgFillPartsCentred(ctx,parts,cx,y,font){
-  const ws=parts.map(p=>stImgMeasureSpaced(ctx,p[0],font,1));
+  // A piece can carry its own font as a third item ([text,colour,font]) — WORK FOR / SECONDS
+  // use a lighter weight than the time between them.
+  const ws=parts.map(p=>stImgMeasureSpaced(ctx,p[0],p[2]||font,1));
   let px=cx-(ws.reduce((a,b)=>a+b,0)+Math.max(0,parts.length-1))/2;
-  parts.forEach((p,k)=>{stImgFillTextSpaced(ctx,p[0],px,y,1,font,p[1],"left");px+=ws[k]+1;});
+  parts.forEach((p,k)=>{stImgFillTextSpaced(ctx,p[0],px,y,1,p[2]||font,p[1],"left");px+=ws[k]+1;});
 }
 function stImgDrawKidsCard(ctx,x,y,w,h,r,stnum,exSize,name,youthReps,adultName){
   const pad=12,topH=26,boxY=y+topH,boxH=h-topH;
@@ -6601,11 +6603,11 @@ function stImgDrawKidsCard(ctx,x,y,w,h,r,stnum,exSize,name,youthReps,adultName){
   stImgFillTextSpaced(ctx,name,x+w/2,blockTop+lblH+gapH+nameH,2,exSize+'px "Bebas Neue", Arial Narrow, sans-serif',"#fff");
   // The ADULT exercise name under the youth name, in Team 365 blue at the YOUTH EXERCISE
   // label's size, in the lighter blue (Sam, 16 Oct 2026). It sits in the empty strip between the bottom of the
-  // youth name and the box below, so nothing already on the card moves. Shown on EVERY card
-  // (Sam, 16 Oct 2026), including the ones with no youth name in the Library, where it repeats
-  // the name above it. Shrinks (12 -> 9px) only if a very long name would otherwise run outside
-  // the card.
-  if(adultName){
+  // youth name and the box below, so nothing already on the card moves. Only when it is a
+  // DIFFERENT name (Sam, 16 Oct 2026) — e.g. youth STATIONARY SPRINT under adult ASSAULT BIKE.
+  // An exercise with no youth name in the Library shows its name once, as before. Shrinks
+  // (12 -> 9px) only if a very long name would otherwise run outside the card.
+  if(adultName&&adultName!==name){
     const anFs=stImgFitFontSpaced(ctx,[adultName],w-24,12,9,"600","DM Sans, Arial, sans-serif",2);
     stImgFillTextSpaced(ctx,adultName,x+w/2,blockTop+lblH+gapH+nameH+26,2,"600 "+anFs+"px DM Sans, Arial, sans-serif","#8cd0ff");
   }
@@ -6623,10 +6625,12 @@ function stImgDrawKidsCard(ctx,x,y,w,h,r,stnum,exSize,name,youthReps,adultName){
   }else if(work){
     const fs=stImgFitFontSpaced(ctx,[work],bw-20,18,11,"bold","DM Sans, Arial, sans-serif",1);
     // "WORK FOR " and " MINUTES" in Team 365 blue, the time itself in white (Sam, 12 Oct 2026;
-    // it was the other way round).
+    // it was the other way round). The words are NOT bold (Sam, 16 Oct 2026) so the bold time
+    // between them stands out; the line is still measured and centred as one piece.
     const font="bold "+fs+"px DM Sans, Arial, sans-serif",ty=lv_y0+36+Math.round(fs*0.36);
+    const wordFont="500 "+fs+"px DM Sans, Arial, sans-serif";
     const t=stImgKidsWorkTime(r.duration),ti=work.indexOf(t);
-    stImgFillPartsCentred(ctx,[[work.slice(0,ti),"#1d9bf0"],[t,"#fff"],[work.slice(ti+t.length),"#1d9bf0"]],bx+bw/2,ty,font);
+    stImgFillPartsCentred(ctx,[[work.slice(0,ti),"#1d9bf0",wordFont],[t,"#fff"],[work.slice(ti+t.length),"#1d9bf0",wordFont]],bx+bw/2,ty,font);
   }else{
     stImgFillTextSpaced(ctx,r.duration?"CHECK STATION TIME":"NO STATION TIME",bx+bw/2,lv_y0+41,1,"bold 13px DM Sans, Arial, sans-serif","#c9603f");
   }
