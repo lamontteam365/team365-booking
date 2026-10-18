@@ -17366,9 +17366,9 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
       ),
       // Nothing to swipe to with one tab (16 Oct 2026).
       !isSubscriber&&React.createElement("div",{"data-swipe-hint":"1",style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:10,marginLeft:-20,marginRight:-20,width:"calc(100% + 40px)",padding:"5px 0 4px"},onClick:e=>e.stopPropagation()},
-        React.createElement("span",{style:{color:"#1d9bf0",fontSize:11,lineHeight:1}},"‹"),
-        React.createElement("span",{style:{color:"#1d9bf0",fontSize:7,letterSpacing:"0.22em",fontWeight:600}},"SWIPE FOR MORE"),
-        React.createElement("span",{style:{color:"#1d9bf0",fontSize:11,lineHeight:1}},"›")
+        React.createElement("span",{style:{color:"#e8eef4",fontSize:11,lineHeight:1}},"‹"),
+        React.createElement("span",{style:{color:"#e8eef4",fontSize:7,letterSpacing:"0.22em",fontWeight:600}},"SWIPE FOR MORE"),
+        React.createElement("span",{style:{color:"#e8eef4",fontSize:11,lineHeight:1}},"›")
       ),
       // A subscriber has one tab, so in computer view the DETAILS bar says nothing (16 Oct 2026).
       !(isSubscriber&&wideOn)&&React.createElement("div",{className:"no-sb","data-top-tabs":"1",style:{display:"flex",marginLeft:-20,marginRight:-20,width:"calc(100% + 40px)",borderTop:"1px solid #888",borderBottom:"1px solid #888",background:"#141414",overflowX:"auto"},onClick:e=>e.stopPropagation()},
@@ -17658,11 +17658,8 @@ React.createElement("div",{className:"auth-guest",style:{marginTop:24}},"Not a m
     // everyone else when FUNCTIONS → PAGE GUIDES is ON. Subscribers never.
     guideKey&&React.createElement(PageHelpButton,{admin:effTab==="admin",open:helpPage===guideKey,onPress:()=>setHelpPage(h=>h===guideKey?null:guideKey)}),
     guideKey&&helpPage===guideKey&&React.createElement(PageHelpSheet,{key:guideKey,page:guideKey,title:guideTitle,onClose:()=>setHelpPage(null),showToast,canEdit:isMaster,everyone:mFlags.guides===true}),
-    !(effTab==="admin"&&isAdmin)&&!isSubscriber&&React.createElement("div",{"data-swipe-hint":"1",style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0 4px",background:"#080808",marginTop:0}},
-      React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:-160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"‹"),
-      React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:7,letterSpacing:"0.22em",fontWeight:600,cursor:"pointer"}},"SWIPE FOR MORE"),
-      React.createElement("span",{onClick:e=>{const n=e.currentTarget.parentElement.nextElementSibling;if(n&&n.scrollBy)n.scrollBy({left:160,behavior:"smooth"});},style:{color:"#1d9bf0",fontSize:12,lineHeight:1,cursor:"pointer",padding:"3px 8px"}},"›")
-    ),
+    // Bottom SWIPE FOR MORE hint removed (19 Oct 2026) — the bottom bar still swipes and
+    // mirrors the top bar, so the arrows were not carrying anything.
     !(effTab==="admin"&&isAdmin)&&!isSubscriber&&React.createElement("div",{className:"tab-bar no-sb","data-bottom-tabs":"1",style:{marginTop:0}},
       NAV_TABS.map((t,ti)=>React.createElement(React.Fragment,{key:t.id},
         React.createElement("button",{"data-tab":t.id,className:`tab-btn${tabOn(t)?" ta":""}`,style:t.dot?{position:"relative"}:undefined,
