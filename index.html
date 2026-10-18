@@ -3115,7 +3115,7 @@ async function pageHelpSave(page,content){
 function PageHelpButton({onPress,open,admin}){
   return React.createElement("div",{"data-page-help-anchor":"1",style:{position:"relative",height:0,zIndex:open?9001:40}},
     React.createElement("button",{type:"button","data-page-help-btn":"1","aria-label":"How this page works",title:"How this page works",onClick:onPress,
-      style:{position:"absolute",right:12,bottom:admin?6:-19,width:20,height:20,borderRadius:"50%",background:"#4a4a4a",border:"1px solid #6a6a6a",
+      style:{position:"absolute",right:12,bottom:admin?6:4,width:20,height:20,borderRadius:"50%",background:"#4a4a4a",border:"1px solid #6a6a6a",
         color:"#fff",fontFamily:"Georgia,'Times New Roman',serif",fontStyle:"italic",fontWeight:700,fontSize:12,lineHeight:"18px",padding:0,
         textAlign:"center",cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,.55)",WebkitTapHighlightColor:"transparent"}},"i"));
 }
@@ -12306,9 +12306,8 @@ function MemberWorkoutsView({session,memberData,ttl}){
             )
           ),
           React.createElement(DayNoteBox,{initial:dayNote(dk),
-            placeholder:exercises.length===0
-              ?"Use this space as your journal \u2014 how are you feeling, sleep, nutrition, energy, soreness, anything you want to note."
-              :"How did today go? Anything not tracked above \u2014 how it felt, energy, sleep, soreness, nutrition.",
+            // One prompt for every day, workout or rest (19 Oct 2026).
+            placeholder:"How did today go? How do you feel, energy, sleep, soreness, nutrition?",
             onSave:v=>saveNote(dk,1,v)})
         )
       )
