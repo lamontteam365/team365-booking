@@ -15691,7 +15691,10 @@ async function pushRegistration(){
     return await Promise.race([navigator.serviceWorker.ready,new Promise(r=>setTimeout(()=>r(reg),4000))]);}catch(e){return null;}
 }
 async function pushSave(sub){const j=sub&&sub.toJSON?sub.toJSON():null;if(!j||!j.endpoint||!j.keys)return false;
-  return (await pushRpc("push_subscribe",{p_endpoint:j.endpoint,p_p256dh:j.keys.p256dh,p_auth:j.keys.auth,p_ua:(navigator.userAgent||"").slice(0,300)}))===true;}
+  const a={p_endpoint:j.endpoint,p_p256dh:j.keys.p256dh,p_auth:j.keys.auth,p_ua:(navigator.userAgent||"").slice(0,300)};
+  // push_link (20 Oct 2026): other accounts on this phone are PAUSED, not deleted.
+  const r=await pushRpc("push_link",a);if(r===true||r===false)return r;
+  return (await pushRpc("push_subscribe",a))===true;}
 // Must run straight from a tap — iPhone refuses the permission prompt otherwise.
 async function pushTurnOn(){
   const env=pushEnv();
@@ -15707,10 +15710,28 @@ async function pushTurnOn(){
 }
 async function pushTurnOff(){
   const reg=await pushRegistration();let sub=null;try{sub=reg&&reg.pushManager?await reg.pushManager.getSubscription():null;}catch(e){}
-  if(sub){await pushRpc("push_unsubscribe",{p_endpoint:sub.endpoint});try{await sub.unsubscribe();}catch(e){}}
+  if(sub){
+    let others=await pushRpc("push_turn_off",{p_endpoint:sub.endpoint});
+    if(typeof others!=="number"){await pushRpc("push_unsubscribe",{p_endpoint:sub.endpoint});others=0;}   // server not updated yet: old behaviour
+    if(!(others>0)){try{await sub.unsubscribe();}catch(e){}}   // Jane turning off never cuts off her husband
+  }
   pushSetBadge(0);
   return true;
 }
+// LOG OUT (20 Oct 2026): pause this account on this phone — settings untouched, the
+// registration kept. Alerts that come in meanwhile wait for the next login (send-push
+// holds them). Clears Team 365 notifications still showing, and the badge, so the next
+// person can't tap the last person's alerts.
+async function pushPause(){
+  const reg=await pushRegistration();let sub=null;try{sub=reg&&reg.pushManager?await reg.pushManager.getSubscription():null;}catch(e){}
+  if(sub){const r=await pushRpc("push_pause",{p_endpoint:sub.endpoint});
+    if(r!==true&&r!==false)await pushTurnOff();}   // server not updated yet: old behaviour
+  await pushCloseNotes(()=>true);
+  pushSetBadge(0);
+  return true;
+}
+// LOG IN: anything held while logged out comes through now (own phones only).
+async function pushCatchUp(){try{const r=await fetch(`${SB_URL}/functions/v1/send-push`,{method:"POST",headers:pushHdr(),body:JSON.stringify({action:"catch-up"})});return await r.json().catch(()=>({ok:false}));}catch(e){return {ok:false};}}
 // Is THIS device on for this account? (permission granted + a live subscription saved)
 async function pushDeviceState(){
   const env=pushEnv();
@@ -16666,8 +16687,15 @@ const navLabel=t=>(t.dot&&noticeNew>0&&effTab!=="community")?React.createElement
     if(!session||!session.email||isSubscriber)return;
     (async()=>{const env=pushEnv();if(!env.supported||env.permission!=="granted")return;
       const reg=await pushRegistration();let sub=null;try{sub=reg&&reg.pushManager?await reg.pushManager.getSubscription():null;}catch(e){}
-      if(sub)pushSave(sub);
-      else if(pushRemembered().includes(String(session.email).toLowerCase()))pushTurnOn();   // this account had it on here before logging out
+      const em=String(session.email).toLowerCase();
+      if(sub){
+        const r=await pushRpc("push_resume",{p_endpoint:sub.endpoint});   // 20 Oct 2026
+        if(r==="resumed"){pushRemember(em,true);pushCatchUp();}
+        else if(r==="active")pushRemember(em,true);
+        else if(r==="none"){if(pushRemembered().includes(em)&&await pushSave(sub))pushCatchUp();}   // e.g. a renewed registration; anyone new stays OFF
+        else pushSave(sub);   // server not updated yet: old behaviour
+      }
+      else if(pushRemembered().includes(em)){const t=await pushTurnOn();if(t&&t.ok)pushCatchUp();}   // this account had it on here before (site data cleared, old logout)
     })();
   },[session&&session.email,isSubscriber]);
   useEffect(()=>{if(tab==="community")pushCloseNotes("t365-notice");},[tab]);
@@ -16777,7 +16805,7 @@ const navLabel=t=>(t.dot&&noticeNew>0&&effTab!=="community")?React.createElement
     }
     setAuthBusy(false);
   }
-  async function handleLogout(){try{await Promise.race([(async()=>{const st=await pushDeviceState();if(st.on)pushRemember(session&&session.email,true);await pushTurnOff();})(),new Promise(r=>setTimeout(r,3500))]);}catch(e){}authLogout();lsSet("t365-session",null);setSession(null);setMemberData(null);setMemberAccess(null);setSubRow(null);setShowProf(false);}
+  async function handleLogout(){try{await Promise.race([(async()=>{const st=await pushDeviceState();if(st.on)pushRemember(session&&session.email,true);await pushPause();})(),new Promise(r=>setTimeout(r,3500))]);}catch(e){}authLogout();lsSet("t365-session",null);setSession(null);setMemberData(null);setMemberAccess(null);setSubRow(null);setShowProf(false);}
   async function loadSubscriberState(email){
     const [sr,ms]=await Promise.all([
       sbGet("subscribers",`email=eq.${encodeURIComponent(String(email||"").toLowerCase())}&select=*`),
