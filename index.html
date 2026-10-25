@@ -6887,6 +6887,17 @@ function cardFooter(ctx,pal,right){
 }
 // ---- the station card ----
 // o = {num, dur, name, nameSize, reps, tr, lv:[commitment,consistency,determination], foot}
+// The translation sits as far below the exercise name as the reps sit above it (Sam, 26 Oct):
+// the clear gap from the bottom of the name to the top of the translation's capitals equals the
+// gap from the bottom of the reps to the top of the name. Measured from the fonts, so it holds
+// for every pack's name size. It applies whether or not the card has reps, so the translations
+// line up across a sheet. The name stays on CARD_NAME_BASE.
+function cardTrBase(ctx,nameSize){
+  const repsBase=CARD_NAME_BASE-nameSize*0.9-14;
+  ctx.font=cardFont(nameSize,"",CARD_BEBAS);const nameTop=CARD_NAME_BASE-ctx.measureText("H").actualBoundingBoxAscent;
+  ctx.font=cardFont(15,"600");const trCap=ctx.measureText("H").actualBoundingBoxAscent;
+  return CARD_NAME_BASE+(nameTop-repsBase)+trCap;
+}
 function cardDrawStation(ctx,pal,o){
   cardFrame(ctx,pal);
   cardHeader(ctx,pal,"STATION",o.dur||"");
@@ -6894,7 +6905,7 @@ function cardDrawStation(ctx,pal,o){
   cardRule(ctx,pal,168);
   if(o.reps)stImgFillTextSpaced(ctx,o.reps,CARD_U_W/2,CARD_NAME_BASE-o.nameSize*0.9-14,1.32,cardFont(22,"700"),pal.acc,"center");
   stImgFillTextSpaced(ctx,o.name,CARD_U_W/2,CARD_NAME_BASE,o.nameSize*0.03,cardFont(o.nameSize,"",CARD_BEBAS),pal.fg,"center");
-  if(o.tr)stImgFillTextSpaced(ctx,o.tr,CARD_U_W/2,CARD_NAME_BASE+26,0.6,cardFont(15,"600"),pal.acc,"center");
+  if(o.tr)stImgFillTextSpaced(ctx,o.tr,CARD_U_W/2,cardTrBase(ctx,o.nameSize),0.6,cardFont(15,"600"),pal.acc,"center");
   const cw=(CARD_INNER-14)/3;
   [["COMMITMENT",o.lv[0]],["CONSISTENCY",o.lv[1]],["DETERMINATION",o.lv[2]]].forEach((c,i)=>{
     const x=CARD_PADX+i*(cw+7);
