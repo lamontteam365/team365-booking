@@ -7055,13 +7055,20 @@ function cardRoundLines(lines){
 }
 function cardDrawSessionBrief(ctx,pal,o){
   cardFrame(ctx,pal);
-  const ts=cardFitName(ctx,[o.title],CARD_INNER,40,22);
+  const tx=CARD_PADX+6,tw=CARD_INNER-12;
+  // The title is left-aligned on the same edge as the headings, with no blue rule (Sam, 26 Oct).
+  // The block below keeps the place it had when the rule was there.
+  const ts=cardFitName(ctx,[o.title],tw,40,22);
   const tb=62+ts*0.44;
-  stImgFillTextSpaced(ctx,o.title,CARD_U_W/2,tb,ts*0.03,cardFont(ts,"",CARD_BEBAS),pal.fg,"center");
+  // Lined up by INK, not by origin: Bebas's R carries more side space than DM Sans's S, so the
+  // title is nudged by the difference and its first letter starts exactly on the headings' edge.
+  const tf=cardFont(ts,"",CARD_BEBAS),lf0=cardFont(12,"600");
+  ctx.font=tf;const tbb=ctx.measureText(String(o.title||"").charAt(0)).actualBoundingBoxLeft||0;
+  ctx.font=lf0;const hbb=ctx.measureText(String(o.label||"SESSION BRIEF").charAt(0)).actualBoundingBoxLeft||0;
+  stImgFillTextSpaced(ctx,o.title,tx+tbb-hbb,tb,ts*0.03,tf,pal.fg,"left");
   const ruleY=Math.round(tb+15);
-  cardRule(ctx,pal,ruleY);
   const by=ruleY+26,bh=494-by;
-  const lf=cardFont(12,"600"),tx=CARD_PADX+6,tw=CARD_INNER-12;
+  const lf=cardFont(12,"600");
   const rounds=o.rounds||[],ex=o.exercises||[];
   const LBL=CARD_BRIEF_LABEL_H+CARD_BRIEF_LABEL_GAP;
   let sz,f,rLH,eLH,base,blocks,numW,h;
