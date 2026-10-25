@@ -6431,7 +6431,25 @@ function stImgFillTextSpaced(ctx,text,x,y,spacing,font,color,align,strokeColor,s
   ctx.textAlign="center";
   return total;
 }
-function stImgDrawCard(ctx,x,y,w,h,r,stnum,exSize,translation){
+// The adult card's big station number: the same white as the exercise name (Sam, 26 Oct 2026 —
+// it was a faded white for a few minutes first). Kit twin: ADULT_NUM_COLOUR.
+const STIMG_ADULT_NUM_COLOUR="#fff";
+// Translation colour per language, the offline kit's colorForLang: Māori shade 1, Moriori shade 2,
+// any other language shade 3 (the shades in the app's language settings). And the REPS colour:
+// Team 365 blue, unless the translation is that blue (Māori) — then the Moriori blue, so the two
+// lines are never the same blue (Sam, 26 Oct 2026).
+const STIMG_LANG_SHADES=["#1d9bf0","#5bb8f5","#9dd4fb"];
+function stImgLangColour(shades,langKey){
+  const sh=(shades&&shades.length)?shades:STIMG_LANG_SHADES;
+  if(langKey==="maori")return sh[0]||STIMG_LANG_SHADES[0];
+  if(langKey==="moriori")return sh[1]||STIMG_LANG_SHADES[1];
+  return sh[2]||STIMG_LANG_SHADES[2];
+}
+function stImgRepsColour(shades,langKey){
+  const tra=stImgLangColour(shades,langKey);
+  return String(tra).toLowerCase()==="#1d9bf0"?stImgLangColour(shades,"moriori"):"#1d9bf0";
+}
+function stImgDrawCard(ctx,x,y,w,h,r,stnum,exSize,translation,traColour,repsColour){
   const pad=12,topH=26,boxY=y+topH,boxH=h-topH;
   ctx.textBaseline="alphabetic";
   const labelFont="500 13px DM Sans, Arial, sans-serif";
@@ -6444,13 +6462,35 @@ function stImgDrawCard(ctx,x,y,w,h,r,stnum,exSize,translation){
   if(reps&&reps.indexOf("REP")<0)reps+=" REPS";
   const lv_y0=boxY+boxH-66;
   if(reps){
-    stImgFillTextSpaced(ctx,reps,x+w/2,lv_y0-30,1,"bold 24px DM Sans, Arial, sans-serif","#1d9bf0","center","#888",0.75);
+    // No grey outline on the reps any more (Sam, 26 Oct 2026) — fill only. The outline used to
+    // leave the line width at 0.75, which the pillar boxes below then drew their borders with;
+    // keep that so the boxes look exactly as they did.
+    stImgFillTextSpaced(ctx,reps,x+w/2,lv_y0-30,1,"bold 24px DM Sans, Arial, sans-serif",repsColour||"#1d9bf0","center");
+    ctx.lineWidth=0.75;
   }
   const exY=boxY+boxH*0.5-22;
-  stImgFillTextSpaced(ctx,(r.exercise||"").toUpperCase(),x+w/2,exY,2,exSize+'px "Bebas Neue", Arial Narrow, sans-serif',"#fff");
+  // Translation ABOVE the exercise name (Sam, 26 Oct 2026). The two lines trade places in the
+  // same space: the translation's capitals start where the name's used to, and the name sits on
+  // the translation's old baseline (exY+30), so the pair stays centred in the box with the same
+  // gap between them. The name ALWAYS sits on exY+30, translation or not, so names still line up
+  // across a row. Sizes, fonts and colours unchanged. ⚠ Kit twin: drawCard in stationimages.html.
+  const exFontStr=exSize+'px "Bebas Neue", Arial Narrow, sans-serif',traFontStr="600 15px DM Sans, Arial, sans-serif";
+  ctx.font=exFontStr;const exCap=ctx.measureText("H").actualBoundingBoxAscent||exSize*0.7;
+  ctx.font=traFontStr;const traCap=ctx.measureText("H").actualBoundingBoxAscent||15*0.7;
+  // Station number above the translation (Sam, 26 Oct 2026), drawn the youth image's way: Bebas
+  // Neue, 65px, centred in the empty strip between the top of the box and the top of the
+  // translation's capitals (where the name's capitals used to be — the same on every card, so
+  // the numbers line up across a row whether or not a card has a translation). On a short card
+  // it shrinks to keep a 10px gap top and bottom, never under 12px. Faded white, unlike youth.
+  const numStrip=(exY-exCap)-boxY;
+  const numFs=Math.max(12,Math.min(65,Math.floor((numStrip-20)/0.7)));
+  stImgFillTextSpaced(ctx,String(stnum),x+w/2,boxY+(numStrip+numFs*0.7)/2,2,numFs+'px "Bebas Neue", Arial Narrow, sans-serif',STIMG_ADULT_NUM_COLOUR);
   if(translation){
-    stImgFillTextSpaced(ctx,translation,x+w/2,exY+30,2,"600 15px DM Sans, Arial, sans-serif","#1d9bf0");
+    stImgFillTextSpaced(ctx,translation,x+w/2,exY-exCap+traCap,2,traFontStr,traColour||"#1d9bf0");
   }
+  // 16px of clear space under the translation (Sam, 26 Oct 2026 — was 20): the name sits 4px
+  // higher, on exY+26. The translation and the station number don't move.
+  stImgFillTextSpaced(ctx,(r.exercise||"").toUpperCase(),x+w/2,exY+26,2,exFontStr,"#fff");
   const cols=[["COMMITMENT",r.c],["CONSISTENCY",r.o],["DETERMINATION",r.d]];
   const gap=6,cw=(w-2*pad-2*gap)/3;
   cols.forEach((c,i)=>{
@@ -6467,7 +6507,9 @@ function stImgDrawCard(ctx,x,y,w,h,r,stnum,exSize,translation){
 // Footer sizes/positions measured directly against the S&C Builder poster's own 1920x1080
 // export (bottom:10px, 1-2px flex gaps) so the two match — see the offline kit's identical fix.
 function stImgDrawFooter(ctx){
-  const fy1=1080-29,fy2=1080-12;
+  // Both lines 10px higher than the S&C poster's footer (Sam, 26 Oct 2026): bottom line's
+  // baseline 22px above the edge (was 12), top line's 39px (was 29).
+  const fy1=1080-39,fy2=1080-22;
   const fontBold='700 16px DM Sans, Arial, sans-serif';
   const fontTagline='600 12px DM Sans, Arial, sans-serif';
   const fontCenterBold='700 12px DM Sans, Arial, sans-serif';
@@ -6476,7 +6518,7 @@ function stImgDrawFooter(ctx){
   stImgFillTextSpaced(ctx,"EVERY DAY. ALL YEAR ROUND",96,fy2,1,fontTagline,"#9fb3c4","left");
   stImgFillTextSpaced(ctx,"THE GRACEFUL",1920-96,fy1,1.5,fontBold,"#fff","right");
   stImgFillTextSpaced(ctx,"PURSUIT TO BECOME MORE",1920-96,fy2,1,fontTagline,"#9fb3c4","right");
-  stImgFillTextSpaced(ctx,"COMMITMENT · CONSISTENCY · DETERMINATION",960,fy1,1,fontCenterBold,"#9fb3c4","center");
+  stImgFillTextSpaced(ctx,"COMMITMENT · CONSISTENCY · DETERMINATION",960,fy1,1,fontCenterBold,"#fff","center");
   const lbl="POWERED BY ",url="WWW.LAMONTCOLLECTIVE.COM";
   const lblW=stImgMeasureSpaced(ctx,lbl,fontPowered,1),urlW=stImgMeasureSpaced(ctx,url,fontPowered,1);
   const startX=960-(lblW+urlW)/2;
@@ -6641,12 +6683,38 @@ function stImgDrawKidsCard(ctx,x,y,w,h,r,stnum,exSize,name,youthReps,adultName){
     stImgFillTextSpaced(ctx,r.duration?"CHECK STATION TIME":"NO STATION TIME",bx+bw/2,lv_y0+41,1,"bold 13px DM Sans, Arial, sans-serif","#c9603f");
   }
 }
-async function stImgRenderCanvas(canvas,className,rows,lib,bgNum,langKey,langName,kids){
+// ── 365 logo before the workout name on the station image (Sam, 26 Oct 2026) ──────────────
+// The white 365 from the app icon, with its black square removed, built in so it works offline
+// and never taints the canvas for download. It is drawn exactly as tall as the title's capital
+// letters (top of the R down to the baseline), 10px before the name, and the logo + name are
+// centred together as one piece. Used by the adult and youth station images alike.
+// ⚠ stationimages.html (the offline kit) carries the same logo and drawing. Keep in step.
+const STIMG_TITLE_LOGO="data:image/png;base64,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";
+const STIMG_TITLE_LOGO_GAP=10;
+let stImgTitleLogoP=null;
+function stImgTitleLogo(){
+  if(!stImgTitleLogoP)stImgTitleLogoP=stImgLoadImage(STIMG_TITLE_LOGO).catch(()=>{stImgTitleLogoP=null;return null;});
+  return stImgTitleLogoP;
+}
+function stImgFillTitleWithLogo(ctx,text,cx,y,spacing,font,color,logo){
+  if(!logo||!logo.width){stImgFillTextSpaced(ctx,text,cx,y,spacing,font,color,"center");return;}
+  const textW=stImgMeasureSpaced(ctx,text,font,spacing);
+  ctx.font=font;
+  const capH=ctx.measureText("H").actualBoundingBoxAscent||parseFloat((font.match(/(\d+(?:\.\d+)?)px/)||[0,26])[1])*0.7;
+  const lh=capH,lw=lh*logo.width/logo.height;
+  const x0=cx-(lw+STIMG_TITLE_LOGO_GAP+textW)/2;
+  ctx.save();ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
+  ctx.drawImage(logo,x0,y-lh,lw,lh);
+  ctx.restore();
+  stImgFillTextSpaced(ctx,text,x0+lw+STIMG_TITLE_LOGO_GAP,y,spacing,font,color,"left");
+}
+async function stImgRenderCanvas(canvas,className,rows,lib,bgNum,langKey,langName,kids,langShades){
   langKey=langKey||"maori";
   langName=langName||"Māori";
   const ctx=canvas.getContext("2d");
   ctx.clearRect(0,0,1920,1080);
   const affirmationPromise=stImgFetchAffirmation(className);
+  const titleLogoPromise=stImgTitleLogo();
   if(bgNum){
     try{
       const img=await stImgLoadImage(scBgUrl(bgNum));
@@ -6669,14 +6737,15 @@ async function stImgRenderCanvas(canvas,className,rows,lib,bgNum,langKey,langNam
   const SAFE=96,areaX=SAFE,areaW=1920-2*SAFE,areaY=SAFE,areaH=1080-2*SAFE;
   const nameStripH=40;
   ctx.textBaseline="alphabetic";
-  const nameDisplay=className.toUpperCase().replace(/(\d+)\s*$/,"($1)");
+  // No brackets round the number any more (Sam, 26 Oct 2026): "RISE UP 1", not "RISE UP (1)".
+  const nameDisplay=className.toUpperCase();
   const affirmation=await affirmationPromise;
   const titleFont="700 26px DM Sans, Arial, sans-serif";
   // Affirmation (top-left) and the translation-language label (top-right) match the
   // footer's "TEAM 365" text exactly — same size/weight/color — per the client's request.
   const cornerFont="700 16px DM Sans, Arial, sans-serif";
   const titleY=areaY-1;
-  stImgFillTextSpaced(ctx,nameDisplay,areaX+areaW/2,titleY,1.5,titleFont,"#fff","center");
+  stImgFillTitleWithLogo(ctx,nameDisplay,areaX+areaW/2,titleY,1.5,titleFont,"#fff",await titleLogoPromise);
   if(affirmation){
     stImgFillTextSpaced(ctx,affirmation.toUpperCase(),areaX,titleY,1.5,cornerFont,"#fff","left");
   }
@@ -6710,7 +6779,7 @@ async function stImgRenderCanvas(canvas,className,rows,lib,bgNum,langKey,langNam
     const col=i%cols,row=Math.floor(i/cols);
     const x=padX+col*(cardW+gap),y=top+row*(cardH+rowGap);
     if(kids)stImgDrawKidsCard(ctx,x,y,cardW,cardH,r,i+1,exSize,names[i],stImgYouthRepsFor(lib,r),(r.exercise||"").toUpperCase());
-    else stImgDrawCard(ctx,x,y,cardW,cardH,r,i+1,exSize,translations[i]);
+    else stImgDrawCard(ctx,x,y,cardW,cardH,r,i+1,exSize,translations[i],stImgLangColour(langShades,langKey),stImgRepsColour(langShades,langKey));
   });
 
   stImgDrawFooter(ctx);
@@ -7247,7 +7316,7 @@ function StationCardsOverlay({className,rows,lib,onClose,langOptions,youth,autoD
     )
   );
 }
-function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose,langOptions,kids,autoDl}){
+function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose,langOptions,kids,autoDl,langShades}){
   const frameRef=useRef(null);
   const mobileOuterRef=useRef(null);
   const canvasRef=useRef(null);
@@ -7277,10 +7346,10 @@ function StationImageOverlay({className,rows,lib,bg,onBgChange,onClose,langOptio
     return()=>{window.removeEventListener("resize",chk);window.removeEventListener("orientationchange",chk);document.removeEventListener("fullscreenchange",chk);};
   },[]);
   useEffect(()=>{
-    if(canvasRef.current)stImgRenderCanvas(canvasRef.current,className,rows,lib,bg,langKey,langName,!!kids);
+    if(canvasRef.current)stImgRenderCanvas(canvasRef.current,className,rows,lib,bg,langKey,langName,!!kids,langShades);
     // mobileSize is included because switching between the mobile/desktop branches below
     // mounts a brand-new <canvas> node — this effect must re-fire to draw onto it.
-  },[className,rows,lib,bg,mobileSize,langKey,langName,kids]);
+  },[className,rows,lib,bg,mobileSize,langKey,langName,kids,langShades]);
   async function toggleFullscreen(){
     const target=mobileSize?mobileOuterRef.current:frameRef.current;
     if(document.fullscreenElement){
@@ -7669,7 +7738,7 @@ async function wdLoadBundle(className,opts){
     const bgr=await sbGet("coaching_notes","class_name=eq."+encodeURIComponent("__BG__"+className)+"&select=content");
     if(bgr&&bgr.length&&bgr[0].content)bg=bgr[0].content;
   }catch(e){}
-  return {rows,lib,bg,langOptions:wdLangOptions(LC),restricted};
+  return {rows,lib,bg,langOptions:wdLangOptions(LC),langShades:LC.shades,restricted};
 }
 function WorkoutDetailsEditor({className,showToast,restricted,subscriber}){
   const storageKey="__WORKOUT__"+className;
@@ -7885,7 +7954,7 @@ function WorkoutDetailsEditor({className,showToast,restricted,subscriber}){
       !restricted&&rows.length>0&&React.createElement("div",{style:{display:"flex",gap:8,marginTop:12}},
         React.createElement("button",{onClick:()=>setEditing(true),style:{flex:1,background:"#1a1a1a",color:"#ccc",border:"1px solid #2a2a2a",borderRadius:0,padding:"9px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:"0.12em",cursor:"pointer"}},"✎ EDIT WORKOUT")
       ),
-      imgOpen&&React.createElement(StationImageOverlay,{className,rows,lib,bg:imgBg,onBgChange:restricted?setImgBg:saveImgBg,onClose:()=>setImgOpen(false),langOptions:[{key:"maori",name:"Māori"}].concat(langCfg.morioriOn?[{key:"moriori",name:"Moriori"}]:[]).concat((langCfg.bank||[]).map(b=>({key:b.key,name:b.name||b.key})))}),
+      imgOpen&&React.createElement(StationImageOverlay,{className,rows,lib,bg:imgBg,onBgChange:restricted?setImgBg:saveImgBg,onClose:()=>setImgOpen(false),langShades:langCfg.shades,langOptions:[{key:"maori",name:"Māori"}].concat(langCfg.morioriOn?[{key:"moriori",name:"Moriori"}]:[]).concat((langCfg.bank||[]).map(b=>({key:b.key,name:b.name||b.key})))}),
       !subscriber&&kidsImgOpen&&React.createElement(StationImageOverlay,{kids:true,className,rows,lib,bg:imgBg,onBgChange:restricted?setImgBg:saveImgBg,onClose:()=>setKidsImgOpen(false),langOptions:[{key:"maori",name:"Māori"}].concat(langCfg.morioriOn?[{key:"moriori",name:"Moriori"}]:[]).concat((langCfg.bank||[]).map(b=>({key:b.key,name:b.name||b.key})))}),
       cardsOpen&&React.createElement(StationCardsOverlay,{className,rows,lib,onClose:()=>setCardsOpen(false),langOptions:[{key:"maori",name:"Māori"}].concat(langCfg.morioriOn?[{key:"moriori",name:"Moriori"}]:[]).concat((langCfg.bank||[]).map(b=>({key:b.key,name:b.name||b.key})))}),
       !subscriber&&youthCardsOpen&&React.createElement(StationCardsOverlay,{youth:true,className,rows,lib,onClose:()=>setYouthCardsOpen(false),langOptions:[{key:"maori",name:"Māori"}].concat(langCfg.morioriOn?[{key:"moriori",name:"Moriori"}]:[]).concat((langCfg.bank||[]).map(b=>({key:b.key,name:b.name||b.key})))})
@@ -8280,7 +8349,7 @@ function StationListView({mode,youth,names,restricted,showToast,onBack}){
   async function save(n){const b=await load(n);if(b)setDl({name:n,b});}
   const ovl=(o,auto)=>mode==="cards"
     ? React.createElement(StationCardsOverlay,{key:(auto?"dl-":"v-")+o.name,className:o.name,rows:o.b.rows,lib:o.b.lib,onClose:()=>{if(auto)setDl(null);else setOpen(null);},langOptions:o.b.langOptions,youth:!!youth,autoDl:!!auto})
-    : React.createElement(StationImageOverlay,{key:(auto?"dl-":"v-")+o.name,className:o.name,rows:o.b.rows,lib:o.b.lib,bg:o.b.bg,onBgChange:()=>{},onClose:()=>{if(auto)setDl(null);else setOpen(null);},langOptions:o.b.langOptions,kids:!!youth,autoDl:!!auto});
+    : React.createElement(StationImageOverlay,{key:(auto?"dl-":"v-")+o.name,className:o.name,rows:o.b.rows,lib:o.b.lib,bg:o.b.bg,onBgChange:()=>{},onClose:()=>{if(auto)setDl(null);else setOpen(null);},langOptions:o.b.langOptions,langShades:o.b.langShades,kids:!!youth,autoDl:!!auto});
   const btn=(extra)=>Object.assign({background:"none",borderRadius:0,fontFamily:"'Bebas Neue',sans-serif",fontSize:11,letterSpacing:"0.1em",padding:"6px 11px",cursor:"pointer",flexShrink:0},extra);
   return React.createElement("div",{"data-station-list":mode+(youth?"-youth":""),style:{marginTop:16}},
     React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:16}},
