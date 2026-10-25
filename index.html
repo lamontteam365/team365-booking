@@ -6978,13 +6978,125 @@ function cardDrawBrief(ctx,pal,o){
   });
   cardFooter(ctx,pal,o.foot);
 }
+// The WORKOUT BRIEF card (Sam, 26 Oct): the white 365 logo big at the top, the workout's name
+// small under it, then the WORKOUT BRIEF label and the text, all centred — no blue rule. The
+// positions are FIXED, so the name and the label sit at the same height on every workout's card.
+// A brief too long to end above the footer lifts the whole stack, by at most CARD_WB_MAXLIFT,
+// then steps its text down a size at a time.
+// The logo takes the card's text colour, so it is black on an inverse card. The session brief
+// keeps cardDrawBrief. The logo is STIMG_TITLE_LOGO, loaded into cardLogoImg by
+// StationCardsOverlay before any card is drawn.
+// ⚠ stationimages.html (the offline kit) carries the same card. Keep in step.
+const CARD_WB_LOGO_TOP=84,CARD_WB_LOGO_H=57.5,CARD_WB_TITLE_BASE=216,CARD_WB_TITLE_MAX=20,
+      CARD_WB_LABEL_BASE=254,CARD_WB_TEXT_BOTTOM=494,CARD_WB_MAXLIFT=56;
+let cardLogoImg=null;
+const cardLogoTints={};
+function cardLogoTinted(colour){
+  const logo=cardLogoImg;
+  if(!logo||!logo.width)return null;
+  if(cardLogoTints[colour])return cardLogoTints[colour];
+  const c=document.createElement("canvas");c.width=logo.width;c.height=logo.height;
+  const x=c.getContext("2d");x.drawImage(logo,0,0);
+  x.globalCompositeOperation="source-in";x.fillStyle=colour;x.fillRect(0,0,c.width,c.height);
+  return (cardLogoTints[colour]=c);
+}
+function cardDrawWorkoutBrief(ctx,pal,o){
+  cardFrame(ctx,pal);
+  const lf=cardFont(12,"600"),label=String(o.label||"");
+  const top=CARD_WB_LABEL_BASE-12,textTop=top+(label?CARD_BRIEF_LABEL_H+CARD_BRIEF_LABEL_GAP:0);
+  // 15 on 23 as a rule. Only a brief too long to fit even with the full lift steps down.
+  let sz=15,f,lineH,lines;
+  for(;;){
+    f=cardFont(sz,"");lineH=Math.round(sz*23/15);lines=cardWrap(ctx,o.para||"",f,CARD_INNER-12);
+    if(sz<=10||textTop-CARD_WB_MAXLIFT+lines.length*lineH<=CARD_WB_TEXT_BOTTOM)break;
+    sz--;
+  }
+  const lift=Math.min(CARD_WB_MAXLIFT,Math.max(0,textTop+lines.length*lineH-CARD_WB_TEXT_BOTTOM));
+  const lg=cardLogoTinted(pal.fg);
+  if(lg){
+    const lh=CARD_WB_LOGO_H,lw=lh*lg.width/lg.height;
+    ctx.save();ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
+    ctx.drawImage(lg,(CARD_U_W-lw)/2,CARD_WB_LOGO_TOP-lift,lw,lh);
+    ctx.restore();
+  }
+  // No brackets round the number (Sam, 26 Oct): RISE UP 1, RISE UP 1 YOUTH. The session brief
+  // and the youth station footers still read RISE UP (1).
+  const title=String(o.title||"").replace(/\((\d+)\)/,"$1");
+  const ts=cardFitName(ctx,[title],CARD_INNER,CARD_WB_TITLE_MAX,12);
+  stImgFillTextSpaced(ctx,title,CARD_U_W/2,CARD_WB_TITLE_BASE-lift,ts*0.03,cardFont(ts,"",CARD_BEBAS),pal.fg,"center");
+  let y=top-lift;
+  if(label){
+    stImgFillTextSpaced(ctx,label,CARD_U_W/2,y+12,1.92,lf,pal.acc,"center");
+    y+=CARD_BRIEF_LABEL_H+CARD_BRIEF_LABEL_GAP;
+  }
+  lines.forEach(ln=>{stImgFillTextSpaced(ctx,ln,CARD_U_W/2,y+11,0,f,pal.fg,"center");y+=lineH;});
+  cardFooter(ctx,pal,o.foot);
+}
+// The SESSION BRIEF card (Sam, 26 Oct): the workout's name and the blue rule as before, then
+// only the ROUND lines of the session brief (any line starting "Round <n>"), then the stations
+// of the first station round as a numbered STATION EXERCISES list — the youth names on a youth
+// card. Left-aligned, the whole block centred in the space under the rule. A long workout steps
+// the text down a size at a time until it fits.
+// ⚠ stationimages.html (the offline kit) carries the same card. Keep in step.
+const CARD_SB_SECTION_GAP=18;
+function cardRoundLines(lines){
+  return (lines||[]).filter(x=>/^ROUND\s*\d/i.test(String(x).trim()));
+}
+function cardDrawSessionBrief(ctx,pal,o){
+  cardFrame(ctx,pal);
+  const ts=cardFitName(ctx,[o.title],CARD_INNER,40,22);
+  const tb=62+ts*0.44;
+  stImgFillTextSpaced(ctx,o.title,CARD_U_W/2,tb,ts*0.03,cardFont(ts,"",CARD_BEBAS),pal.fg,"center");
+  const ruleY=Math.round(tb+15);
+  cardRule(ctx,pal,ruleY);
+  const by=ruleY+26,bh=494-by;
+  const lf=cardFont(12,"600"),tx=CARD_PADX+6,tw=CARD_INNER-12;
+  const rounds=o.rounds||[],ex=o.exercises||[];
+  const LBL=CARD_BRIEF_LABEL_H+CARD_BRIEF_LABEL_GAP;
+  let sz,f,rLH,eLH,base,blocks,numW,h;
+  for(sz=15;;sz--){
+    f=cardFont(sz,"");rLH=Math.round(sz*20/15);eLH=Math.round(sz*20/15);base=Math.round(sz*11/15);
+    blocks=rounds.map(r=>cardWrap(ctx,r,f,tw-15));
+    ctx.font=f;numW=0;
+    ex.forEach(e=>{numW=Math.max(numW,ctx.measureText(e.num+".").width);});
+    const nameOk=ex.every(e=>{ctx.font=f;return ctx.measureText(e.name).width<=tw-numW-8;});
+    h=0;
+    if(rounds.length){h+=LBL;blocks.forEach(l=>{h+=l.length*rLH;});}
+    if(ex.length){if(rounds.length)h+=CARD_SB_SECTION_GAP;h+=LBL+ex.length*eLH;}
+    if((h<=bh&&nameOk)||sz<=10)break;
+  }
+  let y=by+(bh-h)/2;
+  if(rounds.length){
+    stImgFillTextSpaced(ctx,o.label||"SESSION BRIEF",tx,y+12,1.92,lf,pal.acc,"left");
+    y+=LBL;
+    blocks.forEach((lines,k)=>{
+      lines.forEach((ln,i)=>{
+        if(i===0)stImgFillTextSpaced(ctx,"•",tx,y+base,0,f,pal.acc,"left");
+        stImgFillTextSpaced(ctx,ln,tx+15,y+base,0,f,pal.fg,"left");
+        y+=rLH;
+      });
+    });
+    if(ex.length)y+=CARD_SB_SECTION_GAP;
+  }
+  if(ex.length){
+    stImgFillTextSpaced(ctx,"STATION EXERCISES",tx,y+12,1.92,lf,pal.acc,"left");
+    y+=LBL;
+    ex.forEach(e=>{
+      stImgFillTextSpaced(ctx,e.num+".",tx+numW,y+base,0,f,pal.acc,"right");
+      stImgFillTextSpaced(ctx,e.name,tx+numW+8,y+base,0,f,pal.fg,"left");
+      y+=eLH;
+    });
+  }
+  cardFooter(ctx,pal,o.foot);
+}
 // ---- building a pack from a workout ----
 // Returns [{slug, draw(ctx,pal)}] in print order: workout brief, session brief, then the
 // stations. `briefs` = {workout, session:[bullet,…] or null}.
 function cardBuildPack(className,rows,lib,langKey,briefs,youth){
   const group=stImgFirstStationRound(rows);
   const sts=(group&&group.sts)||[];
-  const title=String(className||"").toUpperCase().replace(/(\d+)\s*$/,"($1)");
+  // No brackets round the number (Sam, 26 Oct): RISE UP 1, everywhere on the cards.
+  const title=String(className||"").toUpperCase().trim();
   const slugOf=s=>String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
   const base=slugOf(className)+(youth?"-youth":"");
   const names=sts.map(r=>{
@@ -7001,10 +7113,12 @@ function cardBuildPack(className,rows,lib,langKey,briefs,youth){
   // text gets NO brief card rather than a blank laminate, which is what keeps Strength Lower
   // and Strength Upper (deliberately youth-free) printing stations only.
   const bTitle=youth?title+" YOUTH":title;
-  if(briefs&&briefs.workout)items.push({slug:base+"-workout-brief",draw:(ctx,pal)=>cardDrawBrief(ctx,pal,{
+  if(briefs&&briefs.workout)items.push({slug:base+"-workout-brief",draw:(ctx,pal)=>cardDrawWorkoutBrief(ctx,pal,{
     label:"WORKOUT BRIEF",title:bTitle,right:"",para:briefs.workout,foot:"EVERY DAY. ALL YEAR ROUND"})});
-  if(briefs&&briefs.session&&briefs.session.length)items.push({slug:base+"-session-brief",draw:(ctx,pal)=>cardDrawBrief(ctx,pal,{
-    label:"SESSION BRIEF",title:bTitle,right:"",bullets:briefs.session,
+  const sbRounds=cardRoundLines(briefs&&briefs.session);
+  const sbEx=sts.map((r,i)=>{const m=String(r.station||"").match(/(\d+)/);return {num:m?m[1]:String(i+1),name:names[i]};});
+  if(briefs&&briefs.session&&briefs.session.length)items.push({slug:base+"-session-brief",draw:(ctx,pal)=>cardDrawSessionBrief(ctx,pal,{
+    label:"SESSION BRIEF",title:bTitle,rounds:sbRounds,exercises:sbEx,
     foot:"EVERY DAY. ALL YEAR ROUND"})});
   sts.forEach((r,i)=>{
     // The station number the admin sees in Workout Details wins; otherwise count down the round.
@@ -7147,6 +7261,8 @@ function StationCardsOverlay({className,rows,lib,onClose,langOptions,youth,autoD
         }
       }
     }catch(e){}
+    // The workout brief card draws the 365 logo; have it loaded before any card is drawn.
+    try{const lg=await stImgTitleLogo();if(lg)cardLogoImg=lg;}catch(e){}
     setBriefs({workout,session});
   })();},[className,youth]);
   const pal=cardPal(inverse);
