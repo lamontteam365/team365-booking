@@ -684,6 +684,26 @@ html:has(.app) #root{height:100%}
 /* T365 DETAILS HOME R3 (16 Oct 2026) */
 }
 </style>
+<style>
+/* Details -> workout number hover bubble (26 Oct) */
+#briefPop{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.97);z-index:9000;pointer-events:none;width:min(640px,calc(100% - 48px));max-height:72%;overflow:hidden;background:#0a1018;border:1px solid #1d3a5a;box-shadow:0 18px 60px rgba(0,0,0,.65);padding:22px 28px 24px;text-align:left;opacity:0;visibility:hidden;transition:opacity .15s ease,transform .15s ease,visibility 0s linear .15s}
+#briefPop.on{opacity:1;visibility:visible;transform:translate(-50%,-50%) scale(1);transition:opacity .15s ease,transform .15s ease}
+#briefPop .bpLbl{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:.22em;color:#1d9bf0;margin-bottom:2px}
+#briefPop .bpName{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.08em;color:#fff;line-height:1.05}
+#briefPop .bpNone{font-family:'DM Sans',sans-serif;font-weight:400;font-size:12px;letter-spacing:.12em;color:#7a8794}
+/* HOVER BUBBLE, 26 Oct: title, SESSION BRIEF round lines, STATION EXERCISES — the same content as
+   the session brief print card. Title has no rule under it, same as the card. Every line is
+   spaced the same, round lines and exercise lines alike. */
+#briefPop .bpName{margin-bottom:12px;padding-bottom:0;border-bottom:0}
+#briefPop .bpLbl{margin-bottom:5px}
+#briefPop .bpLbl2{margin-top:14px}
+#briefPop .bpRounds,#briefPop .bpEx{list-style:none;margin:0;padding:0;font-family:'DM Sans',sans-serif;font-weight:400;font-size:12px;letter-spacing:.05em;line-height:19px;color:#e8eef4}
+#briefPop .bpRounds li{position:relative;padding-left:15px}
+#briefPop .bpRounds li::before{content:'\2022';position:absolute;left:0;top:0;color:#1d9bf0}
+#briefPop .bpEx{display:grid;grid-template-columns:auto 1fr;column-gap:8px}
+#briefPop .bpEx li{display:contents}
+#briefPop .bpEx .bpN{text-align:right;color:#1d9bf0}
+</style>
 </head>
 <body>
 <div id="root"><div class="loading-screen"><div>LAMONT APPLICATIONS</div><div class="loading-bar"><div class="loading-fill"></div></div><div>TEAM 365</div></div></div>
@@ -691,6 +711,54 @@ html:has(.app) #root{height:100%}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script>/* Workouts are no longer embedded in the page source: they load from the database after login. */window.T365_HIIT_SEED=null;</script>
 <script>window.T365_WORKOUT_SEED={};window.T365_WORKOUT_READY=Promise.resolve();</script>
+<script>
+/* ---- HOVER BUBBLE: same content as the session brief print card (Sam, 26 Oct) ----
+   Title (the workout name, no brackets), SESSION BRIEF = only the lines of the coaching notes'
+   SESSION BRIEF section that start "Round <n>", then STATION EXERCISES = the first station
+   round, numbered by station number. Same parse as the cards' cardBriefsFor/cardRoundLines and
+   the same first-station-round rule (split circuits merged). Everything comes from the workout
+   itself, so a new workout (Rise Up 5) needs nothing extra. */
+var T365HB=(function(){
+  function esc(t){return String(t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  function parse(v){if(v==null)return null;if(typeof v!=='string')return v;try{return JSON.parse(v);}catch(e){return null;}}
+  /* The SESSION BRIEF section's text, or '' when the notes have none. */
+  function briefBody(notes){
+    var a=parse(notes);if(!Array.isArray(a))return '';
+    for(var i=0;i<a.length;i++){var x=a[i];if(x&&String(x.title||'').trim().toUpperCase()==='SESSION BRIEF'&&String(x.body||'').trim())return String(x.body);}
+    return '';
+  }
+  function roundLines(body,name){
+    var key=function(x){return String(x).toUpperCase().replace(/[^A-Z0-9]/g,'');},t=key(name);
+    return String(body||'').split(/\n+/)
+      .map(function(x){return x.replace(/^\s*[•·\-]\s*/,'').trim();})
+      .filter(Boolean)
+      .filter(function(x){return key(x)!==t;})
+      .filter(function(x){return /^ROUND\s*\d/i.test(x);});
+  }
+  function groupsOf(rows){var groups=[],cur=null,inR=false;rows.forEach(function(r){if(!r)return;if(r.hdr!=null){inR=/round/i.test(r.hdr);if(inR){cur={hdr:r.hdr,st:r.st,split:(r.split===true),sts:[]};groups.push(cur);}else cur=null;}else if(inR&&cur)cur.sts.push(r);});return groups;}
+  function isStationG(g){if(g.st===true)return true;if(g.st===false)return false;var u={};g.sts.forEach(function(s){u[s.duration||'']=1;});return Object.keys(u).length<=1&&g.sts.length>2;}
+  function stations(rowsRaw){
+    var rows=parse(rowsRaw);if(!Array.isArray(rows))return [];
+    var groups=groupsOf(rows),sts=null;
+    var splitG=groups.filter(function(g){return isStationG(g)&&g.split;});
+    if(splitG.length>=2){sts=[];splitG.forEach(function(g){g.sts.forEach(function(r){sts.push(r);});});}
+    else for(var i=0;i<groups.length;i++){if(isStationG(groups[i])){sts=groups[i].sts;break;}}
+    return (sts||[]).map(function(r,i){var m=String(r.station||'').match(/(\d+)/);return {num:m?m[1]:String(i+1),name:String(r.exercise||'').toUpperCase().trim()};});
+  }
+  /* The bubble's inner HTML. notes = the workout's coaching notes record, rows = its
+     __WORKOUT__ record (either may be a JSON string or already parsed, or missing). */
+  function html(name,notes,rows){
+    var title=String(name||'').toUpperCase().trim();
+    var body=briefBody(notes),rl=body?roundLines(body,title):[],ex=stations(rows);
+    var h='<div class="bpName">'+esc(title)+'</div><div class="bpLbl">SESSION BRIEF</div>';
+    if(rl.length)h+='<ul class="bpRounds">'+rl.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul>';
+    else h+='<div class="bpNone">'+(body?'NO ROUND LINES IN THE SESSION BRIEF':'SESSION BRIEF YET TO BE WRITTEN')+'</div>';
+    if(ex.length)h+='<div class="bpLbl bpLbl2">STATION EXERCISES</div><ol class="bpEx">'+ex.map(function(e){return '<li><span class="bpN">'+esc(e.num)+'.</span><span>'+esc(e.name)+'</span></li>';}).join('')+'</ol>';
+    return h;
+  }
+  return {html:html,briefBody:briefBody,roundLines:roundLines,stations:stations};
+})();
+</script>
 <script>
 const { useState, useEffect, useRef } = React;
 const ADMIN_EMAIL = "lamont.team365@gmail.com";
@@ -865,6 +933,36 @@ function onScreenPoll(fn,ms){
   return ()=>{clearInterval(id);document.removeEventListener("visibilitychange",onVis);};
 }
 async function sbGet(t,q=""){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_HDR});return r.ok?await r.json():[];}catch{return[];}}
+
+/* Details: hover a workout number -> the bubble. Reads the workout's own saved records (coaching
+   notes + __WORKOUT__ rows) the way tv.html does, cached for 15 s so moving along a row is quick
+   but an edit shows on the next hover. Mouse/trackpad only. */
+var T365HBApp=(function(){
+  var pop=null,showT=null,hideT=null,cur=null,cache={};
+  function hoverOk(){try{return !window.matchMedia||window.matchMedia('(hover: hover)').matches;}catch(e){return true;}}
+  function el(){if(!pop){pop=document.createElement('div');pop.id='briefPop';pop.setAttribute('aria-hidden','true');document.body.appendChild(pop);}return pop;}
+  function first(r){return (Array.isArray(r)&&r[0]&&r[0].content)||null;}
+  function load(name){
+    var c=cache[name];if(c&&Date.now()-c.t<15000)return Promise.resolve(c);
+    return Promise.all([
+      sbGet('coaching_notes','class_name=eq.'+encodeURIComponent(name)+'&select=content'),
+      sbGet('coaching_notes','class_name=eq.'+encodeURIComponent('__WORKOUT__'+name)+'&select=content')
+    ]).then(function(r){var v={t:Date.now(),notes:first(r[0]),rows:first(r[1])};cache[name]=v;return v;});
+  }
+  function hide(){clearTimeout(showT);clearTimeout(hideT);cur=null;if(pop)pop.classList.remove('on');}
+  function enter(name){
+    if(!hoverOk()||!name)return;
+    clearTimeout(hideT);
+    if(cur===name)return;
+    cur=name;clearTimeout(showT);
+    var on=pop&&pop.classList.contains('on');
+    showT=setTimeout(function(){load(name).then(function(c){if(cur!==name)return;el().innerHTML=T365HB.html(name,c.notes,c.rows);el().classList.add('on');});},on?0:250);
+  }
+  function leave(){clearTimeout(showT);clearTimeout(hideT);hideT=setTimeout(hide,120);}
+  window.addEventListener('blur',hide);
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')hide();});
+  return {enter:enter,leave:leave,hide:hide};
+})();
 async function sbPost(t,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
 async function sbPatch(t,q,d){try{const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{method:"PATCH",headers:SB_HDR,body:JSON.stringify(d)});return r.ok;}catch{return false;}}
 async function sbDelete(t,q){
@@ -8720,7 +8818,9 @@ function CoachingView({showToast,restricted,selfEmail,subscriber}){
           const isExtra=!base||(extraNames.includes(cn));
           return React.createElement("div",{key:cn,style:{position:"relative",flex:"0 0 "+btnW,minWidth:btnW}},
             React.createElement("button",{
-              onClick:()=>!isEditing&&selectClass(cn),
+              onClick:()=>{T365HBApp.hide();if(!isEditing)selectClass(cn);},
+              onMouseEnter:()=>{if(!isEditing)T365HBApp.enter(cn);},
+              onMouseLeave:()=>T365HBApp.leave(),
               style:{width:"100%",height:44,background:isSelected?"#fff":"#131313",color:isSelected?"#000":"#777",
                      border:isSelected?"1px solid #888":"1px solid #666",borderRadius:0,
                      fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:"0.05em",
